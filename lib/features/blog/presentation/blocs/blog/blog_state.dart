@@ -19,6 +19,7 @@ final class BlogLoaded extends BlogState {
 
 final class BlogListFailure extends BlogState {
   final String error;
+  final BlogState? previousState;
 
-  BlogListFailure({required this.error});
+  BlogListFailure({required this.error,this.previousState});
 }

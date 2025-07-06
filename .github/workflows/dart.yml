@@ -43,9 +43,9 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/ios/iphoneos/IpaExport.ipa
-          tag: v1.8
+          tag: v1.9
           overwrite: true
-          body: "Release v1.8, centered title in Android."
+          body: "Release v1.9, fixed listing error."
 
   build-android:
     name: 🤖 Android Build
@@ -78,6 +78,6 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/app/outputs/flutter-apk/app-release.apk
-          tag: v1.8
+          tag: v1.9
           overwrite: true
-          body: "Release v1.8, centered title in Android."
+          body: "Release v1.9, fixed listing error."

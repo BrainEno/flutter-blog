@@ -22,7 +22,7 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
     final res = await _getAllBlogs(GetAllBlogsParams(page: event.page));
 
     res.fold(
-      (failure) => emit(BlogListFailure(error: failure.message)),
+      (failure) => emit(BlogListFailure(error: failure.message,previousState:state)),
       (blogs) => emit(BlogLoaded(
           blogs: event.refresh || state is! BlogLoaded
               ? blogs

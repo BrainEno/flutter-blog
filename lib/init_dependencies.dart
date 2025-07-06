@@ -76,16 +76,25 @@ Future<void> initDependencies() async {
   await _initBlog();
   await _initUser();
 
+  String sanitizeUserAgent(String input) {
+    // Remove non-ASCII characters
+    return input.replaceAll(RegExp(r'[^\x00-\x7F]'), '');
+  }
+
+// Example usage
+  final osInfo = sanitizeUserAgent('Windows 10 家庭中文版');
+  final userAgent = 'belog-app/1.0 ($osInfo)';
+
   final supabase = await Supabase.initialize(
-      url: AppSecrets.supabaseUrl ?? '', anonKey: AppSecrets.supabaseKey ?? '');
+      url: AppSecrets.supabaseUrl ?? '',
+      anonKey: AppSecrets.supabaseKey ?? '',
+      headers: {
+        'User-Agent': userAgent,
+      });
 
   final directory = await getApplicationDocumentsDirectory();
   isar = await Isar.open(
-    [
-      ThemePreferenceSchema,
-      BlogSchema,
-      BlogDraftSchema
-    ], // Pass your Blog schema here
+    [ThemePreferenceSchema, BlogSchema, BlogDraftSchema],
     directory: directory.path,
   );
 

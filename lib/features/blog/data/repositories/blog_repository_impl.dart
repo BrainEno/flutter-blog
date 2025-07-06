@@ -59,6 +59,7 @@ class BlogRepositoryImpl implements BlogRepository {
         final blogs = await blogLocalDataSource.loadBlogs();
         return right(blogs);
       }
+      
       final blogs = await blogRemoteDataSource.getAllBlogs(page: page);
       await blogLocalDataSource.uploadLocalBlogs(blogs: blogs);
       return right(blogs);

@@ -21,7 +21,6 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
   bool _isFetchingMore = false;
   int _page = 1; // Pagination page number
-  List<dynamic> _blogs = []; // Store all loaded blogs
 
   @override
   void initState() {
@@ -49,7 +48,6 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     final blogBloc = context.read<BlogBloc>();
     if (refresh) {
       _page = 1; // Reset to first page for refresh
-      _blogs.clear(); // Clear existing blogs on refresh
       blogBloc.add(BlogFetchAllBlogs(page: _page, refresh: true));
     } else {
       blogBloc.add(BlogFetchAllBlogs(page: _page));
@@ -99,57 +97,61 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
         listener: (context, state) {
           if (state is BlogListFailure) {
             showSnackBar(context, state.error);
-            setState(() => _isFetchingMore = false); // Reset on failure
-          }
-          if (state is BlogLoaded) {
-            if (state.blogs.isNotEmpty || _page == 1) {
+       }
+
+          if (state is BlogLoaded || state is BlogListFailure) {
               setState(() {
-                if (_page == 1) {
-                  _blogs = state.blogs; // Replace on refresh or initial load
-                } else {
-                  _blogs.addAll(state.blogs); // Append for pagination
-                }
-                _isFetchingMore = false; // Reset fetching flag
+                _isFetchingMore = false; 
               });
-            } else {
-              // No new blogs, keep existing ones, reset fetching
-              setState(() => _isFetchingMore = false);
-            }
+           
           }
         },
         builder: (context, state) {
-          if (state is BlogListLoading && state.previousState == null) {
-            return const Loader(); // Initial load
-          }
+           List<dynamic> blogsToShow = [];
+    if (state is BlogLoaded) {
+      blogsToShow = state.blogs;
+    } else if (state is BlogListLoading && state.previousState is BlogLoaded) {
+      blogsToShow = (state.previousState as BlogLoaded).blogs;
+    } else if (state is BlogListFailure && state.previousState is BlogLoaded) {
+      blogsToShow = (state.previousState as BlogLoaded).blogs;
+    }
 
-          // Always show blogs if we have them, even during loading
-          if (_blogs.isEmpty && state is BlogLoaded) {
-            return RefreshIndicator(
-              onRefresh: _refreshBlogs,
-              child: const SingleChildScrollView(
-                physics: AlwaysScrollableScrollPhysics(),
-              ),
+    if (state is BlogListLoading && blogsToShow.isEmpty) {
+      return const Loader(); // Show loader only on initial load
+    }
+
+    if (blogsToShow.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _refreshBlogs,
+        child: const SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          child: Center(
+            heightFactor: 5,
+            child: Text("加载中..."),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshBlogs,
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.only(top: 8, bottom: 30),
+        itemCount: blogsToShow.length + (_isFetchingMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == blogsToShow.length) {
+            return const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(child: CircularProgressIndicator()),
             );
           }
-
-          return RefreshIndicator(
-            onRefresh: _refreshBlogs,
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.only(top: 8, bottom: 30),
-              itemCount: _blogs.length + (_isFetchingMore ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == _blogs.length && _isFetchingMore) {
-                  return const Padding(
-                    padding: EdgeInsets.all(8.0),
-                  );
-                }
-                final blog = _blogs[index];
-                return BlogCard(blog: blog);
-              },
-            ),
-          );
+          final blog = blogsToShow[index];
+          return BlogCard(blog: blog);
         },
+      ),
+    );
+  },
       ),
       floatingActionButton: BlocSelector<AppUserCubit, AppUserState, bool>(
         selector: (state) => state is AppUserLoggedIn,
