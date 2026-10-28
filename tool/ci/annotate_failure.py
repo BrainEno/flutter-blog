@@ -10,7 +10,7 @@ def main() -> int:
     mode, filename = sys.argv[1:]
     lines = Path(filename).read_text(encoding="utf-8", errors="replace").splitlines()
     if mode == "analyze":
-        selected = [line for line in lines if re.match(r"^(ERROR|WARNING|INFO)\|", line)]
+        selected = lines[-100:]
     elif mode == "android":
         # Include context around Gradle/Flutter errors without dumping the entire
         # verbose build log (which may include environment-dependent values).
