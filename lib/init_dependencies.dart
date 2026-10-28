@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/secrets/app_secrets.dart';
@@ -41,7 +39,6 @@ import 'package:belog/features/user/domain/repositories/user_repository.dart'; /
 import 'package:belog/features/user/domain/usecases/change_email_usecase.dart';
 import 'package:belog/features/user/domain/usecases/edit_user_usecase.dart';
 import 'package:belog/features/user/domain/usecases/reset_password_usecase.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get_it/get_it.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:isar/isar.dart';
@@ -52,24 +49,30 @@ final serviceLocator = GetIt.instance;
 late Isar isar;
 
 Future<void> initDependencies() async {
-  // Load from .env (for local development)
-  try {
-    await dotenv.load(fileName: ".env");
-  } catch (e) {
-    print("Error loading .env file: $e");
+  final supabaseUrl = AppSecrets.supabaseUrl;
+  final supabaseKey = AppSecrets.supabaseKey;
+
+  if (supabaseUrl == null || supabaseUrl.isEmpty) {
+    throw StateError(
+      'Supabase URL not configured. '
+      'Set SUPABASE_URL via --dart-define-from-file=env.json or --dart-define=SUPABASE_URL=... '
+      'See env.example.json for template.',
+    );
+  }
+  if (supabaseKey == null || supabaseKey.isEmpty) {
+    throw StateError(
+      'Supabase key not configured. '
+      'Set SUPABASE_KEY via --dart-define-from-file=env.json or --dart-define=SUPABASE_KEY=... '
+      'See env.example.json for template.',
+    );
   }
 
-  // Override with GitHub Secrets (for CI/CD)
-  final supabaseUrl = Platform.environment['SUPABASE_URL'];
-  final supabaseKey = Platform.environment['SUPABASE_KEY'];
-
-  if (supabaseUrl != null && supabaseKey != null) {
-    AppSecrets.supabaseUrl = supabaseUrl;
-    AppSecrets.supabaseKey = supabaseKey;
-
-    print("Using GitHub Secrets for Supabase credentials.");
-  } else {
-    print("Using .env file for Supabase credentials.");
+  // Validate URL format
+  final uri = Uri.tryParse(supabaseUrl);
+  if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
+    throw StateError(
+      'Invalid SUPABASE_URL: "$supabaseUrl". Must be a valid HTTPS URL (e.g., https://your-project.supabase.co)',
+    );
   }
 
   _initAuth();
@@ -86,11 +89,11 @@ Future<void> initDependencies() async {
   final userAgent = 'belog-app/1.0 ($osInfo)';
 
   final supabase = await Supabase.initialize(
-      url: AppSecrets.supabaseUrl ?? '',
-      anonKey: AppSecrets.supabaseKey ?? '',
-      headers: {
-        'User-Agent': userAgent,
-      });
+        url: supabaseUrl,
+        publishableKey: supabaseKey,
+        headers: {
+          'User-Agent': userAgent,
+        });
 
   final directory = await getApplicationDocumentsDirectory();
   isar = await Isar.open(
