@@ -37,3 +37,19 @@ No live Supabase login/list query is performed by these jobs: a PR must never us
 5. After pushing, confirm the new workflow run uses the new head SHA and that the failure is either resolved or explicitly documented as blocked.
 
 For deeper GitHub Actions logs, GitHub supports re-running a failed job with debug logging enabled. Do not enable verbose environment dumps that might expose credentials.
+
+## Owner-side merge enforcement
+
+The repository's `main` branch was reported as unprotected when this foundation PR was prepared. GitHub Actions can report failures, but workflows alone do not prevent a direct push or a merge when branch rules do not require the checks.
+
+After the current baseline blockers (#2 configuration, #4 Android toolchain, and #5 tests/formatting debt) are resolved and the checks have produced stable results, the repository owner should create a branch ruleset for `main` that:
+
+- Requires changes to arrive through a pull request rather than direct pushes.
+- Requires these checks: `agent-contract / guardrails`, `config-contract / no bundled secrets`, `format / changed-Dart-format`, `analyze / flutter-analyze`, `test / flutter-test`, and `android-release / build-and-permission-check`.
+- Blocks force pushes and branch deletion.
+- Does not permit an administrator/agent shortcut to bypass the selected checks for ordinary changes.
+
+Do not make these checks required while known baseline issues keep them red; resolve the underlying issues first, then enable enforcement. Repository rulesets/branch protection are server-side settings and are not changed by this PR.
+
+GitHub recommends least-privilege workflow permissions and pinning actions to full-length commit SHAs. See [Secure use reference](https://docs.github.com/en/actions/reference/security/secure-use).
+
