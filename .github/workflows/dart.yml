@@ -8,6 +8,8 @@ on:
         required: true
         type: boolean
         default: true
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -38,19 +40,24 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
           pub-cache: true
-      - name: Prepare non-secret CI-only asset fixture
+      - name: Prepare CI config fixture (env.json for dart-define injection)
         shell: bash
         run: |
           umask 077
           mkdir -p build/reports
-          printf 'SUPABASE_URL=https://example.invalid\nSUPABASE_KEY=ci-placeholder-not-a-secret\n' > .env
+          cat > env.json <<'EOF2'
+          {
+            "SUPABASE_URL": "https://example.invalid",
+            "SUPABASE_KEY": "ci-placeholder-not-a-secret"
+          }
+          EOF2
       - name: Resolve dependencies
         run: flutter pub get
       - name: Build Android release APK (validation only)
         shell: bash
         run: |
           set -o pipefail
-          flutter build apk --release --verbose 2>&1 | tee build/reports/android-release-build.log
+          flutter build apk --release --dart-define-from-file=env.json --android-skip-build-dependency-validation --verbose 2>&1 | tee build/reports/android-release-build.log
       - name: Upload Android validation evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -76,19 +83,24 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
           pub-cache: true
-      - name: Prepare non-secret CI-only asset fixture
+      - name: Prepare CI config fixture (env.json for dart-define injection)
         shell: bash
         run: |
           umask 077
           mkdir -p build/reports
-          printf 'SUPABASE_URL=https://example.invalid\nSUPABASE_KEY=ci-placeholder-not-a-secret\n' > .env
+          cat > env.json <<'EOF2'
+          {
+            "SUPABASE_URL": "https://example.invalid",
+            "SUPABASE_KEY": "ci-placeholder-not-a-secret"
+          }
+          EOF2
       - name: Resolve dependencies
         run: flutter pub get
       - name: Compile iOS without signing
         shell: bash
         run: |
           set -o pipefail
-          flutter build ios --release --no-codesign --verbose 2>&1 | tee build/reports/ios-unsigned-build.log
+          flutter build ios --release --no-codesign --dart-define-from-file=env.json --verbose 2>&1 | tee build/reports/ios-unsigned-build.log
       - name: Package compile output as an explicitly unsigned diagnostic artifact
         if: success()
         shell: bash
