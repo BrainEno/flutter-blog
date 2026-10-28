@@ -90,7 +90,7 @@ Future<void> initDependencies() async {
 
   final supabase = await Supabase.initialize(
         url: supabaseUrl,
-        publishableKey: supabaseKey,
+        anonKey: supabaseKey,
         headers: {
           'User-Agent': userAgent,
         });
