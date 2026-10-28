@@ -48,9 +48,8 @@ class BlogLocalDataSourceImpl implements BlogLocalDataSource {
   @override
   Future<List<BlogModel>> searchLocalBlogs(String query) async {
     final blogs = await blogCollection
-        .buildQuery(
-            filter: FilterCondition.contains(
-                property: 'title', value: query, caseSensitive: false))
+        .filter()
+        .titleContains(query, caseSensitive: false)
         .findAll()
         .then((value) => value
             .map((e) => BlogModel(

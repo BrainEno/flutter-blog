@@ -14,17 +14,17 @@
 
 ## Reproducibility
 
-- Flutter SDK is explicitly pinned to `3.47.8`; Java is explicitly pinned to 17.
+- Flutter SDK is explicitly pinned to `3.47.8`; Java is explicitly pinned to 17. Android builds use Gradle 8.14, AGP 8.11.1, Kotlin 2.2.20, and compile SDK 36. Flutter’s Android dependency validation remains enabled.
 - Action references in workflows use full-length commit SHAs with human-readable version comments.
 - Pull-request workflows request `contents: read` only. They use `pull_request`, not `pull_request_target`, and have no production credentials.
-- CI may create a temporary, non-secret `.env` fixture solely so Flutter commands can progress far enough to expose further errors while Issue #2 is open. This fixture is generated inside the ephemeral runner, is never uploaded as an artifact, and is not a valid backend configuration. It must not be used for online smoke-test claims.
+- CI creates a temporary, non-secret `env.json` fixture with a non-routable URL for compilation. This fixture is not a valid backend configuration and must not be used for online smoke-test claims.
 - Artifact retention is 14 days to retain enough evidence for the next agent iteration without unbounded storage growth.
 
 ## Interpreting failures
 
-The repository already has known blockers tracked by Issues #2, #4 and #5. The first workflow run also found legacy formatting drift: 59 Dart files were reported by the repository-wide formatter audit. To avoid turning a small, focused PR into an unrelated 59-file reformat, the blocking format gate checks every Dart file changed by that PR, while the complete repository audit is retained as a diagnostic artifact/warning. A dedicated formatting normalization can later make the whole-repository check blocking.
+Previous runs exposed failures tracked by Issues #4 and #5; consult the latest run rather than assuming they still apply. The first workflow run also found legacy formatting drift: 59 Dart files were reported by the repository-wide formatter audit. To avoid turning a small, focused PR into an unrelated 59-file reformat, the blocking format gate checks every Dart file changed by that PR, while the complete repository audit is retained as a diagnostic artifact/warning. A dedicated formatting normalization can later make the whole-repository check blocking.
 
-Depending on which issue has merged, runs may fail at the environment contract, the old widget test, or Android Gradle/Kotlin build. These failures are intentional signals of existing defects, not reasons to weaken the workflow. The separate jobs should still run so the project has independent diagnostics.
+Analyzer and Android build failures also include a bounded diagnostic excerpt in the check annotations; the full log remains available as an artifact. Failures are signals to investigate, not reasons to weaken the workflow. The separate jobs should still run so the project has independent diagnostics.
 
 No live Supabase login/list query is performed by these jobs: a PR must never use production secrets or production user data. Real-network smoke tests require a dedicated test backend and a separately reviewed, secret-safe design. Likewise, successful compilation alone is not proof of 16KB page-size compatibility, signed distribution, or on-device functionality.
 
@@ -42,7 +42,7 @@ For deeper GitHub Actions logs, GitHub supports re-running a failed job with deb
 
 The repository's `main` branch was reported as unprotected when this foundation PR was prepared. GitHub Actions can report failures, but workflows alone do not prevent a direct push or a merge when branch rules do not require the checks.
 
-After the current baseline blockers (#2 configuration, #4 Android toolchain, and #5 tests/formatting debt) are resolved and the checks have produced stable results, the repository owner should create a branch ruleset for `main` that:
+After the checks have produced stable results, the repository owner should create a branch ruleset for `main` that:
 
 - Requires changes to arrive through a pull request rather than direct pushes.
 - Requires these checks: `agent-contract / guardrails`, `config-contract / no bundled secrets`, `format / changed-Dart-format`, `analyze / flutter-analyze`, `test / flutter-test`, and `android-release / build-and-permission-check`.
