@@ -132,7 +132,14 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p build/reports
+          set +e
           flutter analyze --fatal-infos --machine 2>&1 | tee build/reports/flutter-analyze.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if (( status != 0 )); then
+            python3 tool/ci/annotate_failure.py analyze build/reports/flutter-analyze.log
+          fi
+          exit "$status"
       - name: Upload analyzer diagnostics
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -219,7 +226,14 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p build/reports
+          set +e
           flutter build apk --release --dart-define-from-file=env.json --android-skip-build-dependency-validation --verbose 2>&1 | tee build/reports/android-release-build.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if (( status != 0 )); then
+            python3 tool/ci/annotate_failure.py android build/reports/android-release-build.log
+          fi
+          exit "$status"
       - name: Verify final APK INTERNET permission
         shell: bash
         run: |
