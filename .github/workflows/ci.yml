@@ -260,7 +260,15 @@ jobs:
         run: cp build/app/outputs/flutter-apk/app-release.apk build/reports/belog-QA-debug-signed.apk
       - name: Verify release signing guard and disposable signing fixture
         shell: bash
-        run: bash tool/release/test_android_signing.sh
+        run: |
+          set +e
+          bash -x tool/release/test_android_signing.sh > build/reports/signing-test.log 2>&1
+          status=$?
+          set -e
+          if (( status != 0 )); then
+            python3 tool/ci/annotate_failure.py analyze build/reports/signing-test.log
+          fi
+          exit "$status"
       - name: Upload Android build evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -269,6 +277,7 @@ jobs:
           path: |
             build/reports/android-release-build.log
             build/reports/apk-permissions.txt
+            build/reports/signing-test.log
             build/reports/belog-QA-debug-signed.apk
           if-no-files-found: warn
           retention-days: 14
