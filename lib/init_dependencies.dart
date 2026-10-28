@@ -89,11 +89,11 @@ Future<void> initDependencies() async {
   final userAgent = 'belog-app/1.0 ($osInfo)';
 
   final supabase = await Supabase.initialize(
-        url: supabaseUrl,
-        anonKey: supabaseKey,
-        headers: {
-          'User-Agent': userAgent,
-        });
+      url: supabaseUrl,
+      anonKey: supabaseKey,
+      headers: {
+        'User-Agent': userAgent,
+      });
 
   final directory = await getApplicationDocumentsDirectory();
   isar = await Isar.open(
