@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          flutter build apk --release --dart-define-from-file=env.json --android-skip-build-dependency-validation --verbose 2>&1 | tee build/reports/android-release-build.log
+          flutter build apk --release --dart-define-from-file=env.json --verbose 2>&1 | tee build/reports/android-release-build.log
       - name: Upload Android validation evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6

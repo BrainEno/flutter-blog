@@ -227,7 +227,7 @@ jobs:
           set -o pipefail
           mkdir -p build/reports
           set +e
-          flutter build apk --release --dart-define-from-file=env.json --android-skip-build-dependency-validation --verbose 2>&1 | tee build/reports/android-release-build.log
+          flutter build apk --release --dart-define-from-file=env.json --verbose 2>&1 | tee build/reports/android-release-build.log
           status=${PIPESTATUS[0]}
           set -e
           if (( status != 0 )); then
