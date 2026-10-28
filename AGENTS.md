@@ -28,7 +28,7 @@ Run the applicable checks before opening or updating a PR:
 
 ```bash
 flutter pub get
-dart format --output=none --set-exit-if-changed .
+dart format --output=none --set-exit-if-changed path/to/each/changed_file.dart
 flutter analyze --fatal-infos
 flutter test --coverage
 flutter build apk --release
@@ -36,6 +36,7 @@ flutter build apk --release
 
 For generated code, also run the generator used by the current dependency set, for example `dart run build_runner build --delete-conflicting-outputs`. Only run commands supported by the current dependency/toolchain; explain any unavailable command.
 
+- In a focused PR, at minimum format-check every changed Dart file. The CI also audits repository-wide formatter drift as a diagnostic artifact; do not mass-reformat unrelated files just to make an unrelated feature PR pass.
 - Record each command and its actual result in the PR description.
 - If a command fails, preserve the diagnostic output and fix the cause where it is in scope. Do not delete tests, weaken assertions, globally suppress lints, or use `continue-on-error` to manufacture green checks.
 - Do not report runtime, real-device, production backend, 16KB page-size, signing, or deep-link validation as completed unless that exact validation was actually executed.

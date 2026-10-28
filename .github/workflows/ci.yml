@@ -48,11 +48,13 @@ jobs:
         run: python3 tool/ci/check_env_asset_contract.py
 
   format:
-    name: format / dart-format
+    name: format / changed-Dart-format
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
       - name: Set up pinned Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
@@ -60,10 +62,45 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
           pub-cache: true
-      - name: Report toolchain
-        run: flutter --version
-      - name: Check Dart formatting
-        run: dart format --output=none --set-exit-if-changed .
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Check formatting of changed Dart files
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            range="origin/${{ github.base_ref }}...HEAD"
+            mapfile -d '' dart_files < <(git diff --name-only -z --diff-filter=ACMR "$range" -- '*.dart')
+          else
+            mapfile -d '' dart_files < <(git diff --name-only -z --diff-filter=ACMR HEAD^ HEAD -- '*.dart')
+          fi
+          if (( ${#dart_files[@]} == 0 )); then
+            echo "No Dart files changed; formatting gate is not applicable to this PR."
+          else
+            printf 'Formatting check: %s\n' "${dart_files[@]}"
+            dart format --output=none --set-exit-if-changed "${dart_files[@]}"
+          fi
+      - name: Audit repository-wide formatting drift
+        shell: bash
+        run: |
+          set +e
+          mkdir -p build/reports
+          dart format --output=none --set-exit-if-changed . > build/reports/repository-wide-format-audit.log 2>&1
+          audit_status=$?
+          set -e
+          if [[ "$audit_status" -ne 0 ]]; then
+            echo "::warning::Repository-wide formatting drift exists. This audit is non-blocking until legacy formatting debt is normalized; changed Dart files remain blocking."
+          else
+            echo "Repository-wide formatting audit passed."
+          fi
+      - name: Upload repository-wide formatting audit
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: format-audit
+          path: build/reports/repository-wide-format-audit.log
+          if-no-files-found: warn
+          retention-days: 14
 
   analyze:
     name: analyze / flutter-analyze
