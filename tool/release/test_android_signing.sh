@@ -23,7 +23,22 @@ BELOG_QA_BUILD=false flutter build apk --release --dart-define-from-file=env.jso
   exit 1
 }
 TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
-"$TOOLS/apksigner" verify --print-certs build/app/outputs/flutter-apk/app-release.apk > "$RUNNER_TEMP/ci-cert.txt"
-grep -F 'CN=CI Test Only' "$RUNNER_TEMP/ci-cert.txt" >/dev/null
+expected="$(keytool -exportcert -keystore "$ANDROID_KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" | sha256sum | cut -d' ' -f1)"
+version="$(sed -n 's/^version: *\([^ #]*\).*/\1/p' pubspec.yaml)"
+name="${version%+*}"
+number="${version##*+}"
+APK=build/app/outputs/flutter-apk/app-release.apk
+bash tool/release/verify_apk.sh "$APK" "$name" "$number" "$expected"
+if bash tool/release/verify_apk.sh "$APK" "$name" "$number" "$(printf '%064d' 0)" > "$RUNNER_TEMP/mismatch.log" 2>&1; then
+  echo '::error::An APK with a mismatched signing certificate was accepted.'; exit 1
+fi
+grep -Fq 'fingerprint does not match' "$RUNNER_TEMP/mismatch.log"
+QA_APK=build/reports/belog-QA-debug-signed.apk
+"$TOOLS/apksigner" verify --print-certs "$QA_APK" > "$RUNNER_TEMP/qa-cert.txt"
+qa_cert="$(awk -F ': ' '/Signer #1 certificate SHA-256 digest:/ {print $2}' "$RUNNER_TEMP/qa-cert.txt")"
+if bash tool/release/verify_apk.sh "$QA_APK" "$name" "$number" "$qa_cert" > "$RUNNER_TEMP/debug-cert.log" 2>&1; then
+  echo '::error::A debug-signed APK was accepted for release.'; exit 1
+fi
+grep -Fq 'Debug signing certificate is not allowed' "$RUNNER_TEMP/debug-cert.log"
 rm -f "$ANDROID_KEYSTORE_PATH"
-echo 'Unsigned release rejected and CI-only production signing fixture verified.'
+echo 'Unsigned, mismatched and debug-signed releases rejected; CI-only signing verified.'

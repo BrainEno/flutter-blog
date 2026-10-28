@@ -74,18 +74,7 @@ jobs:
         run: |
           set -euo pipefail
           APK=build/app/outputs/flutter-apk/app-release.apk
-          TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
-          test -f "$APK" && test -x "$TOOLS/apksigner" && test -x "$TOOLS/aapt"
-          "$TOOLS/apksigner" verify --verbose --print-certs "$APK" > "$RUNNER_TEMP/cert.txt"
-          test "$(grep -c 'certificate SHA-256 digest:' "$RUNNER_TEMP/cert.txt")" -eq 1
-          actual="$(awk -F ': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2)}' "$RUNNER_TEMP/cert.txt")"
-          test "$actual" = "${EXPECTED_CERT,,}"
-          if grep -qi 'certificate DN:.*CN=Android Debug' "$RUNNER_TEMP/cert.txt"; then
-            echo '::error::Debug signing certificate is not allowed for release.'; exit 1
-          fi
-          "$TOOLS/aapt" dump badging "$APK" > "$RUNNER_TEMP/badging.txt"
-          grep -F "package: name='com.example.belog' versionCode='$BUILD_NUMBER' versionName='$BUILD_NAME'" "$RUNNER_TEMP/badging.txt" > /dev/null
-          grep -F "android.permission.INTERNET" "$RUNNER_TEMP/badging.txt" > /dev/null
+          bash tool/release/verify_apk.sh "$APK" "$BUILD_NAME" "$BUILD_NUMBER" "$EXPECTED_CERT"
           cp "$APK" "belog-android-${GITHUB_REF_NAME}.apk"
       - name: Create release without replacing existing assets
         env:
