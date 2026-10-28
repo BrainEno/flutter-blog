@@ -4,7 +4,7 @@ Closes #
 
 ## Change summary
 
-- 
+- Describe the intended change.
 
 ## Why this change is needed
 
