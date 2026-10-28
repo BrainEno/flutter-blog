@@ -61,10 +61,13 @@ class AboutPage extends StatelessWidget {
                           if (await canLaunchUrl(emailUri)) {
                             await launchUrl(emailUri);
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text('Could not launch $emailUri')),
-                            );
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content:
+                                        Text('Could not launch $emailUri')),
+                              );
+                            }
                           }
                         },
                     ),
