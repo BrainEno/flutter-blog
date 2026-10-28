@@ -10,6 +10,7 @@ import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/presentation/blocs/bog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/blog_page.dart';
 import 'package:belog/features/blog/presentation/widgets/editor_field.dart';
+import 'package:belog/features/blog/presentation/widgets/draft_recovery_dialog.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -36,6 +37,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
   bool isNewImageSelected = false;
   String? imageUrl;
   DateTime? updatedAt;
+  int _draftRequestVersion = 0;
 
   @override
   void initState() {
@@ -48,28 +50,51 @@ class _BlogEditorState extends State<BlogEditorPage> {
     loadDraft();
   }
 
-  void loadDraft() async {
+  Future<void> loadDraft() async {
+    final requestVersion = _draftRequestVersion;
     final isar = GetIt.instance<Isar>();
-    final blogId = widget.blog?.id;
-
-    final draft = await isar.blogDrafts
-        .filter()
-        .blogIdEqualTo(blogId)
-        .or()
-        .blogIdIsNull()
-        .sortByUpdatedAtDesc()
-        .findFirst();
-
-    if (draft != null && mounted) {
-      setState(() {
-        titleController.text = draft.title;
-        contentController.text = draft.content;
-        selectedTags = List.from(draft.tags);
-      });
-
-      if (mounted) {
-        showSnackBar(context, '已加载最近的草稿');
+    try {
+      // A new post and each existing post have distinct draft scopes.
+      final draft = await isar.blogDrafts
+          .filter()
+          .blogIdEqualTo(widget.blog?.id)
+          .sortByUpdatedAtDesc()
+          .findFirst();
+      if (!mounted || requestVersion != _draftRequestVersion || draft == null) {
+        return;
       }
+
+      final choice = await showDraftRecoveryDialog(
+        context,
+        isOlderThanPublished: widget.blog != null &&
+            widget.blog!.updatedAt.isAfter(draft.updatedAt),
+      );
+      if (!mounted || requestVersion != _draftRequestVersion) return;
+
+      if (choice == DraftRecoveryChoice.restore) {
+        setState(() {
+          titleController.text = draft.title;
+          contentController.text = draft.content;
+          selectedTags = List.from(draft.tags);
+        });
+        showSnackBar(context, '已恢复草稿');
+      } else if (choice == DraftRecoveryChoice.discard) {
+        // Do not delete a draft that another editor has replaced meanwhile.
+        var deleted = false;
+        await isar.writeTxn(() async {
+          final current = await isar.blogDrafts.get(draft.id);
+          if (current != null &&
+              current.blogId == draft.blogId &&
+              current.updatedAt == draft.updatedAt) {
+            deleted = await isar.blogDrafts.delete(draft.id);
+          }
+        });
+        if (mounted) {
+          showSnackBar(context, deleted ? '草稿已丢弃' : '草稿已更改，请重新打开编辑器');
+        }
+      }
+    } catch (_) {
+      if (mounted) showSnackBar(context, '无法读取或处理草稿，请重试');
     }
   }
 
@@ -84,6 +109,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
   }
 
   void saveBlog() {
+    _draftRequestVersion++;
     if (formKey.currentState!.validate() && selectedTags.isNotEmpty) {
       final posterId =
           (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
@@ -110,6 +136,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
   }
 
   void deleteBlog() {
+    _draftRequestVersion++;
     if (widget.blog != null) {
       context
           .read<BlogUploadBloc>()
@@ -120,6 +147,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
   }
 
   void saveDraft() async {
+    _draftRequestVersion++;
     final isar = GetIt.instance<Isar>();
     final blogId = widget.blog?.id;
 
