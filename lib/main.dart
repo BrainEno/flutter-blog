@@ -109,16 +109,16 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   }
 
   @override
-    Widget build(BuildContext context) {
-      return PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, result) {
-          if (didPop) return;
-          final NavigatorState navigator =
-              navigatorKeys[selectedIndex].currentState!;
-          navigator.pop();
-        },
-        child: BlocBuilder<ThemeBloc, ThemeState>(
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        final NavigatorState navigator =
+            navigatorKeys[selectedIndex].currentState!;
+        navigator.pop();
+      },
+      child: BlocBuilder<ThemeBloc, ThemeState>(
         builder: (context, state) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
