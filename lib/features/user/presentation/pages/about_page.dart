@@ -56,17 +56,19 @@ class AboutPage extends StatelessWidget {
                       style: TextStyle(decoration: TextDecoration.underline),
                       recognizer: TapGestureRecognizer()
                         ..onTap = () async {
-                          final Uri emailUri =
-                              Uri.parse('mailto:nodeman24@outlook.com');
-                          if (await canLaunchUrl(emailUri)) {
-                            await launchUrl(emailUri);
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text('Could not launch $emailUri')),
-                            );
-                          }
-                        },
+                                                  final Uri emailUri =
+                                                      Uri.parse('mailto:nodeman24@outlook.com');
+                                                  if (await canLaunchUrl(emailUri)) {
+                                                    await launchUrl(emailUri);
+                                                  } else {
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                            content: Text('Could not launch $emailUri')),
+                                                      );
+                                                    }
+                                                  }
+                                                },
                     ),
                   ],
                 ),
