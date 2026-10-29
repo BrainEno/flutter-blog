@@ -34,7 +34,7 @@ jobs:
       - name: Test release validation rules
         run: python3 -m unittest discover -s tool/release -p 'test_*.py' -v
       - name: Test 16 KiB ELF validation
-        run: python3 -m unittest discover -s tool/ci -p 'test_check_apk_16k.py' -v
+        run: python3 -m unittest discover -s tool/ci -p 'test_check*.py' -v
       - name: Check whitespace errors
         shell: bash
         run: |
@@ -280,6 +280,7 @@ jobs:
           test -n "$READELF" && test -n "$ZIPALIGN"
           {
             echo "ELF checker: $READELF"
+            python3 tool/ci/check_legacy_apk.py "$APK" build/app/generated/legacy-isar/jniLibs || exit $?
             python3 tool/ci/check_apk_16k.py "$APK" "$READELF" || exit $?
             echo "ZIP checker: $ZIPALIGN -c -P 16 -v 4 $APK"
             "$ZIPALIGN" -c -P 16 -v 4 "$APK"
