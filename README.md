@@ -39,3 +39,10 @@ on compatible Java/Gradle versions, and see
 https://docs.gradle.org/current/userguide/gradle_wrapper.html#sec:upgrading_wrapper
 for more details on using the Gradle Wrapper command to update the Gradle version
 used.
+
+## Builds and releases
+
+CI uses Flutter 3.47.8 and JDK 17. Release-mode QA builds require an explicit
+`BELOG_QA_BUILD=true` opt-in and use a debug key; they must not be distributed
+as production builds. Production signing, tag/version rules, and the pending
+application identity decision are documented in [docs/releasing.md](docs/releasing.md).

@@ -5,6 +5,12 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+// Debug signing is only available through an explicit, non-distributable QA opt-in.
+def qaBuild = System.getenv("BELOG_QA_BUILD") == "true"
+def signingVars = ["ANDROID_KEYSTORE_PATH", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD"]
+def signingValues = signingVars.collectEntries { [(it): System.getenv(it)] }
+def hasSigning = signingVars.every { signingValues[it]?.trim() }
+
 android {
     namespace = "com.example.belog"
     compileSdk = 36
@@ -30,14 +36,38 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        production {
+            if (hasSigning) {
+                storeFile = file(signingValues["ANDROID_KEYSTORE_PATH"])
+                storePassword = signingValues["ANDROID_KEYSTORE_PASSWORD"]
+                keyAlias = signingValues["ANDROID_KEY_ALIAS"]
+                keyPassword = signingValues["ANDROID_KEY_PASSWORD"]
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            signingConfig = qaBuild ? signingConfigs.debug : signingConfigs.production
         }
     }
     
+}
+
+// Fail closed for release builds while leaving debug builds credential-free.
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    doFirst {
+        if (qaBuild && signingVars.any { signingValues[it]?.trim() }) {
+            throw new GradleException("QA signing and production signing credentials cannot be combined.")
+        }
+        if (!qaBuild && !hasSigning) {
+            throw new GradleException("Release signing credentials are required; set BELOG_QA_BUILD=true only for non-distributable QA builds.")
+        }
+        if (!qaBuild && signingValues["ANDROID_KEY_ALIAS"].equalsIgnoreCase("androiddebugkey")) {
+            throw new GradleException("The Android debug key cannot be used for production signing.")
+        }
+    }
 }
 
 flutter {

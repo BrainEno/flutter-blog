@@ -16,6 +16,7 @@ concurrency:
 
 env:
   FLUTTER_VERSION: "3.47.8"
+  BELOG_QA_BUILD: "true"
 
 jobs:
   agent-contract:
@@ -30,6 +31,8 @@ jobs:
         run: bash tool/ci/validate_agent_contract.sh
       - name: Test CI guardrails and diagnostic annotations
         run: bash tool/ci/test_ci_scripts.sh
+      - name: Test release validation rules
+        run: python3 -m unittest discover -s tool/release -p 'test_*.py' -v
       - name: Check whitespace errors
         shell: bash
         run: |
@@ -254,6 +257,20 @@ jobs:
           test -n "$AAPT"
           "$AAPT" dump permissions "$APK" | tee build/reports/apk-permissions.txt
           grep -F "android.permission.INTERNET" build/reports/apk-permissions.txt
+      - name: Label non-distributable QA APK
+        if: success()
+        run: cp build/app/outputs/flutter-apk/app-release.apk build/reports/belog-QA-debug-signed.apk
+      - name: Verify release signing guard and disposable signing fixture
+        shell: bash
+        run: |
+          set +e
+          bash -x tool/release/test_android_signing.sh > build/reports/signing-test.log 2>&1
+          status=$?
+          set -e
+          if (( status != 0 )); then
+            bash tool/ci/annotate_failure.sh analyze build/reports/signing-test.log
+          fi
+          exit "$status"
       - name: Upload Android build evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -262,6 +279,7 @@ jobs:
           path: |
             build/reports/android-release-build.log
             build/reports/apk-permissions.txt
-            build/app/outputs/flutter-apk/app-release.apk
+            build/reports/signing-test.log
+            build/reports/belog-QA-debug-signed.apk
           if-no-files-found: warn
           retention-days: 14
