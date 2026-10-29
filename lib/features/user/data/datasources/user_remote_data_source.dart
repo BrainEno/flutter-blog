@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:belog/core/error/error_mapper.dart';
+import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -34,9 +35,12 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
   @override
   Future<UserModel> editUserInfo(UserModel user) async {
     try {
+      // toProfileUpdateJson() deliberately excludes the e-mail column:
+      // the auth e-mail only changes via Supabase Auth's confirmation
+      // flow (changeEmail), never a direct profiles write.
       final userUpdated = await supabaseClient
           .from('profiles')
-          .update(user.toJson())
+          .update(user.toProfileUpdateJson())
           .eq('id', user.id)
           .select()
           .single();
@@ -82,6 +86,17 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
       // Never swallow: the repository must see the failure so the UI
       // reports it instead of pretending the password was changed.
       throw mapToServerException(e);
+    }
+    // The password changed: revoke sessions on other devices but keep the
+    // current one signed in. Best-effort - the password itself already
+    // changed, so a failure here must not fail the whole operation.
+    try {
+      await supabaseClient.auth.signOut(scope: SignOutScope.others);
+    } catch (e) {
+      AppLogger.error(
+        'revoking other sessions after password change failed',
+        error: e,
+      );
     }
   }
 }

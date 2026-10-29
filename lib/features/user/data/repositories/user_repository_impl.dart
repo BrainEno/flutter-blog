@@ -22,7 +22,6 @@ class UserRepositoryImpl implements UserRepository {
   Future<Either<Failure, User>> editUserInfo({
     required String userId,
     required String name,
-    required String email,
     required String website,
     required File? avatar,
   }) async {
@@ -39,10 +38,12 @@ class UserRepositoryImpl implements UserRepository {
         );
         userToUpdate = userToUpdate.copyWith(avatarUrl: imageUrl);
       }
+      // The e-mail column is intentionally not written: the auth e-mail
+      // only changes through Supabase Auth's confirmation flow
+      // (changeEmail), never a direct profiles update.
       userToUpdate = userToUpdate.copyWith(
         id: userId,
         name: name,
-        email: email,
         website: website,
         updatedAt: DateTime.now(),
       );

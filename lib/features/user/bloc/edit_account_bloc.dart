@@ -26,7 +26,11 @@ class EditAccountBloc extends Bloc<EditAccountEvent, EditAccountState> {
     final result = await changeEmailUseCase(event.newEmail);
     result.fold(
       (failure) => emit(EditAccountFailure(message: failure.message)),
-      (_) => emit(EditAccountSuccess(message: 'Email changed successfully')),
+      // Supabase sends a confirmation e-mail to the new address: the
+      // change only takes effect once the user confirms it there.
+      (_) => emit(
+        EditAccountSuccess(message: '确认邮件已发送至新邮箱，请查收并完成验证'),
+      ),
     );
   }
 
@@ -38,7 +42,9 @@ class EditAccountBloc extends Bloc<EditAccountEvent, EditAccountState> {
     final result = await resetPasswordUseCase(event.newPassword);
     result.fold(
       (failure) => emit(EditAccountFailure(message: failure.message)),
-      (_) => emit(EditAccountSuccess(message: 'Password reset successfully')),
+      // Sessions on other devices are revoked by the data source after a
+      // successful change; this device stays signed in.
+      (_) => emit(EditAccountSuccess(message: '密码已修改，其他设备已退出登录')),
     );
   }
 }

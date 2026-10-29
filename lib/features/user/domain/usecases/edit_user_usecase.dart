@@ -16,7 +16,6 @@ class EditUserUseCase implements UseCase<User, EditUserParams> {
     return await repository.editUserInfo(
         userId: params.userId,
         name: params.name,
-        email: params.email,
         avatar: params.avatar,
         website: params.website);
   }
@@ -25,14 +24,12 @@ class EditUserUseCase implements UseCase<User, EditUserParams> {
 class EditUserParams {
   final String userId;
   final String name;
-  final String email;
   final File? avatar;
   final String website;
 
   EditUserParams(
       {required this.userId,
       required this.name,
-      required this.email,
       required this.website,
       this.avatar});
 }

@@ -6,13 +6,50 @@ Flutter 编写的移动博客客户端（应用内品牌：Bottom Think），后
 
 ## 功能
 
-- 账号：邮箱注册 / 登录 / 退出，个人资料编辑（昵称、网站、头像）
-- 文章：发布 / 编辑 / 删除，封面图上传，标签分类
+- 账号：邮箱注册 / 登录 / 退出，注册邮箱确认（深链回调自动登录），
+  找回密码（重置邮件深链），个人资料编辑（昵称、网站、头像）
+- 文章：发布 / 编辑 / 删除，封面图上传（压缩 + 版本化路径 + 旧对象清理），
+  标签分类
 - 浏览：分页 Feed、下拉刷新、滚动加载更多、按标签筛选、标题搜索（含防抖与结果上限）
 - 互动：点赞 / 取消点赞（乐观更新 + 服务端状态校准），个人收藏列表
 - 草稿：按文章隔离的本地草稿、恢复 / 丢弃对话框、2 秒防抖自动保存、发布后自动清理
 - 离线：文章列表与详情 SQLite 缓存，离线可读；网络操作离线时快速失败并提示
 - 主题：亮 / 暗 / 跟随系统，偏好本地持久化
+
+## 深链与邮箱流程（auth callback）
+
+注册确认与密码恢复邮件里的链接使用自定义 scheme 重定向回应用：
+
+- **回调 URL**：`belog://auth-callback`
+- **Android**：`android/app/src/main/AndroidManifest.xml` 中 MainActivity 的
+  `intent-filter`（scheme `belog` + host `auth-callback`）
+- **iOS**：`ios/Runner/Info.plist` 的 `CFBundleURLTypes`（scheme `belog`）
+- **应用内**：`lib/features/auth/auth_link_handler.dart` 接收链接
+  （`app_links`），用 gotrue 的 `getSessionFromUrl` 建立会话，按产生的
+  auth 事件区分流程（`signedIn` = 邮箱确认、`passwordRecovery` = 密码恢复），
+  并通过全局 SnackBar 给出成功 / 失败反馈
+- **会话同步**：`lib/features/auth/auth_session_sync.dart` 订阅
+  `onAuthStateChange`（signedIn / signedOut / tokenRefreshed / userUpdated /
+  passwordRecovery），同步 `AppUserCubit`；token 刷新失败导致的登出同样生效
+
+**owner 待办（控制台动作）**：在 Supabase Dashboard →
+Authentication → URL Configuration → Redirect URLs 中加入
+`belog://auth-callback`，否则邮件中的按钮不会带自定义 scheme 跳转。
+密码恢复链接登录后，引导用户到「我的 → 账号安全」设置新密码。
+
+## 账号安全约定
+
+- **邮箱变更**：仅通过「账号安全」页（Supabase Auth `updateUser(email:)` +
+  新邮箱确认邮件）。个人资料编辑页**不写** `profiles.email`
+  （`UserModel.toProfileUpdateJson()` 刻意排除该列）。
+- **密码变更**：`updateUser(password:)` 成功后自动 `signOut(scope: others)`
+  撤销其他设备的会话（尽力而为，失败仅记日志）。
+- **reauthentication**：若项目开启了"近期身份验证"要求，敏感更新会返回
+  `reauthentication_required`，客户端映射为
+  "出于安全考虑，请退出后重新登录，再进行此操作" 并原样传播到 UI。
+- **注册确认**：`signUp` 未返回 session 时进入"请确认邮箱"等待页
+  （可重发确认邮件），绝不把 auth user 当作已登录；
+  profile 的创建由服务端触发器负责（见下节）。
 
 ## 架构
 
@@ -105,6 +142,12 @@ create index if not exists blogs_title_lower_idx on blogs (lower(title));
 
 > 说明：客户端已按"先删后插"的原子语义实现 toggle，即使约束尚未加上也不会
 > 双重翻转；但缺少唯一约束时极端并发可能产生重复行（下次 toggle 会自愈）。
+
+**profile 创建归属（重要）**：`profiles` 行由服务端触发器
+（`handle_new_user`，auth.users 插入后同步插入 profiles）负责创建，
+客户端不做任何 profiles 插入。注册后若触发器缺失，客户端在
+`getCurrentUserData` 中得到空 profile，会按"登录状态已失效"处理而不是
+伪造登录态。owner 需在 Supabase 控制台确认该触发器存在（#7 待纳入版本管理）。
 
 ## 路线图
 

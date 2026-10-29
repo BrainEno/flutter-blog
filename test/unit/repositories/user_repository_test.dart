@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
+import 'package:belog/features/auth/data/models/user_model.dart';
 import 'package:belog/features/user/data/datasources/user_remote_data_source.dart';
 import 'package:belog/features/user/data/repositories/user_repository_impl.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -108,7 +109,6 @@ void main() {
         final result = await repository.editUserInfo(
           userId: 'u1',
           name: 'n',
-          email: 'a@b.c',
           website: '',
           avatar: File('/nonexistent.png'),
         );
@@ -116,6 +116,38 @@ void main() {
           (failure) => expect(failure.message, isNot(contains('private'))),
           (_) => fail('expected failure'),
         );
+      },
+    );
+
+    test(
+      'never rewrites the profile e-mail: the submitted model keeps the '
+      'stored address (auth e-mail changes only via the auth flow)',
+      () async {
+        when(() => connection.isConnected).thenAnswer((_) async => true);
+        final stored = UserModel(
+          id: 'u1',
+          email: 'original@example.invalid',
+          name: '旧名字',
+          updatedAt: DateTime.utc(2024),
+        );
+        when(() => remote.getUserById('u1')).thenAnswer((_) async => stored);
+        when(() => remote.editUserInfo(any())).thenAnswer(
+          (invocation) async => (invocation.positionalArguments[0]
+              as UserModel),
+        );
+
+        await repository.editUserInfo(
+          userId: 'u1',
+          name: '新名字',
+          website: '',
+          avatar: null,
+        );
+
+        final captured = verify(() => remote.editUserInfo(captureAny()))
+            .captured
+            .single as UserModel;
+        expect(captured.email, 'original@example.invalid');
+        expect(captured.name, '新名字');
       },
     );
   });

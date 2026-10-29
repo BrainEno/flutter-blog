@@ -33,7 +33,6 @@ class UserEditBloc extends Bloc<UserEditEvent, UserEditState> {
     final params = EditUserParams(
       userId: (appUserCubit.state as AppUserLoggedIn).user.id,
       name: event.name,
-      email: event.email,
       avatar: event.avatar,
       website: event.website ?? '',
     );

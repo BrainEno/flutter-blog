@@ -23,6 +23,17 @@ ServerException mapToServerException(Object error) {
   if (error is ServerException) return error;
 
   if (error is sb.AuthException) {
+    // Supabase can require recent authentication for sensitive changes
+    // (e-mail/password updates): surface a clear "sign in again" message
+    // instead of the raw error.
+    if (error.code == 'reauthentication_required' ||
+        error.message.toLowerCase().contains('reauthentication')) {
+      return ServerException(
+        '出于安全考虑，请退出后重新登录，再进行此操作',
+        kind: FailureKind.auth,
+        cause: error,
+      );
+    }
     // Supabase auth messages ("New password should be at least 6
     // characters.") are user-facing and worth showing verbatim; the raw
     // exception itself stays in `cause`.

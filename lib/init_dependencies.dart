@@ -1,19 +1,26 @@
 import 'dart:io';
 
+import 'package:app_links/app_links.dart';
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/core/storage/sqlite_blog_cache.dart';
 import 'package:belog/core/storage/sqlite_draft_store.dart';
 import 'package:belog/core/storage/sqlite_theme_store.dart';
+import 'package:belog/core/utils/global_snackbar.dart';
 import 'package:belog/features/blog/data/datasources/blog_draft_store.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/secrets/app_secrets.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
+import 'package:belog/features/auth/auth_link_handler.dart';
+import 'package:belog/features/auth/auth_session_sync.dart';
+import 'package:belog/features/auth/data/auth_callback_resolver.dart';
 import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:belog/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
 import 'package:belog/features/auth/domain/usecases/current_user.dart';
+import 'package:belog/features/auth/domain/usecases/resend_confirmation_email.dart';
+import 'package:belog/features/auth/domain/usecases/send_password_reset_email.dart';
 import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
@@ -141,6 +148,8 @@ void _initAuth() {
     ..registerFactory(() => UserLogin(serviceLocator()))
     ..registerFactory(() => UserSignOut(serviceLocator()))
     ..registerFactory(() => CurrentUser(serviceLocator()))
+    ..registerFactory(() => ResendConfirmationEmail(serviceLocator()))
+    ..registerFactory(() => SendPasswordResetEmail(serviceLocator()))
     // Bloc
     ..registerLazySingleton(
       () => AuthBloc(
@@ -148,7 +157,29 @@ void _initAuth() {
         userLogin: serviceLocator(),
         userSignOut: serviceLocator(),
         currentUser: serviceLocator(),
+        resendConfirmationEmail: serviceLocator(),
+        sendPasswordResetEmail: serviceLocator(),
         appUserCubit: serviceLocator(),
+      ),
+    )
+    // App-level auth services, started in main() once Supabase is up.
+    ..registerLazySingleton(
+      () => AuthSessionSync(
+        authStateStream: serviceLocator<SupabaseClient>().auth.onAuthStateChange,
+        currentSession: () =>
+            serviceLocator<SupabaseClient>().auth.currentSession,
+        currentUser: serviceLocator(),
+        appUserCubit: serviceLocator(),
+      ),
+    )
+    ..registerLazySingleton(
+      () => AuthLinkHandler(
+        links: AppLinksDeepLinkSource(AppLinks()),
+        resolveCallbackUrl: (url) => resolveSupabaseAuthCallback(
+          auth: serviceLocator<SupabaseClient>().auth,
+          url: url,
+        ),
+        onResult: (result, message) => showGlobalSnackBar(message),
       ),
     );
 }
