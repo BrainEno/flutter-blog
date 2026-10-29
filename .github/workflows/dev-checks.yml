@@ -79,14 +79,26 @@ jobs:
           }
           EOF
 
-      - name: Run analyzer
+      - name: Run analyzer and annotate diagnostics
         shell: bash
         run: |
-          set -euo pipefail
-          flutter analyze --fatal-infos
+          set -o pipefail
+          mkdir -p build/reports
+          set +e
+          flutter analyze --fatal-infos --machine 2>&1 | tee build/reports/flutter-analyze.log
+          statuses=("${PIPESTATUS[@]}")
+          status=${statuses[0]}
+          set -e
+          if (( status == 0 && statuses[1] != 0 )); then
+            status=${statuses[1]}
+          fi
+          if (( status != 0 )); then
+            bash tool/ci/annotate_failure.sh analyze build/reports/flutter-analyze.log || true
+          fi
+          exit "$status"
 
       - name: Run tests
         shell: bash
         run: |
           set -euo pipefail
-          flutter test --concurrency=1 --reporter expanded
+          flutter test --concurrency=1 --reporter expanded 2>&1 | tee build/reports/flutter-test.log
