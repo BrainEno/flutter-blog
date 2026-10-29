@@ -156,13 +156,14 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                 destinations: allDestinations
                     .map<NavigationDestination>((Destination destination) {
                   return NavigationDestination(
-                    icon: BlocBuilder<ThemeBloc, ThemeState>(
-                      builder: (context, state) {
+                    icon: Builder(
+                      builder: (context) {
                         return Icon(
                           destination.icon,
-                          color: state.themeMode == ThemeMode.light
-                              ? AppPallete.greyColorDark
-                              : AppPallete.whiteColor,
+                          color:
+                              Theme.of(context).brightness == Brightness.light
+                                  ? AppPallete.greyColorDark
+                                  : AppPallete.whiteColor,
                         );
                       },
                     ),
