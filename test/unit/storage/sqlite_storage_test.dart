@@ -132,15 +132,17 @@ void main() {
         await old.blogs.put(blog('1', 'legacy'));
       });
       await old.close();
+      final legacyBytes = await File('${dir.path}/default.isar').readAsBytes();
       await db.customStatement(
         "CREATE TRIGGER fail_import BEFORE INSERT ON drafts BEGIN SELECT RAISE(ABORT, 'injected'); END",
       );
       await expectLater(db.importLegacyIfNeeded(dir), throwsA(anything));
       expect(await db.customSelect('SELECT * FROM theme').get(), isEmpty);
       expect(await db.customSelect('SELECT * FROM metadata').get(), isEmpty);
-      expect(await File('${dir.path}/default.isar').exists(), isTrue);
+      expect(await File('${dir.path}/default.isar').readAsBytes(), legacyBytes);
       await db.customStatement('DROP TRIGGER fail_import');
       await db.importLegacyIfNeeded(dir);
+      expect(await File('${dir.path}/default.isar').readAsBytes(), legacyBytes);
       expect(await SqliteThemePreferenceStore(db).load(), ThemeMode.dark);
       expect((await SqliteBlogDraftStore(db).load('a'))!.content, 'unsent');
       expect(

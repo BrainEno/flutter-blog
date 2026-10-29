@@ -52,11 +52,18 @@ class AppDatabase extends GeneratedDatabase {
 
     final legacyFile = File('${directory.path}/default.isar');
     legacy.Isar? old;
+    Directory? copyDirectory;
     try {
       if (await legacyFile.exists()) {
+        // Opening Isar can itself modify schema or database geometry. Never
+        // let a failed or interrupted import alter the user's only copy.
+        copyDirectory = await Directory.systemTemp.createTemp(
+          'belog-isar-import-',
+        );
+        await legacyFile.copy('${copyDirectory.path}/default.isar');
         old = await legacy.Isar.open(
           [ThemePreferenceSchema, BlogSchema, BlogDraftSchema],
-          directory: directory.path,
+          directory: copyDirectory.path,
           inspector: false,
         );
       }
@@ -95,7 +102,13 @@ class AppDatabase extends GeneratedDatabase {
         );
       });
     } finally {
-      await old?.close();
+      try {
+        await old?.close();
+      } finally {
+        if (copyDirectory != null && await copyDirectory.exists()) {
+          await copyDirectory.delete(recursive: true);
+        }
+      }
     }
   }
 

@@ -4,15 +4,18 @@ The active store in this branch uses Drift with SQLite. The existing Isar 3.1
 package is still required *only* to import old data. This is not yet a complete
 removal of Isar, and this branch must not be released until its native migration
 bridge is made 16 KiB compatible and verified on a 16 KiB Android environment.
+An experimental original-source rebuild produced arm64 ELF segments aligned to
+16 KiB, but is not packaged and its legacy-file behavior on a 16 KiB OS has not
+been validated ([run 40830783471](https://github.com/BrainEno/flutter-blog/actions/runs/40830783471)).
 
 ## Data handling
 
 On startup, before any UI gets the SQLite database, the importer looks for the
-old `default.isar`. It opens the original schemas, reads the highest-ID theme,
+old `default.isar`. It opens a temporary copy with the original schemas, reads the highest-ID theme,
 all drafts and cached posts, then imports everything and the completion marker
 in one SQLite transaction. An exception rolls that transaction back; the app
 fails startup rather than silently discarding local data. The original Isar
-files are not deleted. Cache rows with duplicate business IDs are collapsed in
+files are not opened or deleted by the importer. Temporary copies require free disk space and are removed after import. Cache rows with duplicate business IDs are collapsed in
 legacy ID order. Subsequent SQLite writes are not synchronized back to Isar:
 a downgrade will see the old snapshot, not later SQLite edits. Do not ship this
 as a seamless rollback mechanism without a tested export/restore path.
