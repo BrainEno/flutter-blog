@@ -1,0 +1,10 @@
+# The fixture generator under tool/legacy_isar_fixture is a separate Dart
+# package pinned to the abandoned isar 3.1.0+1 so the committed fixture is
+# authentic for pre-migration app versions. Its sources import package:isar,
+# which the app dependency set no longer resolves, so keep build_runner and
+# its isar_community_generator away from them.
+targets:
+  $default:
+    sources:
+      exclude:
+        - tool/legacy_isar_fixture/**

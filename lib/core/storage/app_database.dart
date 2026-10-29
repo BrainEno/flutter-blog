@@ -8,7 +8,7 @@ import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart' show ThemeMode;
-import 'package:isar/isar.dart' as legacy;
+import 'package:isar_community/isar.dart' as legacy;
 
 /// SQLite is the live store. Isar is opened only for the one-time import.
 class AppDatabase extends GeneratedDatabase {

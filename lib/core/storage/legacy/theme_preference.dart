@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart' show ThemeMode;
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 part 'theme_preference.g.dart';
 

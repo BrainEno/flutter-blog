@@ -1,9 +1,9 @@
 # Isar to SQLite migration
 
-The active theme, draft and cached-article stores use Drift/SQLite. Isar 3.1 is
+The active theme, draft and cached-article stores use Drift/SQLite. Isar is
 retained only as a one-time reader for existing local databases; it is not the
-active storage engine. This is a transitional dependency, not a migration to
-Isar Community.
+active storage engine. Since issue #3 the reader runs on the maintained
+`isar_community` 3.4.1 packages (same Isar 3 API and on-disk format).
 
 ## Existing data and rollback
 
@@ -24,27 +24,22 @@ databases and take a backup before a production rollout.
 
 ## Android 16 KiB compatibility
 
-The original published `isar_flutter_libs` Android binaries have 4 KiB ELF
-segments. `tool/legacy_isar/build_android.sh` builds the original Isar 3.1
-reader with 16 KiB alignment for arm64-v8a, armeabi-v7a and x86_64, with fixed
-Isar and libmdbx commits, Cargo lockfile and Rust toolchain. Gradle builds the
-reader before merging native libraries and packages it instead of the old
-plugin binary. The reader is only needed when importing an old database.
+The abandoned `isar` 3.1.0+1 published Android binaries with 4 KiB ELF
+segments. `isar_community_flutter_libs` (since 3.2.0) ships 16 KiB-aligned
+Android binaries, so the app now packages the maintained prebuilt reader
+instead of the previous source-built replacement; the Rust build under
+`tool/legacy_isar` was removed with that change.
 
-Android builds require a Linux or macOS host with Bash, Python 3, Git, make,
-rustup, libclang and network access for the pinned source and Cargo crates.
-Rust 1.99.1 and its Android targets are installed by rustup if missing; the
-Android NDK version comes from `android/app/build.gradle`. On a clean build the
-native reader must be rebuilt, so initial Android builds take longer. Generated
-source and binaries stay under `build/` and are not committed.
-
-CI verifies that every packaged Isar reader byte-for-byte matches the rebuilt
-binary, checks every APK `.so` LOAD segment with NDK `llvm-readelf`, and checks
-APK ZIP alignment using `zipalign -c -P 16 -v 4`. The legacy database import
-and failure/rollback tests use a real temporary Isar database on Linux.
+CI checks every APK `.so` LOAD segment with NDK `llvm-readelf` and APK ZIP
+alignment using `zipalign -c -P 16 -v 4`, and the evidence log is uploaded as
+a build artifact. The legacy database import and failure/rollback tests use a
+real temporary Isar database on Linux. Old-data compatibility is additionally
+covered by `test/unit/storage/legacy_isar_31_import_test.dart`, which imports
+a fixture database written by the original `isar 3.1.0+1` (regenerable via
+`tool/legacy_isar_fixture`).
 
 The APK ELF and ZIP checks are not a substitute for runtime testing: a
 migration of old production data on a real or emulated 16 KiB Android device,
 iOS runtime behavior, older database variants and a downgrade/restore procedure
-have not yet been verified. The Isar generator and native reader remain until
-there is a safe strategy to retire the migration bridge.
+have not yet been verified. The Isar reader remains until there is a safe
+strategy to retire the migration bridge.
