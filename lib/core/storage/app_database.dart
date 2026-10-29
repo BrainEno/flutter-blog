@@ -6,7 +6,7 @@ import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:isar/isar.dart' as legacy;
 
 /// SQLite is the live store. Isar is opened only for the one-time import.
