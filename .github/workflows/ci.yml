@@ -27,7 +27,9 @@ jobs:
         with:
           fetch-depth: 0
       - name: Validate agent contract and workflow guardrails
-        run: python3 tool/ci/validate_agent_contract.py
+        run: bash tool/ci/validate_agent_contract.sh
+      - name: Test CI guardrails and diagnostic annotations
+        run: bash tool/ci/test_ci_scripts.sh
       - name: Check whitespace errors
         shell: bash
         run: |
@@ -45,7 +47,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Verify environment configuration contract
-        run: python3 tool/ci/check_env_asset_contract.py
+        run: bash tool/ci/check_env_asset_contract.sh
 
   format:
     name: format / changed-Dart-format
@@ -141,7 +143,7 @@ jobs:
             status=${statuses[1]}
           fi
           if (( status != 0 )); then
-            python3 tool/ci/annotate_failure.py analyze build/reports/flutter-analyze.log
+            bash tool/ci/annotate_failure.sh analyze build/reports/flutter-analyze.log
           fi
           exit "$status"
       - name: Upload analyzer diagnostics
@@ -239,7 +241,7 @@ jobs:
             status=${statuses[1]}
           fi
           if (( status != 0 )); then
-            python3 tool/ci/annotate_failure.py android build/reports/android-release-build.log
+            bash tool/ci/annotate_failure.sh android build/reports/android-release-build.log
           fi
           exit "$status"
       - name: Verify final APK INTERNET permission
