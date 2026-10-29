@@ -90,7 +90,7 @@ def buildLegacyIsar = tasks.register("buildLegacyIsar", Exec) {
         "${android.sdkDirectory}/ndk/${android.ndkVersion}", legacyIsarOutput.absolutePath
 }
 tasks.configureEach { task ->
-    if (task.name.matches("merge.*NativeLibs")) {
+    if (task.name.matches("merge.*NativeLibs") || task.name.matches("merge.*JniLibFolders")) {
         task.dependsOn(buildLegacyIsar)
     }
 }
