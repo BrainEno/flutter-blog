@@ -20,7 +20,9 @@ esac
 BIN="$NDK/toolchains/llvm/prebuilt/$HOST/bin"
 test -x "$BIN/llvm-ar" || { echo "Android NDK toolchain missing: $BIN" >&2; exit 1; }
 command -v rustup >/dev/null || { echo "Install rustup and Rust $RUST" >&2; exit 1; }
-rustup run "$RUST" rustc --version >/dev/null || { echo "Install Rust $RUST with rustup" >&2; exit 1; }
+if ! rustup run "$RUST" rustc --version >/dev/null 2>&1; then
+  rustup toolchain install "$RUST" --profile minimal
+fi
 rustup target add --toolchain "$RUST" aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
 WORK="$ROOT/build/legacy_isar_source"
 mkdir -p "$WORK" "$OUT"
