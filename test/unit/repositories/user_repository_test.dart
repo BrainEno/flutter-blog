@@ -45,9 +45,8 @@ void main() {
 
     test('unexpected datasource errors become safe failures', () async {
       when(() => connection.isConnected).thenAnswer((_) async => true);
-      when(
-        () => remote.changePassword('new-secret'),
-      ).thenThrow(StateError('token=secret'));
+      when(() => remote.changePassword('new-secret'))
+          .thenThrow(StateError('token=secret'));
 
       final result = await repository.resetPassword('new-secret');
       result.fold((failure) {
@@ -79,9 +78,8 @@ void main() {
   group('changeEmail', () {
     test('errors are mapped instead of leaking the raw exception', () async {
       when(() => connection.isConnected).thenAnswer((_) async => true);
-      when(
-        () => remote.changeEmail('a@b.c'),
-      ).thenThrow(const ServerException('Email rate limit exceeded'));
+      when(() => remote.changeEmail('a@b.c'))
+          .thenThrow(const ServerException('Email rate limit exceeded'));
 
       final result = await repository.changeEmail('a@b.c');
       result.fold(

@@ -13,8 +13,7 @@ class _FakeSearchBlogs implements SearchBlogs {
   _FakeSearchBlogs(this._handler);
 
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
   Future<Either<Failure, List<Blog>>> call(SearchBlogsParams params) =>

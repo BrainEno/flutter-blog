@@ -63,9 +63,8 @@ void main() {
       pending.add(completer);
       return completer.future;
     });
-    when(
-      () => remote.getUserLikedBlogs('user'),
-    ).thenAnswer((_) async => <BlogModel>[]);
+    when(() => remote.getUserLikedBlogs('user'))
+        .thenAnswer((_) async => <BlogModel>[]);
 
     final repo = BlogRepositoryImpl(remote, MockLocal(), connection);
     final bloc = BlogLikedBloc(
@@ -126,9 +125,8 @@ void main() {
       final answer = answers[call++];
       return answer();
     });
-    when(
-      () => remote.getUserLikedBlogs('user'),
-    ).thenAnswer((_) async => <BlogModel>[]);
+    when(() => remote.getUserLikedBlogs('user'))
+        .thenAnswer((_) async => <BlogModel>[]);
 
     final repo = BlogRepositoryImpl(remote, MockLocal(), connection);
     final bloc = BlogLikedBloc(
@@ -158,12 +156,10 @@ void main() {
     final remote = MockRemote();
     when(() => connection.isConnected).thenAnswer((_) async => true);
     // Server says the toggle left the blog liked.
-    when(
-      () => remote.toggleLikeBlog('user', 'blog'),
-    ).thenAnswer((_) async => true);
-    when(
-      () => remote.getUserLikedBlogs('user'),
-    ).thenAnswer((_) async => <BlogModel>[]);
+    when(() => remote.toggleLikeBlog('user', 'blog'))
+        .thenAnswer((_) async => true);
+    when(() => remote.getUserLikedBlogs('user'))
+        .thenAnswer((_) async => <BlogModel>[]);
 
     final repo = BlogRepositoryImpl(remote, MockLocal(), connection);
     final bloc = BlogLikedBloc(

@@ -13,8 +13,7 @@ class _FakeGetAllBlogs implements GetAllBlogs {
   _FakeGetAllBlogs(this._handler);
 
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
   Future<Either<Failure, List<Blog>>> call(GetAllBlogsParams params) =>
