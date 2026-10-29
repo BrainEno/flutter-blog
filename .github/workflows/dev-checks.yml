@@ -100,5 +100,16 @@ jobs:
       - name: Run tests
         shell: bash
         run: |
-          set -euo pipefail
-          flutter test --concurrency=1 --reporter expanded 2>&1 | tee build/reports/flutter-test.log
+          set -o pipefail
+          mkdir -p build/reports
+          set +e
+          # The github reporter emits failure annotations the agent can
+          # read back through the API (raw log download is blocked).
+          flutter test --concurrency=1 --reporter github 2>&1 | tee build/reports/flutter-test.log
+          statuses=("${PIPESTATUS[@]}")
+          status=${statuses[0]}
+          set -e
+          if (( status == 0 && statuses[1] != 0 )); then
+            status=${statuses[1]}
+          fi
+          exit "$status"
