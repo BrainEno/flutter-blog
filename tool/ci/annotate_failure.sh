@@ -27,6 +27,7 @@ awk -v mode="$1" '
     }
   }
   END {
+    has_failures = 0
     if (mode == "analyze") {
       # Failing-test progress lines carry "[E]" at the end; keep the line
       # before each for context (usually the preceding progress step) plus
@@ -34,9 +35,10 @@ awk -v mode="$1" '
       # stack excerpts) until the next progress or summary line.
       for (i = 1; i <= NR; i++)
         if (lines[i] ~ /\[E\][[:space:]]*$/) {
+          has_failures = 1
           selected[i] = 1
           if (i > 1) selected[i - 1] = 1
-          for (j = i + 1; j <= NR && j <= i + 30; j++) {
+          for (j = i + 1; j <= NR && j <= i + 14; j++) {
             if (lines[j] ~ /^[[:space:]]/ || lines[j] ~ /^[-=]+$/) {
               selected[j] = 1
             } else {
@@ -58,7 +60,7 @@ awk -v mode="$1" '
         if (in_exc) {
           selected[i] = 1
           exc_len++
-          if (exc_len >= 80) in_exc = 0
+          if (exc_len >= 30) in_exc = 0
           else if (i > 1 && lines[i] ~ /^[═══=][═══=]+$/ && lines[i - 1] !~ /EXCEPTION CAUGHT/) in_exc = 0
         }
       }
@@ -72,7 +74,13 @@ awk -v mode="$1" '
         message = message (count++ ? "\n" : "") lines[i]
       }
     }
-    if (length(message) > 24000) message = substr(message, length(message) - 23999)
+    if (has_failures) {
+      # GitHub caps annotation messages at 4096 bytes; the failing tests and
+      # their details matter more than the trailing window.
+      if (length(message) > 3600) message = substr(message, 1, 3600)
+    } else if (length(message) > 24000) {
+      message = substr(message, length(message) - 23999)
+    }
     if (message == "") message = "No matching diagnostics; inspect the uploaded log artifact."
     gsub(/%/, "%25", message)
     gsub(/\r/, "%0D", message)

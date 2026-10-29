@@ -85,10 +85,9 @@ class NowaveApiClient {
     NowaveAuthenticator? authenticator,
     http.Client? httpClient,
   }) : _baseUrl = baseUrl,
-       _basePrefix =
-           baseUrl.path.endsWith('/')
-               ? baseUrl.path.substring(0, baseUrl.path.length - 1)
-               : baseUrl.path,
+       _basePrefix = baseUrl.path.endsWith('/')
+           ? baseUrl.path.substring(0, baseUrl.path.length - 1)
+           : baseUrl.path,
        _authenticator = authenticator,
        _httpClient = httpClient ?? http.Client();
 
@@ -235,7 +234,8 @@ class NowaveApiClient {
       'user-agent': 'belog-app/1.0',
       if (rawBody != null)
         'content-type': contentType ?? 'application/octet-stream'
-      else if (body != null) 'content-type': 'application/json',
+      else if (body != null)
+        'content-type': 'application/json',
       if (token != null && token.isNotEmpty) 'authorization': 'Bearer $token',
     };
   }
@@ -252,9 +252,9 @@ class NowaveApiClient {
     } else if (payload is String) {
       request.body = payload;
     }
-    final streamed = await _httpClient.send(request).timeout(
-      const Duration(seconds: 30),
-    );
+    final streamed = await _httpClient
+        .send(request)
+        .timeout(const Duration(seconds: 30));
     return http.Response.fromStream(streamed);
   }
 

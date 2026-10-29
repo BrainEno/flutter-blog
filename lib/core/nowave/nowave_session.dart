@@ -40,13 +40,11 @@ class NowaveSessionData {
         email: map['email'] as String? ?? '',
         accessToken: map['accessToken'] as String? ?? '',
         refreshToken: map['refreshToken'] as String? ?? '',
-        accessExpiresAt: DateTime.tryParse(
-              map['accessExpiresAt'] as String? ?? '',
-            ) ??
+        accessExpiresAt:
+            DateTime.tryParse(map['accessExpiresAt'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0),
-        refreshExpiresAt: DateTime.tryParse(
-              map['refreshExpiresAt'] as String? ?? '',
-            ) ??
+        refreshExpiresAt:
+            DateTime.tryParse(map['refreshExpiresAt'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0),
       );
 }
