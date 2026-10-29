@@ -11,6 +11,7 @@ abstract interface class BlogRepository {
     required String content,
     required String posterId,
     required List<String> tags,
+    String? imageMimeType,
   });
 
   Future<Either<Failure, bool>> deleteBlog(String blogId);
@@ -31,6 +32,7 @@ abstract interface class BlogRepository {
     required String content,
     required List<String> tags,
     required File? image,
+    String? imageMimeType,
   });
 
   Future<Either<Failure, bool>> toggleLikeBlog(String userId, String blogId);

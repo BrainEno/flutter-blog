@@ -34,6 +34,7 @@ class UserEditBloc extends Bloc<UserEditEvent, UserEditState> {
       userId: (appUserCubit.state as AppUserLoggedIn).user.id,
       name: event.name,
       avatar: event.avatar,
+      avatarMimeType: event.avatarMimeType,
       website: event.website ?? '',
     );
 

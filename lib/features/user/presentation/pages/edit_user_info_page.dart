@@ -19,6 +19,10 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
   final _websiteController = TextEditingController();
   File? image;
   bool isNewImageSelected = false;
+
+  /// MIME type of [image] when a new avatar was picked; uploaded as the
+  /// object's contentType.
+  String? avatarMimeType;
   String? avatarUrl;
   String? email;
   DateTime? updatedAt;
@@ -40,13 +44,23 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
   }
 
   void selectImage() async {
-    final pickedImage = await pickImage();
-    if (pickedImage != null && !_isDisposed) {
-      // check if disposed
-      setState(() {
-        image = pickedImage;
-        isNewImageSelected = true;
-      });
+    try {
+      final pickedImage = await pickImage();
+      if (pickedImage != null && !_isDisposed) {
+        // check if disposed
+        setState(() {
+          image = pickedImage.file;
+          avatarMimeType = pickedImage.mimeType;
+          isNewImageSelected = true;
+        });
+      }
+      // null = the user cancelled the picker: nothing to do.
+    } catch (_) {
+      // Picking failed (as opposed to being cancelled): surface it
+      // instead of silently keeping the old avatar.
+      if (mounted) {
+        showSnackBar(context, '选择图片失败，请重试');
+      }
     }
   }
 
@@ -56,6 +70,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
             name: _nameController.text,
             website: _websiteController.text,
             avatar: isNewImageSelected ? image : null,
+            avatarMimeType: isNewImageSelected ? avatarMimeType : null,
           ),
         );
   }

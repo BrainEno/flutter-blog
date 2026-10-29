@@ -35,6 +35,7 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
       content: event.content,
       posterId: event.posterId,
       tags: event.tags,
+      imageMimeType: event.imageMimeType,
     ));
 
     res.fold(
@@ -52,6 +53,7 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
       title: event.title,
       content: event.content,
       tags: event.tags,
+      imageMimeType: event.imageMimeType,
     ));
     res.fold(
       (failure) => emit(BlogUploadFailure(failure.message)),

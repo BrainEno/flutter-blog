@@ -51,6 +51,32 @@ Authentication → URL Configuration → Redirect URLs 中加入
   （可重发确认邮件），绝不把 auth user 当作已登录；
   profile 的创建由服务端触发器负责（见下节）。
 
+## 图片与 Storage 约定
+
+客户端只写入 `blog_images` / `avatars` 两个 bucket 的对象，bucket 可见性
+与 RLS 策略属服务端待办（#8，当前不改 bucket 标志）。
+
+- **压缩**：选图统一走 `core/utils/pick_image.dart`（`maxWidth/maxHeight`
+  1920 + `imageQuality: 85`），典型封面远小于 ~300 KB；同时保留图片的
+  MIME 并作为 `contentType` 上传（未知时回退 `image/jpeg`）。
+- **取消 ≠ 失败**：`pickImage()` 取消返回 `null`，真失败抛
+  `PickImageException`，调用方（编辑器/资料页）对失败弹提示，不再吞掉。
+- **路径**：所有对象路径与 URL 解析集中在
+  `core/utils/storage_objects.dart`。新对象路径带归属与版本：
+  `covers/<posterId>/<blogId>/<毫秒时间戳>.<ext>`、
+  `avatars/<userId>/<毫秒时间戳>.<ext>`；旧对象（`<blogId>`、`<userId>`
+  无扩展名平铺路径）的删除通过同一个 URL 解析器兼容。
+- **版本化 URL**：列表卡片、详情页、编辑器统一用
+  `presentation/utils/cover_url.dart` 的 `?v=<updatedAt.microseconds>`
+  构造封面 URL（编辑器原 imageCache evict hack 已移除）。
+- **一致性**：
+  - 发布失败（行插入被拒）→ 尽力删除刚上传的封面（孤儿回滚）；
+  - 编辑换图 → 先传新版本对象 → DB 更新成功 → 再删旧对象；
+  - 删除文章 → 先删 DB 行 → 再删封面（失败不使删除报错）；
+  - 头像遵循同样模式。
+  清理失败一律经 `AppLogger` 记录结构化错误（debug 构建输出，release 无
+  远端审计通道；owner 可在 Supabase Storage 控制台按路径前缀核对孤儿）。
+
 ## 架构
 
 按 feature-first + 核心层分层的简化整洁架构：
@@ -154,8 +180,7 @@ create index if not exists blogs_title_lower_idx on blogs (lower(title));
 按 [issue 列表](https://github.com/BrainEno/flutter-blog/issues) 的优先级：
 
 - **P0**：#4 Android Gradle 工具链升级
-- **P1**：#7 Supabase schema/RLS 纳入版本管理 · #8 Isar 离线缓存语义 ·
-  #10 图片压缩/MIME/孤儿对象 · #11 会话恢复与账号安全闭环
+- **P1**：#7 Supabase schema/RLS 纳入版本管理 · #8 Isar 离线缓存语义
 - **P2**：Markdown 正文、评论、关注、举报屏蔽、分享深链、离线发布队列、
   阅读历史、国际化与无障碍、工程清理等（#15–#26）
 

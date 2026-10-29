@@ -17,7 +17,8 @@ class UploadBlog implements UseCase<Blog, UploadBlogParams> {
         title: params.title,
         content: params.content,
         posterId: params.posterId,
-        tags: params.tags);
+        tags: params.tags,
+        imageMimeType: params.imageMimeType);
   }
 }
 
@@ -27,6 +28,7 @@ class UploadBlogParams {
   final String content;
   final String posterId;
   final List<String> tags;
+  final String? imageMimeType;
 
   UploadBlogParams({
     required this.image,
@@ -34,5 +36,6 @@ class UploadBlogParams {
     required this.content,
     required this.posterId,
     required this.tags,
+    this.imageMimeType,
   });
 }

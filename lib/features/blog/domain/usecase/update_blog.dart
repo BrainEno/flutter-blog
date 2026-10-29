@@ -17,7 +17,8 @@ class UpdateBlog implements UseCase<Blog, UpdateBlogParams> {
         image: params.image,
         title: params.title,
         content: params.content,
-        tags: params.tags);
+        tags: params.tags,
+        imageMimeType: params.imageMimeType);
   }
 }
 
@@ -27,6 +28,7 @@ class UpdateBlogParams {
   final String title;
   final String content;
   final List<String> tags;
+  final String? imageMimeType;
 
   UpdateBlogParams({
     required this.blogId,
@@ -34,5 +36,6 @@ class UpdateBlogParams {
     required this.title,
     required this.content,
     required this.tags,
+    this.imageMimeType,
   });
 }

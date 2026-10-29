@@ -17,6 +17,7 @@ class EditUserUseCase implements UseCase<User, EditUserParams> {
         userId: params.userId,
         name: params.name,
         avatar: params.avatar,
+        avatarMimeType: params.avatarMimeType,
         website: params.website);
   }
 }
@@ -25,11 +26,16 @@ class EditUserParams {
   final String userId;
   final String name;
   final File? avatar;
+
+  /// MIME type reported by the picker; uploaded as the object's
+  /// contentType.
+  final String? avatarMimeType;
   final String website;
 
   EditUserParams(
       {required this.userId,
       required this.name,
       required this.website,
-      this.avatar});
+      this.avatar,
+      this.avatarMimeType});
 }

@@ -14,6 +14,7 @@ abstract class UserRepository {
       {required String userId,
       required String name,
       required File? avatar,
+      String? avatarMimeType,
       required String website});
 
   Future<Either<Failure, void>> changeEmail(String newEmail);
