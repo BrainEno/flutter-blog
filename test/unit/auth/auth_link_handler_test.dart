@@ -44,9 +44,10 @@ void main() {
   setUp(() {
     links = FakeDeepLinkSource();
     results = [];
-    nextResolution = Completer<
-      ({AuthSessionUrlResponse response, AuthChangeEvent? event})
-    >();
+    nextResolution =
+        Completer<
+          ({AuthSessionUrlResponse response, AuthChangeEvent? event})
+        >();
   });
 
   tearDown(() => links.controller.close());
@@ -58,12 +59,10 @@ void main() {
     final handler = buildHandler();
     await handler.start();
 
-    nextResolution.complete(
-      (
-        response: AuthSessionUrlResponse(session: _session(), redirectType: null),
-        event: AuthChangeEvent.signedIn,
-      ),
-    );
+    nextResolution.complete((
+      response: AuthSessionUrlResponse(session: _session(), redirectType: null),
+      event: AuthChangeEvent.signedIn,
+    ));
     await Future<void>.delayed(Duration.zero);
 
     expect(results.single.$1, AuthLinkResult.accepted);
@@ -76,12 +75,10 @@ void main() {
     await handler.start();
 
     links.controller.add(Uri.parse('belog://auth-callback?code=abc'));
-    nextResolution.complete(
-      (
-        response: AuthSessionUrlResponse(session: _session(), redirectType: null),
-        event: AuthChangeEvent.passwordRecovery,
-      ),
-    );
+    nextResolution.complete((
+      response: AuthSessionUrlResponse(session: _session(), redirectType: null),
+      event: AuthChangeEvent.passwordRecovery,
+    ));
     await Future<void>.delayed(Duration.zero);
 
     expect(results.single.$1, AuthLinkResult.accepted);
@@ -89,22 +86,26 @@ void main() {
     await handler.dispose();
   });
 
-  test('an expired/invalid link (resolver throws) is rejected with guidance',
-      () async {
-    final handler = buildHandler();
-    await handler.start();
+  test(
+    'an expired/invalid link (resolver throws) is rejected with guidance',
+    () async {
+      final handler = buildHandler();
+      await handler.start();
 
-    links.controller.add(Uri.parse('belog://auth-callback?code=expired'));
-    nextResolution.completeError(
-      AuthException('Invalid request: both auth code and code verifier are '
-          'expired'),
-    );
-    await Future<void>.delayed(Duration.zero);
+      links.controller.add(Uri.parse('belog://auth-callback?code=expired'));
+      nextResolution.completeError(
+        AuthException(
+          'Invalid request: both auth code and code verifier are '
+          'expired',
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
 
-    expect(results.single.$1, AuthLinkResult.rejected);
-    expect(results.single.$2, contains('重新获取邮件'));
-    await handler.dispose();
-  });
+      expect(results.single.$1, AuthLinkResult.rejected);
+      expect(results.single.$2, contains('重新获取邮件'));
+      await handler.dispose();
+    },
+  );
 
   test('a resolver failure is rejected, not swallowed', () async {
     final handler = buildHandler();
@@ -136,12 +137,10 @@ void main() {
     await handler.start();
 
     links.controller.add(Uri.parse('belog://auth-callback?code=abc'));
-    nextResolution.complete(
-      (
-        response: AuthSessionUrlResponse(session: _session(), redirectType: null),
-        event: AuthChangeEvent.signedIn,
-      ),
-    );
+    nextResolution.complete((
+      response: AuthSessionUrlResponse(session: _session(), redirectType: null),
+      event: AuthChangeEvent.signedIn,
+    ));
     await Future<void>.delayed(Duration.zero);
 
     expect(results, hasLength(1));

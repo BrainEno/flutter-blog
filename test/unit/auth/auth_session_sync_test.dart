@@ -112,36 +112,36 @@ void main() {
     await sync.dispose();
   });
 
-  test('a refresh finishing after sign-out does not resurrect the login',
-      () async {
-    // The user refresh hangs until the gate is released.
-    final gate = Completer<Either<Failure, app.User>>();
-    final fakeCurrentUser = FakeCurrentUser(
-      Queue<Either<Failure, app.User>>()..add(Right(_appUser('u1'))),
-    );
-    fakeCurrentUser.gate = gate;
-    final sync = buildSync(fakeCurrentUser);
-    currentSession = _session('u1');
-    sync.start();
+  test(
+    'a refresh finishing after sign-out does not resurrect the login',
+    () async {
+      // The user refresh hangs until the gate is released.
+      final gate = Completer<Either<Failure, app.User>>();
+      final fakeCurrentUser = FakeCurrentUser(
+        Queue<Either<Failure, app.User>>()..add(Right(_appUser('u1'))),
+      );
+      fakeCurrentUser.gate = gate;
+      final sync = buildSync(fakeCurrentUser);
+      currentSession = _session('u1');
+      sync.start();
 
-    authEvents.add(sb.AuthState(sb.AuthChangeEvent.signedIn, currentSession));
-    // Sign out while the refresh is still in flight.
-    currentSession = null;
-    authEvents.add(const sb.AuthState(sb.AuthChangeEvent.signedOut, null));
-    await Future<void>.delayed(Duration.zero);
-    expect(appUserCubit.state, isA<AppUserInitial>());
+      authEvents.add(sb.AuthState(sb.AuthChangeEvent.signedIn, currentSession));
+      // Sign out while the refresh is still in flight.
+      currentSession = null;
+      authEvents.add(const sb.AuthState(sb.AuthChangeEvent.signedOut, null));
+      await Future<void>.delayed(Duration.zero);
+      expect(appUserCubit.state, isA<AppUserInitial>());
 
-    gate.complete(Right(_appUser('u1')));
-    await Future<void>.delayed(Duration.zero);
+      gate.complete(Right(_appUser('u1')));
+      await Future<void>.delayed(Duration.zero);
 
-    expect(appUserCubit.state, isA<AppUserInitial>());
-    await sync.dispose();
-  });
+      expect(appUserCubit.state, isA<AppUserInitial>());
+      await sync.dispose();
+    },
+  );
 
   test('tokenRefreshed does not trigger a profile refresh', () async {
-    final fakeCurrentUser = FakeCurrentUser(
-      Queue<Either<Failure, app.User>>(),
-    );
+    final fakeCurrentUser = FakeCurrentUser(Queue<Either<Failure, app.User>>());
     final sync = buildSync(fakeCurrentUser);
     currentSession = _session('u1');
     sync.start();
@@ -173,9 +173,7 @@ void main() {
   });
 
   test('initialSession is ignored', () async {
-    final fakeCurrentUser = FakeCurrentUser(
-      Queue<Either<Failure, app.User>>(),
-    );
+    final fakeCurrentUser = FakeCurrentUser(Queue<Either<Failure, app.User>>());
     final sync = buildSync(fakeCurrentUser);
     currentSession = _session('u1');
     sync.start();
