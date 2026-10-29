@@ -109,9 +109,8 @@ void main() {
     expect((await store.load(null))!.title, 'new');
   });
 
-  test(
-    'deleteDraftsFor with olderThan keeps drafts edited during upload',
-    () async {
+  test('deleteDraftsFor with olderThan keeps drafts edited during upload',
+      () async {
       await db.importLegacyIfNeeded(dir);
       final store = SqliteBlogDraftStore(db);
       final publishStarted = DateTime.utc(2025, 1, 1);
@@ -230,7 +229,7 @@ void main() {
             posterAvatar: 'avatar',
           ),
         );
-      });
+    });
       await old.close();
       final legacyBytes = await File('${dir.path}/default.isar').readAsBytes();
       await db.customStatement(
@@ -277,7 +276,7 @@ void main() {
       "INSERT INTO blog_cache(id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar) "
       "VALUES ('old-id', '旧文', '正文', 'author', 'cover', '[\"诗歌\"]', 1700000000000000, 'Alice', 'avatar')",
     );
-    rawDb.dispose();
+    rawDb.close();
 
     final migrated = AppDatabase(NativeDatabase(file));
     addTearDown(migrated.close);

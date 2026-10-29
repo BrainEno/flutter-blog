@@ -5,7 +5,6 @@ import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
-import 'package:belog/features/auth/data/models/user_model.dart';
 import 'package:belog/features/user/data/datasources/user_remote_data_source.dart';
 
 import 'package:belog/features/user/domain/repositories/user_repository.dart';

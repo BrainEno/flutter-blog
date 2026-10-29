@@ -40,9 +40,8 @@ void main() {
   });
 
   group('currentUser (offline session restore)', () {
-    test(
-      'a persisted session restores a minimal user without network',
-      () async {
+    test('a persisted session restores a minimal user without network',
+        () async {
       when(() => connection.isConnected).thenAnswer((_) async => false);
       when(() => remote.currentSession).thenReturn(_session());
 
@@ -65,9 +64,8 @@ void main() {
   });
 
   group('currentUser (online)', () {
-    test(
-      'a session that cannot be refreshed is NOT treated as logged in',
-      () async {
+    test('a session that cannot be refreshed is NOT treated as logged in',
+        () async {
         when(() => connection.isConnected).thenAnswer((_) async => true);
         when(() => remote.currentSession).thenReturn(_session());
         when(() => remote.getCurrentUserData()).thenAnswer((_) async => null);
@@ -94,7 +92,7 @@ void main() {
     });
   });
 
-  group('signUpWithEmailPassword', () => {
+  group('signUpWithEmailPassword', () {
     test('a successful sign-up is a signed-in user (no confirmation step)',
         () async {
       when(() => connection.isConnected).thenAnswer((_) async => true);

@@ -97,8 +97,7 @@ void main() {
   });
 
   group('refresh', () {
-    test('a successful rotation replaces the pair and persists it',
-        () async {
+    test('a successful rotation replaces the pair and persists it', () async {
       final store = MemorySessionStore()..stored = _session();
       final manager = NowaveSessionManager(
         client: clientFor(body: _tokenBody('2')),
@@ -116,8 +115,7 @@ void main() {
       expect(manager.currentSession?.userId, 'u1');
     });
 
-    test('concurrent refreshes share ONE request (single flight)',
-        () async {
+    test('concurrent refreshes share ONE request (single flight)', () async {
       int refreshRequests = 0;
       final client = NowaveApiClient(
         baseUrl: Uri.parse('https://api.example.invalid'),
@@ -150,8 +148,7 @@ void main() {
               'token and revoke the whole session family');
     });
 
-    test('a second refresh after the first completes rotates again',
-        () async {
+    test('a second refresh after the first completes rotates again', () async {
       int refreshRequests = 0;
       String current = '1';
       final client = NowaveApiClient(
@@ -248,7 +245,7 @@ void main() {
       expect(
         statuses.single,
         isA<NowaveAuthSignedIn>().having(
-          (s) => (s as NowaveAuthSignedIn).userId,
+          (s) => s.userId,
           'userId',
           'u1',
         ),
@@ -277,7 +274,7 @@ NowaveApiClient clientFor({
 }) {
   return NowaveApiClient(
     baseUrl: Uri.parse('https://api.example.invalid'),
-    httpClient: MockClient((request) {
+    httpClient: MockClient((request) async {
       if (status >= 400) {
         return http.Response(
           jsonEncode({

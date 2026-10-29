@@ -303,7 +303,10 @@ void main() {
 
   testWidgets('the editor menu no longer offers article deletion '
       '(backend gap G1: no DELETE endpoint)', (tester) async {
-    final store = FakeDraftStore();
+    // Seed a draft so the recovery dialog appears; discard it to reach the
+    // interactive editor (the delete entry used to live in its menu).
+    final store = FakeDraftStore()
+      ..drafts['article-a'] = makeDraft('article-a', '旧草稿标题');
     final states = StreamController<BlogUploadState>.broadcast();
     final bloc = await openEditorLive(
       tester,
@@ -311,7 +314,6 @@ void main() {
       blog: makeBlog('article-a'),
       states: states,
     );
-    // Discard the recovery dialog so the editor is interactive.
     await tester.tap(find.text('丢弃草稿'));
     await tester.pumpAndSettle();
 

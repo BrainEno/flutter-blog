@@ -57,7 +57,6 @@ class _BlogEditorState extends State<BlogEditorPage> {
   bool _draftsReady = false;
   bool _hasUnsavedEdits = false;
   bool _editedDuringPublish = false;
-  bool _suppressDraftFlush = false;
   DateTime? _publishStartedAt;
 
   @override
@@ -130,7 +129,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
   /// Best-effort save when the page is disposed mid-edit. Must not touch
   /// [context] - the widget is already unmounted.
   void _flushDraftOnDispose() {
-    if (_suppressDraftFlush || !_hasUnsavedEdits || _isBlankDraft()) return;
+    if (!_hasUnsavedEdits || _isBlankDraft()) return;
     // Only edits made while a publish was uploading should survive it.
     if (_publishStartedAt != null && !_editedDuringPublish) return;
     final draft = _currentDraft();

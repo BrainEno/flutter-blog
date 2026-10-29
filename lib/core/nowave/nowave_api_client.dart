@@ -199,14 +199,14 @@ class NowaveApiClient {
           body: body,
           rawBody: rawBody,
           contentType: contentType,
-          token: _authenticator!.accessToken,
+          token: _authenticator.accessToken,
         ),
         rawBody ?? (body == null ? null : jsonEncode(body)),
       );
       if (response.statusCode == HttpStatus.unauthorized &&
           allowRefresh &&
-          _authenticator!.accessToken != null) {
-        final refreshed = await _authenticator!.refresh();
+          _authenticator.accessToken != null) {
+        final refreshed = await _authenticator.refresh();
         if (refreshed) {
           response = await _send(
             method,
@@ -215,7 +215,7 @@ class NowaveApiClient {
               body: body,
               rawBody: rawBody,
               contentType: contentType,
-              token: _authenticator!.accessToken,
+              token: _authenticator.accessToken,
             ),
             rawBody ?? (body == null ? null : jsonEncode(body)),
           );

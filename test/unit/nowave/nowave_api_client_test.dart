@@ -275,24 +275,3 @@ class NowaveAuthenticatorDelegate implements NowaveAuthenticator {
   @override
   Future<bool> refresh() async => refreshResult;
 }
-
-/// Authenticator stub with a fixed token and refresh outcome.
-class NowaveAuthenticatorDelegate implements NowaveAuthenticator {
-  NowaveAuthenticatorDelegate({
-    required this.token,
-    required this.refreshResult,
-  });
-
-  final String token;
-  final bool refreshResult;
-  int refreshCalls = 0;
-
-  @override
-  String? get accessToken => token;
-
-  @override
-  Future<bool> refresh() async {
-    refreshCalls++;
-    return refreshResult;
-  }
-}
