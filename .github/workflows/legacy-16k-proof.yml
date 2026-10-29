@@ -1,0 +1,36 @@
+name: Legacy Isar 16K bridge feasibility
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Build original Isar 3.1 for 16 KiB Android
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NDK="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          test -n "$NDK"
+          BIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          rustup target add aarch64-linux-android
+          git clone --depth 1 --branch '3.1.0+1' https://github.com/isar/isar.git "$RUNNER_TEMP/isar-original"
+          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$BIN/aarch64-linux-android21-clang"
+          export CC_aarch64_linux_android="$BIN/aarch64-linux-android21-clang"
+          export AR_aarch64_linux_android="$BIN/llvm-ar"
+          export RUSTFLAGS='-C link-arg=-Wl,-z,max-page-size=16384'
+          export BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
+          set +e
+          (cd "$RUNNER_TEMP/isar-original" && cargo build --release --package isar --target aarch64-linux-android) > /tmp/legacy-build.log 2>&1
+          status=$?
+          set -e
+          if (( status != 0 )); then
+            bash tool/ci/annotate_failure.sh analyze /tmp/legacy-build.log
+            exit "$status"
+          fi
+          "$BIN/llvm-readelf" -lW "$RUNNER_TEMP/isar-original/target/aarch64-linux-android/release/libisar.so" > /tmp/legacy-elf.log
+          echo "::notice title=Rebuilt legacy arm64 LOAD segments::$(grep ' LOAD ' /tmp/legacy-elf.log | tr '\n' ';')"
