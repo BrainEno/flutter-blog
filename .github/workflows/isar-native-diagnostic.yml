@@ -28,11 +28,12 @@ jobs:
           printf '{"SUPABASE_URL":"https://example.invalid","SUPABASE_KEY":"ci-placeholder-not-a-secret"}' > env.json
           flutter pub get
           flutter build apk --release --dart-define-from-file=env.json > /tmp/build.log 2>&1 || { bash tool/ci/annotate_failure.sh android /tmp/build.log; exit 1; }
+          unzip -l build/app/outputs/flutter-apk/app-release.apk | grep -i isar > /tmp/isar-files.log || true
+          echo "::notice title=Isar APK entries::$(tr '\n' ';' </tmp/isar-files.log)"
           mkdir /tmp/apk-so
-          unzip -q build/app/outputs/flutter-apk/app-release.apk 'lib/*/libisar.so' -d /tmp/apk-so
-          READELF="$(find "$ANDROID_HOME/ndk" -type f -path '*/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf' | sort -V | tail -1)"
-          test -n "$READELF"
-          for f in /tmp/apk-so/lib/*/libisar.so; do
-            result="$("$READELF" -lW "$f" | grep ' LOAD ')"
+          unzip -q build/app/outputs/flutter-apk/app-release.apk 'lib/*/*.so' -d /tmp/apk-so
+          for f in /tmp/apk-so/lib/*/*isar*.so; do
+            test -f "$f" || { echo '::error::No matching Isar ELF'; exit 1; }
+            result="$(readelf -lW "$f" | grep ' LOAD ')"
             echo "::notice title=Legacy ELF $f::$(echo "$result" | tr '\n' ';')"
           done
