@@ -32,5 +32,13 @@ jobs:
             bash tool/ci/annotate_failure.sh analyze /tmp/legacy-build.log
             exit "$status"
           fi
+          echo "::notice title=Rust toolchain::$(rustc --version); $(cargo --version)"
+          python3 - "$RUNNER_TEMP/isar-original/Cargo.lock" <<'PYLOCK'
+          import base64, gzip, sys
+          from pathlib import Path
+          data = base64.b64encode(gzip.compress(Path(sys.argv[1]).read_bytes())).decode()
+          for i in range(0, len(data), 3000):
+              print(f'::notice title=cargo lock {i // 3000}::{data[i:i + 3000]}')
+          PYLOCK
           "$BIN/llvm-readelf" -lW "$RUNNER_TEMP/isar-original/target/aarch64-linux-android/release/libisar.so" > /tmp/legacy-elf.log
           echo "::notice title=Rebuilt legacy arm64 LOAD segments::$(grep ' LOAD ' /tmp/legacy-elf.log | tr '\n' ';')"
