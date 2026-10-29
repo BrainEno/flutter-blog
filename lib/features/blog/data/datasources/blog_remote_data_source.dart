@@ -3,7 +3,9 @@
 import 'dart:io';
 
 import 'package:belog/core/error/error_mapper.dart';
+import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/retry_on_connection_closed.dart';
+import 'package:belog/core/utils/storage_objects.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart'
     show kBlogPageSize;
@@ -11,14 +13,20 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 abstract interface class BlogRemoteDataSource {
   Future<BlogModel> uploadBlog(BlogModel blog);
+
+  /// Uploads a cover to a fresh, versioned object path and returns its
+  /// public URL. [mimeType] is sent as the object's contentType.
   Future<String> uploadBlogImage({
     required File image,
-    required BlogModel blog,
+    required String blogId,
+    required String posterId,
+    String? mimeType,
   });
-  Future<String> uploadAvatarImage({
-    required File image,
-    required String userId,
-  });
+
+  /// Removes the cover object a public URL points at. Throws on failure;
+  /// callers decide whether that is fatal or an orphan to log.
+  Future<void> removeBlogImage(String publicUrl);
+
   Future<List<BlogModel>> getAllBlogs({required int page});
   Future<BlogModel> getBlogById(String blogId);
   Future<List<BlogModel>> getBlogsByPosterId(String posterId);
@@ -54,13 +62,47 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   @override
   Future<String> uploadBlogImage({
     required File image,
-    required BlogModel blog,
+    required String blogId,
+    required String posterId,
+    String? mimeType,
   }) async {
     try {
+      final path = blogCoverObjectPath(
+        posterId: posterId,
+        blogId: blogId,
+        version: storageVersionNow(),
+        extension: extensionForMime(mimeType),
+      );
       await supabaseClient.storage
-          .from('blog_images')
-          .upload(blog.id, image, fileOptions: FileOptions(upsert: true));
-      return supabaseClient.storage.from('blog_images').getPublicUrl(blog.id);
+          .from(kBlogImagesBucket)
+          .upload(
+            path,
+            image,
+            fileOptions: FileOptions(
+              // Explicit MIME so the object is served with the right
+              // Content-Type (the picker already re-encoded the bytes).
+              contentType: mimeType ?? 'image/jpeg',
+              // Fresh versioned path: never overwrite in place.
+              upsert: false,
+            ),
+          );
+      return supabaseClient.storage.from(kBlogImagesBucket).getPublicUrl(path);
+    } catch (e) {
+      throw mapToServerException(e);
+    }
+  }
+
+  @override
+  Future<void> removeBlogImage(String publicUrl) async {
+    // Parses both legacy flat paths (path = blog id) and current nested
+    // versioned paths, and ignores cache-busting query parameters.
+    final path = objectPathFromPublicUrl(publicUrl);
+    if (path == null) {
+      AppLogger.debug('storage cleanup skipped: unrecognized object URL');
+      return;
+    }
+    try {
+      await supabaseClient.storage.from(kBlogImagesBucket).remove([path]);
     } catch (e) {
       throw mapToServerException(e);
     }
@@ -193,20 +235,39 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           .eq('id', blogId)
           .single();
 
-      final String imageUrl = blog['image_url'];
+      final String imageUrl = (blog['image_url'] as String?) ?? '';
 
+      // Delete the row first: once it is gone the cover object is
+      // unreachable, so a storage failure must not fail the whole
+      // operation and confuse the user with a "delete failed" for an
+      // article that is already gone.
       await supabaseClient.from('blogs').delete().eq('id', blogId);
 
       if (imageUrl.isNotEmpty) {
-        final int index = imageUrl.lastIndexOf('/');
-        final String path = imageUrl.substring(index + 1);
-        await supabaseClient.storage.from('blog_images').remove([
-          "blog_images/$path",
-        ]);
+        await _removeCoverQuietly(imageUrl);
       }
       return true;
     } catch (e) {
       throw mapToServerException(e);
+    }
+  }
+
+  /// Best-effort cover removal after the blog row is already deleted: a
+  /// failure leaves an orphan, which is logged (with the object path, no
+  /// personal data) so it can be swept later.
+  Future<void> _removeCoverQuietly(String publicUrl) async {
+    final path = objectPathFromPublicUrl(publicUrl);
+    if (path == null) {
+      return;
+    }
+    try {
+      await supabaseClient.storage.from(kBlogImagesBucket).remove([path]);
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'orphan cover left after blog delete (bucket-relative path: $path)',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -327,21 +388,6 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         // 404-like error when no results found
         return false;
       }
-      throw mapToServerException(e);
-    }
-  }
-
-  @override
-  Future<String> uploadAvatarImage({
-    required File image,
-    required String userId,
-  }) async {
-    try {
-      await supabaseClient.storage
-          .from('avatars')
-          .upload(userId, image, fileOptions: FileOptions(upsert: true));
-      return supabaseClient.storage.from('avatars').getPublicUrl(userId);
-    } catch (e) {
       throw mapToServerException(e);
     }
   }

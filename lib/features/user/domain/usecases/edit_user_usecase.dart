@@ -14,25 +14,30 @@ class EditUserUseCase implements UseCase<User, EditUserParams> {
   @override
   Future<Either<Failure, User>> call(EditUserParams params) async {
     return await repository.editUserInfo(
-        userId: params.userId,
-        name: params.name,
-        email: params.email,
-        avatar: params.avatar,
-        website: params.website);
+      userId: params.userId,
+      name: params.name,
+      avatar: params.avatar,
+      avatarMimeType: params.avatarMimeType,
+      website: params.website,
+    );
   }
 }
 
 class EditUserParams {
   final String userId;
   final String name;
-  final String email;
   final File? avatar;
+
+  /// MIME type reported by the picker; uploaded as the object's
+  /// contentType.
+  final String? avatarMimeType;
   final String website;
 
-  EditUserParams(
-      {required this.userId,
-      required this.name,
-      required this.email,
-      required this.website,
-      this.avatar});
+  EditUserParams({
+    required this.userId,
+    required this.name,
+    required this.website,
+    this.avatar,
+    this.avatarMimeType,
+  });
 }

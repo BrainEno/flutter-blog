@@ -34,13 +34,28 @@ class UserModel extends User {
     };
   }
 
-  UserModel copyWith(
-      {String? id,
-      String? email,
-      String? name,
-      String? avatarUrl,
-      String? website,
-      DateTime? updatedAt}) {
+  /// Columns safe to write from a profile edit.
+  ///
+  /// `email` is deliberately absent: the auth e-mail address only changes
+  /// through Supabase Auth's update + confirmation flow, never through a
+  /// direct `profiles` update.
+  Map<String, dynamic> toProfileUpdateJson() {
+    return <String, dynamic>{
+      'name': name,
+      'avatar_url': avatarUrl,
+      'website': website,
+      'updated_at': updatedAt.toUtc().toIso8601String(),
+    };
+  }
+
+  UserModel copyWith({
+    String? id,
+    String? email,
+    String? name,
+    String? avatarUrl,
+    String? website,
+    DateTime? updatedAt,
+  }) {
     return UserModel(
       id: id ?? this.id,
       email: email ?? this.email,

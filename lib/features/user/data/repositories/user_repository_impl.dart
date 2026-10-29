@@ -22,38 +22,98 @@ class UserRepositoryImpl implements UserRepository {
   Future<Either<Failure, User>> editUserInfo({
     required String userId,
     required String name,
-    required String email,
     required String website,
     required File? avatar,
+    String? avatarMimeType,
   }) async {
     if (!await (connectionChecker.isConnected)) {
       return left(Failure.networkOffline());
     }
+    UserModel userToUpdate;
+    String? newAvatarUrl;
+    String oldAvatarUrl;
     try {
-      UserModel userToUpdate = await remoteDataSource.getUserById(userId);
+      userToUpdate = await remoteDataSource.getUserById(userId);
+      oldAvatarUrl = userToUpdate.avatarUrl;
 
       if (avatar != null) {
-        final imageUrl = await remoteDataSource.uploadAvatar(
+        // Versioned path: the new avatar is a NEW object, so the profile
+        // row can flip to it atomically; the old object is only removed
+        // after the update succeeds.
+        newAvatarUrl = await remoteDataSource.uploadAvatar(
           userId: userId,
           image: avatar,
+          mimeType: avatarMimeType,
         );
-        userToUpdate = userToUpdate.copyWith(avatarUrl: imageUrl);
+        userToUpdate = userToUpdate.copyWith(avatarUrl: newAvatarUrl);
       }
+      // The e-mail column is intentionally not written: the auth e-mail
+      // only changes through Supabase Auth's confirmation flow
+      // (changeEmail), never a direct profiles update.
       userToUpdate = userToUpdate.copyWith(
         id: userId,
         name: name,
-        email: email,
         website: website,
         updatedAt: DateTime.now(),
       );
-
-      final userUpdated = await remoteDataSource.editUserInfo(userToUpdate);
-      return right(userUpdated);
     } on ServerException catch (e) {
       return left(e.toFailure());
     } catch (e, stackTrace) {
       AppLogger.error('editUserInfo failed', error: e, stackTrace: stackTrace);
       return left(mapErrorToFailure(e));
+    }
+
+    try {
+      final userUpdated = await remoteDataSource.editUserInfo(userToUpdate);
+      if (newAvatarUrl != null &&
+          oldAvatarUrl.isNotEmpty &&
+          oldAvatarUrl != newAvatarUrl) {
+        // The profile row now points at the new avatar: retire the old
+        // object. Best-effort - a failure leaves a logged orphan.
+        await _removeOldAvatarQuietly(oldAvatarUrl);
+      }
+      return right(userUpdated);
+    } on ServerException catch (e) {
+      // The profile update failed: roll back the freshly uploaded avatar
+      // so it does not orphan next to the still-referenced old one.
+      if (newAvatarUrl != null) {
+        await _removeFreshAvatarQuietly(newAvatarUrl);
+      }
+      return left(e.toFailure());
+    } catch (e, stackTrace) {
+      AppLogger.error('editUserInfo failed', error: e, stackTrace: stackTrace);
+      if (newAvatarUrl != null) {
+        await _removeFreshAvatarQuietly(newAvatarUrl);
+      }
+      return left(mapErrorToFailure(e));
+    }
+  }
+
+  /// Best-effort removal of the superseded avatar; the profile row
+  /// already points at the new one.
+  Future<void> _removeOldAvatarQuietly(String publicUrl) async {
+    try {
+      await remoteDataSource.removeAvatar(publicUrl);
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'orphan avatar left behind (avatar replaced): $publicUrl',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Best-effort rollback of a just-uploaded avatar whose profile update
+  /// failed.
+  Future<void> _removeFreshAvatarQuietly(String publicUrl) async {
+    try {
+      await remoteDataSource.removeAvatar(publicUrl);
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'orphan avatar left behind (profile update failed): $publicUrl',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 

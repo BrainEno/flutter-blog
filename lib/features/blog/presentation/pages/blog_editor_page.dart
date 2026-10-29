@@ -10,6 +10,7 @@ import 'package:belog/features/blog/data/datasources/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/presentation/blocs/bog_upload/bloc/blog_upload_bloc.dart';
+import 'package:belog/features/blog/presentation/utils/cover_url.dart';
 import 'package:belog/features/blog/presentation/widgets/editor_field.dart';
 import 'package:belog/features/blog/presentation/widgets/draft_recovery_dialog.dart';
 import 'package:dotted_border/dotted_border.dart';
@@ -44,8 +45,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
   List<String> selectedTags = [];
   File? image;
   bool isNewImageSelected = false;
-  String? imageUrl;
-  DateTime? updatedAt;
+
+  /// MIME type of [image] when a new cover was picked; uploaded as the
+  /// object's contentType.
+  String? imageMimeType;
   int _draftRequestVersion = 0;
   late final BlogDraftStore _draftStore;
 
@@ -171,12 +174,22 @@ class _BlogEditorState extends State<BlogEditorPage> {
   }
 
   void selectImage() async {
-    final pickedImage = await pickImage();
-    if (pickedImage != null) {
-      setState(() {
-        image = pickedImage;
-        isNewImageSelected = true;
-      });
+    try {
+      final pickedImage = await pickImage();
+      if (pickedImage != null) {
+        setState(() {
+          image = pickedImage.file;
+          imageMimeType = pickedImage.mimeType;
+          isNewImageSelected = true;
+        });
+      }
+      // null = the user cancelled the picker: nothing to do.
+    } catch (_) {
+      // Picking failed (as opposed to being cancelled): surface it
+      // instead of silently keeping the old cover.
+      if (mounted) {
+        showSnackBar(context, '选择图片失败，请重试');
+      }
     }
   }
 
@@ -195,6 +208,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
             content: contentController.text.trim(),
             posterId: posterId,
             tags: selectedTags,
+            imageMimeType: imageMimeType,
           ),
         );
       } else if (widget.blog != null) {
@@ -205,6 +219,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
             title: titleController.text.trim(),
             content: contentController.text.trim(),
             tags: selectedTags,
+            imageMimeType: isNewImageSelected ? imageMimeType : null,
           ),
         );
       }
@@ -362,13 +377,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
           if (state is BlogUploadFailure) {
             showSnackBar(context, state.error);
           } else if (state is BlogUploadSuccess) {
-            if (widget.blog != null &&
-                isNewImageSelected &&
-                widget.blog!.imageUrl.isNotEmpty) {
-              PaintingBinding.instance.imageCache.evict(
-                Key(widget.blog!.imageUrl),
-              );
-            }
+            // No manual imageCache eviction needed: covers are served
+            // through versioned, cache-busting URLs (cover_url.dart), so
+            // the refreshed list/editor automatically fetches the new
+            // object.
             showSnackBar(context, widget.blog == null ? '上传成功' : '更新成功');
             // Drop the drafts that were published; keep anything typed
             // during the upload (see _clearPublishedDrafts).
@@ -427,8 +439,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
                                 child: CachedNetworkImage(
-                                  imageUrl:
-                                      '${widget.blog!.imageUrl}?v=${widget.blog?.updatedAt.microsecondsSinceEpoch ?? ''}',
+                                  // Versioned, cache-busting URL shared
+                                  // with the feed card and viewer page.
+                                  imageUrl: coverUrlOf(widget.blog!),
                                   fit: BoxFit.cover,
                                 ),
                               ),

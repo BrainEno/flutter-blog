@@ -6,6 +6,7 @@ import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_viewer/blog_viewer_cubit.dart';
+import 'package:belog/features/blog/presentation/utils/cover_url.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -135,7 +136,9 @@ class _ViewerScaffold extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   CachedNetworkImage(
-                    imageUrl: blog.imageUrl,
+                    // Versioned, cache-busting URL shared with the feed
+                    // card and editor (see cover_url.dart).
+                    imageUrl: coverUrlOf(blog),
                     fit: BoxFit.cover,
                   ),
                   Container(

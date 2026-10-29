@@ -9,17 +9,22 @@ import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 
 class EditUserInfoPage extends StatefulWidget {
   const EditUserInfoPage({super.key});
+
   @override
   State<EditUserInfoPage> createState() => _EditUserInfoPageState();
 }
 
 class _EditUserInfoPageState extends State<EditUserInfoPage> {
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
   final _websiteController = TextEditingController();
   File? image;
   bool isNewImageSelected = false;
+
+  /// MIME type of [image] when a new avatar was picked; uploaded as the
+  /// object's contentType.
+  String? avatarMimeType;
   String? avatarUrl;
+  String? email;
   DateTime? updatedAt;
   bool _isDisposed = false; // Add this flag
 
@@ -29,9 +34,9 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
     if (state is AppUserLoggedIn) {
       if (!_isDisposed) {
         _nameController.text = state.user.name;
-        _emailController.text = state.user.email;
         _websiteController.text = state.user.website;
         avatarUrl = state.user.avatarUrl;
+        email = state.user.email;
         updatedAt = state.user.updatedAt;
       }
     }
@@ -39,21 +44,41 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
   }
 
   void selectImage() async {
-    final pickedImage = await pickImage();
-    if (pickedImage != null && !_isDisposed) {
-      // check if disposed
-      setState(() {
-        image = pickedImage;
-        isNewImageSelected = true;
-      });
+    try {
+      final pickedImage = await pickImage();
+      if (pickedImage != null && !_isDisposed) {
+        // check if disposed
+        setState(() {
+          image = pickedImage.file;
+          avatarMimeType = pickedImage.mimeType;
+          isNewImageSelected = true;
+        });
+      }
+      // null = the user cancelled the picker: nothing to do.
+    } catch (_) {
+      // Picking failed (as opposed to being cancelled): surface it
+      // instead of silently keeping the old avatar.
+      if (mounted) {
+        showSnackBar(context, '选择图片失败，请重试');
+      }
     }
+  }
+
+  void _submit() {
+    context.read<UserEditBloc>().add(
+      UserEditSubmitted(
+        name: _nameController.text,
+        website: _websiteController.text,
+        avatar: isNewImageSelected ? image : null,
+        avatarMimeType: isNewImageSelected ? avatarMimeType : null,
+      ),
+    );
   }
 
   @override
   void dispose() {
     _isDisposed = true; // Set the flag
     _nameController.dispose();
-    _emailController.dispose();
     _websiteController.dispose();
     super.dispose();
   }
@@ -66,19 +91,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
         centerTitle: true,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: () {
-              context.read<UserEditBloc>().add(
-                UserEditSubmitted(
-                  name: _nameController.text,
-                  email: _emailController.text,
-                  website: _websiteController.text,
-                  avatar: isNewImageSelected ? image : null,
-                ),
-              );
-            },
-          ),
+          IconButton(icon: const Icon(Icons.check), onPressed: _submit),
         ],
       ),
       body: BlocConsumer<UserEditBloc, UserEditState>(
@@ -159,6 +172,20 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                   ),
                   keyboardType: TextInputType.url,
                 ),
+                const SizedBox(height: 16),
+                // Read-only e-mail row: the address changes only through
+                // the account-security flow (Supabase Auth confirmation).
+                InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: '邮箱',
+                    prefixIcon: Icon(Icons.email_outlined),
+                    helperText: '如需修改邮箱，请前往「我的-账号安全」',
+                  ),
+                  child: Text(
+                    (email == null || email!.isEmpty) ? '未设置' : email!,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ),
                 const SizedBox(height: 32),
                 // Save Button or Loading Indicator
                 if (state is UserEditLoading)
@@ -167,16 +194,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        context.read<UserEditBloc>().add(
-                          UserEditSubmitted(
-                            name: _nameController.text,
-                            email: _emailController.text,
-                            website: _websiteController.text,
-                            avatar: isNewImageSelected ? image : null,
-                          ),
-                        );
-                      },
+                      onPressed: _submit,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(

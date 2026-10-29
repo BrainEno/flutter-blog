@@ -30,6 +30,7 @@ class BlogRepositoryImpl implements BlogRepository {
     required String content,
     required String posterId,
     required List<String> tags,
+    String? imageMimeType,
   }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
@@ -47,11 +48,24 @@ class BlogRepositoryImpl implements BlogRepository {
 
       final imageUrl = await blogRemoteDataSource.uploadBlogImage(
         image: image,
-        blog: blogModel,
+        blogId: blogModel.id,
+        posterId: posterId,
+        mimeType: imageMimeType,
       );
       blogModel = blogModel.copyWith(imageUrl: imageUrl);
-      final blog = await blogRemoteDataSource.uploadBlog(blogModel);
-      return right(blog);
+      try {
+        final blog = await blogRemoteDataSource.uploadBlog(blogModel);
+        return right(blog);
+      } on ServerException catch (e) {
+        // The row insert failed: the freshly uploaded cover is already
+        // unreachable. Roll it back so it does not become an orphan; if
+        // the rollback itself fails, that orphan is logged, never silent.
+        await _removeCoverQuietly(
+          imageUrl,
+          reason: 'blog insert failed after cover upload',
+        );
+        return left(e.toFailure());
+      }
     } on ServerException catch (e) {
       return left(e.toFailure());
     }
@@ -151,19 +165,26 @@ class BlogRepositoryImpl implements BlogRepository {
     required String content,
     required List<String> tags,
     required File? image,
+    String? imageMimeType,
   }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
         return left(Failure('无法连接到网络'));
       }
       BlogModel blogToUpdate = await blogRemoteDataSource.getBlogById(blogId);
-
+      final oldImageUrl = blogToUpdate.imageUrl;
+      String? newImageUrl;
       if (image != null) {
-        final imageUrl = await blogRemoteDataSource.uploadBlogImage(
+        // Versioned path: the new cover is a NEW object, so the DB row
+        // can flip to it atomically; the old object is only removed
+        // after the update succeeds.
+        newImageUrl = await blogRemoteDataSource.uploadBlogImage(
           image: image,
-          blog: blogToUpdate,
+          blogId: blogId,
+          posterId: blogToUpdate.posterId,
+          mimeType: imageMimeType,
         );
-        blogToUpdate = blogToUpdate.copyWith(imageUrl: imageUrl);
+        blogToUpdate = blogToUpdate.copyWith(imageUrl: newImageUrl);
       }
       blogToUpdate = blogToUpdate.copyWith(
         id: blogId,
@@ -173,11 +194,49 @@ class BlogRepositoryImpl implements BlogRepository {
         updatedAt: DateTime.now(),
       );
 
-      final blogUpdated = await blogRemoteDataSource.editBlog(blogToUpdate);
-
-      return right(blogUpdated);
+      try {
+        final blogUpdated = await blogRemoteDataSource.editBlog(blogToUpdate);
+        if (newImageUrl != null &&
+            oldImageUrl.isNotEmpty &&
+            oldImageUrl != newImageUrl) {
+          // The DB row now points at the new cover: retire the old
+          // object. Best-effort - a failure leaves a logged orphan.
+          await _removeCoverQuietly(
+            oldImageUrl,
+            reason: 'cover replaced by edit',
+          );
+        }
+        return right(blogUpdated);
+      } on ServerException catch (e) {
+        // The update failed: roll back the freshly uploaded cover so it
+        // does not orphan next to the still-referenced old one.
+        if (newImageUrl != null) {
+          await _removeCoverQuietly(
+            newImageUrl,
+            reason: 'blog update failed after cover upload',
+          );
+        }
+        return left(e.toFailure());
+      }
     } on ServerException catch (e) {
       return left(e.toFailure());
+    }
+  }
+
+  /// Best-effort cover removal with a structured, auditable log on
+  /// failure - cleanup problems are never swallowed silently.
+  Future<void> _removeCoverQuietly(
+    String publicUrl, {
+    required String reason,
+  }) async {
+    try {
+      await blogRemoteDataSource.removeBlogImage(publicUrl);
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'orphan cover left behind ($reason): $publicUrl',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 

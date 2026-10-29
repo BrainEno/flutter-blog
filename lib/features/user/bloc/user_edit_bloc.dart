@@ -15,8 +15,8 @@ class UserEditBloc extends Bloc<UserEditEvent, UserEditState> {
   UserEditBloc({
     required EditUserUseCase editUserUseCase,
     required this.appUserCubit,
-  })  : _editUserUseCase = editUserUseCase,
-        super(UserEditInitial()) {
+  }) : _editUserUseCase = editUserUseCase,
+       super(UserEditInitial()) {
     on<UserEditSubmitted>(_onEditUserSubmitted);
   }
 
@@ -33,8 +33,8 @@ class UserEditBloc extends Bloc<UserEditEvent, UserEditState> {
     final params = EditUserParams(
       userId: (appUserCubit.state as AppUserLoggedIn).user.id,
       name: event.name,
-      email: event.email,
       avatar: event.avatar,
+      avatarMimeType: event.avatarMimeType,
       website: event.website ?? '',
     );
 

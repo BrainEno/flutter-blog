@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:belog/core/theme/app_pallete.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/presentation/utils/cover_url.dart';
 import 'package:go_router/go_router.dart';
 
 class BlogCard extends StatefulWidget {
@@ -77,9 +78,9 @@ class _BlogCardState extends State<BlogCard>
                   ),
                 ],
                 image: DecorationImage(
-                  image: CachedNetworkImageProvider(
-                    '${widget.blog.imageUrl}?v=${widget.blog.updatedAt.microsecondsSinceEpoch}',
-                  ),
+                  // Versioned, cache-busting URL shared with the viewer
+                  // page and editor (see cover_url.dart).
+                  image: CachedNetworkImageProvider(coverUrlOf(widget.blog)),
                   fit: BoxFit.cover,
                 ),
                 gradient: LinearGradient(

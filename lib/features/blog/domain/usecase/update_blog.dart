@@ -13,11 +13,13 @@ class UpdateBlog implements UseCase<Blog, UpdateBlogParams> {
   @override
   Future<Either<Failure, Blog>> call(UpdateBlogParams params) async {
     return await blogRepository.editBlog(
-        blogId: params.blogId,
-        image: params.image,
-        title: params.title,
-        content: params.content,
-        tags: params.tags);
+      blogId: params.blogId,
+      image: params.image,
+      title: params.title,
+      content: params.content,
+      tags: params.tags,
+      imageMimeType: params.imageMimeType,
+    );
   }
 }
 
@@ -27,6 +29,7 @@ class UpdateBlogParams {
   final String title;
   final String content;
   final List<String> tags;
+  final String? imageMimeType;
 
   UpdateBlogParams({
     required this.blogId,
@@ -34,5 +37,6 @@ class UpdateBlogParams {
     required this.title,
     required this.content,
     required this.tags,
+    this.imageMimeType,
   });
 }
