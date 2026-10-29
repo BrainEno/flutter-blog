@@ -20,6 +20,18 @@
 - CI creates a temporary, non-secret `env.json` fixture with a non-routable URL for compilation. This fixture is not a valid backend configuration and must not be used for online smoke-test claims.
 - Artifact retention is 14 days to retain enough evidence for the next agent iteration without unbounded storage growth.
 
+## CI helper scripts
+
+The repository's CI helpers do not run in the Flutter app and do not require Python:
+
+- `tool/ci/check_env_asset_contract.sh` checks for a tracked root `.env` and a literal `.env` entry in `pubspec.yaml`. This is a narrow configuration guard, not a general secret scanner or proof that all assets are safe.
+- `tool/ci/validate_agent_contract.sh` checks that the documented agent workflow and existing CI/release guardrails are present. It is a textual guard, not a replacement for branch protection or a full YAML security audit.
+- `tool/ci/annotate_failure.sh` selects bounded analyzer/Android failure excerpts for GitHub annotations; full logs remain in the existing artifacts.
+
+CI runs `bash tool/ci/test_ci_scripts.sh` using temporary, non-secret fixtures to exercise both passing and failing cases. These helpers use Bash, Git, grep, sed, and awk on the Linux CI runner; no separate language runtime or third-party package is needed. Run the same command locally on a compatible environment when changing the helpers.
+
+The production release validator (`tool/release/validate_release.py`) and its tests still use Python's standard library. They validate release versions, key types, public IP/URL restrictions and signing configuration, and write a private JSON fixture without exposing secrets. Replacing that security-sensitive parsing without equivalent negative tests could weaken release safeguards; Python is retained for this separate production workflow.
+
 ## Interpreting failures
 
 Previous runs exposed failures tracked by Issues #4 and #5; consult the latest run rather than assuming they still apply. The first workflow run also found legacy formatting drift: 59 Dart files were reported by the repository-wide formatter audit. To avoid turning a small, focused PR into an unrelated 59-file reformat, the blocking format gate checks every Dart file changed by that PR, while the complete repository audit is retained as a diagnostic artifact/warning. A dedicated formatting normalization can later make the whole-repository check blocking.
