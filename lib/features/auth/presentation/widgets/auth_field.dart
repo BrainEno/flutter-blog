@@ -74,14 +74,23 @@ class AuthField extends StatelessWidget {
           horizontal: 20.0,
         ),
         border: _authFieldBorder(
-            context, isDarkMode, borderColor), // Theme aware border
+          context,
+          isDarkMode,
+          borderColor,
+        ), // Theme aware border
         enabledBorder: _authFieldBorder(
-            context, isDarkMode, borderColor), // Theme aware enabled border
+          context,
+          isDarkMode,
+          borderColor,
+        ), // Theme aware enabled border
         focusedBorder: _authFieldFocusedBorder(
-            context, focusedBorderColor), // Focused border remains gradient
+          context,
+          focusedBorderColor,
+        ), // Focused border remains gradient
         errorBorder: _authFieldErrorBorder(context), // Error border remains red
-        focusedErrorBorder:
-            _authFieldErrorBorder(context), // Focused error border remains red
+        focusedErrorBorder: _authFieldErrorBorder(
+          context,
+        ), // Focused error border remains red
       ),
       validator: _effectiveValidator,
     );
@@ -98,7 +107,10 @@ class AuthField extends StatelessWidget {
 
   // Theme-aware border for the auth field
   OutlineInputBorder _authFieldBorder(
-      BuildContext context, bool isDarkMode, Color? borderColor) {
+    BuildContext context,
+    bool isDarkMode,
+    Color? borderColor,
+  ) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
       borderSide: BorderSide(
@@ -112,7 +124,9 @@ class AuthField extends StatelessWidget {
 
   // Focused border remains Gradient independent of theme
   OutlineInputBorder _authFieldFocusedBorder(
-      BuildContext context, Color? focusedBorderColor) {
+    BuildContext context,
+    Color? focusedBorderColor,
+  ) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
       borderSide: BorderSide(

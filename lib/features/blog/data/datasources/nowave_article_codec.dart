@@ -65,8 +65,7 @@ List<String> splitContentParagraphs(String content) {
   if (bounded.any((block) => block.length > _kMaxBlockTextLength)) {
     final result = <String>[];
     for (final block in bounded) {
-      for (var start = 0; start < block.length;
-          start += _kMaxBlockTextLength) {
+      for (var start = 0; start < block.length; start += _kMaxBlockTextLength) {
         final end = (start + _kMaxBlockTextLength) < block.length
             ? start + _kMaxBlockTextLength
             : block.length;
@@ -89,10 +88,7 @@ List<Map<String, dynamic>> blogToContentBlocks({
 }) {
   final paragraphs = splitContentParagraphs(content);
   if (paragraphs.isEmpty) {
-    throw const ServerException(
-      '正文不能为空',
-      kind: FailureKind.validation,
-    );
+    throw const ServerException('正文不能为空', kind: FailureKind.validation);
   }
   final uuid = const Uuid();
   final blocks = <Map<String, dynamic>>[
@@ -145,8 +141,5 @@ ExtractedBlogContent extractBlogContent(List<Map<String, dynamic>> blocks) {
         break;
     }
   }
-  return ExtractedBlogContent(
-    content: parts.join('\n\n'),
-    coverUrl: coverUrl,
-  );
+  return ExtractedBlogContent(content: parts.join('\n\n'), coverUrl: coverUrl);
 }

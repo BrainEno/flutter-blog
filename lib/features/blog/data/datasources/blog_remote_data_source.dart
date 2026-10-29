@@ -243,10 +243,9 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       // current server state is read first and the opposite is written.
       // The response is the authoritative post-state.
       final current = await _likeInfo(blogId);
-      final data = await client.putJson(
-        '/articles/$blogId/like',
-        {'liked': !current},
-      );
+      final data = await client.putJson('/articles/$blogId/like', {
+        'liked': !current,
+      });
       final map = _articleMap(data);
       return map['likedByViewer'] as bool? ?? !current;
     } catch (e) {
@@ -317,10 +316,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
 
   Map<String, dynamic> _articleMap(dynamic data) {
     if (data is Map<String, dynamic>) return data;
-    throw const ServerException(
-      '服务器返回了无法解析的数据',
-      kind: FailureKind.server,
-    );
+    throw const ServerException('服务器返回了无法解析的数据', kind: FailureKind.server);
   }
 
   List<BlogModel> _articleList(dynamic data) {
@@ -330,9 +326,6 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           .map(BlogModel.fromNowaveArticle)
           .toList();
     }
-    throw const ServerException(
-      '服务器返回了无法解析的数据',
-      kind: FailureKind.server,
-    );
+    throw const ServerException('服务器返回了无法解析的数据', kind: FailureKind.server);
   }
 }

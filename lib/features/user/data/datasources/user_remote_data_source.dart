@@ -46,16 +46,10 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
   }
 
   @override
-  Future<String> uploadAvatar({
-    required File image,
-    String? mimeType,
-  }) async {
+  Future<String> uploadAvatar({required File image, String? mimeType}) async {
     try {
       final bytes = await image.readAsBytes();
-      final asset = await client.uploadMedia(
-        bytes,
-        mimeType ?? 'image/jpeg',
-      );
+      final asset = await client.uploadMedia(bytes, mimeType ?? 'image/jpeg');
       return client.mediaUri(asset.id).toString();
     } catch (e) {
       throw mapToServerException(e);

@@ -122,10 +122,7 @@ Future<void> initDependencies() async {
   );
 }
 
-void _initAuth(
-  NowaveSessionManager sessionManager,
-  NowaveApiClient apiClient,
-) {
+void _initAuth(NowaveSessionManager sessionManager, NowaveApiClient apiClient) {
   // Datasource
   serviceLocator
     ..registerFactory<AuthRemoteDataSource>(
@@ -218,10 +215,7 @@ Future<void> _initBlog(NowaveApiClient apiClient) async {
     );
 }
 
-void _initUser(
-  NowaveApiClient apiClient,
-  NowaveSessionManager sessionManager,
-) {
+void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {
   // Datasource
   serviceLocator
     ..registerFactory<UserRemoteDataSource>(
