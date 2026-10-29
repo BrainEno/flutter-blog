@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/features/blog/data/datasources/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
@@ -11,6 +13,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockUploadBloc extends Mock implements BlogUploadBloc {}
+
+/// Mock that records dispatched events instead of relying on void stubs.
+class RecordingUploadBloc extends Mock implements BlogUploadBloc {
+  final List<BlogUploadEvent> events = [];
+
+  @override
+  void add(BlogUploadEvent event) => events.add(event);
+}
 
 class FakeDraftStore implements BlogDraftStore {
   final Map<String?, BlogDraft> drafts = {};
@@ -33,6 +43,7 @@ class FakeDraftStore implements BlogDraftStore {
   @override
   Future<void> save(BlogDraft draft) async {
     saved = draft;
+    savedDrafts.add(draft);
     if (failSave) throw StateError('save failed');
     if (pendingSave != null) await pendingSave!.future;
   }
@@ -41,6 +52,19 @@ class FakeDraftStore implements BlogDraftStore {
   Future<bool> discardIfUnchanged(BlogDraft draft) async {
     discarded = draft;
     return true;
+  }
+
+  int deleteCalls = 0;
+  String? deletedScope;
+  DateTime? deletedOlderThan;
+  List<BlogDraft> savedDrafts = [];
+
+  @override
+  Future<int> deleteDraftsFor(String? blogId, {DateTime? olderThan}) async {
+    deleteCalls++;
+    deletedScope = blogId;
+    deletedOlderThan = olderThan;
+    return 1;
   }
 }
 
@@ -81,6 +105,37 @@ Future<void> openEditor(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+/// Opens the editor with a bloc whose state stream we control.
+Future<RecordingUploadBloc> openEditorLive(
+  WidgetTester tester,
+  FakeDraftStore store, {
+  Blog? blog,
+  required StreamController<BlogUploadState> states,
+}) async {
+  final bloc = RecordingUploadBloc();
+  when(() => bloc.state).thenReturn(BlogUploadInitial());
+  when(() => bloc.stream).thenAnswer((_) => states.stream);
+  // saveBlog() reads the logged-in user id even on the update path.
+  final appUser = AppUserCubit()
+    ..updateUser(
+      User(id: 'user', email: 'a@b.c', name: 'n', updatedAt: DateTime(2024)),
+    );
+  addTearDown(appUser.close);
+  await tester.pumpWidget(
+    MaterialApp(
+      home: MultiBlocProvider(
+        providers: [
+          BlocProvider<BlogUploadBloc>.value(value: bloc),
+          BlocProvider<AppUserCubit>.value(value: appUser),
+        ],
+        child: BlogEditorPage(blog: blog, draftStore: store),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return bloc;
 }
 
 String titleText(WidgetTester tester) => tester
@@ -171,5 +226,117 @@ void main() {
     store.pendingSave!.completeError(StateError('save failed'));
     await tester.pumpAndSettle();
     expect(find.text('草稿保存失败，请重试'), findsOneWidget);
+  });
+
+  testWidgets('auto-save writes a draft after 2s of inactivity', (
+    tester,
+  ) async {
+    final store = FakeDraftStore();
+    final states = StreamController<BlogUploadState>.broadcast();
+    final bloc = await openEditorLive(tester, store, states: states);
+
+    await tester.enterText(find.byType(TextFormField).first, '自动保存标题');
+    await tester.pump();
+    expect(store.saved, isNull, reason: 'nothing saved before the delay');
+
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(store.savedDrafts, isNotEmpty);
+    expect(store.savedDrafts.last.title, '自动保存标题');
+    expect(find.text('草稿已自动保存'), findsOneWidget);
+    // Auto-save must never publish anything.
+    expect(bloc.events, isEmpty);
+    await states.close();
+  });
+
+  testWidgets('blank editor does not auto-save', (tester) async {
+    final store = FakeDraftStore();
+    final states = StreamController<BlogUploadState>.broadcast();
+    await openEditorLive(tester, store, states: states);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    expect(store.savedDrafts, isEmpty);
+    await states.close();
+  });
+
+  testWidgets('publish success clears only drafts older than the request', (
+    tester,
+  ) async {
+    final store = FakeDraftStore();
+    final states = StreamController<BlogUploadState>.broadcast();
+    final bloc = await openEditorLive(
+      tester,
+      store,
+      blog: makeBlog('article-a'),
+      states: states,
+    );
+
+    // Edit something so a draft exists before publishing.
+    await tester.enterText(find.byType(TextFormField).first, '发布前修改');
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(store.savedDrafts, isNotEmpty);
+    final savesBeforePublish = store.savedDrafts.length;
+
+    await tester.tap(find.text('发布'));
+    await tester.pump();
+    expect(bloc.events.single, isA<UpdateBlogEvent>());
+
+    states.add(BlogUploadSuccess());
+    await tester.pumpAndSettle();
+
+    expect(store.deleteCalls, 1);
+    expect(store.deletedScope, 'article-a');
+    expect(
+      store.deletedOlderThan,
+      isNotNull,
+      reason: 'only pre-publish drafts are cleared',
+    );
+    expect(
+      store.savedDrafts.length,
+      savesBeforePublish,
+      reason: 'no dispose flush may resurrect the published content',
+    );
+    await states.close();
+  });
+
+  testWidgets('delete success clears all drafts of the article and never '
+      'resurrects them', (tester) async {
+    final store = FakeDraftStore()
+      ..drafts['article-a'] = makeDraft('article-a', '待删草稿');
+    final states = StreamController<BlogUploadState>.broadcast();
+    final bloc = await openEditorLive(
+      tester,
+      store,
+      blog: makeBlog('article-a'),
+      states: states,
+    );
+    // Discard the recovery dialog so the editor is interactive.
+    await tester.tap(find.text('丢弃草稿'));
+    await tester.pumpAndSettle();
+
+    // Unsaved edits that would normally flush on dispose.
+    await tester.enterText(find.byType(TextFormField).first, '删除前的编辑');
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除文章'));
+    await tester.pump();
+    expect(bloc.events.single, isA<DeleteBlogEvent>());
+
+    states.add(BlogDeleteSuccess());
+    await tester.pumpAndSettle();
+
+    expect(store.deleteCalls, 1);
+    expect(store.deletedScope, 'article-a');
+    expect(store.deletedOlderThan, isNull, reason: 'all drafts go');
+    expect(
+      store.savedDrafts.where((d) => d.blogId == 'article-a'),
+      isEmpty,
+      reason: 'dispose flush must not resurrect a draft for a deleted article',
+    );
+    await states.close();
   });
 }

@@ -73,4 +73,21 @@ class SqliteBlogDraftStore implements BlogDraftStore {
     );
     return deleted == 1;
   }
+
+  @override
+  Future<int> deleteDraftsFor(String? blogId, {DateTime? olderThan}) async {
+    if (olderThan == null) {
+      return database.customUpdate(
+        'DELETE FROM drafts WHERE blog_id IS ?',
+        variables: [Variable<String>(blogId)],
+      );
+    }
+    return database.customUpdate(
+      'DELETE FROM drafts WHERE blog_id IS ? AND updated_at <= ?',
+      variables: [
+        Variable<String>(blogId),
+        Variable<int>(olderThan.microsecondsSinceEpoch),
+      ],
+    );
+  }
 }

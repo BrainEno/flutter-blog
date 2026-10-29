@@ -1,3 +1,5 @@
+import 'package:belog/core/utils/app_logger.dart';
+
 Future<T> retryOnConnectionClosed<T>(
   Future<T> Function() request, {
   int maxRetries = 3,
@@ -7,12 +9,12 @@ Future<T> retryOnConnectionClosed<T>(
     try {
       return await request();
     } catch (e) {
-      if (e
-              .toString()
-              .contains('Connection closed before full header was received') &&
+      if (e.toString().contains(
+            'Connection closed before full header was received',
+          ) &&
           retries < maxRetries) {
         retries++;
-        print('Retrying... Attempt $retries');
+        AppLogger.debug('Connection closed; retry attempt $retries');
         await Future.delayed(Duration(seconds: 1));
       } else {
         rethrow;

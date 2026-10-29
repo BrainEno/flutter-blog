@@ -1,10 +1,12 @@
-import 'package:belog/core/theme/app_pallete.dart';
-import 'package:belog/core/utils/show_snackbar.dart';
-import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'dart:async';
+
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+
+/// How long the page waits after a keystroke before dispatching a search.
+const Duration _kSearchDebounce = Duration(milliseconds: 300);
 
 class SearchBlogPage extends StatefulWidget {
   const SearchBlogPage({super.key});
@@ -15,17 +17,48 @@ class SearchBlogPage extends StatefulWidget {
 
 class _SearchBlogPageState extends State<SearchBlogPage> {
   final TextEditingController _searchController = TextEditingController();
-  List<Blog> _searchResults = [];
+  Timer? _debounce;
 
-  void _onSearch(String query) {
-    // Simulate search results (replace with your actual search logic)
-    setState(() {
-      if (query.isNotEmpty) {
-        context.read<BlogSearchBloc>().add(SearchBlogsEvent(query: query));
-      } else {
-        _searchResults = [];
-      }
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onQueryChanged);
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Debounced search-as-you-type: only the last query within the debounce
+  /// window is dispatched; the bloc additionally discards out-of-order
+  /// responses.
+  void _onQueryChanged() {
+    _debounce?.cancel();
+    // Rebuild so the clear button appears/disappears with the text.
+    setState(() {});
+    final query = _searchController.text.trim();
+    if (query.isEmpty) {
+      // Clear immediately; no point waiting out the debounce.
+      context.read<BlogSearchBloc>().add(const SearchBlogsCleared());
+      return;
+    }
+    _debounce = Timer(_kSearchDebounce, () {
+      if (!mounted) return;
+      context.read<BlogSearchBloc>().add(SearchBlogsEvent(query: query));
     });
+  }
+
+  void _onSubmitted(String query) {
+    _debounce?.cancel();
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      context.read<BlogSearchBloc>().add(const SearchBlogsCleared());
+      return;
+    }
+    context.read<BlogSearchBloc>().add(SearchBlogsEvent(query: trimmed));
   }
 
   @override
@@ -43,99 +76,93 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                 const Text('Bottom Think'),
               ],
             ),
-            SizedBox(height: 20),
-            Container(
-              decoration: BoxDecoration(
-                color: AppPallete.greyColor.withAlpha((0.2 * 255).toInt()),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onSubmitted: _onSearch,
-                decoration: InputDecoration(
-                  hintText: '搜索',
-                  border: InputBorder.none,
-                  hintStyle: TextStyle(
-                    color: AppPallete.whiteColor.withAlpha(70),
-                  ),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16),
-                  prefixIcon: Icon(Icons.search),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(Icons.clear),
-                          onPressed: () {
-                            setState(() {
-                              _searchController.clear();
-                              _searchResults = [];
-                            });
-                          },
-                        )
-                      : null,
+            const SizedBox(height: 10),
+            // Bound the query length; the bloc truncates defensively too.
+            TextField(
+              controller: _searchController,
+              maxLength: kMaxSearchQueryLength,
+              textInputAction: TextInputAction.search,
+              onSubmitted: _onSubmitted,
+              decoration: InputDecoration(
+                hintText: '搜索标题...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: _searchController.clear,
+                      ),
+                counterText: '',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
                 ),
-                autofocus: false,
               ),
             ),
           ],
         ),
       ),
-      body: _searchController.text.isEmpty
-          ? Center(
+      body: BlocConsumer<BlogSearchBloc, BlogSearchState>(
+        listener: (context, state) {
+          if (state is BlogSearchFailure) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text('搜索失败：${state.error}'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+          }
+        },
+        builder: (context, state) {
+          if (state is BlogSearchInitial) {
+            return const Center(child: Text('输入关键词，搜索你感兴趣的文章'));
+          }
+          if (state is BlogSearchLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (state is BlogSearchFailure) {
+            return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.search, size: 64),
-                  SizedBox(height: 16),
-                  Text('查找文章...', style: TextStyle(fontSize: 18)),
+                  Text('搜索失败：${state.error}'),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () => _onSubmitted(_searchController.text),
+                    child: const Text('重试'),
+                  ),
                 ],
               ),
-            )
-          : _searchResults.isEmpty
-          ? BlocConsumer<BlogSearchBloc, BlogSearchState>(
-              listener: (context, state) {
-                if (state is BlogSearchFailure) {
-                  showSnackBar(context, state.error);
-                } else if (state is BlogSearchSuccess) {
-                  setState(() {
-                    _searchResults = state.blogs;
-                  });
-                }
-              },
-              builder: (context, state) {
-                return BlocBuilder<BlogSearchBloc, BlogSearchState>(
-                  builder: (context, state) {
-                    if (state is BlogSearchFailure ||
-                        (state is BlogSearchSuccess &&
-                            _searchResults.isEmpty)) {
-                      return Center(
-                        child: Text('暂时没有相关结果', style: TextStyle(fontSize: 18)),
-                      );
-                    }
-
-                    return Center(
-                      child: Text('加载中...', style: TextStyle(fontSize: 18)),
-                    );
-                  },
-                );
-              },
-            )
-          : ListView.separated(
-              itemCount: _searchResults.length,
-              separatorBuilder: (context, index) => Divider(),
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(
-                    _searchResults[index].title,
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            );
+          }
+          final blogs = (state as BlogSearchSuccess).blogs;
+          if (blogs.isEmpty) {
+            return const Center(child: Text('暂时没有相关结果'));
+          }
+          return ListView.separated(
+            itemCount: blogs.length,
+            separatorBuilder: (context, index) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final blog = blogs[index];
+              return ListTile(
+                title: Text(
+                  blog.title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
-                  subtitle: Text('发布者：${_searchResults[index].posterName}'),
-                  leading: Icon(Icons.article),
-                  onTap: () {
-                    final blog = _searchResults[index];
-                    context.push('/search/view/${blog.id}', extra: blog);
-                  },
-                );
-              },
-            ),
+                ),
+                subtitle: Text('发布者：${blog.posterName ?? ''}'),
+                leading: const Icon(Icons.article),
+                onTap: () {
+                  context.push('/search/view/${blog.id}', extra: blog);
+                },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

@@ -24,11 +24,14 @@ class AuthRepositoryImpl implements AuthRepository {
           return left(Failure('请登录账户'));
         }
 
-        return right(UserModel(
+        return right(
+          UserModel(
             id: session.user.id,
             email: session.user.email ?? '',
             name: '',
-            updatedAt: DateTime.parse(session.user.updatedAt as String)));
+            updatedAt: DateTime.parse(session.user.updatedAt as String),
+          ),
+        );
       }
       final userModel = await remoteDataSource.getCurrentUserData();
       if (userModel == null) {
@@ -36,26 +39,38 @@ class AuthRepositoryImpl implements AuthRepository {
       }
       return right(userModel);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return left(e.toFailure());
     }
   }
 
   @override
-  Future<Either<Failure, User>> loginWithEmailPassword(
-      {required String email, required String password}) async {
+  Future<Either<Failure, User>> loginWithEmailPassword({
+    required String email,
+    required String password,
+  }) async {
     // implement loginWithEmailPassword
-    return _getUser(() async => await remoteDataSource.loginWithEmailPassword(
-        email: email, password: password));
+    return _getUser(
+      () async => await remoteDataSource.loginWithEmailPassword(
+        email: email,
+        password: password,
+      ),
+    );
   }
 
   @override
-  Future<Either<Failure, User>> signUpWithEmailPassword(
-      {required String name,
-      required String email,
-      required String password}) async {
+  Future<Either<Failure, User>> signUpWithEmailPassword({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
     //implement signUpWithEmailPassword
-    return _getUser(() async => await remoteDataSource.signUpWithEmailPassword(
-        name: name, email: email, password: password));
+    return _getUser(
+      () async => await remoteDataSource.signUpWithEmailPassword(
+        name: name,
+        email: email,
+        password: password,
+      ),
+    );
   }
 
   Future<Either<Failure, User>> _getUser(Future<User> Function() fn) async {
@@ -66,9 +81,9 @@ class AuthRepositoryImpl implements AuthRepository {
       final user = await fn();
       return right(user);
     } on sb.AuthException catch (e) {
-      return left(Failure(e.message));
+      return left(Failure.auth(e.message, cause: e));
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return left(e.toFailure());
     }
   }
 
@@ -81,7 +96,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await remoteDataSource.logout();
       return right(null);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return left(e.toFailure());
     }
   }
 }

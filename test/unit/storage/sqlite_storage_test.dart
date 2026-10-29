@@ -70,6 +70,87 @@ void main() {
     expect(await SqliteBlogDraftStore(db).load('a'), isNull);
   });
 
+  test('deleteDraftsFor clears one scope without touching others', () async {
+    await db.importLegacyIfNeeded(dir);
+    final store = SqliteBlogDraftStore(db);
+    await store.save(
+      BlogDraft(
+        blogId: 'a',
+        title: 'a',
+        content: 'c',
+        tags: [],
+        updatedAt: DateTime.utc(2024),
+      ),
+    );
+    await store.save(
+      BlogDraft(
+        blogId: 'b',
+        title: 'b',
+        content: 'c',
+        tags: [],
+        updatedAt: DateTime.utc(2024),
+      ),
+    );
+    await store.save(
+      BlogDraft(
+        blogId: null,
+        title: 'new',
+        content: 'c',
+        tags: [],
+        updatedAt: DateTime.utc(2024),
+      ),
+    );
+
+    final deleted = await store.deleteDraftsFor('a');
+    expect(deleted, 1);
+    expect(await store.load('a'), isNull);
+    expect((await store.load('b'))!.title, 'b');
+    expect((await store.load(null))!.title, 'new');
+  });
+
+  test(
+    'deleteDraftsFor with olderThan keeps drafts edited during upload',
+    () async {
+      await db.importLegacyIfNeeded(dir);
+      final store = SqliteBlogDraftStore(db);
+      final publishStarted = DateTime.utc(2025, 1, 1);
+
+      // The store keeps one row per scope, so different scopes play the two
+      // roles: an old draft that predates a publish, and one whose updated_at
+      // is newer because the user typed while the upload was in flight.
+      await store.save(
+        BlogDraft(
+          blogId: 'stale',
+          title: 'pre-publish',
+          content: 'c',
+          tags: [],
+          updatedAt: DateTime.utc(2024),
+        ),
+      );
+      await store.save(
+        BlogDraft(
+          blogId: 'fresh',
+          title: 'typed-during-upload',
+          content: 'c',
+          tags: [],
+          updatedAt: DateTime.utc(2025, 6, 1),
+        ),
+      );
+
+      expect(
+        await store.deleteDraftsFor('stale', olderThan: publishStarted),
+        1,
+      );
+      expect(await store.load('stale'), isNull);
+
+      expect(
+        await store.deleteDraftsFor('fresh', olderThan: publishStarted),
+        0,
+      );
+      expect((await store.load('fresh'))!.title, 'typed-during-upload');
+    },
+  );
+
   test(
     'drafts are scoped and stale snapshots cannot discard newer work',
     () async {

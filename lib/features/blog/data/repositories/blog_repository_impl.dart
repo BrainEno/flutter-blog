@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
@@ -52,7 +53,7 @@ class BlogRepositoryImpl implements BlogRepository {
       final blog = await blogRemoteDataSource.uploadBlog(blogModel);
       return right(blog);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return left(e.toFailure());
     }
   }
 
@@ -68,7 +69,7 @@ class BlogRepositoryImpl implements BlogRepository {
       await blogLocalDataSource.uploadLocalBlogs(blogs: blogs);
       return right(blogs);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return left(e.toFailure());
     }
   }
 
@@ -81,7 +82,7 @@ class BlogRepositoryImpl implements BlogRepository {
       final blogs = await blogRemoteDataSource.getBlogsByPosterId(userId);
       return right(blogs);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return left(e.toFailure());
     }
   }
 
@@ -99,7 +100,7 @@ class BlogRepositoryImpl implements BlogRepository {
       await blogLocalDataSource.uploadLocalBlogs(blogs: [blog]);
       return right(blog);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return left(e.toFailure());
     }
   }
 
@@ -112,7 +113,7 @@ class BlogRepositoryImpl implements BlogRepository {
       final blogs = await blogRemoteDataSource.getBlogsByTag(tag);
       return right(blogs);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return left(e.toFailure());
     }
   }
 
@@ -126,7 +127,7 @@ class BlogRepositoryImpl implements BlogRepository {
       final blogs = await blogRemoteDataSource.searchBlogs(query);
       return right(blogs);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return left(e.toFailure());
     }
   }
 
@@ -139,7 +140,7 @@ class BlogRepositoryImpl implements BlogRepository {
       final res = await blogRemoteDataSource.deleteBlog(blogId);
       return right(res);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return left(e.toFailure());
     }
   }
 
@@ -176,7 +177,7 @@ class BlogRepositoryImpl implements BlogRepository {
 
       return right(blogUpdated);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return left(e.toFailure());
     }
   }
 
@@ -193,8 +194,13 @@ class BlogRepositoryImpl implements BlogRepository {
       final res = await blogRemoteDataSource.toggleLikeBlog(userId, blogId);
       return right(res);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
-    } catch (_) {
+      return left(e.toFailure());
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'toggleLikeBlog failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
       return left(Failure('收藏操作失败，请稍后重试'));
     }
   }
@@ -211,8 +217,9 @@ class BlogRepositoryImpl implements BlogRepository {
       final res = await blogRemoteDataSource.isBlogLikedByUser(userId, blogId);
       return right(res);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
-    } catch (_) {
+      return left(e.toFailure());
+    } catch (e, stackTrace) {
+      AppLogger.error('isBlogLiked failed', error: e, stackTrace: stackTrace);
       return left(Failure('无法获取收藏状态，请稍后重试'));
     }
   }
@@ -226,8 +233,13 @@ class BlogRepositoryImpl implements BlogRepository {
       final res = await blogRemoteDataSource.getUserLikedBlogs(userId);
       return right(res);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
-    } catch (_) {
+      return left(e.toFailure());
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'getUserLikedBlogs failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
       return left(Failure('无法获取收藏列表，请稍后重试'));
     }
   }

@@ -1,4 +1,7 @@
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:belog/core/theme/theme.dart';
+import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
@@ -10,6 +13,7 @@ import 'package:go_router/go_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _installGlobalErrorHandlers();
 
   await initDependencies();
   // Restore a persisted Supabase session before the first frame so the
@@ -26,6 +30,30 @@ void main() async {
       child: const BelogApp(),
     ),
   );
+}
+
+/// Routes framework and platform errors into the app logger.
+///
+/// No analytics/telemetry sink exists; this exists so failures are never
+/// fully silent during development, and so async platform errors do not
+/// crash-loop the app in release builds.
+void _installGlobalErrorHandlers() {
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    AppLogger.error(
+      'Unhandled framework error',
+      error: details.exception,
+      stackTrace: details.stack,
+    );
+  };
+  PlatformDispatcher.instance.onError = (error, stackTrace) {
+    AppLogger.error(
+      'Unhandled platform error',
+      error: error,
+      stackTrace: stackTrace,
+    );
+    return true;
+  };
 }
 
 /// Root widget: theme plus routing.

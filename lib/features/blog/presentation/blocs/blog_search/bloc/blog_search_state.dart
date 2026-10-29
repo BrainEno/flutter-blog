@@ -1,10 +1,17 @@
 part of 'blog_search_bloc.dart';
 
-abstract class BlogSearchState {}
+sealed class BlogSearchState {
+  const BlogSearchState();
+}
 
-class BlogSearchInitial extends BlogSearchState {}
+/// Idle: no query entered yet.
+class BlogSearchInitial extends BlogSearchState {
+  const BlogSearchInitial();
+}
 
-class BlogSearchLoading extends BlogSearchState {}
+class BlogSearchLoading extends BlogSearchState {
+  const BlogSearchLoading();
+}
 
 class BlogSearchSuccess extends BlogSearchState {
   final List<Blog> blogs;
