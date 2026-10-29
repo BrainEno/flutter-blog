@@ -1,0 +1,81 @@
+name: Dev checks (arena branch only)
+
+on:
+  push:
+    branches: ['arena/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dev-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.47.8"
+  BELOG_QA_BUILD: "true"
+
+jobs:
+  dev-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up pinned Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          pub-cache: true
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Diagnose formatting of changed Dart files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -d '' dart_files < <(git diff --name-only -z --diff-filter=ACMR origin/main...HEAD -- '*.dart')
+          echo "changed dart files: ${#dart_files[@]}"
+          if (( ${#dart_files[@]} == 0 )); then
+            echo "No Dart files changed."
+          else
+            printf 'Formatting check: %s\n' "${dart_files[@]}"
+            dart format --output=none "${dart_files[@]}" 2>&1 | tee build-reports-format.txt
+          fi
+
+      - name: Analyze
+        run: |
+          flutter analyze --fatal-infos 2>&1 | tee build-reports-analyze.txt
+
+      - name: Test
+        run: |
+          flutter test --concurrency=1 --reporter expanded 2>&1 | tee build-reports-test.txt
+
+      - name: Push logs back to the branch
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "arena-dev-checks"
+          git config user.email "actions@users.noreply.github.com"
+          git add build-reports-*.txt || true
+          if git diff --cached --quiet; then
+            echo "nothing to push"
+            exit 0
+          fi
+          git commit -m "dev-checks logs (run ${{ github.run_id }})"
+          git pull --rebase origin "${{ github.ref_name }}"
+          git push origin HEAD:"${{ github.ref_name }}"
