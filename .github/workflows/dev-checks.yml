@@ -41,6 +41,18 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Debug context
+        shell: bash
+        run: |
+          {
+            echo "HEAD: $(git rev-parse HEAD)"
+            git log --oneline -3
+            echo "--- blog_event.dart head ---"
+            sed -n '1,12p' lib/features/blog/presentation/blocs/blog/blog_event.dart
+            echo "--- report files in workspace before run ---"
+            ls -la build-reports-*.txt 2>/dev/null || echo "(none)"
+          } | tee build-reports-debug.txt
+
       - name: Resolve dependencies
         run: flutter pub get
 
@@ -115,6 +127,10 @@ jobs:
             const body = [
               `### dev-checks report (run ${context.runId}, ${context.sha.slice(0, 7)})`,
               '',
+              '#### debug context',
+              '```',
+              read('build-reports-debug.txt', 40),
+              '```',
               '#### dart format',
               '```',
               read('build-reports-format.txt', 60),
