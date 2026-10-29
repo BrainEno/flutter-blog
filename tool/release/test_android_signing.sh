@@ -28,7 +28,17 @@ version="$(sed -n 's/^version: *\([^ #]*\).*/\1/p' pubspec.yaml)"
 name="${version%+*}"
 number="${version##*+}"
 APK=build/app/outputs/flutter-apk/app-release.apk
-bash tool/release/verify_apk.sh "$APK" "$name" "$number" "$expected"
+if ! bash tool/release/verify_apk.sh "$APK" "$name" "$number" "$expected"; then
+  # These certificates belong only to the disposable CI keystore and QA build.
+  # Distinguish a stale QA-signed APK from a verifier/parsing failure.
+  echo '::error::Disposable signing fixture did not produce the expected APK certificate.'
+  echo "Expected test certificate SHA-256: $expected"
+  echo 'Actual test APK certificates:'
+  "$TOOLS/apksigner" verify --print-certs "$APK"
+  echo 'Prior QA APK certificates:'
+  "$TOOLS/apksigner" verify --print-certs build/reports/belog-QA-debug-signed.apk
+  exit 1
+fi
 if bash tool/release/verify_apk.sh "$APK" "$name" "$number" "$(printf '%064d' 0)" > "$RUNNER_TEMP/mismatch.log" 2>&1; then
   echo '::error::An APK with a mismatched signing certificate was accepted.'; exit 1
 fi
