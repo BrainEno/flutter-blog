@@ -120,16 +120,16 @@ void main() {
       );
 
       expect(result.isRight(), isTrue);
-      verifyInOrder([
+      // Capture through verifyInOrder: a separate verify() afterwards
+      // cannot match calls the in-order check already consumed.
+      final order = verifyInOrder([
         () => remote.uploadAvatar(
               image: any(named: 'image'),
               mimeType: 'image/jpeg',
             ),
-        () => remote.editUserInfo(any()),
+        () => remote.editUserInfo(captureAny()),
       ]);
-      final captured =
-          verify(() => remote.editUserInfo(captureAny())).captured.single
-              as UserModel;
+      final captured = order.captured.single as UserModel;
       expect(captured.avatarUrl, newAvatarUrl);
     });
 

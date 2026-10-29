@@ -190,6 +190,9 @@ void main() {
       final sub = manager.statusStream.listen(statuses.add);
 
       final ok = await manager.refresh();
+      // The broadcast controller delivers asynchronously; let the event
+      // land before asserting on it.
+      await Future<void>.delayed(Duration.zero);
 
       expect(ok, isFalse);
       expect(manager.currentSession, isNull);

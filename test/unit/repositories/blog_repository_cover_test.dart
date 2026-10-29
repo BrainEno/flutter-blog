@@ -72,15 +72,16 @@ void main() {
       );
 
       expect(result.isRight(), isTrue);
-      verifyInOrder([
+      // Capture through verifyInOrder: a separate verify() afterwards
+      // cannot match calls the in-order check already consumed.
+      final order = verifyInOrder([
         () => remote.uploadBlogImage(
               image: any(named: 'image'),
               mimeType: 'image/jpeg',
             ),
-        () => remote.uploadBlog(any()),
+        () => remote.uploadBlog(captureAny()),
       ]);
-      final created = verify(() => remote.uploadBlog(captureAny())).captured
-          .single as BlogModel;
+      final created = order.captured.single as BlogModel;
       expect(created.imageUrl, _kNewCoverUrl);
       expect(created.title, '标题');
     });
@@ -156,16 +157,15 @@ void main() {
       );
 
       expect(result.isRight(), isTrue);
-      verifyInOrder([
+      final order = verifyInOrder([
         () => remote.getBlogById('my-slug'),
         () => remote.uploadBlogImage(
               image: any(named: 'image'),
               mimeType: 'image/png',
             ),
-        () => remote.editBlog(any()),
+        () => remote.editBlog(captureAny()),
       ]);
-      final updated = verify(() => remote.editBlog(captureAny())).captured
-          .single as BlogModel;
+      final updated = order.captured.single as BlogModel;
       expect(updated.imageUrl, _kNewCoverUrl);
       expect(updated.articleId, 'b1');
       expect(updated.id, 'my-slug');

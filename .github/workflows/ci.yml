@@ -92,7 +92,25 @@ jobs:
             set -e
             if [[ "$fmt_status" -ne 0 ]]; then
               changed_paths="$(grep '^Changed ' build/reports/format-check.log | tr '\n' ',' | sed 's/,$//')"
-              echo "::error title=format failure diagnostics::files needing formatting: ${changed_paths}"
+              echo "files needing formatting: ${changed_paths}"
+              # Produce a bounded unified diff of what dart format would
+              # change, so the failure is actionable from the check page.
+              diff_out=""
+              for f in "${dart_files[@]}"; do
+                formatted="$(mktemp)"
+                if dart format --output="$formatted" "$f" >/dev/null 2>&1; then
+                  if ! diff -u "$f" "$formatted" > /tmp/fmt_one.diff 2>&1; then
+                    diff_out+="$(head -c 2500 /tmp/fmt_one.diff)"$'\n'
+                  fi
+                fi
+                rm -f "$formatted"
+                if (( ${#diff_out} > 20000 )); then break; fi
+              done
+              diff_out="$(printf '%s' "$diff_out" | head -c 20000)"
+              diff_out="${diff_out//'%'/'%25'}"
+              diff_out="${diff_out//$'\r'/'%0D'}"
+              diff_out="${diff_out//$'\n'/'%0A'}"
+              echo "::error title=format failure diagnostics (${changed_paths})::${diff_out}"
             fi
             exit "$fmt_status"
           fi
