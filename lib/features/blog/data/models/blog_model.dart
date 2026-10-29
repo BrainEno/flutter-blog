@@ -1,5 +1,5 @@
 import 'package:belog/features/blog/domain/entities/blog.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 class BlogModel extends Blog {
   BlogModel(

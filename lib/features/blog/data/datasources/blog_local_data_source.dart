@@ -1,5 +1,5 @@
 import 'package:belog/features/blog/data/models/blog_model.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 
 abstract interface class BlogLocalDataSource {

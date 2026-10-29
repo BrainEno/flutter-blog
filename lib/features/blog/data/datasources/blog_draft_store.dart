@@ -1,5 +1,5 @@
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 /// Local drafts are scoped to an article ID, or null for a new article.
 abstract class BlogDraftStore {
