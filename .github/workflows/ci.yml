@@ -85,7 +85,16 @@ jobs:
             echo "No Dart files changed; formatting gate is not applicable to this PR."
           else
             printf 'Formatting check: %s\n' "${dart_files[@]}"
-            dart format --output=none --set-exit-if-changed "${dart_files[@]}"
+            mkdir -p build/reports
+            set +e
+            dart format --output=none --set-exit-if-changed "${dart_files[@]}" 2>&1 | tee build/reports/format-check.log
+            fmt_status=${PIPESTATUS[0]}
+            set -e
+            if [[ "$fmt_status" -ne 0 ]]; then
+              changed_paths="$(grep '^Changed ' build/reports/format-check.log | tr '\n' ',' | sed 's/,$//')"
+              echo "::error title=format failure diagnostics::files needing formatting: ${changed_paths}"
+            fi
+            exit "$fmt_status"
           fi
       - name: Audit repository-wide formatting drift
         shell: bash
