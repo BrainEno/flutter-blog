@@ -282,12 +282,12 @@ class _BlogEditorState extends State<BlogEditorPage> {
             onPressed: saveBlog,
             style: ElevatedButton.styleFrom(
               minimumSize: Size(60, 30),
-              backgroundColor: Theme.of(context)
-                  .colorScheme
-                  .primary, // Theme-based background
-              foregroundColor: Theme.of(context)
-                  .colorScheme
-                  .onPrimary, // Text color
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.primary, // Theme-based background
+              foregroundColor: Theme.of(
+                context,
+              ).colorScheme.onPrimary, // Text color
               padding: const EdgeInsets.symmetric(
                 horizontal: 8,
                 vertical: 2,
