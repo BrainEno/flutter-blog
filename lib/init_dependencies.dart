@@ -24,6 +24,7 @@ import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart'
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
+import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
 import 'package:belog/features/blog/domain/usecase/get_user_liked_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/is_blog_liked.dart';
@@ -172,6 +173,7 @@ Future<void> _initBlog() async {
     // Usecases
     ..registerFactory(() => UploadBlog(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetAllBlogs(serviceLocator<BlogRepository>()))
+    ..registerFactory(() => GetBlogById(serviceLocator<BlogRepository>()))
     ..registerFactory(() => SearchBlogs(serviceLocator<BlogRepository>()))
     ..registerFactory(() => ToggleLikeBlog(serviceLocator<BlogRepository>()))
     ..registerFactory(() => IsBlogLiked(serviceLocator<BlogRepository>()))
@@ -179,28 +181,29 @@ Future<void> _initBlog() async {
     ..registerFactory(() => UpdateBlog(serviceLocator<BlogRepository>()))
     ..registerFactory(() => DeleteBlog(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetBlogsByPoster(serviceLocator<BlogRepository>()))
-    // Bloc
-    ..registerLazySingleton(
+    // Page-scoped blocs. Routes create one instance per page and dispose it
+    // with the page, so request state never leaks across pages.
+    ..registerFactory(
       () => BlogBloc(getAllBlogs: serviceLocator<GetAllBlogs>()),
     )
-    ..registerLazySingleton(
+    ..registerFactory(
       () => BlogUploadBloc(
         uploadBlog: serviceLocator<UploadBlog>(),
         updateBlog: serviceLocator<UpdateBlog>(),
         deleteBlog: serviceLocator<DeleteBlog>(),
       ),
     )
-    ..registerLazySingleton(
+    ..registerFactory(
       () => BlogSearchBloc(searchBlogs: serviceLocator<SearchBlogs>()),
     )
-    ..registerLazySingleton(
+    ..registerFactory(
       () => BlogLikedBloc(
         toggleBlogLike: serviceLocator<ToggleLikeBlog>(),
         isBlogLiked: serviceLocator<IsBlogLiked>(),
         getUserLikedBlogs: serviceLocator<GetUserLikedBlogs>(),
       ),
     )
-    ..registerLazySingleton(
+    ..registerFactory(
       () => BlogByBloc(getBlogsByPoster: serviceLocator<GetBlogsByPoster>()),
     );
 }
@@ -226,14 +229,14 @@ Future<void> _initUser() async {
     ..registerFactory(
       () => ResetPasswordUseCase(serviceLocator<UserRepository>()),
     )
-    //blocs
-    ..registerLazySingleton(
+    // Page-scoped blocs created and disposed with their routes.
+    ..registerFactory(
       () => UserEditBloc(
         editUserUseCase: serviceLocator<EditUserUseCase>(),
         appUserCubit: serviceLocator(),
       ),
     )
-    ..registerLazySingleton(
+    ..registerFactory(
       () => EditAccountBloc(
         changeEmailUseCase: serviceLocator<ChangeEmailUseCase>(),
         resetPasswordUseCase: serviceLocator<ResetPasswordUseCase>(),

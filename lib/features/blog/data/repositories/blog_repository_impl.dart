@@ -23,27 +23,31 @@ class BlogRepositoryImpl implements BlogRepository {
   );
 
   @override
-  Future<Either<Failure, Blog>> uploadBlog(
-      {required File image,
-      required String title,
-      required String content,
-      required String posterId,
-      required List<String> tags}) async {
+  Future<Either<Failure, Blog>> uploadBlog({
+    required File image,
+    required String title,
+    required String content,
+    required String posterId,
+    required List<String> tags,
+  }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
         return left(Failure('无法连接到网络'));
       }
       BlogModel blogModel = BlogModel(
-          id: const Uuid().v1(),
-          title: title,
-          content: content,
-          posterId: posterId,
-          imageUrl: '',
-          tags: tags,
-          updatedAt: DateTime.now());
+        id: const Uuid().v1(),
+        title: title,
+        content: content,
+        posterId: posterId,
+        imageUrl: '',
+        tags: tags,
+        updatedAt: DateTime.now(),
+      );
 
       final imageUrl = await blogRemoteDataSource.uploadBlogImage(
-          image: image, blog: blogModel);
+        image: image,
+        blog: blogModel,
+      );
       blogModel = blogModel.copyWith(imageUrl: imageUrl);
       final blog = await blogRemoteDataSource.uploadBlog(blogModel);
       return right(blog);
@@ -76,6 +80,24 @@ class BlogRepositoryImpl implements BlogRepository {
       }
       final blogs = await blogRemoteDataSource.getBlogsByPosterId(userId);
       return right(blogs);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Blog>> getBlogById(String blogId) async {
+    try {
+      if (!await (connectionChecker.isConnected)) {
+        final cached = await blogLocalDataSource.loadBlogById(blogId);
+        if (cached != null) {
+          return right(cached);
+        }
+        return left(Failure('无法连接到网络'));
+      }
+      final blog = await blogRemoteDataSource.getBlogById(blogId);
+      await blogLocalDataSource.uploadLocalBlogs(blogs: [blog]);
+      return right(blog);
     } on ServerException catch (e) {
       return left(Failure(e.message));
     }
@@ -137,7 +159,9 @@ class BlogRepositoryImpl implements BlogRepository {
 
       if (image != null) {
         final imageUrl = await blogRemoteDataSource.uploadBlogImage(
-            image: image, blog: blogToUpdate);
+          image: image,
+          blog: blogToUpdate,
+        );
         blogToUpdate = blogToUpdate.copyWith(imageUrl: imageUrl);
       }
       blogToUpdate = blogToUpdate.copyWith(
@@ -158,7 +182,9 @@ class BlogRepositoryImpl implements BlogRepository {
 
   @override
   Future<Either<Failure, bool>> toggleLikeBlog(
-      String userId, String blogId) async {
+    String userId,
+    String blogId,
+  ) async {
     try {
       if (!await (connectionChecker.isConnected)) {
         return left(Failure('无法连接到网络，收藏未同步'));
@@ -175,7 +201,9 @@ class BlogRepositoryImpl implements BlogRepository {
 
   @override
   Future<Either<Failure, bool>> isBlogLiked(
-      String userId, String blogId) async {
+    String userId,
+    String blogId,
+  ) async {
     try {
       if (!await connectionChecker.isConnected) {
         return left(Failure('无法连接到网络'));

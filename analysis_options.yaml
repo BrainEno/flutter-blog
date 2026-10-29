@@ -13,7 +13,7 @@ include: package:flutter_lints/flutter.yaml
 # generated output; revisit this exclusion when upgrading the Isar generator.
 analyzer:
   exclude:
-    - lib/features/blog/domain/entities/blog_draft.g.dart
+    - lib/core/storage/legacy/blog_draft.g.dart
 
 linter:
   # The lint rules applied to this project can be customized in the

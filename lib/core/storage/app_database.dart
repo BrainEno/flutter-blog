@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:belog/core/theme/theme_preference.dart';
-import 'package:belog/features/blog/domain/entities/blog.dart';
-import 'package:belog/features/blog/domain/entities/blog_draft.dart';
+import 'package:belog/core/storage/legacy/blog.dart' as legacy;
+import 'package:belog/core/storage/legacy/blog_draft.dart' as legacy;
+import 'package:belog/core/storage/legacy/theme_preference.dart' as legacy;
+import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart' show ThemeMode;
@@ -62,19 +63,23 @@ class AppDatabase extends GeneratedDatabase {
         );
         await legacyFile.copy('${copyDirectory.path}/default.isar');
         old = await legacy.Isar.open(
-          [ThemePreferenceSchema, BlogSchema, BlogDraftSchema],
+          [
+            legacy.ThemePreferenceSchema,
+            legacy.BlogSchema,
+            legacy.BlogDraftSchema,
+          ],
           directory: copyDirectory.path,
           inspector: false,
         );
       }
       final preferences = old == null
-          ? <ThemePreference>[]
+          ? <legacy.ThemePreference>[]
           : await old.themePreferences.where().anyId().findAll();
       final drafts = old == null
-          ? <BlogDraft>[]
+          ? <legacy.BlogDraft>[]
           : await old.blogDrafts.where().anyId().findAll();
       final blogs = old == null
-          ? <Blog>[]
+          ? <legacy.Blog>[]
           : await old.blogs.where().anyIid().findAll();
       await transaction(() async {
         if (preferences.isNotEmpty) {
@@ -95,7 +100,19 @@ class AppDatabase extends GeneratedDatabase {
           );
         }
         for (final blog in blogs) {
-          await upsertBlog(blog);
+          await upsertBlog(
+            BlogModel(
+              id: blog.id,
+              title: blog.title,
+              content: blog.content,
+              posterId: blog.posterId,
+              imageUrl: blog.imageUrl,
+              tags: blog.tags,
+              updatedAt: blog.updatedAt,
+              posterName: blog.posterName,
+              posterAvatar: blog.posterAvatar,
+            ),
+          );
         }
         await customStatement(
           "INSERT INTO metadata(key, value) VALUES ('isar_import_v1', 'complete')",
@@ -117,7 +134,7 @@ class AppDatabase extends GeneratedDatabase {
     [mode.name],
   );
 
-  Future<void> upsertBlog(Blog blog) => customStatement(
+  Future<void> upsertBlog(BlogModel blog) => customStatement(
     '''
     INSERT INTO blog_cache(id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)

@@ -25,23 +25,7 @@ class SqliteBlogCache implements BlogLocalDataSource {
           variables: [Variable<String>(query), Variable<String>(query)],
         )
         .get();
-    return rows
-        .map(
-          (row) => BlogModel(
-            id: row.read<String>('id'),
-            title: row.read<String>('title'),
-            content: row.read<String>('content'),
-            posterId: row.read<String>('poster_id'),
-            imageUrl: row.read<String>('image_url'),
-            tags: (jsonDecode(row.read<String>('tags')) as List).cast<String>(),
-            updatedAt: DateTime.fromMicrosecondsSinceEpoch(
-              row.read<int>('updated_at'),
-            ),
-            posterName: row.readNullable<String>('poster_name'),
-            posterAvatar: row.readNullable<String>('poster_avatar'),
-          ),
-        )
-        .toList();
+    return rows.map((row) => _blogFromRow(row.data)).toList();
   }
 
   @override
@@ -49,4 +33,31 @@ class SqliteBlogCache implements BlogLocalDataSource {
 
   @override
   Future<List<BlogModel>> searchLocalBlogs(String query) => _load(query);
+
+  @override
+  Future<BlogModel?> loadBlogById(String id) async {
+    final rows = await database
+        .customSelect(
+          'SELECT * FROM blog_cache WHERE id = ? LIMIT 1',
+          variables: [Variable<String>(id)],
+        )
+        .get();
+    return rows.isEmpty ? null : _blogFromRow(rows.single.data);
+  }
+
+  BlogModel _blogFromRow(Map<String, Object?> data) {
+    return BlogModel(
+      id: data['id']! as String,
+      title: data['title']! as String,
+      content: data['content']! as String,
+      posterId: data['poster_id']! as String,
+      imageUrl: data['image_url']! as String,
+      tags: (jsonDecode(data['tags']! as String) as List).cast<String>(),
+      updatedAt: DateTime.fromMicrosecondsSinceEpoch(
+        data['updated_at']! as int,
+      ),
+      posterName: data['poster_name'] as String?,
+      posterAvatar: data['poster_avatar'] as String?,
+    );
+  }
 }

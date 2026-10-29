@@ -22,7 +22,6 @@ void main() {
     test('should return list of blogs on success', () async {
       final blogs = [
         Blog(
-          iid: 1,
           id: 'blog_1',
           title: 'Blog 1',
           content: 'Content 1',
@@ -32,7 +31,6 @@ void main() {
           updatedAt: DateTime(2024, 1, 1),
         ),
         Blog(
-          iid: 2,
           id: 'blog_2',
           title: 'Blog 2',
           content: 'Content 2',
@@ -43,8 +41,9 @@ void main() {
         ),
       ];
 
-      when(() => mockRepository.getAllBlogs(page: 1))
-          .thenAnswer((_) async => Right(blogs));
+      when(
+        () => mockRepository.getAllBlogs(page: 1),
+      ).thenAnswer((_) async => Right(blogs));
 
       final result = await useCase(GetAllBlogsParams(page: 1));
 
@@ -53,8 +52,9 @@ void main() {
     });
 
     test('should return Failure on repository error', () async {
-      when(() => mockRepository.getAllBlogs(page: 1))
-          .thenAnswer((_) async => Left(Failure('Network error')));
+      when(
+        () => mockRepository.getAllBlogs(page: 1),
+      ).thenAnswer((_) async => Left(Failure('Network error')));
 
       final result = await useCase(GetAllBlogsParams(page: 1));
 
@@ -76,8 +76,9 @@ void main() {
     });
 
     test('should return true when toggle succeeds', () async {
-      when(() => mockRepository.toggleLikeBlog('user_1', 'blog_1'))
-          .thenAnswer((_) async => const Right(true));
+      when(
+        () => mockRepository.toggleLikeBlog('user_1', 'blog_1'),
+      ).thenAnswer((_) async => const Right(true));
 
       final result = await useCase(
         ToggleLikeParams(userId: 'user_1', blogId: 'blog_1'),
@@ -91,8 +92,9 @@ void main() {
     });
 
     test('should return Failure on repository error', () async {
-      when(() => mockRepository.toggleLikeBlog('user_1', 'blog_1'))
-          .thenAnswer((_) async => Left(Failure('Toggle failed')));
+      when(
+        () => mockRepository.toggleLikeBlog('user_1', 'blog_1'),
+      ).thenAnswer((_) async => Left(Failure('Toggle failed')));
 
       final result = await useCase(
         ToggleLikeParams(userId: 'user_1', blogId: 'blog_1'),

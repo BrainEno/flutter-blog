@@ -1,18 +1,20 @@
 import 'package:belog/features/blog/domain/entities/blog.dart';
-import 'package:isar/isar.dart';
 
+/// Data-layer representation of [Blog], including (de)serialization for the
+/// remote backend. Persistence concerns (SQLite cache, legacy Isar import)
+/// live in `lib/core/storage/` and map to/from this model.
 class BlogModel extends Blog {
-  BlogModel(
-      {required super.id,
-      required super.title,
-      required super.content,
-      required super.posterId,
-      required super.imageUrl,
-      required super.tags,
-      required super.updatedAt,
-      super.posterName,
-      super.posterAvatar,
-      super.iid = Isar.autoIncrement});
+  BlogModel({
+    required super.id,
+    required super.title,
+    required super.content,
+    required super.posterId,
+    required super.imageUrl,
+    required super.tags,
+    required super.updatedAt,
+    super.posterName,
+    super.posterAvatar,
+  });
 
   BlogModel copyWith({
     String? id,

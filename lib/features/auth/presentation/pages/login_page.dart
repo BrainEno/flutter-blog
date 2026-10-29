@@ -1,23 +1,21 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
-import 'package:belog/core/common/entities/destination.dart';
 import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/theme/app_pallete.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:belog/features/auth/presentation/pages/signup_page.dart';
 import 'package:belog/features/auth/presentation/widgets/auth_field.dart';
 import 'package:belog/features/auth/presentation/widgets/auth_gradient_button.dart';
-import 'package:belog/features/blog/presentation/pages/blog_page.dart';
-import 'package:belog/features/blog/presentation/pages/saved_blogs_page.dart';
-import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
-import 'package:belog/features/user/presentation/pages/profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
+/// Email/password sign-in.
+///
+/// [redirectTo] is the in-app location the user was trying to open before
+/// being redirected here; after a successful sign-in the app returns to it.
 class LoginPage extends StatefulWidget {
-  static route() => MaterialPageRoute(builder: (context) => const LoginPage());
-  final Destination? destination;
-  const LoginPage({super.key, this.destination});
+  final String? redirectTo;
+  const LoginPage({super.key, this.redirectTo});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -41,26 +39,23 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  void _openSignUp() {
+    final target = Uri.encodeComponent(widget.redirectTo ?? '/');
+    context.push('/signup?redirect=$target');
+  }
+
+  void _onAuthenticated() {
+    // The router's redirect also re-runs on auth changes; going explicitly
+    // keeps the return-to-location behaviour deterministic.
+    context.go(widget.redirectTo ?? '/');
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<AppUserCubit, AppUserState>(
       listener: (context, state) {
-        if (state is AppUserLoggedIn && widget.destination != null) {
-          switch (widget.destination!.index) {
-            case 0:
-              Navigator.pushReplacement(context, BlogPage.route());
-              break;
-            case 1:
-              Navigator.pushReplacement(context, SearchBlogPage.route());
-              break;
-            case 2:
-              Navigator.pushReplacement(context, SavedBlogsPage.route());
-              break;
-            case 3:
-              Navigator.pushReplacement(context,
-                  MaterialPageRoute(builder: (_) => const ProfilePage()));
-              break;
-          }
+        if (state is AppUserLoggedIn) {
+          _onAuthenticated();
         }
       },
       child: Scaffold(
@@ -108,19 +103,22 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 30),
                       AuthGradientButton(
-                          buttonText: "登录",
-                          onPressed: () {
-                            if (formKey.currentState!.validate()) {
-                              context.read<AuthBloc>().add(AuthLogin(
-                                  email: emailController.text.trim(),
-                                  password: passwordController.text.trim()));
-                            }
-                          }),
+                        buttonText: "登录",
+                        onPressed: () {
+                          if (formKey.currentState!.validate()) {
+                            context.read<AuthBloc>().add(
+                              AuthLogin(
+                                email: emailController.text.trim(),
+                                password: passwordController.text.trim(),
+                              ),
+                            );
+                          }
+                        },
+                      ),
                       const SizedBox(height: 30),
                       Center(
                         child: GestureDetector(
-                          onTap: () =>
-                              Navigator.push(context, SignUpPage.route()),
+                          onTap: _openSignUp,
                           child: RichText(
                             textAlign: TextAlign.center,
                             text: TextSpan(
@@ -133,13 +131,19 @@ class _LoginPageState extends State<LoginPage> {
                                       .textTheme
                                       .titleMedium!
                                       .copyWith(
-                                          color: AppPallete.gradient2,
-                                          fontWeight: FontWeight.bold),
+                                        color: AppPallete.gradient2,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                 ),
                               ],
                             ),
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: () => context.go('/'),
+                        child: const Text('暂不登录，先去逛逛'),
                       ),
                       const SizedBox(height: 60),
                     ],

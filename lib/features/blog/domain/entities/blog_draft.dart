@@ -1,20 +1,20 @@
-import 'package:isar/isar.dart';
-
-part 'blog_draft.g.dart';
-
-@Collection()
+/// Local draft of a blog article.
+///
+/// Pure Dart domain entity: it must stay free of persistence annotations. A
+/// draft is scoped to [blogId] (`null` means a brand-new article), and [id] is
+/// the local row id assigned by [BlogDraftStore] when the draft is persisted;
+/// it is `null` until then and must never leak into UI logic.
 class BlogDraft {
-  Id id = Isar.autoIncrement;
+  int? id;
 
-  @Index(unique: true)
-  final String? blogId; // null for new blog drafts
-
+  final String? blogId;
   final String title;
   final String content;
   final List<String> tags;
   final DateTime updatedAt;
 
   BlogDraft({
+    this.id,
     this.blogId,
     required this.title,
     required this.content,

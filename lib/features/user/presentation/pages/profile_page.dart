@@ -1,25 +1,20 @@
-import 'package:belog/core/common/widgets/theme_toggle_button.dart';
-import 'package:belog/features/user/presentation/pages/about_page.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/common/widgets/theme_toggle_button.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:belog/features/auth/presentation/pages/login_page.dart';
-import 'package:belog/features/blog/presentation/pages/user_blogs_page.dart';
-import 'package:belog/features/user/presentation/pages/edit_user_info_page.dart';
-import 'package:belog/features/user/presentation/pages/edit_account_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfilePage extends StatelessWidget {
-  static const List<String> items = <String>[
-    '编辑个人资料',
-    '我的文章',
-    '账号设置',
-    '关于我们',
-    '退出登录',
+  static const List<(String, String)> items = [
+    ('编辑个人资料', '/profile/edit'),
+    ('我的文章', '/profile/my-articles'),
+    ('账号设置', '/profile/account'),
+    ('关于我们', '/profile/about'),
   ];
-  static route() => MaterialPageRoute(builder: (_) => const ProfilePage());
+
   const ProfilePage({super.key});
 
   @override
@@ -29,14 +24,12 @@ class ProfilePage extends StatelessWidget {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            SizedBox(
-              width: 55,
-            ),
+            SizedBox(width: 55),
             const Text('个人中心'),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [ThemeToggleButton()],
-            )
+            ),
           ],
         ),
       ),
@@ -59,7 +52,8 @@ class ProfilePage extends StatelessWidget {
                       radius: 60,
                       backgroundImage: user.avatarUrl.isNotEmpty
                           ? CachedNetworkImageProvider(
-                              '${user.avatarUrl}?v=${user.updatedAt.millisecondsSinceEpoch}')
+                              '${user.avatarUrl}?v=${user.updatedAt.millisecondsSinceEpoch}',
+                            )
                           : null,
                       child: user.avatarUrl.isEmpty
                           ? const Icon(Icons.person, size: 60)
@@ -88,69 +82,38 @@ class ProfilePage extends StatelessWidget {
                     const Divider(),
                     Expanded(
                       child: ListView.builder(
-                        itemCount: items.length,
+                        itemCount: items.length + 1,
                         itemBuilder: (context, index) {
-                          final item = items[index];
-                          IconData icon;
-                          switch (index) {
-                            case 0:
-                              icon = Icons.edit;
-                              break;
-                            case 1:
-                              icon = Icons.article;
-                              break;
-                            case 2:
-                              icon = Icons.settings;
-                              break;
-                            case 3:
-                              icon = Icons.info;
-                              break;
-                            case 4:
-                              icon = Icons.logout;
-                              break;
-                            default:
-                              icon = Icons.help;
+                          if (index == items.length) {
+                            return ListTile(
+                              leading: Icon(
+                                Icons.logout,
+                                color: Colors.grey.shade700,
+                              ),
+                              title: const Text(
+                                '退出登录',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              onTap: () => _onLogoutClick(context),
+                            );
                           }
+                          final (label, location) = items[index];
                           return ListTile(
-                            leading: Icon(icon, color: Colors.grey.shade700),
+                            leading: Icon(
+                              _iconFor(index),
+                              color: Colors.grey.shade700,
+                            ),
                             title: Text(
-                              item,
+                              label,
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            onTap: () {
-                              switch (index) {
-                                case 0:
-                                  Navigator.push(
-                                    context,
-                                    EditUserInfoPage.route(),
-                                  );
-                                  break;
-                                case 1:
-                                  Navigator.push(
-                                    context,
-                                    UserBlogsPage.route(),
-                                  );
-                                  break;
-                                case 2:
-                                  Navigator.push(
-                                    context,
-                                    EditAccountPage.route(),
-                                  );
-                                  break;
-                                case 3:
-                                  Navigator.push(
-                                    context,
-                                    AboutPage.route(),
-                                  );
-                                  break;
-                                case 4:
-                                  _onLogoutClick(context);
-                                  break;
-                              }
-                            },
+                            onTap: () => context.push(location),
                           );
                         },
                       ),
@@ -172,9 +135,7 @@ class ProfilePage extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(context, LoginPage.route());
-                      },
+                      onPressed: () => context.push('/login'),
                       child: const Text('登录'),
                     ),
                   ],
@@ -185,6 +146,21 @@ class ProfilePage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  IconData _iconFor(int index) {
+    switch (index) {
+      case 0:
+        return Icons.edit;
+      case 1:
+        return Icons.article;
+      case 2:
+        return Icons.settings;
+      case 3:
+        return Icons.info;
+      default:
+        return Icons.help;
+    }
   }
 
   void _onLogoutClick(BuildContext context) {

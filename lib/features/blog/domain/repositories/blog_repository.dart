@@ -13,11 +13,11 @@ abstract interface class BlogRepository {
     required List<String> tags,
   });
 
-  Future<Either<Failure, bool>> deleteBlog(
-    String blogId,
-  );
+  Future<Either<Failure, bool>> deleteBlog(String blogId);
 
   Future<Either<Failure, List<Blog>>> getAllBlogs({required int page});
+
+  Future<Either<Failure, Blog>> getBlogById(String blogId);
 
   Future<Either<Failure, List<Blog>>> getBlogsByTag(String tag);
 

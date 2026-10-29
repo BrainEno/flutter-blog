@@ -9,7 +9,6 @@ import 'package:belog/features/blog/data/datasources/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/presentation/blocs/bog_upload/bloc/blog_upload_bloc.dart';
-import 'package:belog/features/blog/presentation/pages/blog_page.dart';
 import 'package:belog/features/blog/presentation/widgets/editor_field.dart';
 import 'package:belog/features/blog/presentation/widgets/draft_recovery_dialog.dart';
 import 'package:dotted_border/dotted_border.dart';
@@ -18,11 +17,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+/// Creates or edits an article.
+///
+/// The page is pushed as `/editor` (new article) or `/profile/editor` with
+/// the article passed as `extra`. It pops with `true` when something was
+/// published, updated or deleted, so the page below can refresh its list.
 class BlogEditorPage extends StatefulWidget {
   final Blog? blog;
   final BlogDraftStore? draftStore;
-  static route({Blog? blog}) =>
-      MaterialPageRoute(builder: (context) => BlogEditorPage(blog: blog));
   const BlogEditorPage({super.key, this.blog, this.draftStore});
 
   @override
@@ -228,7 +230,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
                   deleteBlog();
                   break;
                 case 'cancel':
-                  Navigator.pop(context);
+                  Navigator.of(context).pop();
                   break;
               }
             },
@@ -273,25 +275,18 @@ class _BlogEditorState extends State<BlogEditorPage> {
           if (state is BlogUploadFailure) {
             showSnackBar(context, state.error);
           } else if (state is BlogUploadSuccess) {
-            if (widget.blog == null) {
-              showSnackBar(context, '上传成功');
-              Navigator.pushAndRemoveUntil(
-                context,
-                BlogPage.route(),
-                (route) => false,
+            if (widget.blog != null &&
+                isNewImageSelected &&
+                widget.blog!.imageUrl.isNotEmpty) {
+              PaintingBinding.instance.imageCache.evict(
+                Key(widget.blog!.imageUrl),
               );
-            } else {
-              if (isNewImageSelected && widget.blog!.imageUrl.isNotEmpty) {
-                PaintingBinding.instance.imageCache.evict(
-                  Key(widget.blog!.imageUrl),
-                );
-              }
-              showSnackBar(context, '更新成功');
-              Navigator.pop(context);
             }
+            showSnackBar(context, widget.blog == null ? '上传成功' : '更新成功');
+            Navigator.of(context).pop(true);
           } else if (state is BlogDeleteSuccess) {
             showSnackBar(context, '删除成功');
-            Navigator.pop(context);
+            Navigator.of(context).pop(true);
           }
         },
         builder: (context, state) {

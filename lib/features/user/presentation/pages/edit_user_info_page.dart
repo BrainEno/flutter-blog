@@ -8,7 +8,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 
 class EditUserInfoPage extends StatefulWidget {
-  static route() => MaterialPageRoute(builder: (_) => const EditUserInfoPage());
   const EditUserInfoPage({super.key});
   @override
   State<EditUserInfoPage> createState() => _EditUserInfoPageState();
@@ -71,13 +70,13 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
             icon: const Icon(Icons.check),
             onPressed: () {
               context.read<UserEditBloc>().add(
-                    UserEditSubmitted(
-                      name: _nameController.text,
-                      email: _emailController.text,
-                      website: _websiteController.text,
-                      avatar: isNewImageSelected ? image : null,
-                    ),
-                  );
+                UserEditSubmitted(
+                  name: _nameController.text,
+                  email: _emailController.text,
+                  website: _websiteController.text,
+                  avatar: isNewImageSelected ? image : null,
+                ),
+              );
             },
           ),
         ],
@@ -108,12 +107,13 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                         backgroundColor: Theme.of(context).colorScheme.surface,
                         backgroundImage: isNewImageSelected
                             ? (image != null
-                                ? FileImage(image!) as ImageProvider<Object>?
-                                : null) // Added null check
+                                  ? FileImage(image!) as ImageProvider<Object>?
+                                  : null) // Added null check
                             : avatarUrl != null && avatarUrl!.isNotEmpty
-                                ? CachedNetworkImageProvider(
-                                    '$avatarUrl?v=${updatedAt?.millisecondsSinceEpoch ?? ''}')
-                                : null,
+                            ? CachedNetworkImageProvider(
+                                '$avatarUrl?v=${updatedAt?.millisecondsSinceEpoch ?? ''}',
+                              )
+                            : null,
                         child: isNewImageSelected || avatarUrl != null
                             ? null
                             : const Icon(
@@ -169,13 +169,13 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                     child: ElevatedButton(
                       onPressed: () {
                         context.read<UserEditBloc>().add(
-                              UserEditSubmitted(
-                                name: _nameController.text,
-                                email: _emailController.text,
-                                website: _websiteController.text,
-                                avatar: isNewImageSelected ? image : null,
-                              ),
-                            );
+                          UserEditSubmitted(
+                            name: _nameController.text,
+                            email: _emailController.text,
+                            website: _websiteController.text,
+                            avatar: isNewImageSelected ? image : null,
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -186,7 +186,9 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                       child: const Text(
                         '保存更改',
                         style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
