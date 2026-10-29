@@ -1,67 +1,61 @@
+import 'package:belog/core/theme/theme_preference_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:isar/isar.dart';
-import 'theme_preference.dart';
-import 'package:belog/init_dependencies.dart';
 
 class ThemeState {
   final ThemeMode themeMode;
-  ThemeState(this.themeMode);
+  const ThemeState(this.themeMode);
 }
 
-abstract class ThemeEvent {}
+sealed class ThemeEvent {}
 
-// Fired once, immediately after the Bloc is constructed,
-// to load the saved theme from Isar.
 class InitializeTheme extends ThemeEvent {}
 
-// Fired whenever the user wants to toggle between light/dark.
-class ToggleTheme extends ThemeEvent {}
+class ToggleTheme extends ThemeEvent {
+  /// The resolved brightness is needed only while following the system theme.
+  final Brightness systemBrightness;
+  ToggleTheme({this.systemBrightness = Brightness.dark});
+}
 
-// --- Bloc ---------------------------------------------------------
+class SetThemeMode extends ThemeEvent {
+  final ThemeMode themeMode;
+  SetThemeMode(this.themeMode);
+}
 
 class ThemeBloc extends Bloc<ThemeEvent, ThemeState> {
-  ThemeBloc() : super(ThemeState(ThemeMode.dark)) {
-    // Register handlers
-    on<InitializeTheme>(_onInitializeTheme);
-    on<ToggleTheme>(_onToggleTheme);
+  final ThemePreferenceStore _store;
 
-    // Kick off loading the persisted theme
+  ThemeBloc(this._store) : super(const ThemeState(ThemeMode.system)) {
+    // Serialize initialization and every change. A slow load or write must
+    // never overwrite a newer choice or lose rapid toggles.
+    on<ThemeEvent>(
+      _onThemeEvent,
+      transformer: (events, mapper) => events.asyncExpand(mapper),
+    );
     add(InitializeTheme());
   }
 
-  Future<void> _onInitializeTheme(
-    InitializeTheme event,
+  Future<void> _onThemeEvent(
+    ThemeEvent event,
     Emitter<ThemeState> emit,
   ) async {
-    // Retrieve the saved theme from Isar
-    final themePref = await isar.themePreferences.where().findFirst();
-    if (themePref != null) {
-      emit(ThemeState(themePref.themeMode));
-    } else {
-      // No saved preference: default to dark and persist it
-      await isar.writeTxn(() async {
-        await isar.themePreferences
-            .put(ThemePreference(themeMode: ThemeMode.dark));
-      });
-      emit(ThemeState(ThemeMode.dark));
+    if (event is InitializeTheme) {
+      emit(ThemeState(await _store.load()));
+      return;
     }
-  }
 
-  Future<void> _onToggleTheme(
-    ToggleTheme event,
-    Emitter<ThemeState> emit,
-  ) async {
-    // Compute the new theme
-    final newThemeMode =
-        state.themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-
-    // Persist it
-    await isar.writeTxn(() async {
-      await isar.themePreferences.put(ThemePreference(themeMode: newThemeMode));
-    });
-
-    // Emit the updated theme
-    emit(ThemeState(newThemeMode));
+    final ThemeMode mode;
+    if (event is SetThemeMode) {
+      mode = event.themeMode;
+    } else if (event is ToggleTheme) {
+      final isDark = state.themeMode == ThemeMode.dark ||
+          (state.themeMode == ThemeMode.system &&
+              event.systemBrightness == Brightness.dark);
+      mode = isDark ? ThemeMode.light : ThemeMode.dark;
+    } else {
+      return;
+    }
+    await _store.save(mode);
+    emit(ThemeState(mode));
   }
 }

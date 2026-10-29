@@ -188,7 +188,18 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p build/reports
+          set +e
           flutter test --coverage --reporter expanded 2>&1 | tee build/reports/flutter-test.log
+          statuses=("${PIPESTATUS[@]}")
+          status=${statuses[0]}
+          set -e
+          if (( status == 0 && statuses[1] != 0 )); then
+            status=${statuses[1]}
+          fi
+          if (( status != 0 )); then
+            bash tool/ci/annotate_failure.sh analyze build/reports/flutter-test.log
+          fi
+          exit "$status"
       - name: Upload test log and LCOV
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6

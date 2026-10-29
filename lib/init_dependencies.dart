@@ -3,6 +3,7 @@ import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/secrets/app_secrets.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference.dart';
+import 'package:belog/core/theme/theme_preference_store.dart';
 import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:belog/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
@@ -106,7 +107,9 @@ Future<void> initDependencies() async {
 
   serviceLocator.registerFactory(() => InternetConnection());
   // core
-  serviceLocator.registerLazySingleton(() => ThemeBloc());
+  serviceLocator.registerLazySingleton<ThemePreferenceStore>(
+      () => IsarThemePreferenceStore(serviceLocator<Isar>()));
+  serviceLocator.registerLazySingleton(() => ThemeBloc(serviceLocator()));
 
   serviceLocator.registerLazySingleton(() => AppUserCubit());
   serviceLocator.registerFactory<ConnectionChecker>(

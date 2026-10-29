@@ -16,16 +16,17 @@ class ThemeToggleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Read only the themeMode value to rebuild on changes
-    final isDarkMode = context
-        .select((ThemeBloc bloc) => bloc.state.themeMode == ThemeMode.dark);
+    // This is the resolved brightness even when following the system theme.
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Material(
       type: MaterialType.transparency,
       child: InkWell(
         onTap: () {
           HapticFeedback.lightImpact();
-          context.read<ThemeBloc>().add(ToggleTheme());
+          context.read<ThemeBloc>().add(ToggleTheme(
+                systemBrightness: Theme.of(context).brightness,
+              ));
         },
         borderRadius: BorderRadius.circular(height / 2),
         child: SizedBox(
