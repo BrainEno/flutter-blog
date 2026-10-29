@@ -41,22 +41,8 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Debug context
-        shell: bash
-        run: |
-          {
-            echo "HEAD: $(git rev-parse HEAD)"
-            git log --oneline -3
-            echo "--- blog_event.dart head ---"
-            sed -n '1,12p' lib/features/blog/presentation/blocs/blog/blog_event.dart
-            echo "--- report files in workspace before run ---"
-            ls -la build-reports-*.txt 2>/dev/null || echo "(none)"
-          } | tee build-reports-debug.txt
-
-      - name: Resolve dependencies
-        run: flutter pub get
-
       - name: Check formatting of changed Dart files
+        id: fmt
         shell: bash
         run: |
           set -euo pipefail
@@ -64,22 +50,40 @@ jobs:
           echo "changed dart files: ${#dart_files[@]}"
           if (( ${#dart_files[@]} == 0 )); then
             echo "No Dart files changed."
-          else
-            printf 'Formatting check: %s\n' "${dart_files[@]}"
-            dart format "${dart_files[@]}" > /dev/null 2>&1 || true
-            git diff -- '*.dart' > build-reports-format.txt
-            if [[ -s build-reports-format.txt ]]; then
-              echo "FORMAT DIFF NEEDED:"
-              cat build-reports-format.txt
-              exit 1
-            fi
+            exit 0
           fi
+          printf 'Formatting check: %s\n' "${dart_files[@]}"
+          if dart format --output=none --set-exit-if-changed "${dart_files[@]}" 2>&1 | tee build-reports-format.txt; then
+            echo "format=ok" >> "$GITHUB_OUTPUT"
+          else
+            echo "format=bad" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Auto-format and push a style commit
+        if: failure() && steps.fmt.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -d '' dart_files < <(git diff --name-only -z --diff-filter=ACMR origin/main...HEAD -- '*.dart')
+          dart format "${dart_files[@]}"
+          git config user.name "arena-dev-checks"
+          git config user.email "actions@users.noreply.github.com"
+          git add -- lib test
+          git commit -m "style: canonical dart format (bot, run ${{ github.run_id }})"
+          git push origin HEAD:"${{ github.ref_name }}"
 
       - name: Analyze
         if: always()
         shell: bash
         run: |
           set -o pipefail
+          {
+            echo "--- source snapshot: blog_event.dart ---"
+            sed -n '1,12p' lib/features/blog/presentation/blocs/blog/blog_event.dart
+            echo "--- source snapshot: retry_on_connection_closed.dart ---"
+            sed -n '1,22p' lib/core/utils/retry_on_connection_closed.dart
+          } | tee build-reports-sources.txt
           flutter analyze --fatal-infos 2>&1 | tee build-reports-analyze.txt
 
       - name: Test
@@ -88,23 +92,6 @@ jobs:
         run: |
           set -o pipefail
           flutter test --concurrency=1 --reporter expanded 2>&1 | tee build-reports-test.txt
-
-      - name: Push logs back to the branch
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "arena-dev-checks"
-          git config user.email "actions@users.noreply.github.com"
-          git checkout -- . || true
-          git add -f build-reports-*.txt || true
-          if git diff --cached --quiet; then
-            echo "nothing to push"
-            exit 0
-          fi
-          git commit -m "dev-checks logs (run ${{ github.run_id }})"
-          git pull --rebase origin "${{ github.ref_name }}"
-          git push origin HEAD:"${{ github.ref_name }}"
 
       - name: Report results as a PR comment
         if: always() && github.event_name == 'push'
@@ -130,6 +117,10 @@ jobs:
               '#### debug context',
               '```',
               read('build-reports-debug.txt', 40),
+              '```',
+              '#### source snapshot (pre-analyze)',
+              '```dart',
+              read('build-reports-sources.txt', 40),
               '```',
               '#### dart format',
               '```',
