@@ -32,3 +32,7 @@ Runner/GeneratedPluginRegistrant.*
 !default.mode2v3
 !default.pbxuser
 !default.perspectivev3
+
+# Sideload packaging output; IPAs are built and attached by CI, never committed.
+Payload/
+*.ipa
