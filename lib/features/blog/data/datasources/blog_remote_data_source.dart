@@ -6,6 +6,7 @@ import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/utils/retry_on_connection_closed.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart' show kBlogPageSize;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 abstract interface class BlogRemoteDataSource {
@@ -29,6 +30,9 @@ abstract interface class BlogRemoteDataSource {
   Future<bool> toggleLikeBlog(String userId, String blogId);
   Future<bool> isBlogLikedByUser(String userId, String blogId);
 }
+
+/// Upper bound for search results so an unindexed title scan stays bounded.
+const int kMaxSearchResults = 50;
 
 class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   final SupabaseClient supabaseClient;
@@ -72,6 +76,8 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       final query = supabaseClient
           .from('blogs')
           .select('*, profiles (name, avatar_url)')
+          .order('updated_at', ascending: false)
+          .order('id', ascending: false)
           .range(from, to);
 
       final blogs = await retryOnConnectionClosed(() => query);
@@ -95,7 +101,9 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       final blogs = await supabaseClient
           .from('blogs')
           .select('*, profiles (name, avatar_url)')
-          .eq('poster_id', posterId);
+          .eq('poster_id', posterId)
+          .order('updated_at', ascending: false)
+          .order('id', ascending: false);
 
       return List<BlogModel>.from(
         blogs.map(
@@ -116,7 +124,9 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       final blogs = await supabaseClient
           .from('blogs')
           .select('*, profiles (name, avatar_url)')
-          .contains('tags', tag);
+          .contains('tags', tag)
+          .order('updated_at', ascending: false)
+          .order('id', ascending: false);
 
       return List<BlogModel>.from(
         blogs.map(
@@ -141,16 +151,25 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       }
 
       // Set up the base query
-      final blogsQuery = supabaseClient
-          .from('blogs')
-          .select('*, profiles (name, avatar_url)');
+      // Postgres treats %, _ and \ as LIKE wildcards/escapes. Escape them so
+      // user input is matched literally; the pattern itself stays a substring
+      // match around the query (works for Chinese text without pretending to
+      // be full-text search).
+      final escapedQuery = sanitizedQuery
+          .replaceAll('\\', '\\\\')
+          .replaceAll('%', '\\%')
+          .replaceAll('_', '\\_');
 
-      // Search titles containing the query anywhere
-      final blogs = await blogsQuery.filter(
-        'title',
-        'ilike',
-        '%$sanitizedQuery%',
-      );
+      // Search titles containing the query anywhere, newest first, with a
+      // hard cap so an unindexed scan stays bounded. (.filter must come
+      // before .order/.limit: the builder narrows to a transform builder.)
+      final blogs = await supabaseClient
+          .from('blogs')
+          .select('*, profiles (name, avatar_url)')
+          .filter('title', 'ilike', '%$escapedQuery%')
+          .order('updated_at', ascending: false)
+          .order('id', ascending: false)
+          .limit(kMaxSearchResults);
 
       // Map the results to BlogModel
       return blogs
@@ -233,7 +252,8 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         () => supabaseClient
             .from('likes')
             .select('blog_id, blogs(*, profiles (name, avatar_url))')
-            .eq('user_id', userId),
+            .eq('user_id', userId)
+            .order('updated_at', ascending: false, referencedTable: 'blogs'),
       );
 
       return List<BlogModel>.from(

@@ -14,6 +14,10 @@ class GetAllBlogs implements UseCase<List<Blog>, GetAllBlogsParams> {
   }
 }
 
+/// Page size agreed between the feed pagination and the remote data source.
+/// A page returning fewer items than this means the end of the list.
+const int kBlogPageSize = 10;
+
 class GetAllBlogsParams {
   final int page;
 

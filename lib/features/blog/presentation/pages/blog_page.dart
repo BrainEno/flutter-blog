@@ -1,6 +1,7 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
+import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/blog/blog_bloc.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:flutter/cupertino.dart';
@@ -17,14 +18,12 @@ class BlogPage extends StatefulWidget {
 
 class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
-  bool _isFetchingMore = false;
-  int _page = 1; // Pagination page number
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _fetchBlogs(); // Initial fetch
+    _fetchFirstPage();
     _scrollController.addListener(_onScroll);
   }
 
@@ -37,37 +36,28 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // One guarded refresh per resume; the bloc drops it while a newer
+    // request is already in flight.
     if (state == AppLifecycleState.resumed) {
-      _fetchBlogs(refresh: true); // Refresh when returning to the page
+      _fetchFirstPage();
     }
   }
 
-  void _fetchBlogs({bool refresh = false}) {
-    final blogBloc = context.read<BlogBloc>();
-    if (refresh) {
-      _page = 1; // Reset to first page for refresh
-      blogBloc.add(BlogFetchAllBlogs(page: _page, refresh: true));
-    } else {
-      blogBloc.add(BlogFetchAllBlogs(page: _page));
-    }
+  void _fetchFirstPage() {
+    context.read<BlogBloc>().add(const BlogFetchFirstPage());
   }
 
   void _onScroll() {
     if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200 &&
-        !_isFetchingMore) {
-      _fetchMoreBlogs();
+        _scrollController.position.maxScrollExtent - 200) {
+      // The bloc ignores this while a request is running, once the end is
+      // reached, or before a list exists.
+      context.read<BlogBloc>().add(const BlogLoadMore());
     }
   }
 
-  void _fetchMoreBlogs() {
-    setState(() => _isFetchingMore = true);
-    _page++;
-    context.read<BlogBloc>().add(BlogFetchAllBlogs(page: _page));
-  }
-
   Future<void> _refreshBlogs() async {
-    _fetchBlogs(refresh: true);
+    _fetchFirstPage();
     await context.read<BlogBloc>().stream.firstWhere(
       (state) => state is BlogLoaded || state is BlogListFailure,
     );
@@ -75,10 +65,10 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
 
   Future<void> _openEditor() async {
     // The editor pops with `true` when something was published, so the feed
-    // refreshes instead of appending stale pages.
+    // reloads page 1 instead of appending a stale page.
     final published = await context.push<bool>('/editor');
     if (published == true && mounted) {
-      _fetchBlogs(refresh: true);
+      _fetchFirstPage();
     }
   }
 
@@ -100,56 +90,11 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
           if (state is BlogListFailure) {
             showSnackBar(context, state.error);
           }
-
-          if (state is BlogLoaded || state is BlogListFailure) {
-            setState(() {
-              _isFetchingMore = false;
-            });
-          }
         },
         builder: (context, state) {
-          List<dynamic> blogsToShow = [];
-          if (state is BlogLoaded) {
-            blogsToShow = state.blogs;
-          } else if (state is BlogListLoading &&
-              state.previousState is BlogLoaded) {
-            blogsToShow = (state.previousState as BlogLoaded).blogs;
-          } else if (state is BlogListFailure &&
-              state.previousState is BlogLoaded) {
-            blogsToShow = (state.previousState as BlogLoaded).blogs;
-          }
-
-          if (state is BlogListLoading && blogsToShow.isEmpty) {
-            return const Loader(); // Show loader only on initial load
-          }
-
-          if (blogsToShow.isEmpty) {
-            return RefreshIndicator(
-              onRefresh: _refreshBlogs,
-              child: const SingleChildScrollView(
-                physics: AlwaysScrollableScrollPhysics(),
-                child: Center(heightFactor: 5, child: Text("加载中...")),
-              ),
-            );
-          }
-
           return RefreshIndicator(
             onRefresh: _refreshBlogs,
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.only(top: 8, bottom: 30),
-              itemCount: blogsToShow.length + (_isFetchingMore ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == blogsToShow.length) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                final blog = blogsToShow[index];
-                return BlogCard(blog: blog);
-              },
-            ),
+            child: _buildBody(state),
           );
         },
       ),
@@ -165,5 +110,89 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
         },
       ),
     );
+  }
+
+  Widget _buildBody(BlogState state) {
+    final blogs = _visibleBlogs(state);
+
+    // Initial load with nothing to show yet.
+    if (blogs.isEmpty &&
+        (state is BlogInitial || state is BlogFirstPageLoading)) {
+      return const Loader();
+    }
+
+    // Actionable failure without any list to fall back to.
+    if (state is BlogListFailure && blogs.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 120),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                state.error,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Center(
+            child: TextButton(
+              onPressed: _fetchFirstPage,
+              child: const Text('重试'),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Loaded but empty: distinguishable from loading and from failure.
+    if (blogs.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 160),
+          Center(child: Text('还没有文章，下拉刷新试试')),
+        ],
+      );
+    }
+
+    final loadingMore =
+        state is BlogLoaded && state.isLoadingMore && !state.hasReachedMax;
+    final reachedMax = state is BlogLoaded && state.hasReachedMax;
+    return ListView.builder(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(top: 8, bottom: 30),
+      itemCount: blogs.length + (loadingMore || reachedMax ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == blogs.length) {
+          if (loadingMore) {
+            return const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          return const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(
+              child: Text('没有更多了', style: TextStyle(color: Colors.grey)),
+            ),
+          );
+        }
+        return BlogCard(blog: blogs[index]);
+      },
+    );
+  }
+
+  List<Blog> _visibleBlogs(BlogState state) {
+    if (state is BlogLoaded) return state.blogs;
+    if (state is BlogFirstPageLoading) return state.previousBlogs;
+    if (state is BlogListFailure && state.previousState is BlogLoaded) {
+      return (state.previousState as BlogLoaded).blogs;
+    }
+    return const [];
   }
 }

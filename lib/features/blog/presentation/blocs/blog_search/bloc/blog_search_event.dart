@@ -1,11 +1,16 @@
 part of 'blog_search_bloc.dart';
 
-abstract class BlogSearchEvent {
+sealed class BlogSearchEvent {}
+
+/// Searches blogs whose title contains [query]. Whitespace-only queries are
+/// treated like a clear.
+class SearchBlogsEvent extends BlogSearchEvent {
   final String query;
 
-  BlogSearchEvent({required this.query});
+  SearchBlogsEvent({required this.query});
 }
 
-class SearchBlogsEvent extends BlogSearchEvent {
-  SearchBlogsEvent({required super.query});
+/// Resets the search to its idle state, discarding any in-flight response.
+class SearchBlogsCleared extends BlogSearchEvent {
+  const SearchBlogsCleared();
 }
