@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:belog/core/error/error_mapper.dart';
-import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -67,9 +66,7 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
     try {
       // Supabase sends a confirmation email; the outcome surfaces through
       // the returned future or a thrown error - there is nothing to print.
-      await supabaseClient.auth.updateUser(
-        UserAttributes(email: newEmail),
-      );
+      await supabaseClient.auth.updateUser(UserAttributes(email: newEmail));
     } catch (e) {
       throw mapToServerException(e);
     }

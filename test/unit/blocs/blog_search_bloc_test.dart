@@ -13,6 +13,10 @@ class _FakeSearchBlogs implements SearchBlogs {
   _FakeSearchBlogs(this._handler);
 
   @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+
+  @override
   Future<Either<Failure, List<Blog>>> call(SearchBlogsParams params) =>
       _handler(params.query);
 }
@@ -60,8 +64,7 @@ void main() {
     expect(received, 'flutter');
   });
 
-  test('only the latest response is emitted when searches overlap',
-      () async {
+  test('only the latest response is emitted when searches overlap', () async {
     var calls = 0;
     final slow = Completer<Either<Failure, List<Blog>>>();
     final bloc = BlogSearchBloc(

@@ -41,9 +41,8 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
     // A newer first-page request (or nothing at all) supersedes this one.
     if (generation != _generation || isClosed) return;
     res.fold(
-      (failure) => emit(
-        BlogListFailure(error: failure.message, previousState: state),
-      ),
+      (failure) =>
+          emit(BlogListFailure(error: failure.message, previousState: state)),
       (blogs) => emit(
         BlogLoaded(
           blogs: blogs,
@@ -54,10 +53,7 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
     );
   }
 
-  Future<void> _onLoadMore(
-    BlogLoadMore event,
-    Emitter<BlogState> emit,
-  ) async {
+  Future<void> _onLoadMore(BlogLoadMore event, Emitter<BlogState> emit) async {
     final current = state;
     if (current is! BlogLoaded ||
         current.isLoadingMore ||

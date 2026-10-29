@@ -1,6 +1,8 @@
 part of 'blog_search_bloc.dart';
 
-sealed class BlogSearchState {}
+sealed class BlogSearchState {
+  const BlogSearchState();
+}
 
 /// Idle: no query entered yet.
 class BlogSearchInitial extends BlogSearchState {

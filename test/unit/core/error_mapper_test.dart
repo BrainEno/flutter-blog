@@ -47,8 +47,7 @@ void main() {
       expect(exception.kind, FailureKind.validation);
     });
 
-    test('other PostgREST errors become generic server errors, no leakage',
-        () {
+    test('other PostgREST errors become generic server errors, no leakage', () {
       final exception = mapToServerException(
         sb.PostgrestException(message: 'syntax error at or near "SELECT"'),
       );

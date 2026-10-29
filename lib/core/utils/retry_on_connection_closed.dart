@@ -9,9 +9,9 @@ Future<T> retryOnConnectionClosed<T>(
     try {
       return await request();
     } catch (e) {
-      if (e
-              .toString()
-              .contains('Connection closed before full header was received') &&
+      if (e.toString().contains(
+            'Connection closed before full header was received',
+          ) &&
           retries < maxRetries) {
         retries++;
         AppLogger.debug('Connection closed; retry attempt $retries');

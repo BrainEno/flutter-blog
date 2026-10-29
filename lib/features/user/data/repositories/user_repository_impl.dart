@@ -33,16 +33,19 @@ class UserRepositoryImpl implements UserRepository {
       UserModel userToUpdate = await remoteDataSource.getUserById(userId);
 
       if (avatar != null) {
-        final imageUrl =
-            await remoteDataSource.uploadAvatar(userId: userId, image: avatar);
+        final imageUrl = await remoteDataSource.uploadAvatar(
+          userId: userId,
+          image: avatar,
+        );
         userToUpdate = userToUpdate.copyWith(avatarUrl: imageUrl);
       }
       userToUpdate = userToUpdate.copyWith(
-          id: userId,
-          name: name,
-          email: email,
-          website: website,
-          updatedAt: DateTime.now());
+        id: userId,
+        name: name,
+        email: email,
+        website: website,
+        updatedAt: DateTime.now(),
+      );
 
       final userUpdated = await remoteDataSource.editUserInfo(userToUpdate);
       return right(userUpdated);

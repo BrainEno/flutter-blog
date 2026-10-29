@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/features/blog/data/datasources/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
@@ -115,10 +117,19 @@ Future<RecordingUploadBloc> openEditorLive(
   final bloc = RecordingUploadBloc();
   when(() => bloc.state).thenReturn(BlogUploadInitial());
   when(() => bloc.stream).thenAnswer((_) => states.stream);
+  // saveBlog() reads the logged-in user id even on the update path.
+  final appUser = AppUserCubit()
+    ..updateUser(
+      User(id: 'user', email: 'a@b.c', name: 'n', updatedAt: DateTime(2024)),
+    );
+  addTearDown(appUser.close);
   await tester.pumpWidget(
     MaterialApp(
-      home: BlocProvider<BlogUploadBloc>.value(
-        value: bloc,
+      home: MultiBlocProvider(
+        providers: [
+          BlocProvider<BlogUploadBloc>.value(value: bloc),
+          BlocProvider<AppUserCubit>.value(value: appUser),
+        ],
         child: BlogEditorPage(blog: blog, draftStore: store),
       ),
     ),
@@ -277,19 +288,23 @@ void main() {
 
     expect(store.deleteCalls, 1);
     expect(store.deletedScope, 'article-a');
-    expect(store.deletedOlderThan, isNotNull,
-        reason: 'only pre-publish drafts are cleared');
-    expect(store.savedDrafts.length, savesBeforePublish,
-        reason: 'no dispose flush may resurrect the published content');
+    expect(
+      store.deletedOlderThan,
+      isNotNull,
+      reason: 'only pre-publish drafts are cleared',
+    );
+    expect(
+      store.savedDrafts.length,
+      savesBeforePublish,
+      reason: 'no dispose flush may resurrect the published content',
+    );
     await states.close();
-  });;
+  });
 
   testWidgets('delete success clears all drafts of the article and never '
       'resurrects them', (tester) async {
-    final store = FakeDraftStore()..drafts['article-a'] = makeDraft(
-      'article-a',
-      '待删草稿',
-    );
+    final store = FakeDraftStore()
+      ..drafts['article-a'] = makeDraft('article-a', '待删草稿');
     final states = StreamController<BlogUploadState>.broadcast();
     final bloc = await openEditorLive(
       tester,

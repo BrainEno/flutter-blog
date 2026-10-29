@@ -21,5 +21,5 @@ const int kBlogPageSize = 10;
 class GetAllBlogsParams {
   final int page;
 
-  GetAllBlogsParams({required this.page});
+  const GetAllBlogsParams({required this.page});
 }

@@ -2,11 +2,11 @@
 
 import 'dart:io';
 
-import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/utils/retry_on_connection_closed.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
-import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart' show kBlogPageSize;
+import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart'
+    show kBlogPageSize;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 abstract interface class BlogRemoteDataSource {
@@ -69,9 +69,9 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   @override
   Future<List<BlogModel>> getAllBlogs({required int page}) async {
     try {
-      const pageSize = 10; // Define how many blogs per page
-      final from = (page - 1) * pageSize;
-      final to = from + pageSize - 1;
+      // Page size is shared with the feed bloc via kBlogPageSize.
+      final from = (page - 1) * kBlogPageSize;
+      final to = from + kBlogPageSize - 1;
 
       final query = supabaseClient
           .from('blogs')

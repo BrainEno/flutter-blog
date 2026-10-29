@@ -131,9 +131,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     // Only edits made while a publish was uploading should survive it.
     if (_publishStartedAt != null && !_editedDuringPublish) return;
     final draft = _currentDraft();
-    unawaited(
-      _draftStore.save(draft).then((_) {}, onError: (_) {}),
-    );
+    unawaited(_draftStore.save(draft).then((_) {}, onError: (_) {}));
   }
 
   Future<void> loadDraft() async {

@@ -1,7 +1,9 @@
 part of 'blog_bloc.dart';
 
 @immutable
-sealed class BlogState {}
+sealed class BlogState {
+  const BlogState();
+}
 
 final class BlogInitial extends BlogState {
   const BlogInitial();

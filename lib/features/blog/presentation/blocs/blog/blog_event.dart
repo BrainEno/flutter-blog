@@ -1,7 +1,9 @@
 part of 'blog_bloc.dart';
 
 @immutable
-sealed class BlogEvent {}
+sealed class BlogEvent {
+  const BlogEvent();
+}
 
 /// Loads or reloads page 1 of the feed, replacing the current list.
 final class BlogFetchFirstPage extends BlogEvent {

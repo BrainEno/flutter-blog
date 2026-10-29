@@ -116,9 +116,7 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
         },
         builder: (context, state) {
           if (state is BlogSearchInitial) {
-            return const Center(
-              child: Text('输入关键词，搜索你感兴趣的文章'),
-            );
+            return const Center(child: Text('输入关键词，搜索你感兴趣的文章'));
           }
           if (state is BlogSearchLoading) {
             return const Center(child: CircularProgressIndicator());

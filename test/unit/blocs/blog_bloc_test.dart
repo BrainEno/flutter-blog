@@ -13,6 +13,10 @@ class _FakeGetAllBlogs implements GetAllBlogs {
   _FakeGetAllBlogs(this._handler);
 
   @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+
+  @override
   Future<Either<Failure, List<Blog>>> call(GetAllBlogsParams params) =>
       _handler(params.page);
 }
@@ -52,9 +56,7 @@ void main() {
 
     test('reports failure instead of pretending to load forever', () async {
       final bloc = BlogBloc(
-        getAllBlogs: _FakeGetAllBlogs(
-          (page) async => Left(Failure('网络错误')),
-        ),
+        getAllBlogs: _FakeGetAllBlogs((page) async => Left(Failure('网络错误'))),
       );
       final states = <BlogState>[];
       final sub = bloc.stream.listen(states.add);
@@ -66,8 +68,7 @@ void main() {
       expect((states[1] as BlogListFailure).error, '网络错误');
     });
 
-    test('a stale first-page response never overwrites a newer one',
-        () async {
+    test('a stale first-page response never overwrites a newer one', () async {
       // First request stays pending; the second one resolves immediately
       // with different data.
       var calls = 0;
@@ -93,8 +94,9 @@ void main() {
 
       final loaded = states.whereType<BlogLoaded>().toList();
       expect(loaded, hasLength(1));
-      expect(loaded.single.blogs.map((b) => b.id), ['new'],
-          reason: 'stale response must be discarded');
+      expect(loaded.single.blogs.map((b) => b.id), [
+        'new',
+      ], reason: 'stale response must be discarded');
     });
   });
 
@@ -106,10 +108,7 @@ void main() {
             return Right(List.generate(10, (i) => _blog('a$i')));
           }
           // Page shift: a0 moved down into page 2 between the requests.
-          return Right([
-            _blog('a0'),
-            ...List.generate(9, (i) => _blog('b$i')),
-          ]);
+          return Right([_blog('a0'), ...List.generate(9, (i) => _blog('b$i'))]);
         }),
       );
       final states = <BlogState>[];
@@ -121,10 +120,10 @@ void main() {
       sub.cancel();
 
       final loaded = states.whereType<BlogLoaded>().last;
-      expect(
-        loaded.blogs.map((b) => b.id),
-        [...List.generate(10, (i) => 'a$i'), ...List.generate(9, (i) => 'b$i')],
-      );
+      expect(loaded.blogs.map((b) => b.id), [
+        ...List.generate(10, (i) => 'a$i'),
+        ...List.generate(9, (i) => 'b$i'),
+      ]);
       expect(loaded.page, 2);
       expect(loaded.hasReachedMax, isTrue, reason: '9 < 10 returned');
     });
@@ -157,8 +156,7 @@ void main() {
       expect(loaded.page, 2);
     });
 
-    test('a refresh that starts mid load-more supersedes the append',
-        () async {
+    test('a refresh that starts mid load-more supersedes the append', () async {
       final gate = Completer<void>();
       var calls = 0;
       final bloc = BlogBloc(
@@ -193,11 +191,11 @@ void main() {
       sub.cancel();
 
       final loaded = states.whereType<BlogLoaded>().last;
-      expect(
-        loaded.blogs.map((b) => b.id),
-        ['refresh0', 'refresh1', 'refresh2'],
-        reason: 'the stale append must be discarded',
-      );
+      expect(loaded.blogs.map((b) => b.id), [
+        'refresh0',
+        'refresh1',
+        'refresh2',
+      ], reason: 'the stale append must be discarded');
       expect(loaded.page, 1);
       expect(loaded.hasReachedMax, isTrue);
     });
@@ -223,26 +221,28 @@ void main() {
       expect(loaded.blogs, hasLength(10));
     });
 
-    test('load-more failure keeps the previous list and clears the flag',
-        () async {
-      final bloc = BlogBloc(
-        getAllBlogs: _FakeGetAllBlogs((page) async {
-          if (page == 1) return Right(List.generate(10, (i) => _blog('a$i')));
-          return Left(Failure('网络中断'));
-        }),
-      );
-      final states = <BlogState>[];
-      final sub = bloc.stream.listen(states.add);
-      bloc.add(const BlogFetchFirstPage());
-      await Future<void>.delayed(Duration.zero);
-      bloc.add(const BlogLoadMore());
-      await bloc.close();
-      sub.cancel();
+    test(
+      'load-more failure keeps the previous list and clears the flag',
+      () async {
+        final bloc = BlogBloc(
+          getAllBlogs: _FakeGetAllBlogs((page) async {
+            if (page == 1) return Right(List.generate(10, (i) => _blog('a$i')));
+            return Left(Failure('网络中断'));
+          }),
+        );
+        final states = <BlogState>[];
+        final sub = bloc.stream.listen(states.add);
+        bloc.add(const BlogFetchFirstPage());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const BlogLoadMore());
+        await bloc.close();
+        sub.cancel();
 
-      final failure = states.whereType<BlogListFailure>().single;
-      final previous = failure.previousState as BlogLoaded;
-      expect(previous.blogs, hasLength(10));
-      expect(previous.isLoadingMore, isFalse);
-    });
+        final failure = states.whereType<BlogListFailure>().single;
+        final previous = failure.previousState as BlogLoaded;
+        expect(previous.blogs, hasLength(10));
+        expect(previous.isLoadingMore, isFalse);
+      },
+    );
   });
 }
