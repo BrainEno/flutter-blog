@@ -19,8 +19,12 @@ class IsarThemePreferenceStore implements ThemePreferenceStore {
   @override
   Future<ThemeMode> load() async {
     return isar.writeTxn(() async {
-      final latest =
-          await isar.themePreferences.where(sort: Sort.desc).findFirst();
+      // Isar only applies where-sort to an explicit index clause. Without
+      // anyId(), a plain collection scan can still return the oldest row.
+      final latest = await isar.themePreferences
+          .where(sort: Sort.desc)
+          .anyId()
+          .findFirst();
       if (latest == null) return ThemeMode.system;
 
       if (latest.id != preferenceId) {
