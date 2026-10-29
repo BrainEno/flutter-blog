@@ -1,0 +1,31 @@
+name: Isar migration bootstrap
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          channel: stable
+          flutter-version: '3.47.8'
+          cache: true
+          pub-cache: true
+      - name: Generate and emit sources
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter pub get 2>&1 | tee /tmp/pub.log || { bash tool/ci/annotate_failure.sh analyze /tmp/pub.log; exit 1; }
+          dart run build_runner build --delete-conflicting-outputs 2>&1 | tee /tmp/generate.log || { bash tool/ci/annotate_failure.sh analyze /tmp/generate.log; exit 1; }
+          python3 - <<'PY'
+          import base64, gzip
+          from pathlib import Path
+          for f in ['pubspec.lock', 'lib/core/theme/theme_preference.g.dart', 'lib/features/blog/domain/entities/blog.g.dart', 'lib/features/blog/domain/entities/blog_draft.g.dart', 'windows/flutter/generated_plugin_registrant.cc', 'windows/flutter/generated_plugins.cmake', 'macos/Flutter/GeneratedPluginRegistrant.swift']:
+              data = base64.b64encode(gzip.compress(Path(f).read_bytes())).decode()
+              for i in range(0, len(data), 3000):
+                  print(f'::notice title=generated {f} part {i // 3000}::{data[i:i+3000]}')
+          PY

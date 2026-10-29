@@ -7,7 +7,7 @@ part of 'blog.dart';
 // **************************************************************************
 
 // coverage:ignore-file
-// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types, experimental_member_use
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
 
 extension GetBlogCollection on Isar {
   IsarCollection<Blog> get blogs => this.collection();
@@ -17,8 +17,16 @@ const BlogSchema = CollectionSchema(
   name: r'Blog',
   id: 5272856407794908319,
   properties: {
-    r'content': PropertySchema(id: 0, name: r'content', type: IsarType.string),
-    r'id': PropertySchema(id: 1, name: r'id', type: IsarType.string),
+    r'content': PropertySchema(
+      id: 0,
+      name: r'content',
+      type: IsarType.string,
+    ),
+    r'id': PropertySchema(
+      id: 1,
+      name: r'id',
+      type: IsarType.string,
+    ),
     r'imageUrl': PropertySchema(
       id: 2,
       name: r'imageUrl',
@@ -39,8 +47,16 @@ const BlogSchema = CollectionSchema(
       name: r'posterName',
       type: IsarType.string,
     ),
-    r'tags': PropertySchema(id: 6, name: r'tags', type: IsarType.stringList),
-    r'title': PropertySchema(id: 7, name: r'title', type: IsarType.string),
+    r'tags': PropertySchema(
+      id: 6,
+      name: r'tags',
+      type: IsarType.stringList,
+    ),
+    r'title': PropertySchema(
+      id: 7,
+      name: r'title',
+      type: IsarType.string,
+    ),
     r'titleWords': PropertySchema(
       id: 8,
       name: r'titleWords',
@@ -50,9 +66,8 @@ const BlogSchema = CollectionSchema(
       id: 9,
       name: r'updatedAt',
       type: IsarType.dateTime,
-    ),
+    )
   },
-
   estimateSize: _blogEstimateSize,
   serialize: _blogSerialize,
   deserialize: _blogDeserialize,
@@ -69,17 +84,16 @@ const BlogSchema = CollectionSchema(
           name: r'titleWords',
           type: IndexType.hash,
           caseSensitive: true,
-        ),
+        )
       ],
-    ),
+    )
   },
   links: {},
   embeddedSchemas: {},
-
   getId: _blogGetId,
   getLinks: _blogGetLinks,
   attach: _blogAttach,
-  version: '3.4.1',
+  version: '3.1.0+1',
 );
 
 int _blogEstimateSize(
@@ -214,9 +228,10 @@ extension BlogQueryWhereSort on QueryBuilder<Blog, Blog, QWhere> {
 extension BlogQueryWhere on QueryBuilder<Blog, Blog, QWhereClause> {
   QueryBuilder<Blog, Blog, QAfterWhereClause> iidEqualTo(Id iid) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(
-        IdWhereClause.between(lower: iid, upper: iid),
-      );
+      return query.addWhereClause(IdWhereClause.between(
+        lower: iid,
+        upper: iid,
+      ));
     });
   }
 
@@ -242,10 +257,8 @@ extension BlogQueryWhere on QueryBuilder<Blog, Blog, QWhereClause> {
     });
   }
 
-  QueryBuilder<Blog, Blog, QAfterWhereClause> iidGreaterThan(
-    Id iid, {
-    bool include = false,
-  }) {
+  QueryBuilder<Blog, Blog, QAfterWhereClause> iidGreaterThan(Id iid,
+      {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.greaterThan(lower: iid, includeLower: include),
@@ -253,10 +266,8 @@ extension BlogQueryWhere on QueryBuilder<Blog, Blog, QWhereClause> {
     });
   }
 
-  QueryBuilder<Blog, Blog, QAfterWhereClause> iidLessThan(
-    Id iid, {
-    bool include = false,
-  }) {
+  QueryBuilder<Blog, Blog, QAfterWhereClause> iidLessThan(Id iid,
+      {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.lessThan(upper: iid, includeUpper: include),
@@ -271,67 +282,56 @@ extension BlogQueryWhere on QueryBuilder<Blog, Blog, QWhereClause> {
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(
-        IdWhereClause.between(
-          lower: lowerIid,
-          includeLower: includeLower,
-          upper: upperIid,
-          includeUpper: includeUpper,
-        ),
-      );
+      return query.addWhereClause(IdWhereClause.between(
+        lower: lowerIid,
+        includeLower: includeLower,
+        upper: upperIid,
+        includeUpper: includeUpper,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterWhereClause> titleWordsEqualTo(
-    List<String> titleWords,
-  ) {
+      List<String> titleWords) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(
-        IndexWhereClause.equalTo(indexName: r'titleWords', value: [titleWords]),
-      );
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'titleWords',
+        value: [titleWords],
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterWhereClause> titleWordsNotEqualTo(
-    List<String> titleWords,
-  ) {
+      List<String> titleWords) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'titleWords',
-                lower: [],
-                upper: [titleWords],
-                includeUpper: false,
-              ),
-            )
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'titleWords',
-                lower: [titleWords],
-                includeLower: false,
-                upper: [],
-              ),
-            );
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'titleWords',
+              lower: [],
+              upper: [titleWords],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'titleWords',
+              lower: [titleWords],
+              includeLower: false,
+              upper: [],
+            ));
       } else {
         return query
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'titleWords',
-                lower: [titleWords],
-                includeLower: false,
-                upper: [],
-              ),
-            )
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'titleWords',
-                lower: [],
-                upper: [titleWords],
-                includeUpper: false,
-              ),
-            );
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'titleWords',
+              lower: [titleWords],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'titleWords',
+              lower: [],
+              upper: [titleWords],
+              includeUpper: false,
+            ));
       }
     });
   }
@@ -343,13 +343,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'content',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'content',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -359,14 +357,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'content',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'content',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -376,14 +372,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'content',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'content',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -395,16 +389,14 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.between(
-          property: r'content',
-          lower: lower,
-          includeLower: includeLower,
-          upper: upper,
-          includeUpper: includeUpper,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'content',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -413,13 +405,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'content',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'content',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -428,59 +418,51 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'content',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'content',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
-  QueryBuilder<Blog, Blog, QAfterFilterCondition> contentContains(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Blog, Blog, QAfterFilterCondition> contentContains(String value,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'content',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'content',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
-  QueryBuilder<Blog, Blog, QAfterFilterCondition> contentMatches(
-    String pattern, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Blog, Blog, QAfterFilterCondition> contentMatches(String pattern,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'content',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'content',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> contentIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'content', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'content',
+        value: '',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> contentIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'content', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'content',
+        value: '',
+      ));
     });
   }
 
@@ -489,13 +471,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'id',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'id',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -505,14 +485,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'id',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'id',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -522,14 +500,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'id',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'id',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -541,16 +517,14 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.between(
-          property: r'id',
-          lower: lower,
-          includeLower: includeLower,
-          upper: upper,
-          includeUpper: includeUpper,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'id',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -559,13 +533,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'id',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'id',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -574,67 +546,60 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'id',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'id',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
-  QueryBuilder<Blog, Blog, QAfterFilterCondition> idContains(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Blog, Blog, QAfterFilterCondition> idContains(String value,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'id',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'id',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
-  QueryBuilder<Blog, Blog, QAfterFilterCondition> idMatches(
-    String pattern, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Blog, Blog, QAfterFilterCondition> idMatches(String pattern,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'id',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'id',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> idIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'id', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'id',
+        value: '',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> idIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'id', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'id',
+        value: '',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> iidEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'iid', value: value),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'iid',
+        value: value,
+      ));
     });
   }
 
@@ -643,13 +608,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'iid',
-          value: value,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'iid',
+        value: value,
+      ));
     });
   }
 
@@ -658,13 +621,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'iid',
-          value: value,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'iid',
+        value: value,
+      ));
     });
   }
 
@@ -675,15 +636,13 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.between(
-          property: r'iid',
-          lower: lower,
-          includeLower: includeLower,
-          upper: upper,
-          includeUpper: includeUpper,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'iid',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
     });
   }
 
@@ -692,13 +651,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'imageUrl',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'imageUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -708,14 +665,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'imageUrl',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'imageUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -725,14 +680,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'imageUrl',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'imageUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -744,16 +697,14 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.between(
-          property: r'imageUrl',
-          lower: lower,
-          includeLower: includeLower,
-          upper: upper,
-          includeUpper: includeUpper,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'imageUrl',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -762,13 +713,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'imageUrl',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'imageUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -777,75 +726,68 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'imageUrl',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'imageUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
-  QueryBuilder<Blog, Blog, QAfterFilterCondition> imageUrlContains(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Blog, Blog, QAfterFilterCondition> imageUrlContains(String value,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'imageUrl',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'imageUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> imageUrlMatches(
-    String pattern, {
-    bool caseSensitive = true,
-  }) {
+      String pattern,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'imageUrl',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'imageUrl',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> imageUrlIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'imageUrl', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'imageUrl',
+        value: '',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> imageUrlIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'imageUrl', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'imageUrl',
+        value: '',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> posterAvatarIsNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        const FilterCondition.isNull(property: r'posterAvatar'),
-      );
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'posterAvatar',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> posterAvatarIsNotNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        const FilterCondition.isNotNull(property: r'posterAvatar'),
-      );
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'posterAvatar',
+      ));
     });
   }
 
@@ -854,13 +796,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'posterAvatar',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'posterAvatar',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -870,14 +810,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'posterAvatar',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'posterAvatar',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -887,14 +825,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'posterAvatar',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'posterAvatar',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -906,16 +842,14 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.between(
-          property: r'posterAvatar',
-          lower: lower,
-          includeLower: includeLower,
-          upper: upper,
-          includeUpper: includeUpper,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'posterAvatar',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -924,13 +858,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'posterAvatar',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'posterAvatar',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -939,59 +871,53 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'posterAvatar',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'posterAvatar',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> posterAvatarContains(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+      String value,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'posterAvatar',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'posterAvatar',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> posterAvatarMatches(
-    String pattern, {
-    bool caseSensitive = true,
-  }) {
+      String pattern,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'posterAvatar',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'posterAvatar',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> posterAvatarIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'posterAvatar', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'posterAvatar',
+        value: '',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> posterAvatarIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'posterAvatar', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'posterAvatar',
+        value: '',
+      ));
     });
   }
 
@@ -1000,13 +926,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'posterId',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'posterId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1016,14 +940,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'posterId',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'posterId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1033,14 +955,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'posterId',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'posterId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1052,16 +972,14 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.between(
-          property: r'posterId',
-          lower: lower,
-          includeLower: includeLower,
-          upper: upper,
-          includeUpper: includeUpper,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'posterId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1070,13 +988,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'posterId',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'posterId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1085,75 +1001,68 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'posterId',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'posterId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
-  QueryBuilder<Blog, Blog, QAfterFilterCondition> posterIdContains(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Blog, Blog, QAfterFilterCondition> posterIdContains(String value,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'posterId',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'posterId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> posterIdMatches(
-    String pattern, {
-    bool caseSensitive = true,
-  }) {
+      String pattern,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'posterId',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'posterId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> posterIdIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'posterId', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'posterId',
+        value: '',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> posterIdIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'posterId', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'posterId',
+        value: '',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> posterNameIsNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        const FilterCondition.isNull(property: r'posterName'),
-      );
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'posterName',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> posterNameIsNotNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        const FilterCondition.isNotNull(property: r'posterName'),
-      );
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'posterName',
+      ));
     });
   }
 
@@ -1162,13 +1071,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'posterName',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'posterName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1178,14 +1085,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'posterName',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'posterName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1195,14 +1100,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'posterName',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'posterName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1214,16 +1117,14 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.between(
-          property: r'posterName',
-          lower: lower,
-          includeLower: includeLower,
-          upper: upper,
-          includeUpper: includeUpper,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'posterName',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1232,13 +1133,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'posterName',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'posterName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1247,59 +1146,53 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'posterName',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'posterName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> posterNameContains(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+      String value,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'posterName',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'posterName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> posterNameMatches(
-    String pattern, {
-    bool caseSensitive = true,
-  }) {
+      String pattern,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'posterName',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'posterName',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> posterNameIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'posterName', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'posterName',
+        value: '',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> posterNameIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'posterName', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'posterName',
+        value: '',
+      ));
     });
   }
 
@@ -1308,13 +1201,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'tags',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'tags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1324,14 +1215,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'tags',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'tags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1341,14 +1230,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'tags',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'tags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1360,16 +1247,14 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.between(
-          property: r'tags',
-          lower: lower,
-          includeLower: includeLower,
-          upper: upper,
-          includeUpper: includeUpper,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'tags',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1378,13 +1263,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'tags',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'tags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1393,79 +1276,90 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'tags',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'tags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> tagsElementContains(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+      String value,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'tags',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'tags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> tagsElementMatches(
-    String pattern, {
-    bool caseSensitive = true,
-  }) {
+      String pattern,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'tags',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'tags',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> tagsElementIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'tags', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'tags',
+        value: '',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> tagsElementIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'tags', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'tags',
+        value: '',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> tagsLengthEqualTo(
-    int length,
-  ) {
+      int length) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(r'tags', length, true, length, true);
+      return query.listLength(
+        r'tags',
+        length,
+        true,
+        length,
+        true,
+      );
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> tagsIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(r'tags', 0, true, 0, true);
+      return query.listLength(
+        r'tags',
+        0,
+        true,
+        0,
+        true,
+      );
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> tagsIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(r'tags', 0, false, 999999, true);
+      return query.listLength(
+        r'tags',
+        0,
+        false,
+        999999,
+        true,
+      );
     });
   }
 
@@ -1474,7 +1368,13 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(r'tags', 0, true, length, include);
+      return query.listLength(
+        r'tags',
+        0,
+        true,
+        length,
+        include,
+      );
     });
   }
 
@@ -1483,7 +1383,13 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(r'tags', length, include, 999999, true);
+      return query.listLength(
+        r'tags',
+        length,
+        include,
+        999999,
+        true,
+      );
     });
   }
 
@@ -1509,13 +1415,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'title',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'title',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1525,14 +1429,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'title',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'title',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1542,14 +1444,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'title',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'title',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1561,16 +1461,14 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.between(
-          property: r'title',
-          lower: lower,
-          includeLower: includeLower,
-          upper: upper,
-          includeUpper: includeUpper,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'title',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1579,13 +1477,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'title',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'title',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1594,59 +1490,51 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'title',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'title',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
-  QueryBuilder<Blog, Blog, QAfterFilterCondition> titleContains(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Blog, Blog, QAfterFilterCondition> titleContains(String value,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'title',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'title',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
-  QueryBuilder<Blog, Blog, QAfterFilterCondition> titleMatches(
-    String pattern, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Blog, Blog, QAfterFilterCondition> titleMatches(String pattern,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'title',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'title',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> titleIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'title', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'title',
+        value: '',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> titleIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'title', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'title',
+        value: '',
+      ));
     });
   }
 
@@ -1655,13 +1543,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'titleWords',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'titleWords',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1671,14 +1557,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'titleWords',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'titleWords',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1688,14 +1572,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'titleWords',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'titleWords',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1707,16 +1589,14 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.between(
-          property: r'titleWords',
-          lower: lower,
-          includeLower: includeLower,
-          upper: upper,
-          includeUpper: includeUpper,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'titleWords',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1725,13 +1605,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'titleWords',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'titleWords',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
@@ -1740,80 +1618,91 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'titleWords',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'titleWords',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> titleWordsElementContains(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+      String value,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'titleWords',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'titleWords',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> titleWordsElementMatches(
-    String pattern, {
-    bool caseSensitive = true,
-  }) {
+      String pattern,
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'titleWords',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'titleWords',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> titleWordsElementIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'titleWords', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'titleWords',
+        value: '',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition>
-  titleWordsElementIsNotEmpty() {
+      titleWordsElementIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'titleWords', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'titleWords',
+        value: '',
+      ));
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> titleWordsLengthEqualTo(
-    int length,
-  ) {
+      int length) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(r'titleWords', length, true, length, true);
+      return query.listLength(
+        r'titleWords',
+        length,
+        true,
+        length,
+        true,
+      );
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> titleWordsIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(r'titleWords', 0, true, 0, true);
+      return query.listLength(
+        r'titleWords',
+        0,
+        true,
+        0,
+        true,
+      );
     });
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> titleWordsIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(r'titleWords', 0, false, 999999, true);
+      return query.listLength(
+        r'titleWords',
+        0,
+        false,
+        999999,
+        true,
+      );
     });
   }
 
@@ -1822,7 +1711,13 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(r'titleWords', 0, true, length, include);
+      return query.listLength(
+        r'titleWords',
+        0,
+        true,
+        length,
+        include,
+      );
     });
   }
 
@@ -1831,7 +1726,13 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(r'titleWords', length, include, 999999, true);
+      return query.listLength(
+        r'titleWords',
+        length,
+        include,
+        999999,
+        true,
+      );
     });
   }
 
@@ -1853,12 +1754,12 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
   }
 
   QueryBuilder<Blog, Blog, QAfterFilterCondition> updatedAtEqualTo(
-    DateTime value,
-  ) {
+      DateTime value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'updatedAt', value: value),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'updatedAt',
+        value: value,
+      ));
     });
   }
 
@@ -1867,13 +1768,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'updatedAt',
-          value: value,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'updatedAt',
+        value: value,
+      ));
     });
   }
 
@@ -1882,13 +1781,11 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'updatedAt',
-          value: value,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'updatedAt',
+        value: value,
+      ));
     });
   }
 
@@ -1899,15 +1796,13 @@ extension BlogQueryFilter on QueryBuilder<Blog, Blog, QFilterCondition> {
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.between(
-          property: r'updatedAt',
-          lower: lower,
-          includeLower: includeLower,
-          upper: upper,
-          includeUpper: includeUpper,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'updatedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
     });
   }
 }
@@ -2125,49 +2020,43 @@ extension BlogQuerySortThenBy on QueryBuilder<Blog, Blog, QSortThenBy> {
 }
 
 extension BlogQueryWhereDistinct on QueryBuilder<Blog, Blog, QDistinct> {
-  QueryBuilder<Blog, Blog, QDistinct> distinctByContent({
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Blog, Blog, QDistinct> distinctByContent(
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'content', caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<Blog, Blog, QDistinct> distinctById({
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Blog, Blog, QDistinct> distinctById(
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'id', caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<Blog, Blog, QDistinct> distinctByImageUrl({
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Blog, Blog, QDistinct> distinctByImageUrl(
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'imageUrl', caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<Blog, Blog, QDistinct> distinctByPosterAvatar({
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Blog, Blog, QDistinct> distinctByPosterAvatar(
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'posterAvatar', caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<Blog, Blog, QDistinct> distinctByPosterId({
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Blog, Blog, QDistinct> distinctByPosterId(
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'posterId', caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<Blog, Blog, QDistinct> distinctByPosterName({
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Blog, Blog, QDistinct> distinctByPosterName(
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'posterName', caseSensitive: caseSensitive);
     });
@@ -2179,9 +2068,8 @@ extension BlogQueryWhereDistinct on QueryBuilder<Blog, Blog, QDistinct> {
     });
   }
 
-  QueryBuilder<Blog, Blog, QDistinct> distinctByTitle({
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Blog, Blog, QDistinct> distinctByTitle(
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'title', caseSensitive: caseSensitive);
     });
