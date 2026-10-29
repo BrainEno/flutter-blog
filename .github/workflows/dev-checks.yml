@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: dev-checks-${{ github.ref }}
@@ -43,7 +44,7 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
 
-      - name: Diagnose formatting of changed Dart files
+      - name: Check formatting of changed Dart files
         shell: bash
         run: |
           set -euo pipefail
@@ -53,15 +54,19 @@ jobs:
             echo "No Dart files changed."
           else
             printf 'Formatting check: %s\n' "${dart_files[@]}"
-            dart format --output=none "${dart_files[@]}" 2>&1 | tee build-reports-format.txt
+            dart format --output=none --set-exit-if-changed "${dart_files[@]}" 2>&1 | tee build-reports-format.txt
           fi
 
       - name: Analyze
+        shell: bash
         run: |
+          set -o pipefail
           flutter analyze --fatal-infos 2>&1 | tee build-reports-analyze.txt
 
       - name: Test
+        shell: bash
         run: |
+          set -o pipefail
           flutter test --concurrency=1 --reporter expanded 2>&1 | tee build-reports-test.txt
 
       - name: Push logs back to the branch
@@ -71,7 +76,7 @@ jobs:
           set -euo pipefail
           git config user.name "arena-dev-checks"
           git config user.email "actions@users.noreply.github.com"
-          git add build-reports-*.txt || true
+          git add -f build-reports-*.txt || true
           if git diff --cached --quiet; then
             echo "nothing to push"
             exit 0
@@ -79,3 +84,44 @@ jobs:
           git commit -m "dev-checks logs (run ${{ github.run_id }})"
           git pull --rebase origin "${{ github.ref_name }}"
           git push origin HEAD:"${{ github.ref_name }}"
+
+      - name: Report results as a PR comment
+        if: always() && github.event_name == 'push'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const read = (name, limit) => {
+              try {
+                const text = fs.readFileSync(name, 'utf8').trim();
+                if (!text) return '(empty)';
+                const lines = text.split('\n');
+                return lines.length > limit
+                  ? `(... ${lines.length - limit} lines omitted)\n` + lines.slice(-limit).join('\n')
+                  : text;
+              } catch (e) {
+                return '(missing)';
+              }
+            };
+            const body = [
+              `### dev-checks report (run ${context.runId}, ${context.sha.slice(0, 7)})`,
+              '',
+              '#### dart format',
+              '```',
+              read('build-reports-format.txt', 60),
+              '```',
+              '#### flutter analyze --fatal-infos',
+              '```',
+              read('build-reports-analyze.txt', 120),
+              '```',
+              '#### flutter test (tail)',
+              '```',
+              read('build-reports-test.txt', 200),
+              '```',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 42,
+              body: body.slice(0, 65000),
+            });
