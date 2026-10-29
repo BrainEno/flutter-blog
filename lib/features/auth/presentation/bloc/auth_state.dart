@@ -12,13 +12,13 @@ final class AuthLoading extends AuthState {}
 final class AuthSuccess extends AuthState {
   final User user;
 
-  AuthSuccess(this.user);
+  const AuthSuccess(this.user);
 }
 
 final class AuthFailure extends AuthState {
   final String message;
 
-  AuthFailure(this.message);
+  const AuthFailure(this.message);
 }
 
 /// Sign-up succeeded but Supabase requires e-mail confirmation: there is
@@ -26,7 +26,7 @@ final class AuthFailure extends AuthState {
 final class AuthNeedsEmailConfirmation extends AuthState {
   final String email;
 
-  AuthNeedsEmailConfirmation(this.email);
+  const AuthNeedsEmailConfirmation(this.email);
 }
 
 /// A re-sent sign-up confirmation e-mail is on its way.
@@ -44,5 +44,5 @@ final class AuthLogoutSuccess extends AuthState {}
 final class AuthLogoutFailure extends AuthState {
   final String message;
 
-  AuthLogoutFailure(this.message);
+  const AuthLogoutFailure(this.message);
 }

@@ -79,7 +79,7 @@ void main() {
     final states = <AuthState>[];
     late final StreamSubscription<AuthState> sub;
     sub = bloc.stream.listen(states.add, onDone: done.complete);
-    await trigger();
+    trigger();
     await bloc.close();
     await done.future;
     await sub.cancel();
