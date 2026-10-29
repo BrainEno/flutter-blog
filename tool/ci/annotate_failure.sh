@@ -29,11 +29,20 @@ awk -v mode="$1" '
   END {
     if (mode == "analyze") {
       # Failing-test progress lines carry "[E]" at the end; keep the line
-      # before each for context (usually the preceding progress step).
+      # before each for context (usually the preceding progress step) plus
+      # the indented detail lines that follow (Expected:/Actual: blocks,
+      # stack excerpts) until the next progress or summary line.
       for (i = 1; i <= NR; i++)
         if (lines[i] ~ /\[E\][[:space:]]*$/) {
           selected[i] = 1
           if (i > 1) selected[i - 1] = 1
+          for (j = i + 1; j <= NR && j <= i + 30; j++) {
+            if (lines[j] ~ /^[[:space:]]/ || lines[j] ~ /^[-=]+$/) {
+              selected[j] = 1
+            } else {
+              break
+            }
+          }
         }
       # Full exception blocks: two lines of lead-in, the bordered banner,
       # and everything up to (and including) the closing border line of

@@ -241,6 +241,9 @@ void main() {
       final sub = manager.statusStream.listen(statuses.add);
 
       manager.notifySignedIn();
+      // The broadcast controller delivers asynchronously; let the event
+      // land before asserting on it.
+      await Future<void>.delayed(Duration.zero);
 
       expect(
         statuses.single,

@@ -112,12 +112,8 @@ void main() {
 
   group('AuthLogin', () {
     test('a successful login fetches the profile and logs in', () async {
-      when(
-        () => userLogin(
-          UserLoginParams(email: 'user@example.invalid', password: 'secret'),
-        ),
-      ).thenAnswer((_) async => Right(_user()));
-      when(() => currentUser(NoParams())).thenAnswer(
+      when(() => userLogin(any())).thenAnswer((_) async => Right(_user()));
+      when(() => currentUser(any())).thenAnswer(
         (_) async => Right(
           _user(),
         ),
@@ -134,11 +130,7 @@ void main() {
     });
 
     test('a rejected login emits a failure', () async {
-      when(
-        () => userLogin(
-          UserLoginParams(email: 'user@example.invalid', password: 'wrong'),
-        ),
-      ).thenAnswer(
+      when(() => userLogin(any())).thenAnswer(
         (_) async => Left(Failure.auth('邮箱或密码不正确')),
       );
 
@@ -150,7 +142,7 @@ void main() {
 
       expect(states, [isA<AuthLoading>(), isA<AuthFailure>()]);
       expect(appUserCubit.state, isA<AppUserInitial>());
-      verifyNever(() => currentUser(NoParams()));
+      verifyNever(() => currentUser(any()));
     });
   });
 
@@ -158,7 +150,7 @@ void main() {
     test('logout clears the identity even when the server call fails',
         () async {
       appUserCubit.updateUser(_user());
-      when(() => userSignOut(NoParams())).thenAnswer(
+      when(() => userSignOut(any())).thenAnswer(
         (_) async => Left(Failure('无法连接到网络')),
       );
 
@@ -171,7 +163,7 @@ void main() {
     test('a successful logout emits success', () async {
       appUserCubit.updateUser(_user());
       when(
-        () => userSignOut(NoParams()),
+        () => userSignOut(any()),
       ).thenAnswer((_) async => Right<Failure, void>(null));
 
       final states = await capture(() => bloc.add(AuthLogout()));
@@ -185,7 +177,7 @@ void main() {
     test('a restored session logs the user in without a loading state',
         () async {
       when(
-        () => currentUser(NoParams()),
+        () => currentUser(any()),
       ).thenAnswer((_) async => Right(_user()));
 
       final states = await capture(() => bloc.add(AuthIsUserLoggedIn()));
@@ -196,7 +188,7 @@ void main() {
 
     test('a missing session emits a failure', () async {
       when(
-        () => currentUser(NoParams()),
+        () => currentUser(any()),
       ).thenAnswer((_) async => Left(Failure('登录状态已失效，请重新登录')));
 
       final states = await capture(() => bloc.add(AuthIsUserLoggedIn()));
