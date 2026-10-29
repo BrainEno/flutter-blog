@@ -60,28 +60,33 @@ void main() {
       expect(data, isA<List>());
     });
 
-    test('error envelopes throw NowaveApiException with the server code',
-        () async {
-      final client = clientFor(
-        MockClient(
-          (request) async => http.Response(
-            jsonEncode({
-              'error': {'code': 'BAD_USER_INPUT', 'message': 'title must be a string.'},
-            }),
-            400,
+    test(
+      'error envelopes throw NowaveApiException with the server code',
+      () async {
+        final client = clientFor(
+          MockClient(
+            (request) async => http.Response(
+              jsonEncode({
+                'error': {
+                  'code': 'BAD_USER_INPUT',
+                  'message': 'title must be a string.',
+                },
+              }),
+              400,
+            ),
           ),
-        ),
-      );
+        );
 
-      await expectLater(
-        client.postJson('/articles', {'title': ''}),
-        throwsA(
-          isA<NowaveApiException>()
-              .having((e) => e.statusCode, 'status', 400)
-              .having((e) => e.code, 'code', 'BAD_USER_INPUT'),
-        ),
-      );
-    });
+        await expectLater(
+          client.postJson('/articles', {'title': ''}),
+          throwsA(
+            isA<NowaveApiException>()
+                .having((e) => e.statusCode, 'status', 400)
+                .having((e) => e.code, 'code', 'BAD_USER_INPUT'),
+          ),
+        );
+      },
+    );
 
     test('non-JSON error responses still throw a typed exception', () async {
       final client = clientFor(
@@ -96,25 +101,27 @@ void main() {
   });
 
   group('authentication', () {
-    test('the bearer token is attached and JSON bodies carry a content type',
-        () async {
-      final authenticator = FakeAuthenticator();
-      String? authHeader;
-      String? contentType;
-      final client = clientFor(
-        MockClient((request) async {
-          authHeader = request.headers['authorization'];
-          contentType = request.headers['content-type'];
-          return http.Response(jsonEncode({'data': {}}), 200);
-        }),
-        authenticator: authenticator,
-      );
+    test(
+      'the bearer token is attached and JSON bodies carry a content type',
+      () async {
+        final authenticator = FakeAuthenticator();
+        String? authHeader;
+        String? contentType;
+        final client = clientFor(
+          MockClient((request) async {
+            authHeader = request.headers['authorization'];
+            contentType = request.headers['content-type'];
+            return http.Response(jsonEncode({'data': {}}), 200);
+          }),
+          authenticator: authenticator,
+        );
 
-      await client.postJson('/articles', {'title': 'x'});
+        await client.postJson('/articles', {'title': 'x'});
 
-      expect(authHeader, 'Bearer token-1');
-      expect(contentType, 'application/json');
-    });
+        expect(authHeader, 'Bearer token-1');
+        expect(contentType, 'application/json');
+      },
+    );
 
     test('a 401 refreshes once and retries the request', () async {
       final authenticator = FakeAuthenticator('expired');
@@ -132,7 +139,12 @@ void main() {
               401,
             );
           }
-          return http.Response(jsonEncode({'data': {'ok': true}}), 200);
+          return http.Response(
+            jsonEncode({
+              'data': {'ok': true},
+            }),
+            200,
+          );
         }),
         authenticator: authenticator,
       );
@@ -167,8 +179,11 @@ void main() {
       await expectLater(
         client.getJson('/me/profile'),
         throwsA(
-          isA<NowaveApiException>().having((e) => e.code, 'code',
-              'UNAUTHENTICATED'),
+          isA<NowaveApiException>().having(
+            (e) => e.code,
+            'code',
+            'UNAUTHENTICATED',
+          ),
         ),
       );
       expect(calls, 1);
@@ -188,8 +203,10 @@ void main() {
         }),
       );
 
-      await client.postJson('/auth/login', {'email': 'a@b.c', 'password': 'p'},
-          authenticate: false);
+      await client.postJson('/auth/login', {
+        'email': 'a@b.c',
+        'password': 'p',
+      }, authenticate: false);
 
       expect(authHeader, isNull);
     });
@@ -252,8 +269,10 @@ void main() {
 
       await client.getJson('/articles');
 
-      expect(seen.toString(),
-          'https://example.invalid/backend/api/v1/articles');
+      expect(
+        seen.toString(),
+        'https://example.invalid/backend/api/v1/articles',
+      );
     });
   });
 }

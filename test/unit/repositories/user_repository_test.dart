@@ -56,82 +56,81 @@ void main() {
       },
     );
 
+    test('submits the stored identity with the new display fields', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      final stored = UserModel(
+        id: 'u1',
+        email: 'original@example.invalid',
+        name: '旧名字',
+        updatedAt: DateTime.utc(2024),
+      );
+      when(() => remote.getUserById('u1')).thenAnswer((_) async => stored);
+      when(() => remote.editUserInfo(any())).thenAnswer(
+        (invocation) async => (invocation.positionalArguments[0] as UserModel),
+      );
+
+      await repository.editUserInfo(
+        userId: 'u1',
+        name: '新名字',
+        website: 'https://example.invalid',
+        avatar: null,
+      );
+
+      final captured =
+          verify(() => remote.editUserInfo(captureAny())).captured.single
+              as UserModel;
+      expect(captured.id, 'u1');
+      expect(captured.name, '新名字');
+      expect(captured.website, 'https://example.invalid');
+    });
+
     test(
-      'submits the stored identity with the new display fields',
+      'a new avatar is uploaded before the profile write flips to it',
       () async {
         when(() => connection.isConnected).thenAnswer((_) async => true);
+        const oldAvatarUrl = 'https://api.example.invalid/api/v1/media/old';
+        const newAvatarUrl = 'https://api.example.invalid/api/v1/media/new';
         final stored = UserModel(
           id: 'u1',
           email: 'original@example.invalid',
           name: '旧名字',
+          avatarUrl: oldAvatarUrl,
           updatedAt: DateTime.utc(2024),
         );
         when(() => remote.getUserById('u1')).thenAnswer((_) async => stored);
+        when(
+          () => remote.uploadAvatar(
+            image: any(named: 'image'),
+            mimeType: 'image/jpeg',
+          ),
+        ).thenAnswer((_) async => newAvatarUrl);
         when(() => remote.editUserInfo(any())).thenAnswer(
           (invocation) async =>
               (invocation.positionalArguments[0] as UserModel),
         );
 
-        await repository.editUserInfo(
+        final result = await repository.editUserInfo(
           userId: 'u1',
           name: '新名字',
-          website: 'https://example.invalid',
-          avatar: null,
+          website: '',
+          avatar: File('/nonexistent.jpg'),
+          avatarMimeType: 'image/jpeg',
         );
 
-        final captured =
-            verify(() => remote.editUserInfo(captureAny())).captured.single
-                as UserModel;
-        expect(captured.id, 'u1');
-        expect(captured.name, '新名字');
-        expect(captured.website, 'https://example.invalid');
+        expect(result.isRight(), isTrue);
+        // Capture through verifyInOrder: a separate verify() afterwards
+        // cannot match calls the in-order check already consumed.
+        final order = verifyInOrder([
+          () => remote.uploadAvatar(
+            image: any(named: 'image'),
+            mimeType: 'image/jpeg',
+          ),
+          () => remote.editUserInfo(captureAny()),
+        ]);
+        final captured = order.last.captured.single as UserModel;
+        expect(captured.avatarUrl, newAvatarUrl);
       },
     );
-
-    test('a new avatar is uploaded before the profile write flips to it',
-        () async {
-      when(() => connection.isConnected).thenAnswer((_) async => true);
-      const oldAvatarUrl = 'https://api.example.invalid/api/v1/media/old';
-      const newAvatarUrl = 'https://api.example.invalid/api/v1/media/new';
-      final stored = UserModel(
-        id: 'u1',
-        email: 'original@example.invalid',
-        name: '旧名字',
-        avatarUrl: oldAvatarUrl,
-        updatedAt: DateTime.utc(2024),
-      );
-      when(() => remote.getUserById('u1')).thenAnswer((_) async => stored);
-      when(
-        () => remote.uploadAvatar(
-          image: any(named: 'image'),
-          mimeType: 'image/jpeg',
-        ),
-      ).thenAnswer((_) async => newAvatarUrl);
-      when(() => remote.editUserInfo(any())).thenAnswer(
-        (invocation) async => (invocation.positionalArguments[0] as UserModel),
-      );
-
-      final result = await repository.editUserInfo(
-        userId: 'u1',
-        name: '新名字',
-        website: '',
-        avatar: File('/nonexistent.jpg'),
-        avatarMimeType: 'image/jpeg',
-      );
-
-      expect(result.isRight(), isTrue);
-      // Capture through verifyInOrder: a separate verify() afterwards
-      // cannot match calls the in-order check already consumed.
-      final order = verifyInOrder([
-        () => remote.uploadAvatar(
-              image: any(named: 'image'),
-              mimeType: 'image/jpeg',
-            ),
-        () => remote.editUserInfo(captureAny()),
-      ]);
-      final captured = order.last.captured.single as UserModel;
-      expect(captured.avatarUrl, newAvatarUrl);
-    });
 
     test('a failed profile write surfaces as a failure', () async {
       when(() => connection.isConnected).thenAnswer((_) async => true);
@@ -143,9 +142,8 @@ void main() {
           updatedAt: DateTime.utc(2024),
         ),
       );
-      when(
-        () => remote.editUserInfo(any()),
-      ).thenThrow(const ServerException('rls denied'));
+      when(() => remote.editUserInfo(any()))
+          .thenThrow(const ServerException('rls denied'));
 
       final result = await repository.editUserInfo(
         userId: 'u1',

@@ -94,26 +94,20 @@ class Harness {
 
   Harness() {
     when(() => connection.isConnected).thenAnswer((_) async => true);
-    when(
-      () => remote.getAllBlogs(page: 1),
-    ).thenAnswer((_) async => <BlogModel>[]);
-    when(
-      () => remote.getBlogById(any()),
-    ).thenAnswer((_) async => sampleBlog('abc', '深链文章'));
-    when(
-      () => remote.getUserLikedBlogs(any()),
-    ).thenAnswer((_) async => <BlogModel>[]);
-    when(
-      () => local.uploadLocalBlogs(blogs: any(named: 'blogs')),
-    ).thenAnswer((_) async {});
+    when(() => remote.getAllBlogs(page: 1))
+        .thenAnswer((_) async => <BlogModel>[]);
+    when(() => remote.getBlogById(any()))
+        .thenAnswer((_) async => sampleBlog('abc', '深链文章'));
+    when(() => remote.getUserLikedBlogs(any()))
+        .thenAnswer((_) async => <BlogModel>[]);
+    when(() => local.uploadLocalBlogs(blogs: any(named: 'blogs')))
+        .thenAnswer((_) async {});
     when(() => local.loadBlogs()).thenAnswer((_) async => <BlogModel>[]);
     when(() => local.loadBlogById(any())).thenAnswer((_) async => null);
-    when(
-      () => authRepository.currentUser(),
-    ).thenAnswer((_) async => Left(Failure('no session')));
-    when(
-      () => authRepository.logout(),
-    ).thenAnswer((_) async => Right<Failure, void>(null));
+    when(() => authRepository.currentUser())
+        .thenAnswer((_) async => Left(Failure('no session')));
+    when(() => authRepository.logout())
+        .thenAnswer((_) async => Right<Failure, void>(null));
 
     final repository = BlogRepositoryImpl(remote, local, connection);
     final sl = GetIt.instance;
@@ -197,9 +191,8 @@ void main() {
     tester,
   ) async {
     final harness = Harness()..buildRouter();
-    when(
-      () => harness.remote.getAllBlogs(page: 1),
-    ).thenAnswer((_) async => [sampleBlog('1', '第一篇文章')]);
+    when(() => harness.remote.getAllBlogs(page: 1))
+        .thenAnswer((_) async => [sampleBlog('1', '第一篇文章')]);
     addTearDown(harness.dispose);
     await harness.pump(tester);
     await tester.pumpAndSettle();

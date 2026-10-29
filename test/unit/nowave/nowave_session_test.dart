@@ -36,28 +36,25 @@ NowaveSessionData _session({
 );
 
 NowaveTokenPair _tokens(String n) => NowaveTokenPair(
-      accessToken: 'access-$n',
-      refreshToken: 'refresh-$n',
-      accessExpiresAt: DateTime.utc(2031),
-      refreshExpiresAt: DateTime.utc(2031),
-    );
+  accessToken: 'access-$n',
+  refreshToken: 'refresh-$n',
+  accessExpiresAt: DateTime.utc(2031),
+  refreshExpiresAt: DateTime.utc(2031),
+);
 
 Map<String, dynamic> _tokenBody(String n) => <String, dynamic>{
-      'accessToken': 'access-$n',
-      'tokenType': 'Bearer',
-      'accessExpiresAt': '2031-01-01T00:00:00.000Z',
-      'refreshToken': 'refresh-$n',
-      'refreshExpiresAt': '2031-01-01T00:00:00.000Z',
-    };
+  'accessToken': 'access-$n',
+  'tokenType': 'Bearer',
+  'accessExpiresAt': '2031-01-01T00:00:00.000Z',
+  'refreshToken': 'refresh-$n',
+  'refreshExpiresAt': '2031-01-01T00:00:00.000Z',
+};
 
 void main() {
   group('restore', () {
     test('a persisted session is loaded into memory', () async {
       final store = MemorySessionStore()..stored = _session();
-      final manager = NowaveSessionManager(
-        client: clientFor(),
-        store: store,
-      );
+      final manager = NowaveSessionManager(client: clientFor(), store: store);
 
       await manager.restore();
 
@@ -80,10 +77,7 @@ void main() {
   group('adoptSession / updateUserId', () {
     test('the token pair and identity are persisted', () async {
       final store = MemorySessionStore();
-      final manager = NowaveSessionManager(
-        client: clientFor(),
-        store: store,
-      );
+      final manager = NowaveSessionManager(client: clientFor(), store: store);
 
       await manager.adoptSession(_tokens('2'), email: 'a@b.c');
       await manager.updateUserId('u9');
@@ -123,10 +117,7 @@ void main() {
             refreshRequests++;
             // Keep the request in flight long enough to overlap.
             await Future<void>.delayed(const Duration(milliseconds: 20));
-            return http.Response(
-              jsonEncode({'data': _tokenBody('2')}),
-              200,
-            );
+            return http.Response(jsonEncode({'data': _tokenBody('2')}), 200);
           }
           return http.Response(jsonEncode({'data': null}), 200);
         }),
@@ -142,9 +133,13 @@ void main() {
       ]);
 
       expect(results, everyElement(isTrue));
-      expect(refreshRequests, 1,
-          reason: 'a second concurrent refresh would reuse the rotated '
-              'token and revoke the whole session family');
+      expect(
+        refreshRequests,
+        1,
+        reason:
+            'a second concurrent refresh would reuse the rotated '
+            'token and revoke the whole session family',
+      );
     });
 
     test('a second refresh after the first completes rotates again', () async {
@@ -171,53 +166,58 @@ void main() {
       expect(await manager.refresh(), isTrue);
       expect(await manager.refresh(), isTrue);
 
-      expect(refreshRequests, 2,
-          reason: 'the single-flight slot must be released when a rotation '
-              'completes, or later expiries reuse a stale future');
+      expect(
+        refreshRequests,
+        2,
+        reason:
+            'the single-flight slot must be released when a rotation '
+            'completes, or later expiries reuse a stale future',
+      );
       expect(manager.accessToken, 'access-1xx');
     });
 
-    test('a rejected rotation clears the session and broadcasts sign-out',
-        () async {
-      final store = MemorySessionStore()..stored = _session();
-      final manager = NowaveSessionManager(
-        client: clientFor(status: 401, error: 'UNAUTHENTICATED'),
-        store: store,
-      );
-      await manager.restore();
-      final statuses = <NowaveAuthStatus>[];
-      final sub = manager.statusStream.listen(statuses.add);
+    test(
+      'a rejected rotation clears the session and broadcasts sign-out',
+      () async {
+        final store = MemorySessionStore()..stored = _session();
+        final manager = NowaveSessionManager(
+          client: clientFor(status: 401, error: 'UNAUTHENTICATED'),
+          store: store,
+        );
+        await manager.restore();
+        final statuses = <NowaveAuthStatus>[];
+        final sub = manager.statusStream.listen(statuses.add);
 
-      final ok = await manager.refresh();
-      // The broadcast controller delivers asynchronously; let the event
-      // land before asserting on it.
-      await Future<void>.delayed(Duration.zero);
+        final ok = await manager.refresh();
+        // The broadcast controller delivers asynchronously; let the event
+        // land before asserting on it.
+        await Future<void>.delayed(Duration.zero);
 
-      expect(ok, isFalse);
-      expect(manager.currentSession, isNull);
-      expect(store.stored, isNull);
-      expect(statuses, [isA<NowaveAuthSignedOut>()]);
-      await sub.cancel();
-    });
+        expect(ok, isFalse);
+        expect(manager.currentSession, isNull);
+        expect(store.stored, isNull);
+        expect(statuses, [isA<NowaveAuthSignedOut>()]);
+        await sub.cancel();
+      },
+    );
 
-    test('refreshing without a session reports failure without network',
-        () async {
-      final manager = NowaveSessionManager(
-        client: clientFor(),
-        store: MemorySessionStore(),
-      );
+    test(
+      'refreshing without a session reports failure without network',
+      () async {
+        final manager = NowaveSessionManager(
+          client: clientFor(),
+          store: MemorySessionStore(),
+        );
 
-      expect(await manager.refresh(), isFalse);
-    });
+        expect(await manager.refresh(), isFalse);
+      },
+    );
   });
 
   group('clear', () {
     test('drops the local session and broadcasts sign-out once', () async {
       final store = MemorySessionStore()..stored = _session();
-      final manager = NowaveSessionManager(
-        client: clientFor(),
-        store: store,
-      );
+      final manager = NowaveSessionManager(client: clientFor(), store: store);
       await manager.restore();
       final statuses = <NowaveAuthStatus>[];
       final sub = manager.statusStream.listen(statuses.add);
@@ -234,10 +234,7 @@ void main() {
   group('notifySignedIn', () {
     test('broadcasts the current user id', () async {
       final store = MemorySessionStore()..stored = _session();
-      final manager = NowaveSessionManager(
-        client: clientFor(),
-        store: store,
-      );
+      final manager = NowaveSessionManager(client: clientFor(), store: store);
       await manager.restore();
       final statuses = <NowaveAuthStatus>[];
       final sub = manager.statusStream.listen(statuses.add);
@@ -249,11 +246,7 @@ void main() {
 
       expect(
         statuses.single,
-        isA<NowaveAuthSignedIn>().having(
-          (s) => s.userId,
-          'userId',
-          'u1',
-        ),
+        isA<NowaveAuthSignedIn>().having((s) => s.userId, 'userId', 'u1'),
       );
       await sub.cancel();
     });

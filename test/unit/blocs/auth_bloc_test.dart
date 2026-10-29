@@ -141,23 +141,24 @@ void main() {
   });
 
   group('AuthLogout', () {
-    test('logout clears the identity even when the server call fails', () async {
-      appUserCubit.updateUser(_user());
-      when(() => userSignOut(any())).thenAnswer(
-        (_) async => Left(Failure('无法连接到网络')),
-      );
+    test(
+      'logout clears the identity even when the server call fails',
+      () async {
+        appUserCubit.updateUser(_user());
+        when(() => userSignOut(any()))
+            .thenAnswer((_) async => Left(Failure('无法连接到网络')));
 
-      final states = await capture(() => bloc.add(AuthLogout()));
+        final states = await capture(() => bloc.add(AuthLogout()));
 
-      expect(states.last, isA<AuthLogoutFailure>());
-      expect(appUserCubit.state, isA<AppUserInitial>());
-    });
+        expect(states.last, isA<AuthLogoutFailure>());
+        expect(appUserCubit.state, isA<AppUserInitial>());
+      },
+    );
 
     test('a successful logout emits success', () async {
       appUserCubit.updateUser(_user());
-      when(
-        () => userSignOut(any()),
-      ).thenAnswer((_) async => Right<Failure, void>(null));
+      when(() => userSignOut(any()))
+          .thenAnswer((_) async => Right<Failure, void>(null));
 
       final states = await capture(() => bloc.add(AuthLogout()));
 
@@ -167,22 +168,21 @@ void main() {
   });
 
   group('AuthIsUserLoggedIn', () {
-    test('a restored session logs the user in without a loading state',
-        () async {
-      when(
-        () => currentUser(any()),
-      ).thenAnswer((_) async => Right(_user()));
+    test(
+      'a restored session logs the user in without a loading state',
+      () async {
+        when(() => currentUser(any())).thenAnswer((_) async => Right(_user()));
 
-      final states = await capture(() => bloc.add(AuthIsUserLoggedIn()));
+        final states = await capture(() => bloc.add(AuthIsUserLoggedIn()));
 
-      expect(states, [isA<AuthSuccess>()]);
-      expect(appUserCubit.state, isA<AppUserLoggedIn>());
-    });
+        expect(states, [isA<AuthSuccess>()]);
+        expect(appUserCubit.state, isA<AppUserLoggedIn>());
+      },
+    );
 
     test('a missing session emits a failure', () async {
-      when(
-        () => currentUser(any()),
-      ).thenAnswer((_) async => Left(Failure('登录状态已失效，请重新登录')));
+      when(() => currentUser(any()))
+          .thenAnswer((_) async => Left(Failure('登录状态已失效，请重新登录')));
 
       final states = await capture(() => bloc.add(AuthIsUserLoggedIn()));
 

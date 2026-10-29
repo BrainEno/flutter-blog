@@ -50,8 +50,7 @@ void main() {
   });
 
   group('uploadBlog', () {
-    test('uploads the cover first, then creates the article with it',
-        () async {
+    test('uploads the cover first, then creates the article with it', () async {
       when(
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
@@ -76,9 +75,9 @@ void main() {
       // cannot match calls the in-order check already consumed.
       final order = verifyInOrder([
         () => remote.uploadBlogImage(
-              image: any(named: 'image'),
-              mimeType: 'image/jpeg',
-            ),
+          image: any(named: 'image'),
+          mimeType: 'image/jpeg',
+        ),
         () => remote.uploadBlog(captureAny()),
       ]);
       final created = order.last.captured.single as BlogModel;
@@ -94,9 +93,8 @@ void main() {
           mimeType: any(named: 'mimeType'),
         ),
       ).thenAnswer((_) async => _kNewCoverUrl);
-      when(
-        () => remote.uploadBlog(any()),
-      ).thenThrow(const ServerException('insert rejected'));
+      when(() => remote.uploadBlog(any()))
+          .thenThrow(const ServerException('insert rejected'));
 
       final result = await repository.uploadBlog(
         image: cover,
@@ -134,9 +132,8 @@ void main() {
 
   group('editBlog', () {
     test('fetches the article, uploads a new cover, then updates', () async {
-      when(
-        () => remote.getBlogById('my-slug'),
-      ).thenAnswer((_) async => _blog());
+      when(() => remote.getBlogById('my-slug'))
+          .thenAnswer((_) async => _blog());
       when(
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
@@ -160,9 +157,9 @@ void main() {
       final order = verifyInOrder([
         () => remote.getBlogById('my-slug'),
         () => remote.uploadBlogImage(
-              image: any(named: 'image'),
-              mimeType: 'image/png',
-            ),
+          image: any(named: 'image'),
+          mimeType: 'image/png',
+        ),
         () => remote.editBlog(captureAny()),
       ]);
       final updated = order.last.captured.single as BlogModel;
@@ -173,9 +170,8 @@ void main() {
     });
 
     test('editing without a new image keeps the existing cover', () async {
-      when(
-        () => remote.getBlogById('my-slug'),
-      ).thenAnswer((_) async => _blog());
+      when(() => remote.getBlogById('my-slug'))
+          .thenAnswer((_) async => _blog());
       when(() => remote.editBlog(any())).thenAnswer(
         (invocation) async => invocation.positionalArguments[0] as BlogModel,
       );
@@ -195,17 +191,17 @@ void main() {
           mimeType: any(named: 'mimeType'),
         ),
       );
-      final updated = verify(() => remote.editBlog(captureAny())).captured
-          .single as BlogModel;
+      final updated =
+          verify(() => remote.editBlog(captureAny())).captured.single
+              as BlogModel;
       expect(updated.imageUrl, _kOldCoverUrl);
     });
   });
 
   group('deleteBlog', () {
     test('reports the backend gap as a validation failure', () async {
-      when(
-        () => remote.deleteBlog('my-slug'),
-      ).thenThrow(const ServerException('当前后端暂不支持删除文章，敬请期待'));
+      when(() => remote.deleteBlog('my-slug'))
+          .thenThrow(const ServerException('当前后端暂不支持删除文章，敬请期待'));
 
       final result = await repository.deleteBlog('my-slug');
 
@@ -218,19 +214,16 @@ void main() {
 
   group('getBlogById', () {
     test('caches a fetched article locally', () async {
-      when(
-        () => remote.getBlogById('my-slug'),
-      ).thenAnswer((_) async => _blog());
-      when(
-        () => local.uploadLocalBlogs(blogs: any(named: 'blogs')),
-      ).thenAnswer((_) async {});
+      when(() => remote.getBlogById('my-slug'))
+          .thenAnswer((_) async => _blog());
+      when(() => local.uploadLocalBlogs(blogs: any(named: 'blogs')))
+          .thenAnswer((_) async {});
 
       final result = await repository.getBlogById('my-slug');
 
       expect(result.isRight(), isTrue);
-      verify(
-        () => local.uploadLocalBlogs(blogs: any(named: 'blogs')),
-      ).called(1);
+      verify(() => local.uploadLocalBlogs(blogs: any(named: 'blogs')))
+          .called(1);
     });
   });
 }

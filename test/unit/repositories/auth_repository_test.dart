@@ -40,19 +40,21 @@ void main() {
   });
 
   group('currentUser (offline session restore)', () {
-    test('a persisted session restores a minimal user without network',
-        () async {
-      when(() => connection.isConnected).thenAnswer((_) async => false);
-      when(() => remote.currentSession).thenReturn(_session());
+    test(
+      'a persisted session restores a minimal user without network',
+      () async {
+        when(() => connection.isConnected).thenAnswer((_) async => false);
+        when(() => remote.currentSession).thenReturn(_session());
 
-      final result = await repository.currentUser();
+        final result = await repository.currentUser();
 
-      expect(result.isRight(), isTrue);
-      result.fold((_) => fail('expected a restored user'), (user) {
-        expect(user.id, 'u1');
-        expect(user.email, 'user@example.invalid');
-      });
-    });
+        expect(result.isRight(), isTrue);
+        result.fold((_) => fail('expected a restored user'), (user) {
+          expect(user.id, 'u1');
+          expect(user.email, 'user@example.invalid');
+        });
+      },
+    );
 
     test('no session offline means not logged in', () async {
       when(() => connection.isConnected).thenAnswer((_) async => false);
@@ -64,8 +66,9 @@ void main() {
   });
 
   group('currentUser (online)', () {
-    test('a session that cannot be refreshed is NOT treated as logged in',
-        () async {
+    test(
+      'a session that cannot be refreshed is NOT treated as logged in',
+      () async {
         when(() => connection.isConnected).thenAnswer((_) async => true);
         when(() => remote.currentSession).thenReturn(_session());
         when(() => remote.getCurrentUserData()).thenAnswer((_) async => null);
@@ -93,27 +96,29 @@ void main() {
   });
 
   group('signUpWithEmailPassword', () {
-    test('a successful sign-up is a signed-in user (no confirmation step)',
-        () async {
-      when(() => connection.isConnected).thenAnswer((_) async => true);
-      when(
-        () => remote.signUpWithEmailPassword(
-          name: any(named: 'name'),
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-        ),
-      ).thenAnswer((_) async => _user());
+    test(
+      'a successful sign-up is a signed-in user (no confirmation step)',
+      () async {
+        when(() => connection.isConnected).thenAnswer((_) async => true);
+        when(
+          () => remote.signUpWithEmailPassword(
+            name: any(named: 'name'),
+            email: any(named: 'email'),
+            password: any(named: 'password'),
+          ),
+        ).thenAnswer((_) async => _user());
 
-      final result = await repository.signUpWithEmailPassword(
-        name: '测试用户',
-        email: 'user@example.invalid',
-        password: 'a-12-char-secret',
-      );
+        final result = await repository.signUpWithEmailPassword(
+          name: '测试用户',
+          email: 'user@example.invalid',
+          password: 'a-12-char-secret',
+        );
 
-      result.fold((_) => fail('expected a user'), (user) {
-        expect(user.id, 'u1');
-      });
-    });
+        result.fold((_) => fail('expected a user'), (user) {
+          expect(user.id, 'u1');
+        });
+      },
+    );
 
     test('offline sign-up fails fast', () async {
       when(() => connection.isConnected).thenAnswer((_) async => false);
@@ -184,13 +189,10 @@ void main() {
         password: 'wrong',
       );
 
-      result.fold(
-        (failure) {
-          expect(failure.message, contains('邮箱或密码不正确'));
-          expect(failure.kind, FailureKind.auth);
-        },
-        (_) => fail('expected a failure'),
-      );
+      result.fold((failure) {
+        expect(failure.message, contains('邮箱或密码不正确'));
+        expect(failure.kind, FailureKind.auth);
+      }, (_) => fail('expected a failure'));
     });
 
     test('rate limiting maps to a friendly message', () async {
