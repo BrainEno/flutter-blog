@@ -9,11 +9,18 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
-# Isar 3 generates calls to its own experimental index APIs. Do not edit
-# generated output; revisit this exclusion when upgrading the Isar generator.
+# The generated legacy Isar files use experimental index APIs and constant
+# expressions the analyzer cannot evaluate; with isar_community_generator
+# 3.4.1 and analyzer 14 this applies to all three collections. The fixture
+# generator under tool/legacy_isar_fixture is a separate Dart package pinned
+# to the abandoned isar 3.1.0+1 for test-fixture authenticity; its imports
+# cannot resolve inside the app's dependency set.
 analyzer:
   exclude:
+    - lib/core/storage/legacy/blog.g.dart
     - lib/core/storage/legacy/blog_draft.g.dart
+    - lib/core/storage/legacy/theme_preference.g.dart
+    - tool/legacy_isar_fixture/**
 
 linter:
   # The lint rules applied to this project can be customized in the

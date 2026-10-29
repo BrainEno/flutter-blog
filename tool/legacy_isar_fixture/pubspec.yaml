@@ -1,0 +1,15 @@
+name: legacy_isar_fixture
+description: >-
+  Writes the committed Isar 3.1.0+1 database fixture that proves the app's
+  legacy import can still read databases created by pre-migration app
+  versions. Pure Dart; not part of the app build.
+publish_to: "none"
+
+environment:
+  sdk: ">=3.10.0 <4.0.0"
+
+dependencies:
+  # Pinned to the exact abandoned version the old app shipped so the
+  # generated fixture is authentic for that release line. Do not upgrade;
+  # the app side migrates to isar_community in the main pubspec (issue #3).
+  isar: 3.1.0+1

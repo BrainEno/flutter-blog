@@ -12,7 +12,7 @@ import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:isar/isar.dart' as legacy;
+import 'package:isar_community/isar.dart' as legacy;
 
 void main() {
   late Directory dir;
