@@ -54,16 +54,24 @@ jobs:
             echo "No Dart files changed."
           else
             printf 'Formatting check: %s\n' "${dart_files[@]}"
-            dart format --output=none --set-exit-if-changed "${dart_files[@]}" 2>&1 | tee build-reports-format.txt
+            dart format "${dart_files[@]}" > /dev/null 2>&1 || true
+            git diff -- '*.dart' > build-reports-format.txt
+            if [[ -s build-reports-format.txt ]]; then
+              echo "FORMAT DIFF NEEDED:"
+              cat build-reports-format.txt
+              exit 1
+            fi
           fi
 
       - name: Analyze
+        if: always()
         shell: bash
         run: |
           set -o pipefail
           flutter analyze --fatal-infos 2>&1 | tee build-reports-analyze.txt
 
       - name: Test
+        if: always()
         shell: bash
         run: |
           set -o pipefail
@@ -76,6 +84,7 @@ jobs:
           set -euo pipefail
           git config user.name "arena-dev-checks"
           git config user.email "actions@users.noreply.github.com"
+          git checkout -- . || true
           git add -f build-reports-*.txt || true
           if git diff --cached --quiet; then
             echo "nothing to push"
