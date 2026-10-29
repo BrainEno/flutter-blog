@@ -40,8 +40,10 @@ void main() {
     test('GET unwraps the data envelope', () async {
       final client = clientFor(
         MockClient((request) async {
-          expect(request.url.toString(),
-              'https://api.example.invalid/api/v1/articles?limit=10');
+          expect(
+            request.url.toString(),
+            'https://api.example.invalid/api/v1/articles?limit=10',
+          );
           expect(request.method, 'GET');
           return http.Response(
             jsonEncode({
@@ -54,10 +56,7 @@ void main() {
         }),
       );
 
-      final data = await client.getJson(
-        '/articles',
-        query: {'limit': '10'},
-      );
+      final data = await client.getJson('/articles', query: {'limit': '10'});
       expect(data, isA<List>());
     });
 

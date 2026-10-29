@@ -91,9 +91,8 @@ void main() {
     });
 
     test('a failed sign-up emits a failure and does not log in', () async {
-      when(() => userSignUp(any())).thenAnswer(
-        (_) async => Left(Failure('该邮箱已被注册，请直接登录')),
-      );
+      when(() => userSignUp(any()))
+          .thenAnswer((_) async => Left(Failure('该邮箱已被注册，请直接登录')));
 
       final states = await capture(
         () => bloc.add(
@@ -113,11 +112,7 @@ void main() {
   group('AuthLogin', () {
     test('a successful login fetches the profile and logs in', () async {
       when(() => userLogin(any())).thenAnswer((_) async => Right(_user()));
-      when(() => currentUser(any())).thenAnswer(
-        (_) async => Right(
-          _user(),
-        ),
-      );
+      when(() => currentUser(any())).thenAnswer((_) async => Right(_user()));
 
       final states = await capture(
         () => bloc.add(
@@ -130,9 +125,8 @@ void main() {
     });
 
     test('a rejected login emits a failure', () async {
-      when(() => userLogin(any())).thenAnswer(
-        (_) async => Left(Failure.auth('邮箱或密码不正确')),
-      );
+      when(() => userLogin(any()))
+          .thenAnswer((_) async => Left(Failure.auth('邮箱或密码不正确')));
 
       final states = await capture(
         () => bloc.add(
@@ -147,8 +141,7 @@ void main() {
   });
 
   group('AuthLogout', () {
-    test('logout clears the identity even when the server call fails',
-        () async {
+    test('logout clears the identity even when the server call fails', () async {
       appUserCubit.updateUser(_user());
       when(() => userSignOut(any())).thenAnswer(
         (_) async => Left(Failure('无法连接到网络')),

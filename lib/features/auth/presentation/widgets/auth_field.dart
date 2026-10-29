@@ -114,9 +114,11 @@ class AuthField extends StatelessWidget {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
       borderSide: BorderSide(
-        color: borderColor ??
+        color:
+            borderColor ??
             (isDarkMode
-                ? AppPallete.greyColorLight // Light grey border in dark mode
+                ? AppPallete
+                      .greyColorLight // Light grey border in dark mode
                 : AppPallete.lightBorder), // Light border in light mode
       ),
     );
@@ -129,9 +131,7 @@ class AuthField extends StatelessWidget {
   ) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(
-        color: focusedBorderColor ?? AppPallete.gradient2,
-      ),
+      borderSide: BorderSide(color: focusedBorderColor ?? AppPallete.gradient2),
     );
   }
 

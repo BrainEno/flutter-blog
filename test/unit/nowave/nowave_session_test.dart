@@ -26,15 +26,14 @@ class MemorySessionStore implements NowaveSessionStore {
 NowaveSessionData _session({
   String refreshToken = 'refresh-1',
   String userId = 'u1',
-}) =>
-    NowaveSessionData(
-      userId: userId,
-      email: 'user@example.invalid',
-      accessToken: 'access-1',
-      refreshToken: refreshToken,
-      accessExpiresAt: DateTime.utc(2030),
-      refreshExpiresAt: DateTime.utc(2030),
-    );
+}) => NowaveSessionData(
+  userId: userId,
+  email: 'user@example.invalid',
+  accessToken: 'access-1',
+  refreshToken: refreshToken,
+  accessExpiresAt: DateTime.utc(2030),
+  refreshExpiresAt: DateTime.utc(2030),
+);
 
 NowaveTokenPair _tokens(String n) => NowaveTokenPair(
       accessToken: 'access-$n',

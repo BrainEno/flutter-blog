@@ -4,12 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('blogToContentBlocks', () {
-    test('blank-line separated passages become paragraph blocks with ids',
-        () {
-      final blocks = blogToContentBlocks(
-        content: '第一段\n\n第二段',
-        coverUrl: null,
-      );
+    test('blank-line separated passages become paragraph blocks with ids', () {
+      final blocks = blogToContentBlocks(content: '第一段\n\n第二段', coverUrl: null);
 
       expect(blocks, hasLength(2));
       expect(blocks.every((b) => (b['id'] as String).isNotEmpty), isTrue);
@@ -92,10 +88,7 @@ void main() {
         {'id': 'e', 'type': 'code', 'language': 'ts', 'code': 'const x = 1;'},
       ]);
 
-      expect(
-        extracted.content,
-        '第一段\n\n标题\n\n引文\n\n一\n二\n\nconst x = 1;',
-      );
+      expect(extracted.content, '第一段\n\n标题\n\n引文\n\n一\n二\n\nconst x = 1;');
       expect(extracted.coverUrl, '');
     });
 

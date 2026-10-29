@@ -57,6 +57,11 @@ jobs:
   format:
     name: format / changed-Dart-format
     runs-on: ubuntu-latest
+    permissions:
+      # The failure step comments the full formatting diff on the PR so it
+      # survives the 4096-byte annotation cap. Nothing else is writable.
+      contents: read
+      pull-requests: write
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -102,13 +107,29 @@ jobs:
                   dart format /tmp/fmt_copy.dart >/dev/null 2>&1 || true
                   if ! diff -u "$f" /tmp/fmt_copy.dart > /tmp/fmt_one.diff 2>&1; then
                     echo "### $f"
-                    grep -E '^(\+|-)[^+-]' /tmp/fmt_one.diff | head -20 || true
+                    grep -E '^[+-]' /tmp/fmt_one.diff | grep -vE '^(\+\+\+|---)' | head -30 || true
                     echo
                   fi
                 done
               } > /tmp/fmt_summary.txt
               if [[ -s /tmp/fmt_summary.txt ]]; then
                 cat /tmp/fmt_summary.txt >> "$GITHUB_STEP_SUMMARY"
+                # Unabridged diff (unified, with context) for the PR comment.
+                : > /tmp/fmt_full.diff
+                for f in "${dart_files[@]}"; do
+                  cp "$f" /tmp/fmt_copy.dart
+                  dart format /tmp/fmt_copy.dart >/dev/null 2>&1 || true
+                  diff -u "$f" /tmp/fmt_copy.dart >> /tmp/fmt_full.diff 2>&1 || true
+                done
+                {
+                  echo "### dart format diff (run ${GITHUB_RUN_ID})"
+                  echo
+                  echo '```diff'
+                  head -c 60000 /tmp/fmt_full.diff
+                  echo '```'
+                  echo
+                  echo "_Automated diagnostic comment from the CI workflow; \`dart format\` output versus the current files._"
+                } > /tmp/fmt-comment.md
                 diff_out="$(head -c 3600 /tmp/fmt_summary.txt)"
                 diff_out="${diff_out//'%'/'%25'}"
                 diff_out="${diff_out//$'\r'/'%0D'}"
@@ -141,6 +162,13 @@ jobs:
           path: build/reports/repository-wide-format-audit.log
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Comment the format diff on the PR when files need formatting
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: gh pr comment "$PR_NUMBER" --body-file /tmp/fmt-comment.md
 
   analyze:
     name: analyze / flutter-analyze
