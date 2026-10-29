@@ -17,8 +17,10 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
   UserRemoteDataSourceImpl(this.supabaseClient);
 
   @override
-  Future<String> uploadAvatar(
-      {required File image, required String userId}) async {
+  Future<String> uploadAvatar({
+    required File image,
+    required String userId,
+  }) async {
     try {
       await supabaseClient.storage
           .from('avatars')
@@ -52,11 +54,6 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
           .select()
           .eq('id', userId)
           .single();
-
-      // ignore: unnecessary_null_comparison
-      if (res == null) {
-        throw ServerException('Blog with ID $userId not found');
-      }
 
       return UserModel.fromJson(res);
     } catch (e) {

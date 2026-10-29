@@ -36,6 +36,15 @@ android {
         versionName = flutter.versionName
     }
 
+    // The Dart Isar reader is retained only for importing existing databases.
+    // Prefer our source-built 16 KiB-compatible reader over the old plugin's
+    // 4 KiB binaries; CI verifies both ELF alignment and exact APK contents.
+    sourceSets.main.jniLibs.srcDir("$buildDir/generated/legacy-isar/jniLibs")
+    packagingOptions.jniLibs.pickFirsts.add("**/libisar.so")
+    // Rust release already strips the binaries. Preserve them verbatim so the
+    // APK verifier can compare the actual packaged reader to the build output.
+    packagingOptions.jniLibs.keepDebugSymbols.add("**/libisar.so")
+
     signingConfigs {
         production {
             if (hasSigning) {
@@ -72,4 +81,19 @@ tasks.matching { it.name == "preReleaseBuild" }.configureEach {
 
 flutter {
     source = "../.."
+}
+
+// Android packaging must never silently fall back to the obsolete 4 KiB
+// Isar binary. The shared task runs once before any variant merges native libs.
+def legacyIsarOutput = file("$buildDir/generated/legacy-isar/jniLibs")
+def buildLegacyIsar = tasks.register("buildLegacyIsar", Exec) {
+    inputs.files(fileTree("../../tool/legacy_isar"))
+    outputs.dir(legacyIsarOutput)
+    commandLine "bash", "../../tool/legacy_isar/build_android.sh",
+        "${android.sdkDirectory}/ndk/${android.ndkVersion}", legacyIsarOutput.absolutePath
+}
+tasks.configureEach { task ->
+    if (task.name.matches("merge.*NativeLibs") || task.name.matches("merge.*JniLibFolders")) {
+        task.dependsOn(buildLegacyIsar)
+    }
 }

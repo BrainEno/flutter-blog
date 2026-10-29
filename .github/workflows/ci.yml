@@ -33,6 +33,8 @@ jobs:
         run: bash tool/ci/test_ci_scripts.sh
       - name: Test release validation rules
         run: python3 -m unittest discover -s tool/release -p 'test_*.py' -v
+      - name: Test 16 KiB ELF validation
+        run: python3 -m unittest discover -s tool/ci -p 'test_check*.py' -v
       - name: Check whitespace errors
         shell: bash
         run: |
@@ -189,7 +191,7 @@ jobs:
           set -o pipefail
           mkdir -p build/reports
           set +e
-          flutter test --coverage --reporter expanded 2>&1 | tee build/reports/flutter-test.log
+          flutter test --coverage --concurrency=1 --reporter expanded 2>&1 | tee build/reports/flutter-test.log
           statuses=("${PIPESTATUS[@]}")
           status=${statuses[0]}
           set -e
@@ -268,6 +270,21 @@ jobs:
           test -n "$AAPT"
           "$AAPT" dump permissions "$APK" | tee build/reports/apk-permissions.txt
           grep -F "android.permission.INTERNET" build/reports/apk-permissions.txt
+      - name: Check APK native library and ZIP 16 KiB alignment
+        shell: bash
+        run: |
+          set -o pipefail
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          READELF="$(find "$ANDROID_HOME/ndk" -name llvm-readelf -path '*/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf' | sort -V | tail -n 1)"
+          ZIPALIGN="$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -n 1)"
+          test -n "$READELF" && test -n "$ZIPALIGN"
+          {
+            echo "ELF checker: $READELF"
+            python3 tool/ci/check_legacy_apk.py "$APK" build/app/generated/legacy-isar/jniLibs || exit $?
+            python3 tool/ci/check_apk_16k.py "$APK" "$READELF" || exit $?
+            echo "ZIP checker: $ZIPALIGN -c -P 16 -v 4 $APK"
+            "$ZIPALIGN" -c -P 16 -v 4 "$APK"
+          } 2>&1 | tee build/reports/apk-16k-alignment.log || { bash tool/ci/annotate_failure.sh analyze build/reports/apk-16k-alignment.log; exit 1; }
       - name: Label non-distributable QA APK
         if: success()
         run: cp build/app/outputs/flutter-apk/app-release.apk build/reports/belog-QA-debug-signed.apk
@@ -290,6 +307,7 @@ jobs:
           path: |
             build/reports/android-release-build.log
             build/reports/apk-permissions.txt
+            build/reports/apk-16k-alignment.log
             build/reports/signing-test.log
             build/reports/belog-QA-debug-signed.apk
           if-no-files-found: warn
