@@ -150,7 +150,6 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         return [];
       }
 
-      // Set up the base query
       // Postgres treats %, _ and \ as LIKE wildcards/escapes. Escape them so
       // user input is matched literally; the pattern itself stays a substring
       // match around the query (works for Chinese text without pretending to
@@ -270,27 +269,42 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     }
   }
 
+  /// Toggles the like and returns the like state AFTER the operation
+  /// (true = liked). Unlike a read-then-write approach, deleting first and
+  /// only inserting when nothing was deleted keeps concurrent toggles from
+  /// double-flipping: every request reports the actual resulting server
+  /// state, so the UI can reconcile against it.
   @override
   Future<bool> toggleLikeBlog(String userId, String blogId) async {
     try {
-      // Check if the like already exists
-      final existingLike = await isBlogLikedByUser(userId, blogId);
+      // Delete the like if present. The returned rows tell whether one
+      // existed, so the check and the write are a single server round trip.
+      final deleted = await supabaseClient
+          .from('likes')
+          .delete()
+          .eq('user_id', userId)
+          .eq('blog_id', blogId)
+          .select();
 
-      if (!existingLike) {
-        // Add like
+      if (deleted.isNotEmpty) {
+        // A row was removed: the blog is now unliked.
+        return false;
+      }
+
+      try {
         await supabaseClient.from('likes').insert({
           'user_id': userId,
           'blog_id': blogId,
         });
-      } else {
-        // Remove like
-        await supabaseClient
-            .from('likes')
-            .delete()
-            .eq('user_id', userId)
-            .eq('blog_id', blogId);
+        return true;
+      } on PostgrestException catch (e) {
+        if (e.code == '23505') {
+          // A concurrent toggle inserted the same row first (requires the
+          // (user_id, blog_id) unique constraint): the blog is liked.
+          return true;
+        }
+        rethrow;
       }
-      return true;
     } catch (e) {
       throw mapToServerException(e);
     }
