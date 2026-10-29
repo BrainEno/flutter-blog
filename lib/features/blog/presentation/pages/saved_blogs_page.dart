@@ -3,13 +3,13 @@ import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
-import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
-import 'package:belog/features/blog/presentation/widgets/blog_grid_item.dart'; // Import the new widget
+import 'package:belog/features/blog/presentation/widgets/blog_grid_item.dart';
+import 'package:belog/router/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 class SavedBlogsPage extends StatefulWidget {
-  static route() => MaterialPageRoute(builder: (_) => const SavedBlogsPage());
   const SavedBlogsPage({super.key});
 
   @override
@@ -17,7 +17,7 @@ class SavedBlogsPage extends StatefulWidget {
 }
 
 class _SavedBlogsPageState extends State<SavedBlogsPage>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, RouteAware {
   List<Blog> _lastBlogs = []; // Store the last successful blog list
 
   @override
@@ -28,7 +28,17 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null) {
+      savedRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
   void dispose() {
+    savedRouteObserver.unsubscribe(this);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -40,10 +50,20 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
     }
   }
 
+  @override
+  void didPopNext() {
+    // The viewer above this page owns its own like state; refresh so likes
+    // toggled there are reflected in the saved list.
+    _fetchSavedBlogs();
+  }
+
   void _fetchSavedBlogs() {
-    final userId =
-        (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
-    context.read<BlogLikedBloc>().add(UserLikedBlogs(userId: userId));
+    final appUserState = context.read<AppUserCubit>().state;
+    if (appUserState is AppUserLoggedIn) {
+      context.read<BlogLikedBloc>().add(
+        UserLikedBlogs(userId: appUserState.user.id),
+      );
+    }
   }
 
   @override
@@ -68,8 +88,9 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
           if (state is UserLikedBlogsLoading) {
             return const Loader();
           } else if (state is UserLikedBlogsSuccess || _lastBlogs.isNotEmpty) {
-            final blogsToShow =
-                state is UserLikedBlogsSuccess ? state.blogs : _lastBlogs;
+            final blogsToShow = state is UserLikedBlogsSuccess
+                ? state.blogs
+                : _lastBlogs;
             if (blogsToShow.isEmpty) {
               return const Center(
                 child: Text(
@@ -82,10 +103,10 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
               onRefresh: () async {
                 _fetchSavedBlogs();
                 await context.read<BlogLikedBloc>().stream.firstWhere(
-                      (newState) =>
-                          newState is UserLikedBlogsSuccess ||
-                          newState is UserLikedBlogsFailure,
-                    );
+                  (newState) =>
+                      newState is UserLikedBlogsSuccess ||
+                      newState is UserLikedBlogsFailure,
+                );
               },
               child: GridView.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -100,7 +121,7 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
                   return BlogGridItem(
                     blog: blog,
                     onTap: () {
-                      Navigator.push(context, BlogViewerPage.route(blog));
+                      context.push('/saved/view/${blog.id}', extra: blog);
                     },
                   );
                 },
@@ -127,26 +148,26 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
                   onRefresh: () async {
                     _fetchSavedBlogs();
                     await context.read<BlogLikedBloc>().stream.firstWhere(
-                          (newState) =>
-                              newState is UserLikedBlogsSuccess ||
-                              newState is UserLikedBlogsFailure,
-                        );
+                      (newState) =>
+                          newState is UserLikedBlogsSuccess ||
+                          newState is UserLikedBlogsFailure,
+                    );
                   },
                   child: GridView.builder(
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16.0,
-                      mainAxisSpacing: 16.0,
-                      childAspectRatio: 0.75,
-                    ),
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16.0,
+                          mainAxisSpacing: 16.0,
+                          childAspectRatio: 0.75,
+                        ),
                     itemCount: _lastBlogs.length,
                     itemBuilder: (context, index) {
                       final blog = _lastBlogs[index];
                       return BlogGridItem(
                         blog: blog,
                         onTap: () {
-                          Navigator.push(context, BlogViewerPage.route(blog));
+                          context.push('/saved/view/${blog.id}', extra: blog);
                         },
                       );
                     },

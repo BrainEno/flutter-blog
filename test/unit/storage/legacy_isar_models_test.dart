@@ -1,9 +1,9 @@
-import 'package:belog/core/theme/theme_preference.dart';
+import 'package:belog/core/storage/legacy/theme_preference.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('ThemePreference Entity', () {
+  group('Legacy ThemePreference model', () {
     test('should create ThemePreference with ThemeMode.light', () {
       final pref = ThemePreference(themeMode: ThemeMode.light);
       expect(pref.themeMode, ThemeMode.light);

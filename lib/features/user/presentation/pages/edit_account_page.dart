@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class EditAccountPage extends StatefulWidget {
-  static route() => MaterialPageRoute(builder: (_) => const EditAccountPage());
-
   const EditAccountPage({super.key});
 
   @override
@@ -47,9 +45,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
                   Text(
                     '更改邮箱',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   TextFormField(
@@ -62,10 +60,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       filled: true,
-                      fillColor: Theme.of(context)
-                          .colorScheme
-                          .surface
-                          .withAlpha((0.5 * 255).toInt()),
+                      fillColor: Theme.of(
+                        context,
+                      ).colorScheme.surface.withAlpha((0.5 * 255).toInt()),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
@@ -85,9 +82,10 @@ class _EditAccountPageState extends State<EditAccountPage> {
                       onPressed: () {
                         if (_emailFormKey.currentState!.validate()) {
                           context.read<EditAccountBloc>().add(
-                                ChangeEmailEvent(
-                                    newEmail: emailController.text.trim()),
-                              );
+                            ChangeEmailEvent(
+                              newEmail: emailController.text.trim(),
+                            ),
+                          );
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -100,7 +98,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
                       child: const Text(
                         '提交更改',
                         style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -109,9 +109,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
             ),
             const SizedBox(height: 32),
             const Divider(),
-            const SizedBox(
-              height: 30,
-            ),
+            const SizedBox(height: 30),
             // Password Section
             Form(
               key: _passwordFormKey,
@@ -121,9 +119,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
                   Text(
                     '重置密码',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
                   const SizedBox(height: 20), // Consistent spacing
                   TextFormField(
@@ -137,10 +135,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       filled: true,
-                      fillColor: Theme.of(context)
-                          .colorScheme
-                          .surface
-                          .withAlpha((0.5 * 255).toInt()),
+                      fillColor: Theme.of(
+                        context,
+                      ).colorScheme.surface.withAlpha((0.5 * 255).toInt()),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -159,10 +156,10 @@ class _EditAccountPageState extends State<EditAccountPage> {
                       onPressed: () {
                         if (_passwordFormKey.currentState!.validate()) {
                           context.read<EditAccountBloc>().add(
-                                ResetPasswordEvent(
-                                    newPassword:
-                                        passwordController.text.trim()),
-                              );
+                            ResetPasswordEvent(
+                              newPassword: passwordController.text.trim(),
+                            ),
+                          );
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -175,7 +172,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
                       child: const Text(
                         '提交重置',
                         style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),

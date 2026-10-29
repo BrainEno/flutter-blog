@@ -45,23 +45,22 @@ class FakeDraftStore implements BlogDraftStore {
 }
 
 BlogDraft makeDraft(String? id, String title) => BlogDraft(
-      blogId: id,
-      title: title,
-      content: '草稿正文',
-      tags: ['小说'],
-      updatedAt: DateTime.utc(2024),
-    );
+  blogId: id,
+  title: title,
+  content: '草稿正文',
+  tags: ['小说'],
+  updatedAt: DateTime.utc(2024),
+);
 
 Blog makeBlog(String id) => Blog(
-      iid: 1,
-      id: id,
-      title: '已发布标题',
-      content: '已发布正文',
-      posterId: 'author',
-      imageUrl: '',
-      tags: ['诗歌'],
-      updatedAt: DateTime.utc(2025),
-    );
+  id: id,
+  title: '已发布标题',
+  content: '已发布正文',
+  posterId: 'author',
+  imageUrl: '',
+  tags: ['诗歌'],
+  updatedAt: DateTime.utc(2025),
+);
 
 Future<void> openEditor(
   WidgetTester tester,
@@ -70,8 +69,9 @@ Future<void> openEditor(
 }) async {
   final bloc = MockUploadBloc();
   when(() => bloc.state).thenReturn(BlogUploadInitial());
-  when(() => bloc.stream)
-      .thenAnswer((_) => const Stream<BlogUploadState>.empty());
+  when(
+    () => bloc.stream,
+  ).thenAnswer((_) => const Stream<BlogUploadState>.empty());
   await tester.pumpWidget(
     MaterialApp(
       home: BlocProvider<BlogUploadBloc>.value(
@@ -96,8 +96,9 @@ Future<void> tapSaveDraft(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('an existing article asks for its own draft, not a new draft',
-      (tester) async {
+  testWidgets('an existing article asks for its own draft, not a new draft', (
+    tester,
+  ) async {
     final store = FakeDraftStore()
       ..drafts[null] = makeDraft(null, '新文章草稿')
       ..drafts['article-b'] = makeDraft('article-b', '另一篇草稿');
@@ -119,8 +120,9 @@ void main() {
     expect(titleText(tester), '新文章草稿');
   });
 
-  testWidgets('published content stays until the user restores the draft',
-      (tester) async {
+  testWidgets('published content stays until the user restores the draft', (
+    tester,
+  ) async {
     final store = FakeDraftStore()
       ..drafts['article-a'] = makeDraft('article-a', '旧草稿标题');
     await openEditor(tester, store, blog: makeBlog('article-a'));
@@ -132,19 +134,21 @@ void main() {
   });
 
   testWidgets(
-      'discard leaves article content intact and discards only the draft',
-      (tester) async {
-    final draft = makeDraft('article-a', '旧草稿标题');
-    final store = FakeDraftStore()..drafts['article-a'] = draft;
-    await openEditor(tester, store, blog: makeBlog('article-a'));
-    await tester.tap(find.text('丢弃草稿'));
-    await tester.pumpAndSettle();
-    expect(store.discarded, same(draft));
-    expect(titleText(tester), '已发布标题');
-  });
+    'discard leaves article content intact and discards only the draft',
+    (tester) async {
+      final draft = makeDraft('article-a', '旧草稿标题');
+      final store = FakeDraftStore()..drafts['article-a'] = draft;
+      await openEditor(tester, store, blog: makeBlog('article-a'));
+      await tester.tap(find.text('丢弃草稿'));
+      await tester.pumpAndSettle();
+      expect(store.discarded, same(draft));
+      expect(titleText(tester), '已发布标题');
+    },
+  );
 
-  testWidgets('late load cannot replace a manually saved draft',
-      (tester) async {
+  testWidgets('late load cannot replace a manually saved draft', (
+    tester,
+  ) async {
     final store = FakeDraftStore()..pendingLoad = Completer<BlogDraft?>();
     await openEditor(tester, store, blog: makeBlog('article-a'));
     await tapSaveDraft(tester);
@@ -154,8 +158,9 @@ void main() {
     expect(titleText(tester), '已发布标题');
   });
 
-  testWidgets('manual save takes a snapshot and reports failures',
-      (tester) async {
+  testWidgets('manual save takes a snapshot and reports failures', (
+    tester,
+  ) async {
     final store = FakeDraftStore()..pendingSave = Completer<void>();
     await openEditor(tester, store, blog: makeBlog('article-a'));
     await tapSaveDraft(tester);

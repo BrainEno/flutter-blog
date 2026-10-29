@@ -2,7 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:belog/core/theme/app_pallete.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
-import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
+import 'package:go_router/go_router.dart';
 
 class BlogCard extends StatefulWidget {
   final Blog blog;
@@ -24,9 +24,10 @@ class _BlogCardState extends State<BlogCard>
       duration: const Duration(milliseconds: 150),
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -53,7 +54,7 @@ class _BlogCardState extends State<BlogCard>
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(context, BlogViewerPage.route(widget.blog));
+        context.push('/view/${widget.blog.id}', extra: widget.blog);
       },
       onTapDown: (_) => _controller.forward(),
       onTapUp: (_) => _controller.reverse(),
@@ -77,7 +78,8 @@ class _BlogCardState extends State<BlogCard>
                 ],
                 image: DecorationImage(
                   image: CachedNetworkImageProvider(
-                      '${widget.blog.imageUrl}?v=${widget.blog.updatedAt.microsecondsSinceEpoch}'),
+                    '${widget.blog.imageUrl}?v=${widget.blog.updatedAt.microsecondsSinceEpoch}',
+                  ),
                   fit: BoxFit.cover,
                 ),
                 gradient: LinearGradient(
@@ -103,32 +105,39 @@ class _BlogCardState extends State<BlogCard>
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: widget.blog.tags
-                              .map((tag) => Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 4, horizontal: 8),
-                                    child: Chip(
-                                      label: Text(
-                                        tag,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.white,
-                                          letterSpacing: 1.5,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      backgroundColor:
-                                          _getTagColor(tag).withAlpha(220),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8),
-                                      materialTapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(5),
-                                        side: BorderSide(
-                                            color: Colors.transparent),
+                              .map(
+                                (tag) => Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 4,
+                                    horizontal: 8,
+                                  ),
+                                  child: Chip(
+                                    label: Text(
+                                      tag,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.white,
+                                        letterSpacing: 1.5,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                  ))
+                                    backgroundColor: _getTagColor(
+                                      tag,
+                                    ).withAlpha(220),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(5),
+                                      side: BorderSide(
+                                        color: Colors.transparent,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
                               .toList(),
                         ),
                       ),

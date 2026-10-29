@@ -1,23 +1,24 @@
 import 'dart:io';
 
 import 'package:belog/core/storage/app_database.dart';
+import 'package:belog/core/storage/legacy/blog.dart' as legacy;
+import 'package:belog/core/storage/legacy/blog_draft.dart' as legacy;
+import 'package:belog/core/storage/legacy/theme_preference.dart' as legacy;
 import 'package:belog/core/storage/sqlite_blog_cache.dart';
 import 'package:belog/core/storage/sqlite_draft_store.dart';
 import 'package:belog/core/storage/sqlite_theme_store.dart';
-import 'package:belog/core/theme/theme_preference.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
-import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:isar/isar.dart';
+import 'package:isar/isar.dart' as legacy;
 
 void main() {
   late Directory dir;
   late AppDatabase db;
 
-  setUpAll(() => Isar.initializeIsarCore(download: true));
+  setUpAll(() => legacy.Isar.initializeIsarCore(download: true));
   setUp(() async {
     dir = await Directory.systemTemp.createTemp('belog-sqlite-');
     db = AppDatabase(NativeDatabase(File('${dir.path}/new.sqlite')));
@@ -108,20 +109,24 @@ void main() {
   test(
     'imports actual Isar data once; failure rolls back and can retry',
     () async {
-      final old = await Isar.open(
-        [ThemePreferenceSchema, BlogSchema, BlogDraftSchema],
+      final old = await legacy.Isar.open(
+        [
+          legacy.ThemePreferenceSchema,
+          legacy.BlogSchema,
+          legacy.BlogDraftSchema,
+        ],
         directory: dir.path,
         inspector: false,
       );
       await old.writeTxn(() async {
         await old.themePreferences.put(
-          ThemePreference(themeMode: ThemeMode.light)..id = 2,
+          legacy.ThemePreference(themeMode: ThemeMode.light)..id = 2,
         );
         await old.themePreferences.put(
-          ThemePreference(themeMode: ThemeMode.dark)..id = 9,
+          legacy.ThemePreference(themeMode: ThemeMode.dark)..id = 9,
         );
         await old.blogDrafts.put(
-          BlogDraft(
+          legacy.BlogDraft(
             blogId: 'a',
             title: 'keep',
             content: 'unsent',
@@ -129,7 +134,20 @@ void main() {
             updatedAt: DateTime.utc(2024),
           )..id = 7,
         );
-        await old.blogs.put(blog('1', 'legacy'));
+        await old.blogs.put(
+          legacy.Blog(
+            iid: legacy.Isar.autoIncrement,
+            id: '1',
+            title: 'legacy',
+            content: 'body',
+            posterId: 'author',
+            imageUrl: 'cover',
+            tags: ['one'],
+            updatedAt: DateTime.utc(2025),
+            posterName: 'Alice',
+            posterAvatar: 'avatar',
+          ),
+        );
       });
       await old.close();
       final legacyBytes = await File('${dir.path}/default.isar').readAsBytes();
