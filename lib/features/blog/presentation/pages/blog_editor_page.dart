@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
@@ -31,7 +32,12 @@ class BlogEditorPage extends StatefulWidget {
   State<BlogEditorPage> createState() => _BlogEditorState();
 }
 
+/// Status of the background draft auto-save, shown as a thin banner.
+enum _AutoSaveStatus { idle, saving, saved, failed }
+
 class _BlogEditorState extends State<BlogEditorPage> {
+  static const _kAutoSaveDelay = Duration(seconds: 2);
+
   final titleController = TextEditingController();
   final contentController = TextEditingController();
   final formKey = GlobalKey<FormState>();
@@ -43,6 +49,14 @@ class _BlogEditorState extends State<BlogEditorPage> {
   int _draftRequestVersion = 0;
   late final BlogDraftStore _draftStore;
 
+  Timer? _autoSaveTimer;
+  _AutoSaveStatus _autoSaveStatus = _AutoSaveStatus.idle;
+  bool _draftsReady = false;
+  bool _hasUnsavedEdits = false;
+  bool _editedDuringPublish = false;
+  bool _suppressDraftFlush = false;
+  DateTime? _publishStartedAt;
+
   @override
   void initState() {
     super.initState();
@@ -52,7 +66,74 @@ class _BlogEditorState extends State<BlogEditorPage> {
       contentController.text = widget.blog!.content;
       selectedTags = List.from(widget.blog!.tags);
     }
+    // Attached after the initial text is in place, so pre-filling the
+    // editors is not mistaken for an edit.
+    titleController.addListener(_onEditorContentChanged);
+    contentController.addListener(_onEditorContentChanged);
     loadDraft();
+  }
+
+  /// Debounces the 2s background draft save. It only ever writes to the
+  /// local draft store - it never publishes or network-posts anything.
+  void _onEditorContentChanged() {
+    if (!_draftsReady) return;
+    _hasUnsavedEdits = true;
+    if (_publishStartedAt != null) _editedDuringPublish = true;
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(_kAutoSaveDelay, _autoSaveDraft);
+  }
+
+  Future<void> _autoSaveDraft() async {
+    if (!_isBlankDraft()) {
+      final draft = _currentDraft();
+      setState(() => _autoSaveStatus = _AutoSaveStatus.saving);
+      try {
+        await _draftStore.save(draft);
+        // Edits made while this save was awaiting re-arm the auto-save
+        // timer; only declare everything saved when none are pending.
+        _hasUnsavedEdits = _autoSaveTimer?.isActive ?? false;
+        if (mounted) setState(() => _autoSaveStatus = _AutoSaveStatus.saved);
+      } catch (_) {
+        if (mounted) setState(() => _autoSaveStatus = _AutoSaveStatus.failed);
+      }
+    }
+  }
+
+  bool _isBlankDraft() =>
+      titleController.text.trim().isEmpty &&
+      contentController.text.trim().isEmpty;
+
+  BlogDraft _currentDraft() => BlogDraft(
+    blogId: widget.blog?.id,
+    title: titleController.text,
+    content: contentController.text,
+    tags: List.of(selectedTags),
+    updatedAt: DateTime.now(),
+  );
+
+  /// Publish succeeded: drop this article's drafts that predate the publish
+  /// request. Edits typed while the upload was in flight are newer and are
+  /// deliberately kept.
+  Future<void> _clearPublishedDrafts() async {
+    final startedAt = _publishStartedAt;
+    if (startedAt == null) return;
+    try {
+      await _draftStore.deleteDraftsFor(widget.blog?.id, olderThan: startedAt);
+    } catch (_) {
+      // Best-effort cleanup: a leftover draft is harmless.
+    }
+  }
+
+  /// Best-effort save when the page is disposed mid-edit. Must not touch
+  /// [context] - the widget is already unmounted.
+  void _flushDraftOnDispose() {
+    if (_suppressDraftFlush || !_hasUnsavedEdits || _isBlankDraft()) return;
+    // Only edits made while a publish was uploading should survive it.
+    if (_publishStartedAt != null && !_editedDuringPublish) return;
+    final draft = _currentDraft();
+    unawaited(
+      _draftStore.save(draft).then((_) {}, onError: (_) {}),
+    );
   }
 
   Future<void> loadDraft() async {
@@ -86,6 +167,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
       }
     } catch (_) {
       if (mounted) showSnackBar(context, '无法读取或处理草稿，请重试');
+    } finally {
+      _draftsReady = true;
     }
   }
 
@@ -102,6 +185,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
   void saveBlog() {
     _draftRequestVersion++;
     if (formKey.currentState!.validate() && selectedTags.isNotEmpty) {
+      _publishStartedAt = DateTime.now();
+      _editedDuringPublish = false;
       final posterId =
           (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
       if (widget.blog == null && image != null) {
@@ -154,6 +239,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
     );
     try {
       await _draftStore.save(draft);
+      // A pending auto-save timer means newer edits are waiting; let it run.
+      _hasUnsavedEdits = _autoSaveTimer?.isActive ?? false;
       if (mounted) showSnackBar(context, '草稿已保存');
     } catch (_) {
       if (mounted) showSnackBar(context, '草稿保存失败，请重试');
@@ -162,6 +249,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
+    _flushDraftOnDispose();
     titleController.dispose();
     contentController.dispose();
     super.dispose();
@@ -283,9 +372,21 @@ class _BlogEditorState extends State<BlogEditorPage> {
               );
             }
             showSnackBar(context, widget.blog == null ? '上传成功' : '更新成功');
+            // Drop the drafts that were published; keep anything typed
+            // during the upload (see _clearPublishedDrafts).
+            _hasUnsavedEdits = _editedDuringPublish;
+            unawaited(_clearPublishedDrafts());
             Navigator.of(context).pop(true);
           } else if (state is BlogDeleteSuccess) {
             showSnackBar(context, '删除成功');
+            // The article is gone: clear all of its drafts and do not let
+            // the dispose flush resurrect one.
+            _suppressDraftFlush = true;
+            unawaited(
+              _draftStore
+                  .deleteDraftsFor(widget.blog?.id)
+                  .then((_) {}, onError: (_) {}),
+            );
             Navigator.of(context).pop(true);
           }
         },
@@ -304,6 +405,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    _AutoSaveBanner(status: _autoSaveStatus),
                     const SizedBox(
                       height: 20,
                     ), // Space between buttons and image
@@ -449,6 +551,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                     selectedTags.remove(e);
                                   }
                                 });
+                                _onEditorContentChanged();
                               },
                             ),
                           )
@@ -477,5 +580,38 @@ class _BlogEditorState extends State<BlogEditorPage> {
         },
       ),
     );
+  }
+}
+
+/// Thin status line for the background draft auto-save.
+class _AutoSaveBanner extends StatelessWidget {
+  final _AutoSaveStatus status;
+
+  const _AutoSaveBanner({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    switch (status) {
+      case _AutoSaveStatus.idle:
+        return const SizedBox.shrink();
+      case _AutoSaveStatus.saving:
+        return const Text(
+          '草稿自动保存中…',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, color: Colors.grey),
+        );
+      case _AutoSaveStatus.saved:
+        return const Text(
+          '草稿已自动保存',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, color: Colors.grey),
+        );
+      case _AutoSaveStatus.failed:
+        return const Text(
+          '自动保存失败，请手动保存草稿',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, color: Colors.red),
+        );
+    }
   }
 }

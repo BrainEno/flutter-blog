@@ -10,4 +10,12 @@ abstract interface class BlogDraftStore {
   Future<void> save(BlogDraft draft);
 
   Future<bool> discardIfUnchanged(BlogDraft draft);
+
+  /// Deletes every draft scoped to [blogId].
+  ///
+  /// When [olderThan] is given, only drafts updated at or before that moment
+  /// are removed: used after a successful publish so edits made while the
+  /// upload was in flight survive as a draft, while the published snapshot
+  /// itself is not resurrected next time the editor opens.
+  Future<int> deleteDraftsFor(String? blogId, {DateTime? olderThan});
 }
