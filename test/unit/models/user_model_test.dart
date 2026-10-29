@@ -20,15 +20,12 @@ void main() {
       expect(json['updated_at'], '2024-01-01T00:00:00.000Z');
     });
 
-    test(
-      'never contains the e-mail column: the auth address only changes '
-      'through Supabase Auth (changeEmail + confirmation), never a direct '
-      'profiles write',
-      () {
-        final json = model.toProfileUpdateJson();
-        expect(json.containsKey('email'), isFalse);
-        expect(json.containsKey('id'), isFalse);
-      },
-    );
+    test('never contains the e-mail column: the auth address only changes '
+        'through Supabase Auth (changeEmail + confirmation), never a direct '
+        'profiles write', () {
+      final json = model.toProfileUpdateJson();
+      expect(json.containsKey('email'), isFalse);
+      expect(json.containsKey('id'), isFalse);
+    });
   });
 }

@@ -66,13 +66,13 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
 
   void _submit() {
     context.read<UserEditBloc>().add(
-          UserEditSubmitted(
-            name: _nameController.text,
-            website: _websiteController.text,
-            avatar: isNewImageSelected ? image : null,
-            avatarMimeType: isNewImageSelected ? avatarMimeType : null,
-          ),
-        );
+      UserEditSubmitted(
+        name: _nameController.text,
+        website: _websiteController.text,
+        avatar: isNewImageSelected ? image : null,
+        avatarMimeType: isNewImageSelected ? avatarMimeType : null,
+      ),
+    );
   }
 
   @override
@@ -91,10 +91,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
         centerTitle: true,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: _submit,
-          ),
+          IconButton(icon: const Icon(Icons.check), onPressed: _submit),
         ],
       ),
       body: BlocConsumer<UserEditBloc, UserEditState>(

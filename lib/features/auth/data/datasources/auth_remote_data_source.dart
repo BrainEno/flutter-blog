@@ -7,11 +7,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 abstract interface class AuthRemoteDataSource {
   Session? get currentUserSession;
 
-  Future<SignUpOutcome> signUpWithEmailPassword(
-      {required String name, required String email, required String password});
+  Future<SignUpOutcome> signUpWithEmailPassword({
+    required String name,
+    required String email,
+    required String password,
+  });
 
-  Future<UserModel> loginWithEmailPassword(
-      {required String email, required String password});
+  Future<UserModel> loginWithEmailPassword({
+    required String email,
+    required String password,
+  });
 
   Future<UserModel?> getCurrentUserData();
 
@@ -52,20 +57,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (userData == null) {
         return null;
       }
-      return UserModel.fromJson(
-        userData,
-      ).copyWith(email: session.user.email);
+      return UserModel.fromJson(userData).copyWith(email: session.user.email);
     } catch (e) {
       throw ServerException(e.toString());
     }
   }
 
   @override
-  Future<UserModel> loginWithEmailPassword(
-      {required String email, required String password}) async {
+  Future<UserModel> loginWithEmailPassword({
+    required String email,
+    required String password,
+  }) async {
     try {
-      final response = await supabaseClient.auth
-          .signInWithPassword(password: password, email: email);
+      final response = await supabaseClient.auth.signInWithPassword(
+        password: password,
+        email: email,
+      );
       if (response.user == null) {
         throw ServerException("User is null!");
       }
@@ -76,10 +83,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<SignUpOutcome> signUpWithEmailPassword(
-      {required String name,
-      required String email,
-      required String password}) async {
+  Future<SignUpOutcome> signUpWithEmailPassword({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
     try {
       final response = await supabaseClient.auth.signUp(
         password: password,

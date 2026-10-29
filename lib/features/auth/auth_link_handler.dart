@@ -113,10 +113,7 @@ class AuthLinkHandler {
       }
       switch (resolution.event) {
         case AuthChangeEvent.passwordRecovery:
-          _onResult(
-            AuthLinkResult.accepted,
-            '身份验证成功，请前往「我的-账号安全」设置新密码',
-          );
+          _onResult(AuthLinkResult.accepted, '身份验证成功，请前往「我的-账号安全」设置新密码');
         case AuthChangeEvent.signedIn:
         case AuthChangeEvent.userUpdated:
           _onResult(AuthLinkResult.accepted, '邮箱验证成功，已为你登录');

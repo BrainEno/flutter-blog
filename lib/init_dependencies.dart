@@ -165,7 +165,8 @@ void _initAuth() {
     // App-level auth services, started in main() once Supabase is up.
     ..registerLazySingleton(
       () => AuthSessionSync(
-        authStateStream: serviceLocator<SupabaseClient>().auth.onAuthStateChange,
+        authStateStream:
+            serviceLocator<SupabaseClient>().auth.onAuthStateChange,
         currentSession: () =>
             serviceLocator<SupabaseClient>().auth.currentSession,
         currentUser: serviceLocator(),

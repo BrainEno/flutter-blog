@@ -17,26 +17,30 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
     required UploadBlog uploadBlog,
     required UpdateBlog updateBlog,
     required DeleteBlog deleteBlog,
-  })  : _uploadBlog = uploadBlog,
-        _updateBlog = updateBlog,
-        _deleteBlog = deleteBlog,
-        super(BlogUploadInitial()) {
+  }) : _uploadBlog = uploadBlog,
+       _updateBlog = updateBlog,
+       _deleteBlog = deleteBlog,
+       super(BlogUploadInitial()) {
     on<UploadBlogEvent>(_onUploadBlog);
     on<UpdateBlogEvent>(_onUpdateBlog);
     on<DeleteBlogEvent>(_onDeleteBlog);
   }
 
   void _onUploadBlog(
-      UploadBlogEvent event, Emitter<BlogUploadState> emit) async {
+    UploadBlogEvent event,
+    Emitter<BlogUploadState> emit,
+  ) async {
     emit(BlogUploadLoading());
-    final res = await _uploadBlog(UploadBlogParams(
-      image: event.image,
-      title: event.title,
-      content: event.content,
-      posterId: event.posterId,
-      tags: event.tags,
-      imageMimeType: event.imageMimeType,
-    ));
+    final res = await _uploadBlog(
+      UploadBlogParams(
+        image: event.image,
+        title: event.title,
+        content: event.content,
+        posterId: event.posterId,
+        tags: event.tags,
+        imageMimeType: event.imageMimeType,
+      ),
+    );
 
     res.fold(
       (failure) => emit(BlogUploadFailure(failure.message)),
@@ -45,16 +49,20 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
   }
 
   void _onUpdateBlog(
-      UpdateBlogEvent event, Emitter<BlogUploadState> emit) async {
+    UpdateBlogEvent event,
+    Emitter<BlogUploadState> emit,
+  ) async {
     emit(BlogUploadLoading());
-    final res = await _updateBlog(UpdateBlogParams(
-      blogId: event.blogId,
-      image: event.image,
-      title: event.title,
-      content: event.content,
-      tags: event.tags,
-      imageMimeType: event.imageMimeType,
-    ));
+    final res = await _updateBlog(
+      UpdateBlogParams(
+        blogId: event.blogId,
+        image: event.image,
+        title: event.title,
+        content: event.content,
+        tags: event.tags,
+        imageMimeType: event.imageMimeType,
+      ),
+    );
     res.fold(
       (failure) => emit(BlogUploadFailure(failure.message)),
       (_) => emit(BlogUploadSuccess()),
@@ -62,7 +70,9 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
   }
 
   void _onDeleteBlog(
-      DeleteBlogEvent event, Emitter<BlogUploadState> emit) async {
+    DeleteBlogEvent event,
+    Emitter<BlogUploadState> emit,
+  ) async {
     emit(BlogDeleteLoading());
     final res = await _deleteBlog(DeleteBlogParams(blogId: event.blogId));
     res.fold(

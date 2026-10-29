@@ -44,9 +44,10 @@ void main() {
   setUp(() {
     links = FakeDeepLinkSource();
     results = [];
-    nextResolution = Completer<
-      ({AuthSessionUrlResponse? response, AuthChangeEvent? event})
-    >();
+    nextResolution =
+        Completer<
+          ({AuthSessionUrlResponse? response, AuthChangeEvent? event})
+        >();
   });
 
   tearDown(() => links.controller.close());
@@ -58,12 +59,10 @@ void main() {
     final handler = buildHandler();
     await handler.start();
 
-    nextResolution.complete(
-      (
-        response: AuthSessionUrlResponse(session: _session()),
-        event: AuthChangeEvent.signedIn,
-      ),
-    );
+    nextResolution.complete((
+      response: AuthSessionUrlResponse(session: _session()),
+      event: AuthChangeEvent.signedIn,
+    ));
     await Future<void>.delayed(Duration.zero);
 
     expect(results.single.$1, AuthLinkResult.accepted);
@@ -76,12 +75,10 @@ void main() {
     await handler.start();
 
     links.controller.add(Uri.parse('belog://auth-callback?code=abc'));
-    nextResolution.complete(
-      (
-        response: AuthSessionUrlResponse(session: _session()),
-        event: AuthChangeEvent.passwordRecovery,
-      ),
-    );
+    nextResolution.complete((
+      response: AuthSessionUrlResponse(session: _session()),
+      event: AuthChangeEvent.passwordRecovery,
+    ));
     await Future<void>.delayed(Duration.zero);
 
     expect(results.single.$1, AuthLinkResult.accepted);
@@ -94,9 +91,7 @@ void main() {
     await handler.start();
 
     links.controller.add(Uri.parse('belog://auth-callback?code=abc'));
-    nextResolution.complete(
-      (response: null, event: null),
-    );
+    nextResolution.complete((response: null, event: null));
     await Future<void>.delayed(Duration.zero);
 
     expect(results.single.$1, AuthLinkResult.rejected);
@@ -110,8 +105,10 @@ void main() {
 
     links.controller.add(Uri.parse('belog://auth-callback?code=expired'));
     nextResolution.completeError(
-      AuthException('Invalid request: both auth code and code verifier are '
-          'expired'),
+      AuthException(
+        'Invalid request: both auth code and code verifier are '
+        'expired',
+      ),
     );
     await Future<void>.delayed(Duration.zero);
 
@@ -137,12 +134,10 @@ void main() {
     await handler.start();
 
     links.controller.add(Uri.parse('belog://auth-callback?code=abc'));
-    nextResolution.complete(
-      (
-        response: AuthSessionUrlResponse(session: _session()),
-        event: AuthChangeEvent.signedIn,
-      ),
-    );
+    nextResolution.complete((
+      response: AuthSessionUrlResponse(session: _session()),
+      event: AuthChangeEvent.signedIn,
+    ));
     await Future<void>.delayed(Duration.zero);
 
     expect(results, hasLength(1));

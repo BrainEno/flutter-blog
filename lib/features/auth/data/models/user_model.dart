@@ -48,13 +48,14 @@ class UserModel extends User {
     };
   }
 
-  UserModel copyWith(
-      {String? id,
-      String? email,
-      String? name,
-      String? avatarUrl,
-      String? website,
-      DateTime? updatedAt}) {
+  UserModel copyWith({
+    String? id,
+    String? email,
+    String? name,
+    String? avatarUrl,
+    String? website,
+    DateTime? updatedAt,
+  }) {
     return UserModel(
       id: id ?? this.id,
       email: email ?? this.email,

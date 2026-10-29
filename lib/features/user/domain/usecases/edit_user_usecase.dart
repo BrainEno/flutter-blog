@@ -14,11 +14,12 @@ class EditUserUseCase implements UseCase<User, EditUserParams> {
   @override
   Future<Either<Failure, User>> call(EditUserParams params) async {
     return await repository.editUserInfo(
-        userId: params.userId,
-        name: params.name,
-        avatar: params.avatar,
-        avatarMimeType: params.avatarMimeType,
-        website: params.website);
+      userId: params.userId,
+      name: params.name,
+      avatar: params.avatar,
+      avatarMimeType: params.avatarMimeType,
+      website: params.website,
+    );
   }
 }
 
@@ -32,10 +33,11 @@ class EditUserParams {
   final String? avatarMimeType;
   final String website;
 
-  EditUserParams(
-      {required this.userId,
-      required this.name,
-      required this.website,
-      this.avatar,
-      this.avatarMimeType});
+  EditUserParams({
+    required this.userId,
+    required this.name,
+    required this.website,
+    this.avatar,
+    this.avatarMimeType,
+  });
 }

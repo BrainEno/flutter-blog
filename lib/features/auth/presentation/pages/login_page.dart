@@ -93,8 +93,8 @@ class _LoginPageState extends State<LoginPage> {
     if (submitted == true) {
       if (context.mounted) {
         context.read<AuthBloc>().add(
-              AuthForgotPassword(email: controller.text.trim()),
-            );
+          AuthForgotPassword(email: controller.text.trim()),
+        );
       }
     }
     controller.dispose();
@@ -162,11 +162,11 @@ class _LoginPageState extends State<LoginPage> {
                           if (formKey.currentState!.validate()) {
                             attemptedLogin = true;
                             context.read<AuthBloc>().add(
-                                  AuthLogin(
-                                    email: emailController.text.trim(),
-                                    password: passwordController.text.trim(),
-                                  ),
-                                );
+                              AuthLogin(
+                                email: emailController.text.trim(),
+                                password: passwordController.text.trim(),
+                              ),
+                            );
                           }
                         },
                       ),

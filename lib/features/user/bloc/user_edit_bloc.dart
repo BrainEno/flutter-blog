@@ -15,8 +15,8 @@ class UserEditBloc extends Bloc<UserEditEvent, UserEditState> {
   UserEditBloc({
     required EditUserUseCase editUserUseCase,
     required this.appUserCubit,
-  })  : _editUserUseCase = editUserUseCase,
-        super(UserEditInitial()) {
+  }) : _editUserUseCase = editUserUseCase,
+       super(UserEditInitial()) {
     on<UserEditSubmitted>(_onEditUserSubmitted);
   }
 

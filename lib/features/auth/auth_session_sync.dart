@@ -85,17 +85,20 @@ class AuthSessionSync {
     _refreshing = true;
     try {
       final res = await _currentUser(NoParams());
-      res.fold((failure) {
-        AppLogger.debug('auth event user refresh failed: ${failure.code}');
-      }, (user) {
-        // A refresh finishing after a sign-out must not resurrect the
-        // logged-in state: only apply the user while the same session is
-        // still current.
-        final session = _currentSession();
-        if (session != null && session.user.id == user.id) {
-          _appUserCubit.updateUser(user);
-        }
-      });
+      res.fold(
+        (failure) {
+          AppLogger.debug('auth event user refresh failed: ${failure.code}');
+        },
+        (user) {
+          // A refresh finishing after a sign-out must not resurrect the
+          // logged-in state: only apply the user while the same session is
+          // still current.
+          final session = _currentSession();
+          if (session != null && session.user.id == user.id) {
+            _appUserCubit.updateUser(user);
+          }
+        },
+      );
     } finally {
       _refreshing = false;
     }

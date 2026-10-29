@@ -78,5 +78,4 @@ String avatarObjectPath({
 }
 
 /// Millisecond timestamp used as the version component of upload paths.
-String storageVersionNow() =>
-    DateTime.now().millisecondsSinceEpoch.toString();
+String storageVersionNow() => DateTime.now().millisecondsSinceEpoch.toString();

@@ -24,22 +24,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final SendPasswordResetEmail _sendPasswordResetEmail;
   final AppUserCubit _appUserCubit;
 
-  AuthBloc(
-      {required UserSignUp userSignUp,
-      required UserLogin userLogin,
-      required UserSignOut userSignOut,
-      required CurrentUser currentUser,
-      required ResendConfirmationEmail resendConfirmationEmail,
-      required SendPasswordResetEmail sendPasswordResetEmail,
-      required AppUserCubit appUserCubit})
-      : _userSignUp = userSignUp,
-        _userLogin = userLogin,
-        _userSignOut = userSignOut,
-        _currentUser = currentUser,
-        _resendConfirmationEmail = resendConfirmationEmail,
-        _sendPasswordResetEmail = sendPasswordResetEmail,
-        _appUserCubit = appUserCubit,
-        super(AuthInitial()) {
+  AuthBloc({
+    required UserSignUp userSignUp,
+    required UserLogin userLogin,
+    required UserSignOut userSignOut,
+    required CurrentUser currentUser,
+    required ResendConfirmationEmail resendConfirmationEmail,
+    required SendPasswordResetEmail sendPasswordResetEmail,
+    required AppUserCubit appUserCubit,
+  }) : _userSignUp = userSignUp,
+       _userLogin = userLogin,
+       _userSignOut = userSignOut,
+       _currentUser = currentUser,
+       _resendConfirmationEmail = resendConfirmationEmail,
+       _sendPasswordResetEmail = sendPasswordResetEmail,
+       _appUserCubit = appUserCubit,
+       super(AuthInitial()) {
     // NOTE: there is deliberately no catch-all `on<AuthEvent>` handler.
     // Each handler below decides whether it emits [AuthLoading], so
     // background-ish events (resend e-mail, restore) do not flip the whole
@@ -52,14 +52,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthForgotPassword>(_onForgotPassword);
   }
 
-  Future<void> _onAuthSignUp(
-      AuthSignUp event, Emitter<AuthState> emit) async {
+  Future<void> _onAuthSignUp(AuthSignUp event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
-    final res = await _userSignUp(UserSignUpParams(
-        email: event.email, name: event.name, password: event.password));
+    final res = await _userSignUp(
+      UserSignUpParams(
+        email: event.email,
+        name: event.name,
+        password: event.password,
+      ),
+    );
 
-    res.fold((failure) => emit(AuthFailure(failure.message)),
-        (outcome) => _emitSignUpOutcome(outcome, emit));
+    res.fold(
+      (failure) => emit(AuthFailure(failure.message)),
+      (outcome) => _emitSignUpOutcome(outcome, emit),
+    );
   }
 
   void _emitSignUpOutcome(SignUpOutcome outcome, Emitter<AuthState> emit) {
@@ -103,7 +109,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _isUserLoggedIn(
-      AuthIsUserLoggedIn event, Emitter<AuthState> emit) async {
+    AuthIsUserLoggedIn event,
+    Emitter<AuthState> emit,
+  ) async {
     final res = await _currentUser(NoParams());
 
     res.fold((failure) => emit(AuthFailure(failure.message)), (user) {
@@ -116,25 +124,35 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final res = await _userSignOut(NoParams());
     _appUserCubit.updateUser(null);
 
-    res.fold((failure) => emit(AuthLogoutFailure(failure.message)),
-        (_) => emit(AuthLogoutSuccess()));
+    res.fold(
+      (failure) => emit(AuthLogoutFailure(failure.message)),
+      (_) => emit(AuthLogoutSuccess()),
+    );
   }
 
   Future<void> _onResendConfirmationEmail(
-      AuthResendConfirmationEmail event, Emitter<AuthState> emit) async {
+    AuthResendConfirmationEmail event,
+    Emitter<AuthState> emit,
+  ) async {
     // No AuthLoading: the sign-up page keeps its confirmation panel and
     // tracks the in-flight resend locally.
     final res = await _resendConfirmationEmail(event.email);
-    res.fold((failure) => emit(AuthFailure(failure.message)),
-        (_) => emit(const AuthConfirmationEmailSent()));
+    res.fold(
+      (failure) => emit(AuthFailure(failure.message)),
+      (_) => emit(const AuthConfirmationEmailSent()),
+    );
   }
 
   Future<void> _onForgotPassword(
-      AuthForgotPassword event, Emitter<AuthState> emit) async {
+    AuthForgotPassword event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthLoading());
     final res = await _sendPasswordResetEmail(event.email);
-    res.fold((failure) => emit(AuthFailure(failure.message)),
-        (_) => emit(const AuthPasswordResetEmailSent()));
+    res.fold(
+      (failure) => emit(AuthFailure(failure.message)),
+      (_) => emit(const AuthPasswordResetEmailSent()),
+    );
   }
 
   void _emitAuthSuccess(User user, Emitter<AuthState> emit) {

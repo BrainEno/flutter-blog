@@ -225,7 +225,10 @@ class BlogRepositoryImpl implements BlogRepository {
 
   /// Best-effort cover removal with a structured, auditable log on
   /// failure - cleanup problems are never swallowed silently.
-  Future<void> _removeCoverQuietly(String publicUrl, {required String reason}) async {
+  Future<void> _removeCoverQuietly(
+    String publicUrl, {
+    required String reason,
+  }) async {
     try {
       await blogRemoteDataSource.removeBlogImage(publicUrl);
     } catch (e, stackTrace) {

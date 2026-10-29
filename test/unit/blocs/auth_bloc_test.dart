@@ -30,11 +30,11 @@ class MockSendPasswordResetEmail extends Mock
     implements SendPasswordResetEmail {}
 
 User _user([String id = 'u1']) => User(
-      id: id,
-      email: 'user@example.invalid',
-      name: '测试用户',
-      updatedAt: DateTime.utc(2024),
-    );
+  id: id,
+  email: 'user@example.invalid',
+  name: '测试用户',
+  updatedAt: DateTime.utc(2024),
+);
 
 void main() {
   late MockUserSignUp userSignUp;
@@ -47,9 +47,7 @@ void main() {
   late AuthBloc bloc;
 
   setUpAll(() {
-    registerFallbackValue(
-      UserSignUpParams(email: '', name: '', password: ''),
-    );
+    registerFallbackValue(UserSignUpParams(email: '', name: '', password: ''));
     registerFallbackValue(UserLoginParams(email: '', password: ''));
     registerFallbackValue(NoParams());
   });
@@ -88,41 +86,36 @@ void main() {
   }
 
   group('AuthSignUp', () {
-    test(
-      'a sign-up without a session (e-mail confirmation required) does NOT '
-      'log the user in',
-      () async {
-        when(() => userSignUp(any())).thenAnswer(
-          (_) async => Right(SignUpOutcome(email: 'user@example.invalid')),
-        );
+    test('a sign-up without a session (e-mail confirmation required) does NOT '
+        'log the user in', () async {
+      when(() => userSignUp(any())).thenAnswer(
+        (_) async => Right(SignUpOutcome(email: 'user@example.invalid')),
+      );
 
-        final states = await capture(
-          () => bloc.add(
-            AuthSignUp(
-              email: 'user@example.invalid',
-              name: '测试用户',
-              password: 'secret',
-            ),
+      final states = await capture(
+        () => bloc.add(
+          AuthSignUp(
+            email: 'user@example.invalid',
+            name: '测试用户',
+            password: 'secret',
           ),
-        );
+        ),
+      );
 
-        expect(
-          states.where((s) => s is! AuthLoading),
-          [isA<AuthNeedsEmailConfirmation>()],
-        );
-        final pending = states.whereType<AuthNeedsEmailConfirmation>().single;
-        expect(pending.email, 'user@example.invalid');
-        // The identity cubit must stay logged out: an unconfirmed auth
-        // user is not a signed-in user.
-        expect(appUserCubit.state, isA<AppUserInitial>());
-      },
-    );
+      expect(states.where((s) => s is! AuthLoading), [
+        isA<AuthNeedsEmailConfirmation>(),
+      ]);
+      final pending = states.whereType<AuthNeedsEmailConfirmation>().single;
+      expect(pending.email, 'user@example.invalid');
+      // The identity cubit must stay logged out: an unconfirmed auth
+      // user is not a signed-in user.
+      expect(appUserCubit.state, isA<AppUserInitial>());
+    });
 
     test('a sign-up with a session logs the user in', () async {
       when(() => userSignUp(any())).thenAnswer(
-        (_) async => Right(
-          SignUpOutcome(email: 'user@example.invalid', user: _user()),
-        ),
+        (_) async =>
+            Right(SignUpOutcome(email: 'user@example.invalid', user: _user())),
       );
 
       final states = await capture(
@@ -140,9 +133,9 @@ void main() {
     });
 
     test('a failing sign-up surfaces the failure message', () async {
-      when(() => userSignUp(any())).thenAnswer(
-        (_) async => Left(Failure('User already registered')),
-      );
+      when(
+        () => userSignUp(any()),
+      ).thenAnswer((_) async => Left(Failure('User already registered')));
 
       final states = await capture(
         () => bloc.add(
@@ -178,8 +171,12 @@ void main() {
 
     test('re-send failure propagates to the UI', () async {
       when(() => resendConfirmationEmail('user@example.invalid')).thenAnswer(
-        (_) async => Left(Failure('For security purposes, you can only '
-            'request this once every 60 seconds')),
+        (_) async => Left(
+          Failure(
+            'For security purposes, you can only '
+            'request this once every 60 seconds',
+          ),
+        ),
       );
 
       final states = await capture(
@@ -193,8 +190,7 @@ void main() {
   });
 
   group('AuthForgotPassword', () {
-    test('requests the recovery e-mail and reports that it was sent',
-        () async {
+    test('requests the recovery e-mail and reports that it was sent', () async {
       when(
         () => sendPasswordResetEmail('user@example.invalid'),
       ).thenAnswer((_) async => Right(null));
@@ -207,23 +203,25 @@ void main() {
       verify(() => sendPasswordResetEmail('user@example.invalid')).called(1);
     });
 
-    test('an unknown address also resolves to "sent" (no user enumeration)',
-        () async {
-      when(
-        () => sendPasswordResetEmail(any()),
-      ).thenAnswer((_) async => Right(null));
+    test(
+      'an unknown address also resolves to "sent" (no user enumeration)',
+      () async {
+        when(
+          () => sendPasswordResetEmail(any()),
+        ).thenAnswer((_) async => Right(null));
 
-      final states = await capture(
-        () => bloc.add(AuthForgotPassword(email: 'nobody@example.invalid')),
-      );
+        final states = await capture(
+          () => bloc.add(AuthForgotPassword(email: 'nobody@example.invalid')),
+        );
 
-      expect(states.last, isA<AuthPasswordResetEmailSent>());
-    });
+        expect(states.last, isA<AuthPasswordResetEmailSent>());
+      },
+    );
 
     test('transport failures propagate to the UI', () async {
-      when(() => sendPasswordResetEmail(any())).thenAnswer(
-        (_) async => Left(Failure.networkOffline()),
-      );
+      when(
+        () => sendPasswordResetEmail(any()),
+      ).thenAnswer((_) async => Left(Failure.networkOffline()));
 
       final states = await capture(
         () => bloc.add(AuthForgotPassword(email: 'user@example.invalid')),

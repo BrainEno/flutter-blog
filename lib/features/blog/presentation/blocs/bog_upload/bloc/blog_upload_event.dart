@@ -26,13 +26,13 @@ class UploadBlogEvent extends BlogUploadEvent {
 
   @override
   List<Object?> get props => [
-        image,
-        title,
-        content,
-        posterId,
-        tags,
-        imageMimeType,
-      ];
+    image,
+    title,
+    content,
+    posterId,
+    tags,
+    imageMimeType,
+  ];
 }
 
 class UpdateBlogEvent extends BlogUploadEvent {
@@ -57,13 +57,13 @@ class UpdateBlogEvent extends BlogUploadEvent {
 
   @override
   List<Object?> get props => [
-        blogId,
-        image,
-        title,
-        content,
-        tags,
-        imageMimeType,
-      ];
+    blogId,
+    image,
+    title,
+    content,
+    tags,
+    imageMimeType,
+  ];
 }
 
 class DeleteBlogEvent extends BlogUploadEvent {

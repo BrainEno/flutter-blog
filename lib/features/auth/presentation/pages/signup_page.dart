@@ -56,9 +56,7 @@ class _SignUpPageState extends State<SignUpPage> {
     final email = pendingConfirmationEmail;
     if (email == null || resending) return;
     setState(() => resending = true);
-    context.read<AuthBloc>().add(
-          AuthResendConfirmationEmail(email: email),
-        );
+    context.read<AuthBloc>().add(AuthResendConfirmationEmail(email: email));
   }
 
   @override
@@ -148,12 +146,12 @@ class _SignUpPageState extends State<SignUpPage> {
                           onPressed: () {
                             if (formKey.currentState!.validate()) {
                               context.read<AuthBloc>().add(
-                                    AuthSignUp(
-                                      email: emailController.text.trim(),
-                                      name: nameController.text.trim(),
-                                      password: passwordController.text.trim(),
-                                    ),
-                                  );
+                                AuthSignUp(
+                                  email: emailController.text.trim(),
+                                  name: nameController.text.trim(),
+                                  password: passwordController.text.trim(),
+                                ),
+                              );
                             }
                           },
                         ),
@@ -233,10 +231,9 @@ class _ConfirmationPendingPanel extends StatelessWidget {
         Text(
           '请确认邮箱',
           textAlign: TextAlign.center,
-          style: Theme.of(context)
-              .textTheme
-              .headlineSmall
-              ?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         Text(
@@ -258,10 +255,7 @@ class _ConfirmationPendingPanel extends StatelessWidget {
           label: Text(resending ? '发送中…' : '重新发送确认邮件'),
         ),
         const SizedBox(height: 12),
-        TextButton(
-          onPressed: onBackToLogin,
-          child: const Text('返回登录'),
-        ),
+        TextButton(onPressed: onBackToLogin, child: const Text('返回登录')),
         const SizedBox(height: 60),
       ],
     );

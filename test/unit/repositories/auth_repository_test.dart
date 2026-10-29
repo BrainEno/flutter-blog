@@ -39,25 +39,21 @@ void main() {
   });
 
   group('currentUser (offline session restore)', () {
-    test(
-      'a session with a null updatedAt restores without crashing '
-      '(regression: DateTime.parse on null)',
-      () async {
-        when(() => connection.isConnected).thenAnswer((_) async => false);
-        when(() => remote.currentUserSession).thenReturn(_session());
+    test('a session with a null updatedAt restores without crashing '
+        '(regression: DateTime.parse on null)', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => false);
+      when(() => remote.currentUserSession).thenReturn(_session());
 
-        final result = await repository.currentUser();
+      final result = await repository.currentUser();
 
-        expect(result.isRight(), isTrue);
-        result.fold((_) => fail('expected a restored user'), (user) {
-          expect(user.id, 'u1');
-          expect(user.email, 'user@example.invalid');
-        });
-      },
-    );
+      expect(result.isRight(), isTrue);
+      result.fold((_) => fail('expected a restored user'), (user) {
+        expect(user.id, 'u1');
+        expect(user.email, 'user@example.invalid');
+      });
+    });
 
-    test('an unparseable updatedAt falls back instead of throwing',
-        () async {
+    test('an unparseable updatedAt falls back instead of throwing', () async {
       when(() => connection.isConnected).thenAnswer((_) async => false);
       when(
         () => remote.currentUserSession,

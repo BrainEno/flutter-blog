@@ -13,12 +13,13 @@ class UploadBlog implements UseCase<Blog, UploadBlogParams> {
   @override
   Future<Either<Failure, Blog>> call(UploadBlogParams params) async {
     return await blogRepository.uploadBlog(
-        image: params.image,
-        title: params.title,
-        content: params.content,
-        posterId: params.posterId,
-        tags: params.tags,
-        imageMimeType: params.imageMimeType);
+      image: params.image,
+      title: params.title,
+      content: params.content,
+      posterId: params.posterId,
+      tags: params.tags,
+      imageMimeType: params.imageMimeType,
+    );
   }
 }
 

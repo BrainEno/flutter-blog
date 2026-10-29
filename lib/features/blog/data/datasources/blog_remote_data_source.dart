@@ -73,7 +73,9 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         version: storageVersionNow(),
         extension: extensionForMime(mimeType),
       );
-      await supabaseClient.storage.from(kBlogImagesBucket).upload(
+      await supabaseClient.storage
+          .from(kBlogImagesBucket)
+          .upload(
             path,
             image,
             fileOptions: FileOptions(

@@ -53,8 +53,7 @@ void main() {
   });
 
   group('uploadBlog', () {
-    test('a failed row insert rolls back the freshly uploaded cover',
-        () async {
+    test('a failed row insert rolls back the freshly uploaded cover', () async {
       when(
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
@@ -83,37 +82,34 @@ void main() {
       verify(() => remote.removeBlogImage(_kNewCoverUrl)).called(1);
     });
 
-    test(
-      'a rollback failure is logged, not swallowed: the insert failure '
-      'still surfaces',
-      () async {
-        when(
-          () => remote.uploadBlogImage(
-            image: any(named: 'image'),
-            blogId: any(named: 'blogId'),
-            posterId: any(named: 'posterId'),
-            mimeType: any(named: 'mimeType'),
-          ),
-        ).thenAnswer((_) async => _kNewCoverUrl);
-        when(
-          () => remote.uploadBlog(any()),
-        ).thenThrow(const ServerException('insert rejected'));
-        when(
-          () => remote.removeBlogImage(_kNewCoverUrl),
-        ).thenThrow(const ServerException('storage down'));
+    test('a rollback failure is logged, not swallowed: the insert failure '
+        'still surfaces', () async {
+      when(
+        () => remote.uploadBlogImage(
+          image: any(named: 'image'),
+          blogId: any(named: 'blogId'),
+          posterId: any(named: 'posterId'),
+          mimeType: any(named: 'mimeType'),
+        ),
+      ).thenAnswer((_) async => _kNewCoverUrl);
+      when(
+        () => remote.uploadBlog(any()),
+      ).thenThrow(const ServerException('insert rejected'));
+      when(
+        () => remote.removeBlogImage(_kNewCoverUrl),
+      ).thenThrow(const ServerException('storage down'));
 
-        final result = await repository.uploadBlog(
-          image: cover,
-          title: '标题',
-          content: '正文',
-          posterId: 'u1',
-          tags: const ['诗歌'],
-        );
+      final result = await repository.uploadBlog(
+        image: cover,
+        title: '标题',
+        content: '正文',
+        posterId: 'u1',
+        tags: const ['诗歌'],
+      );
 
-        expect(result.isLeft(), isTrue);
-        verify(() => remote.removeBlogImage(_kNewCoverUrl)).called(1);
-      },
-    );
+      expect(result.isLeft(), isTrue);
+      verify(() => remote.removeBlogImage(_kNewCoverUrl)).called(1);
+    });
 
     test('a successful upload keeps the cover (no rollback)', () async {
       when(
@@ -151,43 +147,40 @@ void main() {
   });
 
   group('editBlog', () {
-    test(
-      'replacing the cover removes the old object only after the DB '
-      'update succeeds',
-      () async {
-        when(() => remote.getBlogById('b1')).thenAnswer((_) async => _blog());
-        when(
-          () => remote.uploadBlogImage(
-            image: any(named: 'image'),
-            blogId: any(named: 'blogId'),
-            posterId: any(named: 'posterId'),
-            mimeType: any(named: 'mimeType'),
-          ),
-        ).thenAnswer((_) async => _kNewCoverUrl);
-        when(() => remote.editBlog(any())).thenAnswer(
-          (invocation) async => invocation.positionalArguments[0] as BlogModel,
-        );
-        when(
-          () => remote.removeBlogImage(_kOldCoverUrl),
-        ).thenAnswer((_) async {});
+    test('replacing the cover removes the old object only after the DB '
+        'update succeeds', () async {
+      when(() => remote.getBlogById('b1')).thenAnswer((_) async => _blog());
+      when(
+        () => remote.uploadBlogImage(
+          image: any(named: 'image'),
+          blogId: any(named: 'blogId'),
+          posterId: any(named: 'posterId'),
+          mimeType: any(named: 'mimeType'),
+        ),
+      ).thenAnswer((_) async => _kNewCoverUrl);
+      when(() => remote.editBlog(any())).thenAnswer(
+        (invocation) async => invocation.positionalArguments[0] as BlogModel,
+      );
+      when(
+        () => remote.removeBlogImage(_kOldCoverUrl),
+      ).thenAnswer((_) async {});
 
-        final result = await repository.editBlog(
-          blogId: 'b1',
-          image: cover,
-          title: '新标题',
-          content: '新正文',
-          tags: const ['诗歌'],
-          imageMimeType: 'image/png',
-        );
+      final result = await repository.editBlog(
+        blogId: 'b1',
+        image: cover,
+        title: '新标题',
+        content: '新正文',
+        tags: const ['诗歌'],
+        imageMimeType: 'image/png',
+      );
 
-        expect(result.isRight(), isTrue);
-        // Order matters: DB update before old-object removal.
-        verifyInOrder([
-          () => remote.editBlog(any()),
-          () => remote.removeBlogImage(_kOldCoverUrl),
-        ]);
-      },
-    );
+      expect(result.isRight(), isTrue);
+      // Order matters: DB update before old-object removal.
+      verifyInOrder([
+        () => remote.editBlog(any()),
+        () => remote.removeBlogImage(_kOldCoverUrl),
+      ]);
+    });
 
     test('a failed update rolls back the newly uploaded cover', () async {
       when(() => remote.getBlogById('b1')).thenAnswer((_) async => _blog());
@@ -235,12 +228,14 @@ void main() {
       );
 
       expect(result.isRight(), isTrue);
-      verifyNever(() => remote.uploadBlogImage(
-            image: any(named: 'image'),
-            blogId: any(named: 'blogId'),
-            posterId: any(named: 'posterId'),
-            mimeType: any(named: 'mimeType'),
-          ));
+      verifyNever(
+        () => remote.uploadBlogImage(
+          image: any(named: 'image'),
+          blogId: any(named: 'blogId'),
+          posterId: any(named: 'posterId'),
+          mimeType: any(named: 'mimeType'),
+        ),
+      );
       verifyNever(() => remote.removeBlogImage(any()));
     });
 

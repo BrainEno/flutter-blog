@@ -7,11 +7,16 @@ import '../entities/sign_up_outcome.dart';
 abstract interface class AuthRepository {
   /// Sign-up result: either a signed-in user or a pending e-mail
   /// confirmation ([SignUpOutcome.user] is null).
-  Future<Either<Failure, SignUpOutcome>> signUpWithEmailPassword(
-      {required String name, required String email, required String password});
+  Future<Either<Failure, SignUpOutcome>> signUpWithEmailPassword({
+    required String name,
+    required String email,
+    required String password,
+  });
 
-  Future<Either<Failure, User>> loginWithEmailPassword(
-      {required String email, required String password});
+  Future<Either<Failure, User>> loginWithEmailPassword({
+    required String email,
+    required String password,
+  });
 
   Future<Either<Failure, void>> logout();
 

@@ -13,7 +13,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// armed only after one event-loop turn, by which time the replay has been
 /// flushed, so only events produced by the exchange itself are captured.
 Future<({AuthSessionUrlResponse? response, AuthChangeEvent? event})>
-resolveSupabaseAuthCallback({required GoTrueClient auth, required Uri url}) async {
+resolveSupabaseAuthCallback({
+  required GoTrueClient auth,
+  required Uri url,
+}) async {
   AuthChangeEvent? event;
   var armed = false;
   final subscription = auth.onAuthStateChange.listen((state) {

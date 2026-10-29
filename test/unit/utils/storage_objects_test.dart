@@ -3,8 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('objectPathFromPublicUrl', () {
-    test('parses a legacy flat blog cover URL (path = blog id, no ext)',
-        () {
+    test('parses a legacy flat blog cover URL (path = blog id, no ext)', () {
       const url =
           'https://demo.supabase.co/storage/v1/object/public/blog_images/'
           '01937c2e-6d90-7bb4-a30c-8f7d0e6a1234';
@@ -18,20 +17,14 @@ void main() {
       const url =
           'https://demo.supabase.co/storage/v1/object/public/blog_images/'
           'covers/u1/b1/1730000000000.jpg';
-      expect(
-        objectPathFromPublicUrl(url),
-        'covers/u1/b1/1730000000000.jpg',
-      );
+      expect(objectPathFromPublicUrl(url), 'covers/u1/b1/1730000000000.jpg');
     });
 
     test('strips cache-busting query parameters and fragments', () {
       const url =
           'https://demo.supabase.co/storage/v1/object/public/blog_images/'
           'covers/u1/b1/1730000000000.jpg?v=123456789#top';
-      expect(
-        objectPathFromPublicUrl(url),
-        'covers/u1/b1/1730000000000.jpg',
-      );
+      expect(objectPathFromPublicUrl(url), 'covers/u1/b1/1730000000000.jpg');
     });
 
     test('parses a legacy flat avatar URL', () {

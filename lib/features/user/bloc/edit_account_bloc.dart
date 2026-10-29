@@ -28,9 +28,7 @@ class EditAccountBloc extends Bloc<EditAccountEvent, EditAccountState> {
       (failure) => emit(EditAccountFailure(message: failure.message)),
       // Supabase sends a confirmation e-mail to the new address: the
       // change only takes effect once the user confirms it there.
-      (_) => emit(
-        EditAccountSuccess(message: '确认邮件已发送至新邮箱，请查收并完成验证'),
-      ),
+      (_) => emit(EditAccountSuccess(message: '确认邮件已发送至新邮箱，请查收并完成验证')),
     );
   }
 

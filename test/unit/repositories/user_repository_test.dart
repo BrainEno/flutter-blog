@@ -132,8 +132,8 @@ void main() {
         );
         when(() => remote.getUserById('u1')).thenAnswer((_) async => stored);
         when(() => remote.editUserInfo(any())).thenAnswer(
-          (invocation) async => (invocation.positionalArguments[0]
-              as UserModel),
+          (invocation) async =>
+              (invocation.positionalArguments[0] as UserModel),
         );
 
         await repository.editUserInfo(
@@ -143,106 +143,95 @@ void main() {
           avatar: null,
         );
 
-        final captured = verify(() => remote.editUserInfo(captureAny()))
-            .captured
-            .single as UserModel;
+        final captured =
+            verify(() => remote.editUserInfo(captureAny())).captured.single
+                as UserModel;
         expect(captured.email, 'original@example.invalid');
         expect(captured.name, '新名字');
       },
     );
 
-    test(
-      'avatar lifecycle: new object uploaded, old object removed only '
-      'after the profile row updates',
-      () async {
-        when(() => connection.isConnected).thenAnswer((_) async => true);
-        const oldAvatarUrl =
-            'https://demo.supabase.co/storage/v1/object/public/avatars/u1';
-        const newAvatarUrl =
-            'https://demo.supabase.co/storage/v1/object/public/avatars/'
-            'u1/1730000000000.jpg';
-        final stored = UserModel(
-          id: 'u1',
-          email: 'original@example.invalid',
-          name: '旧名字',
-          avatarUrl: oldAvatarUrl,
-          updatedAt: DateTime.utc(2024),
-        );
-        when(() => remote.getUserById('u1')).thenAnswer((_) async => stored);
-        when(
-          () => remote.uploadAvatar(
-            userId: 'u1',
-            image: any(named: 'image'),
-            mimeType: 'image/jpeg',
-          ),
-        ).thenAnswer((_) async => newAvatarUrl);
-        when(() => remote.editUserInfo(any())).thenAnswer(
-          (invocation) async => (invocation.positionalArguments[0]
-              as UserModel),
-        );
-        when(
-          () => remote.removeAvatar(oldAvatarUrl),
-        ).thenAnswer((_) async {});
-
-        final result = await repository.editUserInfo(
+    test('avatar lifecycle: new object uploaded, old object removed only '
+        'after the profile row updates', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      const oldAvatarUrl =
+          'https://demo.supabase.co/storage/v1/object/public/avatars/u1';
+      const newAvatarUrl =
+          'https://demo.supabase.co/storage/v1/object/public/avatars/'
+          'u1/1730000000000.jpg';
+      final stored = UserModel(
+        id: 'u1',
+        email: 'original@example.invalid',
+        name: '旧名字',
+        avatarUrl: oldAvatarUrl,
+        updatedAt: DateTime.utc(2024),
+      );
+      when(() => remote.getUserById('u1')).thenAnswer((_) async => stored);
+      when(
+        () => remote.uploadAvatar(
           userId: 'u1',
-          name: '新名字',
-          website: '',
-          avatar: File('/nonexistent.jpg'),
-          avatarMimeType: 'image/jpeg',
-        );
+          image: any(named: 'image'),
+          mimeType: 'image/jpeg',
+        ),
+      ).thenAnswer((_) async => newAvatarUrl);
+      when(() => remote.editUserInfo(any())).thenAnswer(
+        (invocation) async => (invocation.positionalArguments[0] as UserModel),
+      );
+      when(() => remote.removeAvatar(oldAvatarUrl)).thenAnswer((_) async {});
 
-        expect(result.isRight(), isTrue);
-        verifyInOrder([
-          () => remote.editUserInfo(any()),
-          () => remote.removeAvatar(oldAvatarUrl),
-        ]);
-      },
-    );
+      final result = await repository.editUserInfo(
+        userId: 'u1',
+        name: '新名字',
+        website: '',
+        avatar: File('/nonexistent.jpg'),
+        avatarMimeType: 'image/jpeg',
+      );
 
-    test(
-      'avatar lifecycle: a failed profile update rolls back the fresh '
-      'avatar and keeps the old one',
-      () async {
-        when(() => connection.isConnected).thenAnswer((_) async => true);
-        const oldAvatarUrl =
-            'https://demo.supabase.co/storage/v1/object/public/avatars/u1';
-        const newAvatarUrl =
-            'https://demo.supabase.co/storage/v1/object/public/avatars/'
-            'u1/1730000000000.jpg';
-        final stored = UserModel(
-          id: 'u1',
-          email: 'original@example.invalid',
-          name: '旧名字',
-          avatarUrl: oldAvatarUrl,
-          updatedAt: DateTime.utc(2024),
-        );
-        when(() => remote.getUserById('u1')).thenAnswer((_) async => stored);
-        when(
-          () => remote.uploadAvatar(
-            userId: 'u1',
-            image: any(named: 'image'),
-            mimeType: any(named: 'mimeType'),
-          ),
-        ).thenAnswer((_) async => newAvatarUrl);
-        when(
-          () => remote.editUserInfo(any()),
-        ).thenThrow(const ServerException('rls denied'));
-        when(
-          () => remote.removeAvatar(newAvatarUrl),
-        ).thenAnswer((_) async {});
+      expect(result.isRight(), isTrue);
+      verifyInOrder([
+        () => remote.editUserInfo(any()),
+        () => remote.removeAvatar(oldAvatarUrl),
+      ]);
+    });
 
-        final result = await repository.editUserInfo(
+    test('avatar lifecycle: a failed profile update rolls back the fresh '
+        'avatar and keeps the old one', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      const oldAvatarUrl =
+          'https://demo.supabase.co/storage/v1/object/public/avatars/u1';
+      const newAvatarUrl =
+          'https://demo.supabase.co/storage/v1/object/public/avatars/'
+          'u1/1730000000000.jpg';
+      final stored = UserModel(
+        id: 'u1',
+        email: 'original@example.invalid',
+        name: '旧名字',
+        avatarUrl: oldAvatarUrl,
+        updatedAt: DateTime.utc(2024),
+      );
+      when(() => remote.getUserById('u1')).thenAnswer((_) async => stored);
+      when(
+        () => remote.uploadAvatar(
           userId: 'u1',
-          name: '新名字',
-          website: '',
-          avatar: File('/nonexistent.jpg'),
-        );
+          image: any(named: 'image'),
+          mimeType: any(named: 'mimeType'),
+        ),
+      ).thenAnswer((_) async => newAvatarUrl);
+      when(
+        () => remote.editUserInfo(any()),
+      ).thenThrow(const ServerException('rls denied'));
+      when(() => remote.removeAvatar(newAvatarUrl)).thenAnswer((_) async {});
 
-        expect(result.isLeft(), isTrue);
-        verifyNever(() => remote.removeAvatar(oldAvatarUrl));
-        verify(() => remote.removeAvatar(newAvatarUrl)).called(1);
-      },
-    );
+      final result = await repository.editUserInfo(
+        userId: 'u1',
+        name: '新名字',
+        website: '',
+        avatar: File('/nonexistent.jpg'),
+      );
+
+      expect(result.isLeft(), isTrue);
+      verifyNever(() => remote.removeAvatar(oldAvatarUrl));
+      verify(() => remote.removeAvatar(newAvatarUrl)).called(1);
+    });
   });
 }

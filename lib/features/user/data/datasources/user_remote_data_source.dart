@@ -42,7 +42,9 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
         version: storageVersionNow(),
         extension: extensionForMime(mimeType),
       );
-      await supabaseClient.storage.from(kAvatarsBucket).upload(
+      await supabaseClient.storage
+          .from(kAvatarsBucket)
+          .upload(
             path,
             image,
             fileOptions: FileOptions(
