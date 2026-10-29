@@ -8,7 +8,7 @@ import Foundation
 import app_links
 import connectivity_plus
 import file_selector_macos
-import isar_community_flutter_libs
+import isar_flutter_libs
 import shared_preferences_foundation
 import sqflite_darwin
 import url_launcher_macos
