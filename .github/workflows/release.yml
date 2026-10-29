@@ -1,4 +1,4 @@
-name: Publish signed Android release
+name: Publish release artifacts
 
 on:
   push:
@@ -84,3 +84,96 @@ jobs:
       - name: Delete temporary signing material
         if: always()
         run: rm -f "$RUNNER_TEMP/belog-release.keystore" "$RUNNER_TEMP/belog-release-env.json"
+
+  publish-ios-altstore:
+    # Produces the AltStore sideload IPA. It carries no Apple distribution
+    # identity: the app is ad-hoc signed here and gets re-signed on device by
+    # the end user's free personal Apple ID through AltStore, so no Apple
+    # Developer Program registration is needed to run it.
+    name: AltStore sideload IPA
+    needs: publish-android
+    runs-on: macos-latest
+    environment: production
+    permissions:
+      contents: write
+    steps:
+      - name: Check out tag
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - name: Require tagged commit to belong to main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Validate release inputs and prepare configuration
+        id: version
+        env:
+          ANDROID_APPLICATION_ID_APPROVED: ${{ vars.ANDROID_APPLICATION_ID_APPROVED }}
+          ANDROID_RELEASE_CERT_SHA256: ${{ vars.ANDROID_RELEASE_CERT_SHA256 }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: python3 tool/release/validate_release.py
+      - name: Set up pinned Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: '3.47.8'
+          cache: true
+          pub-cache: true
+      - name: Build unsigned iOS app
+        env:
+          BUILD_NAME: ${{ steps.version.outputs.build_name }}
+          BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
+        run: |
+          flutter pub get
+          flutter build ios --release --no-codesign \
+            --build-name="$BUILD_NAME" \
+            --build-number="$BUILD_NUMBER" \
+            --dart-define-from-file="$RUNNER_TEMP/belog-release-env.json"
+      - name: Ad-hoc sign and package the AltStore IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP=build/ios/iphoneos/Runner.app
+          test -d "$APP"
+          # Ad-hoc signature (no identity) so every Mach-O carries a signature
+          # blob that AltStore replaces with the user's own certificate.
+          find "$APP/Frameworks" -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) \
+            -exec codesign --force --sign - {} \;
+          codesign --force --sign - "$APP"
+          STAGE="$RUNNER_TEMP/ipa"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE/Payload"
+          cp -R "$APP" "$STAGE/Payload/Runner.app"
+          (cd "$STAGE" && zip -qry "$GITHUB_WORKSPACE/belog-ios-${GITHUB_REF_NAME}-altstore.ipa" Payload)
+      - name: Verify IPA structure, identity and version
+        env:
+          BUILD_NAME: ${{ steps.version.outputs.build_name }}
+          BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          IPA="belog-ios-${GITHUB_REF_NAME}-altstore.ipa"
+          {
+            python3 tool/release/verify_ipa.py "$IPA" com.nodeman24.belog "$BUILD_NAME" "$BUILD_NUMBER"
+            echo '--- ad-hoc code signature (no distribution identity involved) ---'
+            codesign -dv "build/ios/iphoneos/Runner.app" 2>&1
+            codesign --verify --verbose "build/ios/iphoneos/Runner.app" 2>&1
+          } | tee "$RUNNER_TEMP/ipa-altstore-evidence.log"
+      - name: Attach the AltStore IPA to the existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" "belog-ios-${GITHUB_REF_NAME}-altstore.ipa"
+      - name: Upload iOS build evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: ios-altstore-evidence
+          path: ${{ runner.temp }}/ipa-altstore-evidence.log
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Delete temporary release configuration
+        if: always()
+        run: rm -f "$RUNNER_TEMP/belog-release-env.json"
