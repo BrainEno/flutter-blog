@@ -5,6 +5,7 @@ import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/theme/app_pallete.dart';
 import 'package:belog/core/utils/pick_image.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
+import 'package:belog/features/blog/data/datasources/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/presentation/blocs/bog_upload/bloc/blog_upload_bloc.dart';
@@ -20,9 +21,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 class BlogEditorPage extends StatefulWidget {
   final Blog? blog;
+  final BlogDraftStore? draftStore;
   static route({Blog? blog}) =>
       MaterialPageRoute(builder: (context) => BlogEditorPage(blog: blog));
-  const BlogEditorPage({super.key, this.blog});
+  const BlogEditorPage({super.key, this.blog, this.draftStore});
 
   @override
   State<BlogEditorPage> createState() => _BlogEditorState();
@@ -38,10 +40,13 @@ class _BlogEditorState extends State<BlogEditorPage> {
   String? imageUrl;
   DateTime? updatedAt;
   int _draftRequestVersion = 0;
+  late final BlogDraftStore _draftStore;
 
   @override
   void initState() {
     super.initState();
+    _draftStore =
+        widget.draftStore ?? IsarBlogDraftStore(GetIt.instance<Isar>());
     if (widget.blog != null) {
       titleController.text = widget.blog!.title;
       contentController.text = widget.blog!.content;
@@ -52,14 +57,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
 
   Future<void> loadDraft() async {
     final requestVersion = _draftRequestVersion;
-    final isar = GetIt.instance<Isar>();
     try {
-      // A new post and each existing post have distinct draft scopes.
-      final draft = await isar.blogDrafts
-          .filter()
-          .blogIdEqualTo(widget.blog?.id)
-          .sortByUpdatedAtDesc()
-          .findFirst();
+      final draft = await _draftStore.load(widget.blog?.id);
       if (!mounted || requestVersion != _draftRequestVersion || draft == null) {
         return;
       }
@@ -79,16 +78,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
         });
         showSnackBar(context, '已恢复草稿');
       } else if (choice == DraftRecoveryChoice.discard) {
-        // Do not delete a draft that another editor has replaced meanwhile.
-        var deleted = false;
-        await isar.writeTxn(() async {
-          final current = await isar.blogDrafts.get(draft.id);
-          if (current != null &&
-              current.blogId == draft.blogId &&
-              current.updatedAt == draft.updatedAt) {
-            deleted = await isar.blogDrafts.delete(draft.id);
-          }
-        });
+        final deleted = await _draftStore.discardIfUnchanged(draft);
         if (mounted) {
           showSnackBar(context, deleted ? '草稿已丢弃' : '草稿已更改，请重新打开编辑器');
         }
@@ -146,33 +136,22 @@ class _BlogEditorState extends State<BlogEditorPage> {
     }
   }
 
-  void saveDraft() async {
+  Future<void> saveDraft() async {
     _draftRequestVersion++;
-    final isar = GetIt.instance<Isar>();
-    final blogId = widget.blog?.id;
-
-    await isar.writeTxn(() async {
-      // Delete existing draft if it exists
-      final existingDraft =
-          await isar.blogDrafts.filter().blogIdEqualTo(blogId).findFirst();
-
-      if (existingDraft != null) {
-        await isar.blogDrafts.delete(existingDraft.id);
-      }
-
-      final blogDraft = BlogDraft(
-        blogId: blogId,
-        title: titleController.text,
-        content: contentController.text,
-        tags: selectedTags,
-        updatedAt: DateTime.now(),
-      );
-
-      await isar.blogDrafts.put(blogDraft);
-    });
-
-    if (mounted) {
-      showSnackBar(context, '草稿已保存');
+    // Take a snapshot before the first await: controllers may be edited or
+    // disposed while the database transaction waits for its turn.
+    final draft = BlogDraft(
+      blogId: widget.blog?.id,
+      title: titleController.text,
+      content: contentController.text,
+      tags: List.of(selectedTags),
+      updatedAt: DateTime.now(),
+    );
+    try {
+      await _draftStore.save(draft);
+      if (mounted) showSnackBar(context, '草稿已保存');
+    } catch (_) {
+      if (mounted) showSnackBar(context, '草稿保存失败，请重试');
     }
   }
 
