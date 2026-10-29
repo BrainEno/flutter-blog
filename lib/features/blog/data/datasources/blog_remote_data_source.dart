@@ -3,6 +3,7 @@
 import 'dart:io';
 
 import 'package:belog/core/error/exceptions.dart';
+import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/utils/retry_on_connection_closed.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -42,7 +43,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           .select();
       return BlogModel.fromJson(blogData[0]);
     } catch (e) {
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 
@@ -57,7 +58,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           .upload(blog.id, image, fileOptions: FileOptions(upsert: true));
       return supabaseClient.storage.from('blog_images').getPublicUrl(blog.id);
     } catch (e) {
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 
@@ -84,7 +85,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         ),
       ).toList();
     } catch (e) {
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 
@@ -105,7 +106,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         ),
       ).toList();
     } catch (e) {
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 
@@ -126,7 +127,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         ),
       ).toList();
     } catch (e) {
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 
@@ -161,7 +162,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           )
           .toList();
     } catch (e) {
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 
@@ -181,14 +182,13 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       if (imageUrl.isNotEmpty) {
         final int index = imageUrl.lastIndexOf('/');
         final String path = imageUrl.substring(index + 1);
-        print(path);
         await supabaseClient.storage.from('blog_images').remove([
           "blog_images/$path",
         ]);
       }
       return true;
     } catch (e) {
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 
@@ -204,7 +204,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
 
       return BlogModel.fromJson(blogUpdated);
     } catch (e) {
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 
@@ -222,7 +222,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         posterAvatar: res['profiles']['avatar_url'],
       );
     } catch (e) {
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 
@@ -246,7 +246,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         }),
       ).toList();
     } catch (e) {
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 
@@ -272,7 +272,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       }
       return true;
     } catch (e) {
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 
@@ -293,7 +293,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         // 404-like error when no results found
         return false;
       }
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 
@@ -308,7 +308,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           .upload(userId, image, fileOptions: FileOptions(upsert: true));
       return supabaseClient.storage.from('avatars').getPublicUrl(userId);
     } catch (e) {
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 }

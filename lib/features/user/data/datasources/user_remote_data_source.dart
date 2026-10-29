@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -27,7 +28,7 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
           .upload(userId, image, fileOptions: FileOptions(upsert: true));
       return supabaseClient.storage.from('avatars').getPublicUrl(userId);
     } catch (e) {
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 
@@ -42,7 +43,7 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
           .single();
       return UserModel.fromJson(userUpdated);
     } catch (e) {
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 
@@ -57,41 +58,33 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
 
       return UserModel.fromJson(res);
     } catch (e) {
-      throw ServerException(e.toString());
+      throw mapToServerException(e);
     }
   }
 
   @override
   Future<void> changeEmail(String newEmail) async {
     try {
-      final response = await supabaseClient.auth.updateUser(
+      // Supabase sends a confirmation email; the outcome surfaces through
+      // the returned future or a thrown error - there is nothing to print.
+      await supabaseClient.auth.updateUser(
         UserAttributes(email: newEmail),
       );
-
-      if (response.user != null) {
-        print('Email update initiated successfully. Check your inbox.');
-        // You might want to show a success message to the user.
-      }
     } catch (e) {
-      throw ServerException('Unexpected error updating email: ${e.toString()}');
+      throw mapToServerException(e);
     }
   }
 
   @override
   Future<void> changePassword(String newPassword) async {
     try {
-      final response = await supabaseClient.auth.updateUser(
+      await supabaseClient.auth.updateUser(
         UserAttributes(password: newPassword),
       );
-
-      if (response.user != null) {
-        // Password updated successfully.
-        print('Password updated successfully.');
-        // You might want to show a success message and potentially navigate the user.
-      }
     } catch (e) {
-      print('Unexpected error updating password: $e');
-      // Handle unexpected errors.
+      // Never swallow: the repository must see the failure so the UI
+      // reports it instead of pretending the password was changed.
+      throw mapToServerException(e);
     }
   }
 }

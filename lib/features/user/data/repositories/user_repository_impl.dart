@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:belog/core/common/entities/user.dart';
+import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
 import 'package:belog/features/user/data/datasources/user_remote_data_source.dart';
@@ -25,7 +27,7 @@ class UserRepositoryImpl implements UserRepository {
     required File? avatar,
   }) async {
     if (!await (connectionChecker.isConnected)) {
-      return left(Failure('无法连接到网络'));
+      return left(Failure.networkOffline());
     }
     try {
       UserModel userToUpdate = await remoteDataSource.getUserById(userId);
@@ -45,33 +47,42 @@ class UserRepositoryImpl implements UserRepository {
       final userUpdated = await remoteDataSource.editUserInfo(userToUpdate);
       return right(userUpdated);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return left(e.toFailure());
+    } catch (e, stackTrace) {
+      AppLogger.error('editUserInfo failed', error: e, stackTrace: stackTrace);
+      return left(mapErrorToFailure(e));
     }
   }
 
   @override
   Future<Either<Failure, void>> changeEmail(String newEmail) async {
     if (!await connectionChecker.isConnected) {
-      return left(Failure('无法连接到网络'));
+      return left(Failure.networkOffline());
     }
     try {
       await remoteDataSource.changeEmail(newEmail);
       return right(null);
-    } catch (e) {
-      return left(Failure(e.toString()));
+    } catch (e, stackTrace) {
+      AppLogger.error('changeEmail failed', error: e, stackTrace: stackTrace);
+      return left(mapErrorToFailure(e));
     }
   }
 
   @override
   Future<Either<Failure, void>> resetPassword(String newPassword) async {
     if (!await connectionChecker.isConnected) {
-      return left(Failure('无法连接到网络'));
+      return left(Failure.networkOffline());
     }
     try {
       await remoteDataSource.changePassword(newPassword);
       return right(null);
-    } catch (e) {
-      return left(Failure(e.toString()));
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'changePassword failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return left(mapErrorToFailure(e));
     }
   }
 }

@@ -36,7 +36,7 @@ class AuthRepositoryImpl implements AuthRepository {
       }
       return right(userModel);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return left(e.toFailure());
     }
   }
 
@@ -66,9 +66,9 @@ class AuthRepositoryImpl implements AuthRepository {
       final user = await fn();
       return right(user);
     } on sb.AuthException catch (e) {
-      return left(Failure(e.message));
+      return left(Failure.auth(e.message, cause: e));
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return left(e.toFailure());
     }
   }
 
@@ -81,7 +81,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await remoteDataSource.logout();
       return right(null);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return left(e.toFailure());
     }
   }
 }
