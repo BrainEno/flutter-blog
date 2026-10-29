@@ -70,6 +70,42 @@ void main() {
   });
 
   test(
+    'drafts are scoped and stale snapshots cannot discard newer work',
+    () async {
+      await db.importLegacyIfNeeded(dir);
+      final store = SqliteBlogDraftStore(db);
+      final old = BlogDraft(
+        blogId: 'a',
+        title: 'old',
+        content: 'old',
+        tags: [],
+        updatedAt: DateTime.utc(2024),
+      );
+      final other = BlogDraft(
+        blogId: null,
+        title: 'new article',
+        content: 'keep',
+        tags: [],
+        updatedAt: DateTime.utc(2024),
+      );
+      await store.save(old);
+      await store.save(other);
+      final replacement = BlogDraft(
+        blogId: 'a',
+        title: 'new',
+        content: 'new',
+        tags: [],
+        updatedAt: DateTime.utc(2025),
+      );
+      await store.save(replacement);
+      expect(replacement.id, old.id);
+      expect(await store.discardIfUnchanged(old), isFalse);
+      expect((await store.load('a'))!.content, 'new');
+      expect((await store.load(null))!.content, 'keep');
+    },
+  );
+
+  test(
     'imports actual Isar data once; failure rolls back and can retry',
     () async {
       final old = await Isar.open(
