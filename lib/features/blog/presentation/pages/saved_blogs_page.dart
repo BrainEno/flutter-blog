@@ -107,7 +107,19 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
               ),
             );
           } else if (state is UserLikedBlogsFailure) {
-            return Center(child: Text('加载错误: ${state.error}'));
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('加载错误: ${state.error}'),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: _fetchSavedBlogs,
+                    child: const Text('重试'),
+                  ),
+                ],
+              ),
+            );
           }
           return _lastBlogs.isEmpty
               ? const Loader()

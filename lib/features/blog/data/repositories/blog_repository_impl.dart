@@ -59,7 +59,7 @@ class BlogRepositoryImpl implements BlogRepository {
         final blogs = await blogLocalDataSource.loadBlogs();
         return right(blogs);
       }
-      
+
       final blogs = await blogRemoteDataSource.getAllBlogs(page: page);
       await blogLocalDataSource.uploadLocalBlogs(blogs: blogs);
       return right(blogs);
@@ -161,13 +161,15 @@ class BlogRepositoryImpl implements BlogRepository {
       String userId, String blogId) async {
     try {
       if (!await (connectionChecker.isConnected)) {
-        return right(false);
+        return left(Failure('无法连接到网络，收藏未同步'));
       }
 
       final res = await blogRemoteDataSource.toggleLikeBlog(userId, blogId);
       return right(res);
     } on ServerException catch (e) {
       return left(Failure(e.message));
+    } catch (_) {
+      return left(Failure('收藏操作失败，请稍后重试'));
     }
   }
 
@@ -175,21 +177,30 @@ class BlogRepositoryImpl implements BlogRepository {
   Future<Either<Failure, bool>> isBlogLiked(
       String userId, String blogId) async {
     try {
+      if (!await connectionChecker.isConnected) {
+        return left(Failure('无法连接到网络'));
+      }
       final res = await blogRemoteDataSource.isBlogLikedByUser(userId, blogId);
       return right(res);
     } on ServerException catch (e) {
       return left(Failure(e.message));
+    } catch (_) {
+      return left(Failure('无法获取收藏状态，请稍后重试'));
     }
   }
 
   @override
   Future<Either<Failure, List<Blog>>> getUserLikedBlogs(String userId) async {
     try {
+      if (!await connectionChecker.isConnected) {
+        return left(Failure('无法连接到网络'));
+      }
       final res = await blogRemoteDataSource.getUserLikedBlogs(userId);
-
       return right(res);
     } on ServerException catch (e) {
-      throw left(Failure(e.message));
+      return left(Failure(e.message));
+    } catch (_) {
+      return left(Failure('无法获取收藏列表，请稍后重试'));
     }
   }
 }
