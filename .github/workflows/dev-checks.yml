@@ -1,0 +1,92 @@
+name: dev-checks (arena scratch)
+
+# Temporary scratch workflow for the arena agent branch. Deleted before
+# the PR is opened; the real gates live in ci.yml.
+
+on:
+  push:
+    branches:
+      - arena/ecf8c502-flutter-blog
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dev-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.47.8"
+  BELOG_QA_BUILD: "true"
+
+jobs:
+  dev-checks:
+    name: dev-checks / format-analyze-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity for self-healing format
+        run: |
+          git config user.name "belog-dev-bot"
+          git config user.email "actions@users.noreply.github.com"
+
+      - name: Set up pinned Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          pub-cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Format changed Dart files (self-healing, pushes a fix commit)
+        shell: bash
+        run: |
+          set -euo pipefail
+          range="origin/main...HEAD"
+          mapfile -d '' dart_files < <(git diff --name-only -z --diff-filter=ACMR "$range" -- '*.dart')
+          if (( ${#dart_files[@]} == 0 )); then
+            echo "No Dart files changed; formatting is a no-op."
+            exit 0
+          fi
+          printf 'Formatting: %s\n' "${dart_files[@]}"
+          # Analyze needs the files present; format writes in place.
+          dart format "${dart_files[@]}"
+          if ! git diff --quiet -- '*.dart'; then
+            git add -- '*.dart'
+            git commit -m "style: dart format changed files (dev-checks bot)"
+            git push
+            echo "Formatted files were pushed; the remaining steps run on the new commit."
+            exit 0
+          fi
+          echo "Formatting already clean."
+
+      - name: Prepare CI config fixture (env.json for dart-define injection)
+        shell: bash
+        run: |
+          umask 077
+          cat > env.json <<'EOF'
+          {
+            "SUPABASE_URL": "https://example.invalid",
+            "SUPABASE_KEY": "ci-placeholder-not-a-secret"
+          }
+          EOF
+
+      - name: Run analyzer
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter analyze --fatal-infos
+
+      - name: Run tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter test --concurrency=1 --reporter expanded
