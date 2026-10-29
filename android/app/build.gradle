@@ -41,6 +41,9 @@ android {
     // 4 KiB binaries; CI verifies both ELF alignment and exact APK contents.
     sourceSets.main.jniLibs.srcDir("$buildDir/generated/legacy-isar/jniLibs")
     packagingOptions.jniLibs.pickFirsts.add("**/libisar.so")
+    // Rust release already strips the binaries. Preserve them verbatim so the
+    // APK verifier can compare the actual packaged reader to the build output.
+    packagingOptions.jniLibs.keepDebugSymbols.add("**/libisar.so")
 
     signingConfigs {
         production {
