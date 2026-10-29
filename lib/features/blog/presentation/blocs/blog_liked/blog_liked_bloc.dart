@@ -24,6 +24,9 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
   /// Queued toggles per blog id that have not started a request yet.
   final Map<String, int> _queuedToggles = {};
 
+  /// Whether a toggle drain loop is currently running for a blog id.
+  final Map<String, bool> _togglesRunning = {};
+
   BlogLikedBloc({
     required ToggleLikeBlog toggleBlogLike,
     required IsBlogLiked isBlogLiked,
@@ -42,12 +45,20 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
     Emitter<BlogLikedState> emit,
   ) async {
     _queuedToggles[event.blogId] = (_queuedToggles[event.blogId] ?? 0) + 1;
-    if (_queuedToggles[event.blogId]! > 1) {
+    if (_togglesRunning[event.blogId] ?? false) {
       // A toggle for this blog is already in flight; this one is queued and
       // runs when the current response arrives.
       return;
     }
-    await _drainToggleQueue(event, emit);
+    _togglesRunning[event.blogId] = true;
+    try {
+      await _drainToggleQueue(event, emit);
+    } finally {
+      _togglesRunning[event.blogId] = false;
+      if ((_queuedToggles[event.blogId] ?? 0) == 0) {
+        _queuedToggles.remove(event.blogId);
+      }
+    }
   }
 
   /// Runs queued toggles one at a time so responses cannot arrive out of
@@ -91,7 +102,6 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
         },
       );
     }
-    _queuedToggles.remove(event.blogId);
     if (anySuccess) {
       // Refresh the collection list once per burst, not once per tap.
       add(UserLikedBlogs(userId: event.userId));

@@ -124,7 +124,9 @@ void main() {
         ...List.generate(9, (i) => 'b$i'),
       ]);
       expect(loaded.page, 2);
-      expect(loaded.hasReachedMax, isTrue, reason: '9 < 10 returned');
+      // The server still returned a full page (10 rows, one duplicated), so
+      // the end is not reached even though only 9 were new.
+      expect(loaded.hasReachedMax, isFalse);
     });
 
     test('ignores load-more while another one is running', () async {

@@ -30,7 +30,10 @@ class BlogSearchBloc extends Bloc<BlogSearchEvent, BlogSearchState> {
   ) async {
     final query = event.query.trim();
     if (query.isEmpty) {
-      add(const SearchBlogsCleared());
+      // Inline the clear: dispatching another event from inside a handler
+      // would be dropped if the bloc is closing.
+      _generation++;
+      emit(const BlogSearchInitial());
       return;
     }
     final generation = ++_generation;
