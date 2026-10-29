@@ -132,6 +132,7 @@ jobs:
               diff_out="${diff_out//$'\r'/'%0D'}"
               diff_out="${diff_out//$'\n'/'%0A'}"
               echo "::error title=format failure (${changed_paths})::${diff_out}"
+            fi
             exit "$fmt_status"
           fi
       - name: Audit repository-wide formatting drift
