@@ -26,6 +26,6 @@ jobs:
           from pathlib import Path
           for f in ['pubspec.lock', 'lib/core/theme/theme_preference.g.dart', 'lib/features/blog/domain/entities/blog.g.dart', 'lib/features/blog/domain/entities/blog_draft.g.dart', 'windows/flutter/generated_plugin_registrant.cc', 'windows/flutter/generated_plugins.cmake', 'macos/Flutter/GeneratedPluginRegistrant.swift']:
               data = base64.b64encode(gzip.compress(Path(f).read_bytes())).decode()
-              for i in range(0, len(data), 50000):
-                  print(f'::notice title=generated {f} part {i // 50000}::{data[i:i+50000]}')
+              for i in range(0, len(data), 3000):
+                  print(f'::notice title=generated {f} part {i // 3000}::{data[i:i+3000]}')
           PY

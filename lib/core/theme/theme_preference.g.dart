@@ -7,7 +7,7 @@ part of 'theme_preference.dart';
 // **************************************************************************
 
 // coverage:ignore-file
-// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types, experimental_member_use
 
 extension GetThemePreferenceCollection on Isar {
   IsarCollection<ThemePreference> get themePreferences => this.collection();
@@ -22,8 +22,9 @@ const ThemePreferenceSchema = CollectionSchema(
       name: r'themeMode',
       type: IsarType.byte,
       enumMap: _ThemePreferencethemeModeEnumValueMap,
-    )
+    ),
   },
+
   estimateSize: _themePreferenceEstimateSize,
   serialize: _themePreferenceSerialize,
   deserialize: _themePreferenceDeserialize,
@@ -32,10 +33,11 @@ const ThemePreferenceSchema = CollectionSchema(
   indexes: {},
   links: {},
   embeddedSchemas: {},
+
   getId: _themePreferenceGetId,
   getLinks: _themePreferenceGetLinks,
   attach: _themePreferenceAttach,
-  version: '3.1.0+1',
+  version: '3.4.1',
 );
 
 int _themePreferenceEstimateSize(
@@ -63,8 +65,10 @@ ThemePreference _themePreferenceDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = ThemePreference(
-    themeMode: _ThemePreferencethemeModeValueEnumMap[
-            reader.readByteOrNull(offsets[0])] ??
+    themeMode:
+        _ThemePreferencethemeModeValueEnumMap[reader.readByteOrNull(
+          offsets[0],
+        )] ??
         ThemeMode.system,
   );
   object.id = id;
@@ -79,9 +83,11 @@ P _themePreferenceDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (_ThemePreferencethemeModeValueEnumMap[
-              reader.readByteOrNull(offset)] ??
-          ThemeMode.system) as P;
+      return (_ThemePreferencethemeModeValueEnumMap[reader.readByteOrNull(
+                offset,
+              )] ??
+              ThemeMode.system)
+          as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -107,7 +113,10 @@ List<IsarLinkBase<dynamic>> _themePreferenceGetLinks(ThemePreference object) {
 }
 
 void _themePreferenceAttach(
-    IsarCollection<dynamic> col, Id id, ThemePreference object) {
+  IsarCollection<dynamic> col,
+  Id id,
+  ThemePreference object,
+) {
   object.id = id;
 }
 
@@ -123,17 +132,15 @@ extension ThemePreferenceQueryWhereSort
 extension ThemePreferenceQueryWhere
     on QueryBuilder<ThemePreference, ThemePreference, QWhereClause> {
   QueryBuilder<ThemePreference, ThemePreference, QAfterWhereClause> idEqualTo(
-      Id id) {
+    Id id,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: id,
-        upper: id,
-      ));
+      return query.addWhereClause(IdWhereClause.between(lower: id, upper: id));
     });
   }
 
   QueryBuilder<ThemePreference, ThemePreference, QAfterWhereClause>
-      idNotEqualTo(Id id) {
+  idNotEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
@@ -156,7 +163,7 @@ extension ThemePreferenceQueryWhere
   }
 
   QueryBuilder<ThemePreference, ThemePreference, QAfterWhereClause>
-      idGreaterThan(Id id, {bool include = false}) {
+  idGreaterThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.greaterThan(lower: id, includeLower: include),
@@ -165,8 +172,9 @@ extension ThemePreferenceQueryWhere
   }
 
   QueryBuilder<ThemePreference, ThemePreference, QAfterWhereClause> idLessThan(
-      Id id,
-      {bool include = false}) {
+    Id id, {
+    bool include = false,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.lessThan(upper: id, includeUpper: include),
@@ -181,12 +189,14 @@ extension ThemePreferenceQueryWhere
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: lowerId,
-        includeLower: includeLower,
-        upper: upperId,
-        includeUpper: includeUpper,
-      ));
+      return query.addWhereClause(
+        IdWhereClause.between(
+          lower: lowerId,
+          includeLower: includeLower,
+          upper: upperId,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 }
@@ -194,114 +204,112 @@ extension ThemePreferenceQueryWhere
 extension ThemePreferenceQueryFilter
     on QueryBuilder<ThemePreference, ThemePreference, QFilterCondition> {
   QueryBuilder<ThemePreference, ThemePreference, QAfterFilterCondition>
-      idEqualTo(Id value) {
+  idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'id', value: value),
+      );
     });
   }
 
   QueryBuilder<ThemePreference, ThemePreference, QAfterFilterCondition>
-      idGreaterThan(
-    Id value, {
-    bool include = false,
-  }) {
+  idGreaterThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'id',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<ThemePreference, ThemePreference, QAfterFilterCondition>
-      idLessThan(
-    Id value, {
-    bool include = false,
-  }) {
+  idLessThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'id',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<ThemePreference, ThemePreference, QAfterFilterCondition>
-      idBetween(
+  idBetween(
     Id lower,
     Id upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'id',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'id',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<ThemePreference, ThemePreference, QAfterFilterCondition>
-      themeModeEqualTo(ThemeMode value) {
+  themeModeEqualTo(ThemeMode value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'themeMode',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'themeMode', value: value),
+      );
     });
   }
 
   QueryBuilder<ThemePreference, ThemePreference, QAfterFilterCondition>
-      themeModeGreaterThan(
-    ThemeMode value, {
-    bool include = false,
-  }) {
+  themeModeGreaterThan(ThemeMode value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'themeMode',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'themeMode',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<ThemePreference, ThemePreference, QAfterFilterCondition>
-      themeModeLessThan(
-    ThemeMode value, {
-    bool include = false,
-  }) {
+  themeModeLessThan(ThemeMode value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'themeMode',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'themeMode',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<ThemePreference, ThemePreference, QAfterFilterCondition>
-      themeModeBetween(
+  themeModeBetween(
     ThemeMode lower,
     ThemeMode upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'themeMode',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'themeMode',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 }
@@ -315,14 +323,14 @@ extension ThemePreferenceQueryLinks
 extension ThemePreferenceQuerySortBy
     on QueryBuilder<ThemePreference, ThemePreference, QSortBy> {
   QueryBuilder<ThemePreference, ThemePreference, QAfterSortBy>
-      sortByThemeMode() {
+  sortByThemeMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'themeMode', Sort.asc);
     });
   }
 
   QueryBuilder<ThemePreference, ThemePreference, QAfterSortBy>
-      sortByThemeModeDesc() {
+  sortByThemeModeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'themeMode', Sort.desc);
     });
@@ -344,14 +352,14 @@ extension ThemePreferenceQuerySortThenBy
   }
 
   QueryBuilder<ThemePreference, ThemePreference, QAfterSortBy>
-      thenByThemeMode() {
+  thenByThemeMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'themeMode', Sort.asc);
     });
   }
 
   QueryBuilder<ThemePreference, ThemePreference, QAfterSortBy>
-      thenByThemeModeDesc() {
+  thenByThemeModeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'themeMode', Sort.desc);
     });
@@ -361,7 +369,7 @@ extension ThemePreferenceQuerySortThenBy
 extension ThemePreferenceQueryWhereDistinct
     on QueryBuilder<ThemePreference, ThemePreference, QDistinct> {
   QueryBuilder<ThemePreference, ThemePreference, QDistinct>
-      distinctByThemeMode() {
+  distinctByThemeMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'themeMode');
     });
@@ -377,7 +385,7 @@ extension ThemePreferenceQueryProperty
   }
 
   QueryBuilder<ThemePreference, ThemeMode, QQueryOperations>
-      themeModeProperty() {
+  themeModeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'themeMode');
     });
