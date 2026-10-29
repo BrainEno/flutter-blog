@@ -20,6 +20,14 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(File('/nonexistent.jpg'));
+    registerFallbackValue(
+      UserModel(
+        id: 'fallback',
+        email: 'fallback@example.invalid',
+        name: 'fallback',
+        updatedAt: DateTime.utc(2024),
+      ),
+    );
   });
 
   setUp(() {
