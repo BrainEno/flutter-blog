@@ -195,6 +195,11 @@ jobs:
   test:
     name: test / flutter-test
     runs-on: ubuntu-latest
+    permissions:
+      # The failure step comments the log tail on the PR so the crash reason
+      # survives GitHub's 4096-byte annotation cap. Nothing else is writable.
+      contents: read
+      pull-requests: write
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -233,6 +238,22 @@ jobs:
             bash tool/ci/annotate_failure.sh analyze build/reports/flutter-test.log
           fi
           exit "$status"
+      - name: Comment the log tail on the PR when tests fail
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
+          {
+            echo "### flutter test log tail (run ${GITHUB_RUN_ID})"
+            echo
+            echo '```'
+            tail -c 30000 build/reports/flutter-test.log
+            echo '```'
+            echo
+            echo "_Automated diagnostic comment from the CI workflow; the same log is uploaded as the \`flutter-test-evidence\` artifact._"
+          } > /tmp/pr-comment.md
+          gh pr comment "$PR_NUMBER" --body-file /tmp/pr-comment.md
       - name: Upload test log and LCOV
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6

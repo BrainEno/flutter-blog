@@ -206,11 +206,9 @@ class NowaveSessionManager implements NowaveAuthenticator {
     final session = _session;
     if (session == null) return false;
     try {
-      final data = await _client.postJson(
-        '/auth/refresh',
-        {'refreshToken': session.refreshToken},
-        authenticate: false,
-      );
+      final data = await _client.postJson('/auth/refresh', {
+        'refreshToken': session.refreshToken,
+      }, authenticate: false);
       final pair = NowaveTokenPair.fromDataMap(
         (data as Map).cast<String, dynamic>(),
       );

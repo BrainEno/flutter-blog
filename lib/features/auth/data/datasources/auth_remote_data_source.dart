@@ -51,11 +51,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     // Registration is immediate: the backend returns a session without an
     // e-mail confirmation step, so the user is signed in right away.
     final tokens = await _exchangeTokens(
-      () => client.postJson(
-        '/auth/register',
-        {'email': email, 'password': password},
-        authenticate: false,
-      ),
+      () => client.postJson('/auth/register', {
+        'email': email,
+        'password': password,
+      }, authenticate: false),
     );
     await sessionManager.adoptSession(tokens, email: email);
     try {
@@ -79,11 +78,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String password,
   }) async {
     final tokens = await _exchangeTokens(
-      () => client.postJson(
-        '/auth/login',
-        {'email': email, 'password': password},
-        authenticate: false,
-      ),
+      () => client.postJson('/auth/login', {
+        'email': email,
+        'password': password,
+      }, authenticate: false),
     );
     await sessionManager.adoptSession(tokens, email: email);
     await _resolveUserIdentity();

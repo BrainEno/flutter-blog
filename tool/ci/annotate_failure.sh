@@ -48,10 +48,14 @@ awk -v mode="$1" '
         }
       # Load/crash summaries (no [E] progress line exists for these).
       for (i = 1; i <= NR; i++)
-        if (lines[i] ~ /Failed to load|Some tests failed|Fatal error|Unhandled exception|Test failed/) {
+        if (lines[i] ~ /Failed to load|Some tests failed|Fatal error|Unhandled exception|Test failed|Lost connection|dropped the connection|Process terminated|Segmentation|out of memory|Killed/) {
           has_failures = 1
           for (j = i; j <= NR && j <= i + 12; j++) selected[j] = 1
         }
+
+      # Whatever the phrasing, the final lines explain how the run ended.
+      for (i = NR - 14; i <= NR; i++)
+        if (i >= 1) selected[i] = 1
 
       # Full exception blocks: two lines of lead-in, the bordered banner,
       # and everything up to (and including) the closing border line of

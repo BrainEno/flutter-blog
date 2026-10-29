@@ -91,10 +91,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     try {
       final bytes = await image.readAsBytes();
       final asset = await retryOnConnectionClosed(() async {
-        return client.uploadMedia(
-          bytes,
-          mimeType ?? 'image/jpeg',
-        );
+        return client.uploadMedia(bytes, mimeType ?? 'image/jpeg');
       });
       return client.mediaUri(asset.id).toString();
     } catch (e) {
@@ -173,11 +170,14 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       if (sanitizedQuery.isEmpty) {
         return const <BlogModel>[];
       }
-      final data = await client.getJson('/articles', query: {
-        'query': sanitizedQuery,
-        'limit': '$kMaxSearchResults',
-        'locale': 'zh-CN',
-      });
+      final data = await client.getJson(
+        '/articles',
+        query: {
+          'query': sanitizedQuery,
+          'limit': '$kMaxSearchResults',
+          'locale': 'zh-CN',
+        },
+      );
       return _articleList(data);
     } catch (e) {
       throw mapToServerException(e);

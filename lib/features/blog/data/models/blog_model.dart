@@ -68,7 +68,8 @@ class BlogModel extends Blog {
       posterId: map['authorId'] as String? ?? '',
       imageUrl: extracted.coverUrl,
       tags: tags,
-      updatedAt: DateTime.tryParse(map['updatedAt'] as String? ?? '') ??
+      updatedAt:
+          DateTime.tryParse(map['updatedAt'] as String? ?? '') ??
           DateTime.now(),
       posterName: author['displayName'] as String?,
       posterAvatar: author['avatarUrl'] as String?,

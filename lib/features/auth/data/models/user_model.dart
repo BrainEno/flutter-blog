@@ -25,7 +25,8 @@ class UserModel extends User {
       name: map['displayName'] as String? ?? '',
       avatarUrl: map['avatarUrl'] as String? ?? '',
       website: map['websiteUrl'] as String? ?? '',
-      updatedAt: DateTime.tryParse(map['updatedAt'] as String? ?? '') ??
+      updatedAt:
+          DateTime.tryParse(map['updatedAt'] as String? ?? '') ??
           DateTime.now(),
     );
   }

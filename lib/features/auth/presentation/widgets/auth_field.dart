@@ -35,36 +35,44 @@ class AuthField extends StatelessWidget {
       autofocus: false,
       controller: controller,
       obscureText: isObscureText,
-      style: style ??
+      style:
+          style ??
           TextStyle(
             fontSize: 16,
             color: isDarkMode
-                ? AppPallete.whiteColor // White text in dark mode
+                ? AppPallete
+                      .whiteColor // White text in dark mode
                 : AppPallete.lightBlack, // Black text in light mode
           ),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: hintStyle ??
+        hintStyle:
+            hintStyle ??
             TextStyle(
               fontSize: 16,
               color: isDarkMode
-                  ? AppPallete.greyColor // Medium grey hint in dark mode
+                  ? AppPallete
+                        .greyColor // Medium grey hint in dark mode
                   : AppPallete.lightGreyText, // Light grey hint in light mode
             ),
         prefixIcon: prefixIcon != null
             ? Icon(
                 prefixIcon,
                 color: isDarkMode
-                    ? AppPallete.greyColor // Medium grey icon in dark mode
+                    ? AppPallete
+                          .greyColor // Medium grey icon in dark mode
                     : AppPallete.lightGreyText, // Light grey icon in light mode
               )
             : null,
         filled: true,
         fillColor: isDarkMode
-            ? AppPallete.greyColorDark // Dark grey background in dark mode
+            ? AppPallete
+                  .greyColorDark // Dark grey background in dark mode
             : AppPallete.lightBackground, // White background in light mode
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16.0,
+          horizontal: 20.0,
+        ),
         border: _authFieldBorder(
             context, isDarkMode, borderColor), // Theme aware border
         enabledBorder: _authFieldBorder(
