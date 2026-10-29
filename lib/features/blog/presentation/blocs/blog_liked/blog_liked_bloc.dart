@@ -45,10 +45,11 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
         ToggleLikeParams(userId: event.userId, blogId: event.blogId));
     res.fold(
       (failure) {
-        // Revert on failure
-        updatedLikedBlogs[event.blogId] = currentLiked;
+        // Preserve previously emitted states and unrelated changes.
+        final revertedLikedBlogs = Map<String, bool>.from(state.likedBlogs);
+        revertedLikedBlogs[event.blogId] = currentLiked;
         emit(ToggleBlogLikeFailure(
-            error: failure.message, likedBlogs: updatedLikedBlogs));
+            error: failure.message, likedBlogs: revertedLikedBlogs));
       },
       (result) {
         // Fetch updated list after success
