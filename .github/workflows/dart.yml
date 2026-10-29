@@ -48,8 +48,7 @@ jobs:
           mkdir -p build/reports
           cat > env.json <<'EOF2'
           {
-            "SUPABASE_URL": "https://example.invalid",
-            "SUPABASE_KEY": "ci-placeholder-not-a-secret"
+            "API_BASE_URL": "https://example.invalid"
           }
           EOF2
       - name: Resolve dependencies
@@ -94,8 +93,7 @@ jobs:
           mkdir -p build/reports
           cat > env.json <<'EOF2'
           {
-            "SUPABASE_URL": "https://example.invalid",
-            "SUPABASE_KEY": "ci-placeholder-not-a-secret"
+            "API_BASE_URL": "https://example.invalid"
           }
           EOF2
       - name: Resolve dependencies

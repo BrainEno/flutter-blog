@@ -301,10 +301,9 @@ void main() {
     await states.close();
   });
 
-  testWidgets('delete success clears all drafts of the article and never '
-      'resurrects them', (tester) async {
-    final store = FakeDraftStore()
-      ..drafts['article-a'] = makeDraft('article-a', '待删草稿');
+  testWidgets('the editor menu no longer offers article deletion '
+      '(backend gap G1: no DELETE endpoint)', (tester) async {
+    final store = FakeDraftStore();
     final states = StreamController<BlogUploadState>.broadcast();
     final bloc = await openEditorLive(
       tester,
@@ -316,27 +315,12 @@ void main() {
     await tester.tap(find.text('丢弃草稿'));
     await tester.pumpAndSettle();
 
-    // Unsaved edits that would normally flush on dispose.
-    await tester.enterText(find.byType(TextFormField).first, '删除前的编辑');
-    await tester.pump();
-
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('删除文章'));
-    await tester.pump();
-    expect(bloc.events.single, isA<DeleteBlogEvent>());
 
-    states.add(BlogDeleteSuccess());
-    await tester.pumpAndSettle();
-
-    expect(store.deleteCalls, 1);
-    expect(store.deletedScope, 'article-a');
-    expect(store.deletedOlderThan, isNull, reason: 'all drafts go');
-    expect(
-      store.savedDrafts.where((d) => d.blogId == 'article-a'),
-      isEmpty,
-      reason: 'dispose flush must not resurrect a draft for a deleted article',
-    );
+    expect(find.text('删除文章'), findsNothing);
+    expect(find.text('保存更改'), findsOneWidget);
+    expect(bloc.events, isEmpty);
     await states.close();
   });
 }

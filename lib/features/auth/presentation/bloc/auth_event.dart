@@ -21,17 +21,3 @@ final class AuthLogin extends AuthEvent {
 }
 
 final class AuthLogout extends AuthEvent {}
-
-/// Re-sends the sign-up confirmation e-mail to [email].
-final class AuthResendConfirmationEmail extends AuthEvent {
-  final String email;
-
-  AuthResendConfirmationEmail({required this.email});
-}
-
-/// Sends a password-recovery e-mail to [email].
-final class AuthForgotPassword extends AuthEvent {
-  final String email;
-
-  AuthForgotPassword({required this.email});
-}

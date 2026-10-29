@@ -6,8 +6,6 @@ import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
 import 'package:belog/features/auth/domain/usecases/current_user.dart';
-import 'package:belog/features/auth/domain/usecases/resend_confirmation_email.dart';
-import 'package:belog/features/auth/domain/usecases/send_password_reset_email.dart';
 import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
@@ -157,8 +155,6 @@ class Harness {
       userLogin: UserLogin(authRepository),
       userSignOut: UserSignOut(authRepository),
       currentUser: CurrentUser(authRepository),
-      resendConfirmationEmail: ResendConfirmationEmail(authRepository),
-      sendPasswordResetEmail: SendPasswordResetEmail(authRepository),
       appUserCubit: appUserCubit,
     );
   }

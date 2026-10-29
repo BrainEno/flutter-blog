@@ -10,6 +10,7 @@ import 'package:belog/core/storage/sqlite_theme_store.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:drift/native.dart';
+import 'package:sqlite3/sqlite3.dart' as raw;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart' as legacy;
@@ -253,4 +254,45 @@ void main() {
       expect(await SqliteThemePreferenceStore(db).load(), ThemeMode.light);
     },
   );
+
+  test('a v1 database migrates to v2: blog_cache gains article_id and keeps '
+      'its rows', () async {
+    await db.close();
+    final file = File('${dir.path}/v1.sqlite');
+    final rawDb = raw.sqlite3.open(file.path);
+    rawDb.execute("PRAGMA user_version = 1");
+    rawDb.execute(
+      'CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)',
+    );
+    rawDb.execute(
+      'CREATE TABLE theme (id INTEGER PRIMARY KEY CHECK (id = 0), mode TEXT NOT NULL)',
+    );
+    rawDb.execute(
+      'CREATE TABLE drafts (id INTEGER PRIMARY KEY AUTOINCREMENT, blog_id TEXT, title TEXT NOT NULL, content TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL)',
+    );
+    rawDb.execute(
+      "CREATE TABLE blog_cache (id TEXT PRIMARY KEY, title TEXT NOT NULL, content TEXT NOT NULL, poster_id TEXT NOT NULL, image_url TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL, poster_name TEXT, poster_avatar TEXT)",
+    );
+    rawDb.execute(
+      "INSERT INTO blog_cache(id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar) "
+      "VALUES ('old-id', '旧文', '正文', 'author', 'cover', '[\"诗歌\"]', 1700000000000000, 'Alice', 'avatar')",
+    );
+    rawDb.dispose();
+
+    final migrated = AppDatabase(NativeDatabase(file));
+    addTearDown(migrated.close);
+    await migrated.customSelect('SELECT 1').get();
+
+    final columns = await migrated
+        .customSelect('PRAGMA table_info(blog_cache)')
+        .get();
+    expect(
+      columns.map((row) => row.read<String>('name')),
+      contains('article_id'),
+    );
+    final cached = await SqliteBlogCache(migrated).loadBlogs();
+    expect(cached.single.id, 'old-id');
+    expect(cached.single.title, '旧文');
+    expect(cached.single.articleId, '');
+  });
 }

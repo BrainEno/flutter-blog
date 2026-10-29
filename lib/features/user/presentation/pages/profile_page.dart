@@ -8,10 +8,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 class ProfilePage extends StatelessWidget {
+  // Account security (e-mail / password changes) is hidden until the
+  // no-wave backend grows the corresponding endpoints (gap G2, see
+  // docs/supabase-to-nowave-migration.md).
   static const List<(String, String)> items = [
     ('编辑个人资料', '/profile/edit'),
     ('我的文章', '/profile/my-articles'),
-    ('账号设置', '/profile/account'),
     ('关于我们', '/profile/about'),
   ];
 
@@ -50,10 +52,10 @@ class ProfilePage extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 60,
+                      // Avatar media URLs are immutable (each upload is a
+                      // new asset id), so no cache-busting suffix is needed.
                       backgroundImage: user.avatarUrl.isNotEmpty
-                          ? CachedNetworkImageProvider(
-                              '${user.avatarUrl}?v=${user.updatedAt.millisecondsSinceEpoch}',
-                            )
+                          ? CachedNetworkImageProvider(user.avatarUrl)
                           : null,
                       child: user.avatarUrl.isEmpty
                           ? const Icon(Icons.person, size: 60)
@@ -155,8 +157,6 @@ class ProfilePage extends StatelessWidget {
       case 1:
         return Icons.article;
       case 2:
-        return Icons.settings;
-      case 3:
         return Icons.info;
       default:
         return Icons.help;

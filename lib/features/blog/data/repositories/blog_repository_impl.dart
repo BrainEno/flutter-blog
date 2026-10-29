@@ -2,15 +2,14 @@ import 'dart:io';
 
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
-import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/network/connection_checker.dart';
+import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:fpdart/fpdart.dart';
-import 'package:uuid/uuid.dart';
 
 class BlogRepositoryImpl implements BlogRepository {
   final BlogRemoteDataSource blogRemoteDataSource;
@@ -36,36 +35,26 @@ class BlogRepositoryImpl implements BlogRepository {
       if (!await (connectionChecker.isConnected)) {
         return left(Failure('无法连接到网络'));
       }
-      BlogModel blogModel = BlogModel(
-        id: const Uuid().v1(),
+      // Media assets are immutable and addressed by their own id, so the
+      // cover is uploaded first and the article row is created with it.
+      // A failure between the two only leaves an unreferenced asset (the
+      // backend has no delete endpoint; its lifecycle is managed
+      // server-side).
+      final imageUrl = await blogRemoteDataSource.uploadBlogImage(
+        image: image,
+        mimeType: imageMimeType,
+      );
+      final blogModel = BlogModel(
+        id: '',
         title: title,
         content: content,
         posterId: posterId,
-        imageUrl: '',
+        imageUrl: imageUrl,
         tags: tags,
         updatedAt: DateTime.now(),
       );
-
-      final imageUrl = await blogRemoteDataSource.uploadBlogImage(
-        image: image,
-        blogId: blogModel.id,
-        posterId: posterId,
-        mimeType: imageMimeType,
-      );
-      blogModel = blogModel.copyWith(imageUrl: imageUrl);
-      try {
-        final blog = await blogRemoteDataSource.uploadBlog(blogModel);
-        return right(blog);
-      } on ServerException catch (e) {
-        // The row insert failed: the freshly uploaded cover is already
-        // unreachable. Roll it back so it does not become an orphan; if
-        // the rollback itself fails, that orphan is logged, never silent.
-        await _removeCoverQuietly(
-          imageUrl,
-          reason: 'blog insert failed after cover upload',
-        );
-        return left(e.toFailure());
-      }
+      final blog = await blogRemoteDataSource.uploadBlog(blogModel);
+      return right(blog);
     } on ServerException catch (e) {
       return left(e.toFailure());
     }
@@ -171,72 +160,28 @@ class BlogRepositoryImpl implements BlogRepository {
       if (!await (connectionChecker.isConnected)) {
         return left(Failure('无法连接到网络'));
       }
-      BlogModel blogToUpdate = await blogRemoteDataSource.getBlogById(blogId);
-      final oldImageUrl = blogToUpdate.imageUrl;
-      String? newImageUrl;
+      // Fetch the current article first: the update addresses the server
+      // article id carried on the model, and the existing cover is kept
+      // when no new one was picked.
+      var blogToUpdate = await blogRemoteDataSource.getBlogById(blogId);
       if (image != null) {
-        // Versioned path: the new cover is a NEW object, so the DB row
-        // can flip to it atomically; the old object is only removed
-        // after the update succeeds.
-        newImageUrl = await blogRemoteDataSource.uploadBlogImage(
+        final newImageUrl = await blogRemoteDataSource.uploadBlogImage(
           image: image,
-          blogId: blogId,
-          posterId: blogToUpdate.posterId,
           mimeType: imageMimeType,
         );
         blogToUpdate = blogToUpdate.copyWith(imageUrl: newImageUrl);
       }
       blogToUpdate = blogToUpdate.copyWith(
-        id: blogId,
         title: title,
         content: content,
         tags: tags,
         updatedAt: DateTime.now(),
       );
 
-      try {
-        final blogUpdated = await blogRemoteDataSource.editBlog(blogToUpdate);
-        if (newImageUrl != null &&
-            oldImageUrl.isNotEmpty &&
-            oldImageUrl != newImageUrl) {
-          // The DB row now points at the new cover: retire the old
-          // object. Best-effort - a failure leaves a logged orphan.
-          await _removeCoverQuietly(
-            oldImageUrl,
-            reason: 'cover replaced by edit',
-          );
-        }
-        return right(blogUpdated);
-      } on ServerException catch (e) {
-        // The update failed: roll back the freshly uploaded cover so it
-        // does not orphan next to the still-referenced old one.
-        if (newImageUrl != null) {
-          await _removeCoverQuietly(
-            newImageUrl,
-            reason: 'blog update failed after cover upload',
-          );
-        }
-        return left(e.toFailure());
-      }
+      final blogUpdated = await blogRemoteDataSource.editBlog(blogToUpdate);
+      return right(blogUpdated);
     } on ServerException catch (e) {
       return left(e.toFailure());
-    }
-  }
-
-  /// Best-effort cover removal with a structured, auditable log on
-  /// failure - cleanup problems are never swallowed silently.
-  Future<void> _removeCoverQuietly(
-    String publicUrl, {
-    required String reason,
-  }) async {
-    try {
-      await blogRemoteDataSource.removeBlogImage(publicUrl);
-    } catch (e, stackTrace) {
-      AppLogger.error(
-        'orphan cover left behind ($reason): $publicUrl',
-        error: e,
-        stackTrace: stackTrace,
-      );
     }
   }
 

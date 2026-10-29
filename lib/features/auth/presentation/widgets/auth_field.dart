@@ -11,6 +11,10 @@ class AuthField extends StatelessWidget {
   final Color? borderColor; // New: Optional border color
   final Color? focusedBorderColor; // New: Optional focused border color
 
+  /// Optional extra validation. When null the field only requires
+  /// non-empty input.
+  final FormFieldValidator<String>? validator;
+
   const AuthField({
     super.key,
     required this.hintText,
@@ -21,6 +25,7 @@ class AuthField extends StatelessWidget {
     this.hintStyle,
     this.borderColor,
     this.focusedBorderColor,
+    this.validator,
   });
 
   @override
@@ -70,12 +75,20 @@ class AuthField extends StatelessWidget {
         focusedErrorBorder:
             _authFieldErrorBorder(context), // Focused error border remains red
       ),
-      validator: (value) =>
-          value == null || value.isEmpty ? "请输入$hintText!" : null,
+      validator: _effectiveValidator,
     );
   }
 
-  // Theme-aware border for AuthField
+  /// The custom [validator] when provided, otherwise a plain non-empty
+  /// check.
+  String? _effectiveValidator(String? value) {
+    if (validator != null) {
+      return validator!(value);
+    }
+    return value == null || value.isEmpty ? "请输入$hintText!" : null;
+  }
+
+  // Theme-aware border for the auth field
   OutlineInputBorder _authFieldBorder(
       BuildContext context, bool isDarkMode, Color? borderColor) {
     return OutlineInputBorder(

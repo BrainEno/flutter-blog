@@ -4,10 +4,7 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/usecase/usecase.dart';
-import 'package:belog/features/auth/domain/entities/sign_up_outcome.dart';
 import 'package:belog/features/auth/domain/usecases/current_user.dart';
-import 'package:belog/features/auth/domain/usecases/resend_confirmation_email.dart';
-import 'package:belog/features/auth/domain/usecases/send_password_reset_email.dart';
 import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
@@ -24,12 +21,6 @@ class MockUserSignOut extends Mock implements UserSignOut {}
 
 class MockCurrentUser extends Mock implements CurrentUser {}
 
-class MockResendConfirmationEmail extends Mock
-    implements ResendConfirmationEmail {}
-
-class MockSendPasswordResetEmail extends Mock
-    implements SendPasswordResetEmail {}
-
 User _user([String id = 'u1']) => User(
   id: id,
   email: 'user@example.invalid',
@@ -42,8 +33,6 @@ void main() {
   late MockUserLogin userLogin;
   late MockUserSignOut userSignOut;
   late MockCurrentUser currentUser;
-  late MockResendConfirmationEmail resendConfirmationEmail;
-  late MockSendPasswordResetEmail sendPasswordResetEmail;
   late AppUserCubit appUserCubit;
   late AuthBloc bloc;
 
@@ -58,16 +47,12 @@ void main() {
     userLogin = MockUserLogin();
     userSignOut = MockUserSignOut();
     currentUser = MockCurrentUser();
-    resendConfirmationEmail = MockResendConfirmationEmail();
-    sendPasswordResetEmail = MockSendPasswordResetEmail();
     appUserCubit = AppUserCubit();
     bloc = AuthBloc(
       userSignUp: userSignUp,
       userLogin: userLogin,
       userSignOut: userSignOut,
       currentUser: currentUser,
-      resendConfirmationEmail: resendConfirmationEmail,
-      sendPasswordResetEmail: sendPasswordResetEmail,
       appUserCubit: appUserCubit,
     );
     addTearDown(bloc.close);
@@ -87,149 +72,137 @@ void main() {
   }
 
   group('AuthSignUp', () {
-    test('a sign-up without a session (e-mail confirmation required) does NOT '
-        'log the user in', () async {
-      when(() => userSignUp(any())).thenAnswer(
-        (_) async => Right(SignUpOutcome(email: 'user@example.invalid')),
-      );
+    test('a successful sign-up logs the user in immediately '
+        '(no e-mail confirmation step)', () async {
+      when(() => userSignUp(any())).thenAnswer((_) async => Right(_user()));
 
       final states = await capture(
         () => bloc.add(
           AuthSignUp(
             email: 'user@example.invalid',
             name: '测试用户',
-            password: 'secret',
+            password: 'a-12-char-secret',
           ),
         ),
       );
 
-      expect(states.where((s) => s is! AuthLoading), [
-        isA<AuthNeedsEmailConfirmation>(),
-      ]);
-      final pending = states.whereType<AuthNeedsEmailConfirmation>().single;
-      expect(pending.email, 'user@example.invalid');
-      // The identity cubit must stay logged out: an unconfirmed auth
-      // user is not a signed-in user.
-      expect(appUserCubit.state, isA<AppUserInitial>());
-    });
-
-    test('a sign-up with a session logs the user in', () async {
-      when(() => userSignUp(any())).thenAnswer(
-        (_) async =>
-            Right(SignUpOutcome(email: 'user@example.invalid', user: _user())),
-      );
-
-      final states = await capture(
-        () => bloc.add(
-          AuthSignUp(
-            email: 'user@example.invalid',
-            name: '测试用户',
-            password: 'secret',
-          ),
-        ),
-      );
-
-      expect(states.last, isA<AuthSuccess>());
+      expect(states, [isA<AuthLoading>(), isA<AuthSuccess>()]);
       expect(appUserCubit.state, isA<AppUserLoggedIn>());
     });
 
-    test('a failing sign-up surfaces the failure message', () async {
-      when(
-        () => userSignUp(any()),
-      ).thenAnswer((_) async => Left(Failure('User already registered')));
+    test('a failed sign-up emits a failure and does not log in', () async {
+      when(() => userSignUp(any())).thenAnswer(
+        (_) async => Left(Failure('该邮箱已被注册，请直接登录')),
+      );
 
       final states = await capture(
         () => bloc.add(
           AuthSignUp(
             email: 'user@example.invalid',
             name: '测试用户',
-            password: 'secret',
+            password: 'a-12-char-secret',
           ),
         ),
       );
 
-      expect(states.last, isA<AuthFailure>());
-      expect((states.last as AuthFailure).message, 'User already registered');
+      expect(states, [isA<AuthLoading>(), isA<AuthFailure>()]);
       expect(appUserCubit.state, isA<AppUserInitial>());
     });
   });
 
-  group('AuthResendConfirmationEmail', () {
-    test('re-send succeeds without flipping the UI into a loader', () async {
+  group('AuthLogin', () {
+    test('a successful login fetches the profile and logs in', () async {
       when(
-        () => resendConfirmationEmail('user@example.invalid'),
-      ).thenAnswer((_) async => Right(null));
-
-      final states = await capture(
-        () => bloc.add(
-          AuthResendConfirmationEmail(email: 'user@example.invalid'),
+        () => userLogin(
+          UserLoginParams(email: 'user@example.invalid', password: 'secret'),
+        ),
+      ).thenAnswer((_) async => Right(_user()));
+      when(() => currentUser(NoParams())).thenAnswer(
+        (_) async => Right(
+          _user(),
         ),
       );
 
-      expect(states, [isA<AuthConfirmationEmailSent>()]);
-      expect(states.whereType<AuthLoading>(), isEmpty);
+      final states = await capture(
+        () => bloc.add(
+          AuthLogin(email: 'user@example.invalid', password: 'secret'),
+        ),
+      );
+
+      expect(states, [isA<AuthLoading>(), isA<AuthSuccess>()]);
+      expect(appUserCubit.state, isA<AppUserLoggedIn>());
     });
 
-    test('re-send failure propagates to the UI', () async {
-      when(() => resendConfirmationEmail('user@example.invalid')).thenAnswer(
-        (_) async => Left(
-          Failure(
-            'For security purposes, you can only '
-            'request this once every 60 seconds',
-          ),
+    test('a rejected login emits a failure', () async {
+      when(
+        () => userLogin(
+          UserLoginParams(email: 'user@example.invalid', password: 'wrong'),
         ),
+      ).thenAnswer(
+        (_) async => Left(Failure.auth('邮箱或密码不正确')),
       );
 
       final states = await capture(
         () => bloc.add(
-          AuthResendConfirmationEmail(email: 'user@example.invalid'),
+          AuthLogin(email: 'user@example.invalid', password: 'wrong'),
         ),
       );
 
-      expect(states.last, isA<AuthFailure>());
+      expect(states, [isA<AuthLoading>(), isA<AuthFailure>()]);
+      expect(appUserCubit.state, isA<AppUserInitial>());
+      verifyNever(() => currentUser(NoParams()));
     });
   });
 
-  group('AuthForgotPassword', () {
-    test('requests the recovery e-mail and reports that it was sent', () async {
-      when(
-        () => sendPasswordResetEmail('user@example.invalid'),
-      ).thenAnswer((_) async => Right(null));
-
-      final states = await capture(
-        () => bloc.add(AuthForgotPassword(email: 'user@example.invalid')),
+  group('AuthLogout', () {
+    test('logout clears the identity even when the server call fails',
+        () async {
+      appUserCubit.updateUser(_user());
+      when(() => userSignOut(NoParams())).thenAnswer(
+        (_) async => Left(Failure('无法连接到网络')),
       );
 
-      expect(states.last, isA<AuthPasswordResetEmailSent>());
-      verify(() => sendPasswordResetEmail('user@example.invalid')).called(1);
+      final states = await capture(() => bloc.add(AuthLogout()));
+
+      expect(states.last, isA<AuthLogoutFailure>());
+      expect(appUserCubit.state, isA<AppUserInitial>());
     });
 
-    test(
-      'an unknown address also resolves to "sent" (no user enumeration)',
-      () async {
-        when(
-          () => sendPasswordResetEmail(any()),
-        ).thenAnswer((_) async => Right(null));
-
-        final states = await capture(
-          () => bloc.add(AuthForgotPassword(email: 'nobody@example.invalid')),
-        );
-
-        expect(states.last, isA<AuthPasswordResetEmailSent>());
-      },
-    );
-
-    test('transport failures propagate to the UI', () async {
+    test('a successful logout emits success', () async {
+      appUserCubit.updateUser(_user());
       when(
-        () => sendPasswordResetEmail(any()),
-      ).thenAnswer((_) async => Left(Failure.networkOffline()));
+        () => userSignOut(NoParams()),
+      ).thenAnswer((_) async => Right<Failure, void>(null));
 
-      final states = await capture(
-        () => bloc.add(AuthForgotPassword(email: 'user@example.invalid')),
-      );
+      final states = await capture(() => bloc.add(AuthLogout()));
 
-      expect(states.last, isA<AuthFailure>());
-      expect((states.last as AuthFailure).message, contains('网络'));
+      expect(states.last, isA<AuthLogoutSuccess>());
+      expect(appUserCubit.state, isA<AppUserInitial>());
+    });
+  });
+
+  group('AuthIsUserLoggedIn', () {
+    test('a restored session logs the user in without a loading state',
+        () async {
+      when(
+        () => currentUser(NoParams()),
+      ).thenAnswer((_) async => Right(_user()));
+
+      final states = await capture(() => bloc.add(AuthIsUserLoggedIn()));
+
+      expect(states, [isA<AuthSuccess>()]);
+      expect(appUserCubit.state, isA<AppUserLoggedIn>());
+    });
+
+    test('a missing session emits a failure', () async {
+      when(
+        () => currentUser(NoParams()),
+      ).thenAnswer((_) async => Left(Failure('登录状态已失效，请重新登录')));
+
+      final states = await capture(() => bloc.add(AuthIsUserLoggedIn()));
+
+      expect(states, [isA<AuthFailure>()]);
+      expect(appUserCubit.state, isA<AppUserInitial>());
     });
   });
 }

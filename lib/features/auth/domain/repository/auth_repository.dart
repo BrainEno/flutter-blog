@@ -1,13 +1,11 @@
+import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:fpdart/fpdart.dart';
 
-import '../../../../core/common/entities/user.dart';
-import '../entities/sign_up_outcome.dart';
-
 abstract interface class AuthRepository {
-  /// Sign-up result: either a signed-in user or a pending e-mail
-  /// confirmation ([SignUpOutcome.user] is null).
-  Future<Either<Failure, SignUpOutcome>> signUpWithEmailPassword({
+  /// Sign-up. The no-wave backend returns a session immediately (no e-mail
+  /// confirmation step), so a successful sign-up is a signed-in user.
+  Future<Either<Failure, User>> signUpWithEmailPassword({
     required String name,
     required String email,
     required String password,
@@ -21,8 +19,4 @@ abstract interface class AuthRepository {
   Future<Either<Failure, void>> logout();
 
   Future<Either<Failure, User>> currentUser();
-
-  Future<Either<Failure, void>> resendConfirmationEmail(String email);
-
-  Future<Either<Failure, void>> sendPasswordResetEmail(String email);
 }

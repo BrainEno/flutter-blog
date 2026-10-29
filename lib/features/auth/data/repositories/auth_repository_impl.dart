@@ -1,13 +1,13 @@
+import 'package:belog/core/common/entities/user.dart';
+import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
+import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dart';
-import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
-import 'package:belog/features/auth/domain/entities/sign_up_outcome.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
 import 'package:fpdart/fpdart.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
@@ -19,29 +19,28 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, User>> currentUser() async {
     try {
       if (!await (connectionChecker.isConnected)) {
-        final session = remoteDataSource.currentUserSession;
+        final session = remoteDataSource.currentSession;
 
         if (session == null) {
           return left(Failure('请登录账户'));
         }
 
+        // Offline restore: the locally persisted session keeps the user
+        // signed in with a minimal identity; the full profile is fetched
+        // once the network is back.
         return right(
           UserModel(
-            id: session.user.id,
-            email: session.user.email ?? '',
+            id: session.userId,
+            email: session.email,
             name: '',
-            // `updatedAt` is nullable on the gotrue user; an offline
-            // session restore must not crash on a missing value.
-            updatedAt:
-                _tryParseTimestamp(session.user.updatedAt) ?? DateTime.now(),
+            updatedAt: DateTime.now(),
           ),
         );
       }
       final userModel = await remoteDataSource.getCurrentUserData();
       if (userModel == null) {
-        // No session, or a session without a profile row. Either way the
-        // user is not treated as logged in; profiles are owned by the
-        // server-side trigger (see README "服务端（Supabase）待办").
+        // No session, or the session could not be refreshed. Either way
+        // the user is not logged in.
         return left(Failure('登录状态已失效，请重新登录'));
       }
       return right(userModel);
@@ -55,16 +54,24 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
   }) async {
-    return _getUser(
-      () async => await remoteDataSource.loginWithEmailPassword(
+    try {
+      if (!await (connectionChecker.isConnected)) {
+        return left(Failure('无法连接到网络'));
+      }
+      final user = await remoteDataSource.loginWithEmailPassword(
         email: email,
         password: password,
-      ),
-    );
+      );
+      return right(user);
+    } on NowaveApiException catch (e) {
+      return left(_loginFailure(e));
+    } on ServerException catch (e) {
+      return left(e.toFailure());
+    }
   }
 
   @override
-  Future<Either<Failure, SignUpOutcome>> signUpWithEmailPassword({
+  Future<Either<Failure, User>> signUpWithEmailPassword({
     required String name,
     required String email,
     required String password,
@@ -73,67 +80,64 @@ class AuthRepositoryImpl implements AuthRepository {
       if (!await (connectionChecker.isConnected)) {
         return left(Failure('无法连接到网络'));
       }
-      final outcome = await remoteDataSource.signUpWithEmailPassword(
-        name: name,
-        email: email,
-        password: password,
+      // The backend signs the user in immediately: there is no e-mail
+      // confirmation step.
+      return right(
+        await remoteDataSource.signUpWithEmailPassword(
+          name: name,
+          email: email,
+          password: password,
+        ),
       );
-      return right(outcome);
-    } on sb.AuthException catch (e) {
-      return left(Failure.auth(e.message, cause: e));
+    } on NowaveApiException catch (e) {
+      return left(_signUpFailure(e));
     } on ServerException catch (e) {
       return left(e.toFailure());
     }
-  }
-
-  @override
-  Future<Either<Failure, void>> resendConfirmationEmail(String email) async {
-    return _runRemoteRequest(
-      () async => await remoteDataSource.resendConfirmationEmail(email),
-    );
-  }
-
-  @override
-  Future<Either<Failure, void>> sendPasswordResetEmail(String email) async {
-    return _runRemoteRequest(
-      () async => await remoteDataSource.sendPasswordResetEmail(email),
-    );
   }
 
   @override
   Future<Either<Failure, void>> logout() async {
-    return _runRemoteRequest(() async => await remoteDataSource.logout());
-  }
-
-  Future<Either<Failure, User>> _getUser(Future<User> Function() fn) async {
     try {
       if (!await (connectionChecker.isConnected)) {
         return left(Failure('无法连接到网络'));
       }
-      final user = await fn();
-      return right(user);
-    } on sb.AuthException catch (e) {
-      return left(Failure.auth(e.message, cause: e));
-    } on ServerException catch (e) {
-      return left(e.toFailure());
-    }
-  }
-
-  Future<Either<Failure, void>> _runRemoteRequest(
-    Future<void> Function() fn,
-  ) async {
-    try {
-      if (!await (connectionChecker.isConnected)) {
-        return left(Failure('无法连接到网络'));
-      }
-      await fn();
+      await remoteDataSource.logout();
       return right(null);
     } on ServerException catch (e) {
       return left(e.toFailure());
     }
   }
-}
 
-/// Parses a nullable ISO timestamp without throwing.
-DateTime? _tryParseTimestamp(String? value) =>
-    value == null ? null : DateTime.tryParse(value);
+  /// Wrong credentials come back as a plain 401 UNAUTHENTICATED; the
+  /// generic mapping would misleadingly say the login "expired".
+  Failure _loginFailure(NowaveApiException e) {
+    switch (e.code) {
+      case 'UNAUTHENTICATED':
+        return Failure.auth('邮箱或密码不正确', cause: e);
+      case 'RATE_LIMITED':
+        return Failure('尝试次数过多，请稍后再试', cause: e);
+      case 'BAD_USER_INPUT':
+        return Failure('邮箱或密码格式不正确', kind: FailureKind.validation, cause: e);
+      default:
+        return mapToServerException(e).toFailure();
+    }
+  }
+
+  Failure _signUpFailure(NowaveApiException e) {
+    switch (e.code) {
+      case 'CONFLICT':
+        return Failure('该邮箱已被注册，请直接登录', kind: FailureKind.validation, cause: e);
+      case 'BAD_USER_INPUT':
+        return Failure(
+          '注册信息不符合要求，请检查邮箱与密码（密码至少 12 位）',
+          kind: FailureKind.validation,
+          cause: e,
+        );
+      case 'RATE_LIMITED':
+        return Failure('注册过于频繁，请稍后再试', cause: e);
+      default:
+        return mapToServerException(e).toFailure();
+    }
+  }
+}

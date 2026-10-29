@@ -15,16 +15,12 @@ class MockLocal extends Mock implements BlogLocalDataSource {}
 
 class MockConnection extends Mock implements ConnectionChecker {}
 
-const _kOldCoverUrl =
-    'https://demo.supabase.co/storage/v1/object/public/blog_images/'
-    'covers/u1/b1/1000000000000.jpg';
-
-const _kNewCoverUrl =
-    'https://demo.supabase.co/storage/v1/object/public/blog_images/'
-    'covers/u1/b1/1730000000000.jpg';
+const _kOldCoverUrl = 'https://api.example.invalid/api/v1/media/old-asset';
+const _kNewCoverUrl = 'https://api.example.invalid/api/v1/media/new-asset';
 
 BlogModel _blog({String imageUrl = _kOldCoverUrl}) => BlogModel(
-  id: 'b1',
+  id: 'my-slug',
+  articleId: 'b1',
   title: '标题',
   content: '正文',
   posterId: 'u1',
@@ -54,70 +50,11 @@ void main() {
   });
 
   group('uploadBlog', () {
-    test('a failed row insert rolls back the freshly uploaded cover', () async {
+    test('uploads the cover first, then creates the article with it',
+        () async {
       when(
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
-          blogId: any(named: 'blogId'),
-          posterId: any(named: 'posterId'),
-          mimeType: any(named: 'mimeType'),
-        ),
-      ).thenAnswer((_) async => _kNewCoverUrl);
-      when(
-        () => remote.uploadBlog(any()),
-      ).thenThrow(const ServerException('insert rejected'));
-      when(
-        () => remote.removeBlogImage(_kNewCoverUrl),
-      ).thenAnswer((_) async {});
-
-      final result = await repository.uploadBlog(
-        image: cover,
-        title: '标题',
-        content: '正文',
-        posterId: 'u1',
-        tags: const ['诗歌'],
-        imageMimeType: 'image/jpeg',
-      );
-
-      expect(result.isLeft(), isTrue);
-      verify(() => remote.removeBlogImage(_kNewCoverUrl)).called(1);
-    });
-
-    test('a rollback failure is logged, not swallowed: the insert failure '
-        'still surfaces', () async {
-      when(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-          blogId: any(named: 'blogId'),
-          posterId: any(named: 'posterId'),
-          mimeType: any(named: 'mimeType'),
-        ),
-      ).thenAnswer((_) async => _kNewCoverUrl);
-      when(
-        () => remote.uploadBlog(any()),
-      ).thenThrow(const ServerException('insert rejected'));
-      when(
-        () => remote.removeBlogImage(_kNewCoverUrl),
-      ).thenThrow(const ServerException('storage down'));
-
-      final result = await repository.uploadBlog(
-        image: cover,
-        title: '标题',
-        content: '正文',
-        posterId: 'u1',
-        tags: const ['诗歌'],
-      );
-
-      expect(result.isLeft(), isTrue);
-      verify(() => remote.removeBlogImage(_kNewCoverUrl)).called(1);
-    });
-
-    test('a successful upload keeps the cover (no rollback)', () async {
-      when(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-          blogId: any(named: 'blogId'),
-          posterId: any(named: 'posterId'),
           mimeType: any(named: 'mimeType'),
         ),
       ).thenAnswer((_) async => _kNewCoverUrl);
@@ -135,39 +72,82 @@ void main() {
       );
 
       expect(result.isRight(), isTrue);
-      verifyNever(() => remote.removeBlogImage(any()));
-      verify(
+      verifyInOrder([
+        () => remote.uploadBlogImage(
+              image: any(named: 'image'),
+              mimeType: 'image/jpeg',
+            ),
+        () => remote.uploadBlog(any()),
+      ]);
+      final created = verify(() => remote.uploadBlog(captureAny())).captured
+          .single as BlogModel;
+      expect(created.imageUrl, _kNewCoverUrl);
+      expect(created.title, '标题');
+    });
+
+    test('a failed article create surfaces the failure (media is '
+        'server-managed, nothing to roll back client-side)', () async {
+      when(
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
-          blogId: any(named: 'blogId'),
-          posterId: 'u1',
-          mimeType: 'image/jpeg',
+          mimeType: any(named: 'mimeType'),
         ),
-      ).called(1);
+      ).thenAnswer((_) async => _kNewCoverUrl);
+      when(
+        () => remote.uploadBlog(any()),
+      ).thenThrow(const ServerException('insert rejected'));
+
+      final result = await repository.uploadBlog(
+        image: cover,
+        title: '标题',
+        content: '正文',
+        posterId: 'u1',
+        tags: const ['诗歌'],
+        imageMimeType: 'image/jpeg',
+      );
+
+      expect(result.isLeft(), isTrue);
+    });
+
+    test('offline upload fails fast without touching the server', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => false);
+
+      final result = await repository.uploadBlog(
+        image: cover,
+        title: '标题',
+        content: '正文',
+        posterId: 'u1',
+        tags: const ['诗歌'],
+      );
+
+      expect(result.isLeft(), isTrue);
+      verifyNever(
+        () => remote.uploadBlogImage(
+          image: any(named: 'image'),
+          mimeType: any(named: 'mimeType'),
+        ),
+      );
+      verifyNever(() => remote.uploadBlog(any()));
     });
   });
 
   group('editBlog', () {
-    test('replacing the cover removes the old object only after the DB '
-        'update succeeds', () async {
-      when(() => remote.getBlogById('b1')).thenAnswer((_) async => _blog());
+    test('fetches the article, uploads a new cover, then updates', () async {
+      when(
+        () => remote.getBlogById('my-slug'),
+      ).thenAnswer((_) async => _blog());
       when(
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
-          blogId: any(named: 'blogId'),
-          posterId: any(named: 'posterId'),
           mimeType: any(named: 'mimeType'),
         ),
       ).thenAnswer((_) async => _kNewCoverUrl);
       when(() => remote.editBlog(any())).thenAnswer(
         (invocation) async => invocation.positionalArguments[0] as BlogModel,
       );
-      when(
-        () => remote.removeBlogImage(_kOldCoverUrl),
-      ).thenAnswer((_) async {});
 
       final result = await repository.editBlog(
-        blogId: 'b1',
+        blogId: 'my-slug',
         image: cover,
         title: '新标题',
         content: '新正文',
@@ -176,52 +156,32 @@ void main() {
       );
 
       expect(result.isRight(), isTrue);
-      // Order matters: DB update before old-object removal.
       verifyInOrder([
-        () => remote.editBlog(any()),
-        () => remote.removeBlogImage(_kOldCoverUrl),
-      ]);
-    });
-
-    test('a failed update rolls back the newly uploaded cover', () async {
-      when(() => remote.getBlogById('b1')).thenAnswer((_) async => _blog());
-      when(
+        () => remote.getBlogById('my-slug'),
         () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-          blogId: any(named: 'blogId'),
-          posterId: any(named: 'posterId'),
-          mimeType: any(named: 'mimeType'),
-        ),
-      ).thenAnswer((_) async => _kNewCoverUrl);
-      when(
+              image: any(named: 'image'),
+              mimeType: 'image/png',
+            ),
         () => remote.editBlog(any()),
-      ).thenThrow(const ServerException('rls denied'));
-      when(
-        () => remote.removeBlogImage(_kNewCoverUrl),
-      ).thenAnswer((_) async {});
-
-      final result = await repository.editBlog(
-        blogId: 'b1',
-        image: cover,
-        title: '新标题',
-        content: '新正文',
-        tags: const ['诗歌'],
-      );
-
-      expect(result.isLeft(), isTrue);
-      // The old cover must survive - only the new object is rolled back.
-      verifyNever(() => remote.removeBlogImage(_kOldCoverUrl));
-      verify(() => remote.removeBlogImage(_kNewCoverUrl)).called(1);
+      ]);
+      final updated = verify(() => remote.editBlog(captureAny())).captured
+          .single as BlogModel;
+      expect(updated.imageUrl, _kNewCoverUrl);
+      expect(updated.articleId, 'b1');
+      expect(updated.id, 'my-slug');
+      expect(updated.title, '新标题');
     });
 
-    test('editing without a new image touches no storage objects', () async {
-      when(() => remote.getBlogById('b1')).thenAnswer((_) async => _blog());
+    test('editing without a new image keeps the existing cover', () async {
+      when(
+        () => remote.getBlogById('my-slug'),
+      ).thenAnswer((_) async => _blog());
       when(() => remote.editBlog(any())).thenAnswer(
         (invocation) async => invocation.positionalArguments[0] as BlogModel,
       );
 
       final result = await repository.editBlog(
-        blogId: 'b1',
+        blogId: 'my-slug',
         image: null,
         title: '新标题',
         content: '新正文',
@@ -232,44 +192,45 @@ void main() {
       verifyNever(
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
-          blogId: any(named: 'blogId'),
-          posterId: any(named: 'posterId'),
           mimeType: any(named: 'mimeType'),
         ),
       );
-      verifyNever(() => remote.removeBlogImage(any()));
+      final updated = verify(() => remote.editBlog(captureAny())).captured
+          .single as BlogModel;
+      expect(updated.imageUrl, _kOldCoverUrl);
     });
+  });
 
-    test(
-      'an old-cover removal failure does not fail the edit (logged orphan)',
-      () async {
-        when(() => remote.getBlogById('b1')).thenAnswer((_) async => _blog());
-        when(
-          () => remote.uploadBlogImage(
-            image: any(named: 'image'),
-            blogId: any(named: 'blogId'),
-            posterId: any(named: 'posterId'),
-            mimeType: any(named: 'mimeType'),
-          ),
-        ).thenAnswer((_) async => _kNewCoverUrl);
-        when(() => remote.editBlog(any())).thenAnswer(
-          (invocation) async => invocation.positionalArguments[0] as BlogModel,
-        );
-        when(
-          () => remote.removeBlogImage(_kOldCoverUrl),
-        ).thenThrow(const ServerException('storage down'));
+  group('deleteBlog', () {
+    test('reports the backend gap as a validation failure', () async {
+      when(
+        () => remote.deleteBlog('my-slug'),
+      ).thenThrow(const ServerException('当前后端暂不支持删除文章，敬请期待'));
 
-        final result = await repository.editBlog(
-          blogId: 'b1',
-          image: cover,
-          title: '新标题',
-          content: '新正文',
-          tags: const ['诗歌'],
-        );
+      final result = await repository.deleteBlog('my-slug');
 
-        // The DB row already points at the new cover: the edit succeeded.
-        expect(result.isRight(), isTrue);
-      },
-    );
+      result.fold(
+        (failure) => expect(failure.message, contains('暂不支持删除')),
+        (_) => fail('expected a failure'),
+      );
+    });
+  });
+
+  group('getBlogById', () {
+    test('caches a fetched article locally', () async {
+      when(
+        () => remote.getBlogById('my-slug'),
+      ).thenAnswer((_) async => _blog());
+      when(
+        () => local.uploadLocalBlogs(blogs: any(named: 'blogs')),
+      ).thenAnswer((_) async {});
+
+      final result = await repository.getBlogById('my-slug');
+
+      expect(result.isRight(), isTrue);
+      verify(
+        () => local.uploadLocalBlogs(blogs: any(named: 'blogs')),
+      ).called(1);
+    });
   });
 }

@@ -1,28 +1,31 @@
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
+import 'package:belog/core/nowave/nowave_api_client.dart';
+import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
 import 'package:belog/features/auth/data/repositories/auth_repository_impl.dart';
-import 'package:belog/features/auth/domain/entities/sign_up_outcome.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 class MockRemote extends Mock implements AuthRemoteDataSource {}
 
 class MockConnection extends Mock implements ConnectionChecker {}
 
-sb.Session _session({String? updatedAt}) => sb.Session(
-  accessToken: 'token',
-  tokenType: 'bearer',
-  user: sb.User(
-    id: 'u1',
-    appMetadata: {},
-    userMetadata: {},
-    aud: '',
-    email: 'user@example.invalid',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: updatedAt,
-  ),
+NowaveSessionData _session({String userId = 'u1'}) => NowaveSessionData(
+  userId: userId,
+  email: 'user@example.invalid',
+  accessToken: 'access',
+  refreshToken: 'refresh',
+  accessExpiresAt: DateTime.utc(2030),
+  refreshExpiresAt: DateTime.utc(2030),
+);
+
+UserModel _user({String name = '测试用户'}) => UserModel(
+  id: 'u1',
+  email: 'user@example.invalid',
+  name: name,
+  updatedAt: DateTime.utc(2024),
 );
 
 void main() {
@@ -37,10 +40,11 @@ void main() {
   });
 
   group('currentUser (offline session restore)', () {
-    test('a session with a null updatedAt restores without crashing '
-        '(regression: DateTime.parse on null)', () async {
+    test(
+      'a persisted session restores a minimal user without network',
+      () async {
       when(() => connection.isConnected).thenAnswer((_) async => false);
-      when(() => remote.currentUserSession).thenReturn(_session());
+      when(() => remote.currentSession).thenReturn(_session());
 
       final result = await repository.currentUser();
 
@@ -51,19 +55,9 @@ void main() {
       });
     });
 
-    test('an unparseable updatedAt falls back instead of throwing', () async {
-      when(() => connection.isConnected).thenAnswer((_) async => false);
-      when(
-        () => remote.currentUserSession,
-      ).thenReturn(_session(updatedAt: 'not-a-date'));
-
-      final result = await repository.currentUser();
-      expect(result.isRight(), isTrue);
-    });
-
     test('no session offline means not logged in', () async {
       when(() => connection.isConnected).thenAnswer((_) async => false);
-      when(() => remote.currentUserSession).thenReturn(null);
+      when(() => remote.currentSession).thenReturn(null);
 
       final result = await repository.currentUser();
       expect(result.isLeft(), isTrue);
@@ -72,31 +66,24 @@ void main() {
 
   group('currentUser (online)', () {
     test(
-      'a valid session without a profile row is NOT treated as logged in',
+      'a session that cannot be refreshed is NOT treated as logged in',
       () async {
         when(() => connection.isConnected).thenAnswer((_) async => true);
-        when(() => remote.currentUserSession).thenReturn(_session());
+        when(() => remote.currentSession).thenReturn(_session());
         when(() => remote.getCurrentUserData()).thenAnswer((_) async => null);
 
         final result = await repository.currentUser();
 
         result.fold((failure) {
           expect(failure.message, contains('重新登录'));
-        }, (_) => fail('an auth user without a profile must not be logged in'));
+        }, (_) => fail('a dropped session must not be logged in'));
       },
     );
 
-    test('a profile row restores the full user', () async {
+    test('a resolved profile restores the full user', () async {
       when(() => connection.isConnected).thenAnswer((_) async => true);
-      when(() => remote.currentUserSession).thenReturn(_session());
-      when(() => remote.getCurrentUserData()).thenAnswer(
-        (_) async => UserModel(
-          id: 'u1',
-          email: 'user@example.invalid',
-          name: '测试用户',
-          updatedAt: DateTime.utc(2024),
-        ),
-      );
+      when(() => remote.currentSession).thenReturn(_session());
+      when(() => remote.getCurrentUserData()).thenAnswer((_) async => _user());
 
       final result = await repository.currentUser();
 
@@ -107,8 +94,9 @@ void main() {
     });
   });
 
-  group('signUpWithEmailPassword', () {
-    test('forwards the pending-confirmation outcome unchanged', () async {
+  group('signUpWithEmailPassword', () => {
+    test('a successful sign-up is a signed-in user (no confirmation step)',
+        () async {
       when(() => connection.isConnected).thenAnswer((_) async => true);
       when(
         () => remote.signUpWithEmailPassword(
@@ -116,18 +104,16 @@ void main() {
           email: any(named: 'email'),
           password: any(named: 'password'),
         ),
-      ).thenAnswer(
-        (_) async => const SignUpOutcome(email: 'user@example.invalid'),
-      );
+      ).thenAnswer((_) async => _user());
 
       final result = await repository.signUpWithEmailPassword(
         name: '测试用户',
         email: 'user@example.invalid',
-        password: 'secret',
+        password: 'a-12-char-secret',
       );
 
-      result.fold((_) => fail('expected an outcome'), (outcome) {
-        expect(outcome.requiresEmailConfirmation, isTrue);
+      result.fold((_) => fail('expected a user'), (user) {
+        expect(user.id, 'u1');
       });
     });
 
@@ -137,7 +123,7 @@ void main() {
       final result = await repository.signUpWithEmailPassword(
         name: '测试用户',
         email: 'user@example.invalid',
-        password: 'secret',
+        password: 'a-12-char-secret',
       );
 
       expect(result.isLeft(), isTrue);
@@ -147,6 +133,92 @@ void main() {
           email: any(named: 'email'),
           password: any(named: 'password'),
         ),
+      );
+    });
+
+    test('a duplicate e-mail conflict maps to a friendly message', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      when(
+        () => remote.signUpWithEmailPassword(
+          name: any(named: 'name'),
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenThrow(
+        const NowaveApiException(
+          statusCode: 409,
+          code: 'CONFLICT',
+          message: 'identity already exists',
+        ),
+      );
+
+      final result = await repository.signUpWithEmailPassword(
+        name: '测试用户',
+        email: 'user@example.invalid',
+        password: 'a-12-char-secret',
+      );
+
+      result.fold(
+        (failure) => expect(failure.message, contains('已被注册')),
+        (_) => fail('expected a failure'),
+      );
+    });
+  });
+
+  group('loginWithEmailPassword', () {
+    test('wrong credentials map to a credential-specific message', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      when(
+        () => remote.loginWithEmailPassword(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenThrow(
+        const NowaveApiException(
+          statusCode: 401,
+          code: 'UNAUTHENTICATED',
+          message: 'authentication failed',
+        ),
+      );
+
+      final result = await repository.loginWithEmailPassword(
+        email: 'user@example.invalid',
+        password: 'wrong',
+      );
+
+      result.fold(
+        (failure) {
+          expect(failure.message, contains('邮箱或密码不正确'));
+          expect(failure.kind, FailureKind.auth);
+        },
+        (_) => fail('expected a failure'),
+      );
+    });
+
+    test('rate limiting maps to a friendly message', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      when(
+        () => remote.loginWithEmailPassword(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenThrow(
+        const NowaveApiException(
+          statusCode: 429,
+          code: 'RATE_LIMITED',
+          message: 'too many attempts',
+          retryAfterSeconds: 60,
+        ),
+      );
+
+      final result = await repository.loginWithEmailPassword(
+        email: 'user@example.invalid',
+        password: 'wrong',
+      );
+
+      result.fold(
+        (failure) => expect(failure.message, contains('尝试次数过多')),
+        (_) => fail('expected a failure'),
       );
     });
   });

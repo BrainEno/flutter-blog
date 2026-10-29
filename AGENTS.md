@@ -45,11 +45,11 @@ For generated code, also run the generator used by the current dependency set, f
 ## Secrets, configuration and external services
 
 - Never commit `.env`, private keys, signing keystores, access tokens, service-role/secret keys, production credentials, or real user data.
-- Client-side Supabase configuration may contain a public anon/publishable key only. The app must never use a Supabase `service_role` or secret key. Client security depends on server-side RLS and Storage policies.
+- Client-side backend configuration is a single public `API_BASE_URL` origin (no client key is embedded). Authorization is enforced per request by the no-wave backend; the app must never embed administrative credentials.
 - Do not print secrets, environment dumps, full auth/session objects, or sensitive user data in terminal logs, CI artifacts, screenshots or PR comments.
 - Pull-request CI must not need production secrets. Do not introduce `pull_request_target` or execute untrusted PR code with privileged tokens.
 - Use a fake, non-routable placeholder only when a build tool requires a local configuration file; document that it is a CI fixture and never use it to claim backend smoke tests passed.
-- Never mutate, reset, truncate, migrate destructively, or upload test content to the production Supabase project. Validate migrations in a local or dedicated test project.
+- Never mutate, reset, truncate, migrate destructively, or upload test content to the production backend. Validate migrations in a local or dedicated test deployment.
 - Treat production-schema details and security policies as unknown until confirmed from repository migrations or an authorized, read-only inspection.
 
 ## Data, architecture and generated files

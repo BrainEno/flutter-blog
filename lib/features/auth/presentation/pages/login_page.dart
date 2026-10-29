@@ -55,51 +55,6 @@ class _LoginPageState extends State<LoginPage> {
     context.go(widget.redirectTo ?? '/');
   }
 
-  Future<void> _openForgotPassword() async {
-    final controller = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    final submitted = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('找回密码'),
-        content: Form(
-          key: formKey,
-          child: AuthField(
-            hintText: '注册时使用的邮箱',
-            controller: controller,
-            prefixIcon: Icons.email_outlined,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.pop(dialogContext, true);
-              }
-            },
-            child: const Text('发送重置邮件'),
-          ),
-        ],
-      ),
-    );
-    if (!mounted) {
-      controller.dispose();
-      return;
-    }
-    if (submitted == true) {
-      if (context.mounted) {
-        context.read<AuthBloc>().add(
-          AuthForgotPassword(email: controller.text.trim()),
-        );
-      }
-    }
-    controller.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return BlocListener<AppUserCubit, AppUserState>(
@@ -119,8 +74,6 @@ class _LoginPageState extends State<LoginPage> {
                   if (attemptedLogin) {
                     showSnackBar(context, state.message);
                   }
-                } else if (state is AuthPasswordResetEmailSent) {
-                  showSnackBar(context, '重置邮件已发送，请查收并按邮件指引重设密码');
                 }
               },
               builder: (context, state) {
@@ -171,13 +124,9 @@ class _LoginPageState extends State<LoginPage> {
                         },
                       ),
                       const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: _openForgotPassword,
-                          child: const Text('忘记密码？'),
-                        ),
-                      ),
+                      // No "forgot password" entry: the backend has no
+                      // password-reset flow yet (gap G2, see
+                      // docs/supabase-to-nowave-migration.md).
                       const SizedBox(height: 18),
                       Center(
                         child: GestureDetector(

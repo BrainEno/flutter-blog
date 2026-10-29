@@ -48,6 +48,7 @@ class SqliteBlogCache implements BlogLocalDataSource {
   BlogModel _blogFromRow(Map<String, Object?> data) {
     return BlogModel(
       id: data['id']! as String,
+      articleId: data['article_id'] as String? ?? '',
       title: data['title']! as String,
       content: data['content']! as String,
       posterId: data['poster_id']! as String,

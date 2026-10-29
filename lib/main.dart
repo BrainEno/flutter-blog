@@ -5,7 +5,6 @@ import 'package:belog/core/theme/theme.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/global_snackbar.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
-import 'package:belog/features/auth/auth_link_handler.dart';
 import 'package:belog/features/auth/auth_session_sync.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
@@ -25,7 +24,7 @@ void main() async {
   _installGlobalErrorHandlers();
 
   await initDependencies();
-  // Restore a persisted Supabase session before the first frame so the
+  // Restore the persisted no-wave session before the first frame so the
   // router's auth redirect and tab visibility see the correct user state
   // instead of a logged-out flash. The wait is bounded: a slow network
   // must not keep the app from starting, and the login page re-checks on
@@ -38,17 +37,15 @@ void main() async {
           (state) =>
               state is AuthSuccess ||
               state is AuthFailure ||
-              state is AuthNeedsEmailConfirmation,
+              state is AuthLogoutFailure,
         )
         .timeout(_kSessionRestoreTimeout);
   } on TimeoutException {
     AppLogger.debug('session restore timed out; continuing boot');
   }
-  // Keep the app-wide identity cubit in sync with auth events (token
-  // refreshes, deep-link confirmations, invalidations) and accept auth
-  // callback deep links (e-mail confirmation / password recovery).
+  // Keep the app-wide identity cubit in sync with out-of-band session
+  // events (a failed background token refresh drops the session).
   serviceLocator<AuthSessionSync>().start();
-  unawaited(serviceLocator<AuthLinkHandler>().start());
   runApp(
     MultiBlocProvider(
       providers: [

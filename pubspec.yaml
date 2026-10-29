@@ -35,7 +35,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   fpdart: ^1.1.1
-  supabase_flutter: ^2.8.3
+  http: ^1.6.0
   flutter_bloc: ^9.0.0
   get_it: ^8.0.3
   dotted_border: ^2.1.0
@@ -53,13 +53,14 @@ dependencies:
   url_launcher: ^6.3.1
   flutter_native_splash: ^2.4.6
   cached_network_image: ^3.4.1
-  # Auth deep links (Supabase sign-up confirmation / password recovery)
-  # arriving as belog://auth-callback on Android and iOS.
-  app_links: ^7.2.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  # Raw SQLite handle for building pre-migration database fixtures in
+  # storage tests (the app itself only talks to Drift).
+  sqlite3: ^3.8.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

@@ -1,81 +1,65 @@
 # belog
 
-Flutter 编写的移动博客客户端（应用内品牌：Bottom Think），后端使用
-[Supabase](https://supabase.com)（Postgres + Auth + Storage）。支持离线缓存阅读、
-本地草稿、点赞收藏、按标签浏览与标题搜索。
+Flutter 编写的移动博客客户端（应用内品牌：Bottom Think），后端使用自托管
+[no-wave](https://github.com/BrainEno/no-wave) `apps/api`（Node + TypeScript，
+REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、点赞收藏、
+按标签浏览与全文搜索。
+
+后端迁移背景与逐接口核对结论见
+[docs/supabase-to-nowave-migration.md](docs/supabase-to-nowave-migration.md)
+（从 Supabase 迁移而来）。
 
 ## 功能
 
-- 账号：邮箱注册 / 登录 / 退出，注册邮箱确认（深链回调自动登录），
-  找回密码（重置邮件深链），个人资料编辑（昵称、网站、头像）
-- 文章：发布 / 编辑 / 删除，封面图上传（压缩 + 版本化路径 + 旧对象清理），
-  标签分类
-- 浏览：分页 Feed、下拉刷新、滚动加载更多、按标签筛选、标题搜索（含防抖与结果上限）
-- 互动：点赞 / 取消点赞（乐观更新 + 服务端状态校准），个人收藏列表
+- 账号：邮箱注册（注册即登录，无邮箱确认步骤）/ 登录 / 退出，
+  个人资料编辑（昵称、网站、头像）
+- 文章：发布 / 编辑，封面图上传（服务端统一转码 WebP，资产不可变），标签分类
+  （服务端 create-or-reuse，中文名可用）
+- 浏览：分页 Feed、下拉刷新、滚动加载更多、按标签筛选、全文搜索（trigram，
+  含防抖与结果上限）
+- 互动：点赞 / 取消点赞（乐观更新 + 服务端状态校准，显式置态），个人收藏列表
 - 草稿：按文章隔离的本地草稿、恢复 / 丢弃对话框、2 秒防抖自动保存、发布后自动清理
 - 离线：文章列表与详情 SQLite 缓存，离线可读；网络操作离线时快速失败并提示
 - 主题：亮 / 暗 / 跟随系统，偏好本地持久化
 
-## 深链与邮箱流程（auth callback）
+## 认证与会话（no-wave）
 
-注册确认与密码恢复邮件里的链接使用自定义 scheme 重定向回应用：
+- **注册 / 登录**：`POST /auth/{register,login}`，body 仅 `{email,password}`；
+  注册密码最短 **12 位**（客户端已同步前移校验）。成功即返回
+  `{accessToken, refreshToken, …}`，注册后立即 `PUT /me/profile` 补写昵称。
+- **会话持久化**：token 对存本地 SQLite（`core/nowave/nowave_session.dart`，
+  `NowaveSessionStore` 接口可替换为平台安全存储）。启动时恢复，
+  `GET /me` + `GET /me/profile` 解析身份。
+- **刷新轮换**：`POST /auth/refresh` 单次有效且轮换；**重用已轮换的 refresh
+  token 会撤销整个会话族**，因此客户端的刷新严格单飞（single-flight），
+  access token 过期遇 401 时自动刷新并重放请求一次。
+- **退出**：`DELETE /me/session` 撤销会话族（尽力而为），本地会话必定清除。
+- **会话同步**：`lib/features/auth/auth_session_sync.dart` 订阅会话状态流；
+  后台刷新失败导致的登出会立即把用户带出登录态 UI。
+- **email 展示**：`GET /me` 只返回 id，账号页展示的邮箱来自登录/注册时本地
+  缓存（G3，见迁移文档）。
 
-- **回调 URL**：`belog://auth-callback`
-- **Android**：`android/app/src/main/AndroidManifest.xml` 中 MainActivity 的
-  `intent-filter`（scheme `belog` + host `auth-callback`）
-- **iOS**：`ios/Runner/Info.plist` 的 `CFBundleURLTypes`（scheme `belog`）
-- **应用内**：`lib/features/auth/auth_link_handler.dart` 接收链接
-  （`app_links`），用 gotrue 的 `getSessionFromUrl` 建立会话，按产生的
-  auth 事件区分流程（`signedIn` = 邮箱确认、`passwordRecovery` = 密码恢复），
-  并通过全局 SnackBar 给出成功 / 失败反馈
-- **会话同步**：`lib/features/auth/auth_session_sync.dart` 订阅
-  `onAuthStateChange`（signedIn / signedOut / tokenRefreshed / userUpdated /
-  passwordRecovery），同步 `AppUserCubit`；token 刷新失败导致的登出同样生效
+## 后端差距（已知，入口已隐藏）
 
-**owner 待办（控制台动作）**：在 Supabase Dashboard →
-Authentication → URL Configuration → Redirect URLs 中加入
-`belog://auth-callback`，否则邮件中的按钮不会带自定义 scheme 跳转。
-密码恢复链接登录后，引导用户到「我的 → 账号安全」设置新密码。
+no-wave 现有 API 尚无对应端点，相关 UI 本次迁移先下线（详见迁移文档 G1/G2）：
 
-## 账号安全约定
+- **删除文章**：无 `DELETE /articles/:id`，编辑器菜单已隐藏「删除文章」。
+- **账号安全**：无改密码 / 改邮箱 / 密码重置 / 邮箱验证，登录页已隐藏
+  「忘记密码」，「账号设置」入口已移除。
 
-- **邮箱变更**：仅通过「账号安全」页（Supabase Auth `updateUser(email:)` +
-  新邮箱确认邮件）。个人资料编辑页**不写** `profiles.email`
-  （`UserModel.toProfileUpdateJson()` 刻意排除该列）。
-- **密码变更**：`updateUser(password:)` 成功后自动 `signOut(scope: others)`
-  撤销其他设备的会话（尽力而为，失败仅记日志）。
-- **reauthentication**：若项目开启了"近期身份验证"要求，敏感更新会返回
-  `reauthentication_required`，客户端映射为
-  "出于安全考虑，请退出后重新登录，再进行此操作" 并原样传播到 UI。
-- **注册确认**：`signUp` 未返回 session 时进入"请确认邮箱"等待页
-  （可重发确认邮件），绝不把 auth user 当作已登录；
-  profile 的创建由服务端触发器负责（见下节）。
+## 图片与媒体约定
 
-## 图片与 Storage 约定
-
-客户端只写入 `blog_images` / `avatars` 两个 bucket 的对象，bucket 可见性
-与 RLS 策略属服务端待办（#8，当前不改 bucket 标志）。
-
-- **压缩**：选图统一走 `core/utils/pick_image.dart`（`maxWidth/maxHeight`
-  1920 + `imageQuality: 85`），典型封面远小于 ~300 KB；同时保留图片的
-  MIME 并作为 `contentType` 上传（未知时回退 `image/jpeg`）。
+- **上传**：`POST /me/media`，请求体为图片原始字节，MIME 放 `Content-Type`
+  头。服务端统一**重编码为 WebP** 并剥离元数据，资产不可变（每次上传新 id）。
+- **读取**：`GET /api/v1/media/:id`，immutable + ETag。公开 URL 由客户端统一
+  构造为 `$API_BASE_URL/api/v1/media/<id>`（上传响应的 `src` 字段缺 `/v1`
+  段，属上游不一致，勿直接使用）。
 - **取消 ≠ 失败**：`pickImage()` 取消返回 `null`，真失败抛
   `PickImageException`，调用方（编辑器/资料页）对失败弹提示，不再吞掉。
-- **路径**：所有对象路径与 URL 解析集中在
-  `core/utils/storage_objects.dart`。新对象路径带归属与版本：
-  `covers/<posterId>/<blogId>/<毫秒时间戳>.<ext>`、
-  `avatars/<userId>/<毫秒时间戳>.<ext>`；旧对象（`<blogId>`、`<userId>`
-  无扩展名平铺路径）的删除通过同一个 URL 解析器兼容。
-- **版本化 URL**：列表卡片、详情页、编辑器统一用
-  `presentation/utils/cover_url.dart` 的 `?v=<updatedAt.microseconds>`
-  构造封面 URL（编辑器原 imageCache evict hack 已移除）。
-- **一致性**：
-  - 发布失败（行插入被拒）→ 尽力删除刚上传的封面（孤儿回滚）；
-  - 编辑换图 → 先传新版本对象 → DB 更新成功 → 再删旧对象；
-  - 删除文章 → 先删 DB 行 → 再删封面（失败不使删除报错）；
-  - 头像遵循同样模式。
-  清理失败一律经 `AppLogger` 记录结构化错误（debug 构建输出，release 无
-  远端审计通道；owner 可在 Supabase Storage 控制台按路径前缀核对孤儿）。
+- **无删除**：媒体无删除端点，旧资产自然失效为不可达（生命周期由服务端管理）。
+  客户端不再有版本化路径 / 孤儿回滚逻辑。
+- **缓存**：封面与头像 URL 不可变，无需 `?v=` cache-busting
+  （`presentation/utils/cover_url.dart` 已简化）。
 
 ## 架构
 
@@ -87,13 +71,14 @@ lib/
 │   ├── common/            # 全局 cubit（AppUser）
 │   ├── error/             # Failure 契约 + 异常映射（error_mapper）
 │   ├── network/           # 连接检查
-│   ├── storage/           # Drift/SQLite：缓存、草稿、主题（legacy/ 为旧 Isar 模型）
+│   ├── nowave/            # API 客户端（envelope/401 刷新/媒体上传）+ 会话管理
+│   ├── storage/           # Drift/SQLite：缓存、草稿、主题、会话（legacy/ 为旧 Isar 模型）
 │   ├── theme/             # 主题与 ThemeBloc
 │   └── utils/             # AppLogger、重试、Snackbar 等
 ├── features/
-│   ├── auth/              # 登录注册（Supabase Auth）
+│   ├── auth/              # 登录注册（no-wave /auth/*）
 │   ├── blog/              # 文章域：datasources / repository / usecases / blocs / pages
-│   └── user/              # 个人资料与账号修改
+│   └── user/              # 个人资料
 ├── router/                # go_router 路由（页面级 bloc 随页面创建销毁）
 └── main.dart              # 入口 + 全局错误钩子
 ```
@@ -102,18 +87,23 @@ lib/
 
 - **数据流向**：UI → Bloc → Usecase → Repository（`Either<Failure, T>`）→
   Datasource。Repository 是唯一把异常翻译成 `Failure` 的地方。
+- **文章寻址双轨**：公开读 / 点赞按 slug（即 `Blog.id`），更新按服务端 UUID
+  （`BlogModel.articleId`，仅写入路径使用）。
+- **正文模型**：App 的纯文本正文 ↔ no-wave `contentBlocks`（v0 纯文本块），
+  转换集中在 `features/blog/data/datasources/nowave_article_codec.dart`；
+  封面 = 首个 image 块。
 - **Failure 契约**（`core/error/failures.dart`）：`kind`
   （network/timeout/auth/permission/validation/storage/server/unknown）+
   面向用户的中文 `message` + 稳定 `code` + 仅供诊断的 `cause`。
-  原始异常文本永远不会进入 UI。
-- **本地存储**：Drift (SQLite) 保存文章缓存与草稿。缓存按业务 ID upsert 去重；
-  草稿按 `blog_id` 作用域隔离（`null` = 新文章）。
+  原始异常文本永远不会进入 UI（后端错误码经 `error_mapper` 分类，不透传英文）。
+- **本地存储**：Drift (SQLite) 保存文章缓存、草稿与会话。缓存按业务 ID upsert
+  去重；草稿按 `blog_id` 作用域隔离（`null` = 新文章）。
 
 ## 本地开发
 
 ```bash
 flutter pub get
-flutter run            # 需要 Supabase 配置（见下）
+flutter run            # 需要 API_BASE_URL 配置（见下）
 flutter analyze
 flutter test
 dart format lib test
@@ -122,7 +112,9 @@ dart format lib test
 - Flutter 版本：CI 使用 **3.47.8**（stable），本地请保持一致。
 - Android 构建需要 JDK 17–20（AGP/Gradle 兼容范围），如遇冲突执行
   `flutter config --jdk-dir=<JDK_DIRECTORY>`。
-- `lib/core/secrets/` 中包含 Supabase 连接配置（当前仓库内置的是共享测试项目）。
+- 后端地址通过 `--dart-define-from-file=env.json`（模板见 `env.example.json`）
+  或 `--dart-define=API_BASE_URL=https://...` 注入，只需要一个 HTTP(S) origin，
+  无客户端密钥。
 
 ## 测试与 CI
 
@@ -136,7 +128,8 @@ dart format lib test
 4. **build**：Android/iOS debug 构建冒烟（iOS 构建在 macOS runner 上执行）。
 
 单元与 widget 测试覆盖：分页/刷新竞态（BlogBloc）、搜索竞态（BlogSearchBloc）、
-点赞并发与回滚、草稿隔离与自动保存、异常映射矩阵、离线行为等。
+点赞并发与回滚、草稿隔离与自动保存、异常映射矩阵、离线行为、API 客户端
+envelope/401 刷新重放、会话刷新单飞、contentBlocks 编解码等。
 
 ## 发布
 
@@ -145,45 +138,30 @@ CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 
 **不得**当作生产构建分发。另见
 [docs/ci-observability.md](docs/ci-observability.md)、
 [docs/isar-to-sqlite-migration.md](docs/isar-to-sqlite-migration.md)、
+[docs/supabase-to-nowave-migration.md](docs/supabase-to-nowave-migration.md)、
 [docs/agent-development.md](docs/agent-development.md)。
 
-## 服务端（Supabase）待办
+## 服务端（no-wave）差距与待办
 
-本仓库目前只包含客户端，Supabase schema / RLS / Storage policy 尚未纳入版本管理
-（[#7](https://github.com/BrainEno/flutter-blog/issues/7)）。以下 SQL 需要项目
-owner 在 Supabase 控制台执行，是点赞并发修复的**服务端部分**：
+客户端侧已全部迁移至 no-wave `apps/api`；剩余差距需要在 no-wave 仓库补端点
+（完整核对见迁移文档 §4）：
 
-```sql
--- 每个用户对每篇文章最多一个赞（客户端 toggle 依赖它防并发重复）
-alter table likes add constraint likes_user_blog_unique unique (user_id, blog_id);
-
--- 行级安全：用户只能操作自己的点赞
-alter table likes enable row level security;
-create policy "likes are user-scoped" on likes
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
--- 标题搜索的性能索引（当前为 ilike 子串匹配，中文无需分词）
-create index if not exists blogs_title_lower_idx on blogs (lower(title));
-```
-
-> 说明：客户端已按"先删后插"的原子语义实现 toggle，即使约束尚未加上也不会
-> 双重翻转；但缺少唯一约束时极端并发可能产生重复行（下次 toggle 会自愈）。
-
-**profile 创建归属（重要）**：`profiles` 行由服务端触发器
-（`handle_new_user`，auth.users 插入后同步插入 profiles）负责创建，
-客户端不做任何 profiles 插入。注册后若触发器缺失，客户端在
-`getCurrentUserData` 中得到空 profile，会按"登录状态已失效"处理而不是
-伪造登录态。owner 需在 Supabase 控制台确认该触发器存在（#7 待纳入版本管理）。
+- **G1 删除文章**：`DELETE /articles/:articleId`（owner 校验 + 事务清理
+  taxonomy 关联）。补齐后恢复编辑器「删除文章」入口即可（bloc/usecase
+  管线已保留）。
+- **G2 账号安全**：改密码 / 改邮箱 / 密码重置 / 邮箱验证（需要邮件基础设施）。
+- **G3 `GET /me` 返回 email**：或维持客户端本地缓存（现状）。
+- **媒体 `src` 字段缺 `/v1` 段**：上游小修（客户端已绕过）。
 
 ## 路线图
 
 按 [issue 列表](https://github.com/BrainEno/flutter-blog/issues) 的优先级：
 
 - **P0**：#4 Android Gradle 工具链升级
-- **P1**：#7 Supabase schema/RLS 纳入版本管理 · #8 Isar 离线缓存语义
-- **P2**：Markdown 正文、评论、关注、举报屏蔽、分享深链、离线发布队列、
-  阅读历史、国际化与无障碍、工程清理等（#15–#26）
+- **P1**：#7 服务端 schema 纳入版本管理 · #8 Isar 离线缓存语义
+- **P2**：Markdown 正文（contentBlocks v1 富文本）、评论、关注、举报屏蔽、
+  分享深链、离线发布队列、阅读历史、国际化与无障碍、工程清理等（#15–#26）
 
 已完成的重点修复：草稿按文章隔离与发布清理（#14）、Feed 分页与刷新竞态（#13）、
 点赞并发与离线行为（#9）、异常契约统一（#12）、iOS 发布流水线（#6）、
-点赞离线假成功（#3）等。
+点赞离线假成功（#3）、Supabase → no-wave 后端迁移等。

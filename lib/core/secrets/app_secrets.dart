@@ -1,4 +1,5 @@
 class AppSecrets {
-  static String? get supabaseUrl => String.fromEnvironment('SUPABASE_URL');
-  static String? get supabaseKey => String.fromEnvironment('SUPABASE_KEY');
+  /// Origin of the no-wave `apps/api` backend (e.g. https://api.example.com).
+  /// The REST surface lives under `/api/v1`; no client key is needed.
+  static String? get apiBaseUrl => String.fromEnvironment('API_BASE_URL');
 }

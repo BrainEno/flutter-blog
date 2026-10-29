@@ -173,13 +173,15 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                   keyboardType: TextInputType.url,
                 ),
                 const SizedBox(height: 16),
-                // Read-only e-mail row: the address changes only through
-                // the account-security flow (Supabase Auth confirmation).
+                // Read-only e-mail row: the backend offers no e-mail
+                // change endpoint yet (gap G2, see
+                // docs/supabase-to-nowave-migration.md); the shown address
+                // is the one cached at sign-in.
                 InputDecorator(
                   decoration: const InputDecoration(
                     labelText: '邮箱',
                     prefixIcon: Icon(Icons.email_outlined),
-                    helperText: '如需修改邮箱，请前往「我的-账号安全」',
+                    helperText: '邮箱暂不支持修改',
                   ),
                   child: Text(
                     (email == null || email!.isEmpty) ? '未设置' : email!,

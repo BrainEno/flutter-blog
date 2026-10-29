@@ -18,7 +18,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -36,10 +36,24 @@ class AppDatabase extends GeneratedDatabase {
         'CREATE TABLE drafts (id INTEGER PRIMARY KEY AUTOINCREMENT, blog_id TEXT, title TEXT NOT NULL, content TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL)',
       );
       await customStatement('CREATE INDEX drafts_blog_id ON drafts(blog_id)');
-      await customStatement(
-        'CREATE TABLE blog_cache (id TEXT PRIMARY KEY, title TEXT NOT NULL, content TEXT NOT NULL, poster_id TEXT NOT NULL, image_url TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL, poster_name TEXT, poster_avatar TEXT)',
-      );
+      await _createBlogCache();
     },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // v2 adds the no-wave server article id. Existing rows keep their
+        // Supabase-era identifiers (their `id` no longer resolves on the
+        // new backend, but the rows stay readable as offline history).
+        await customStatement(
+          'ALTER TABLE blog_cache ADD COLUMN article_id TEXT NOT NULL DEFAULT \'\'',
+        );
+      }
+    },
+  );
+
+  /// The offline blog cache. `id` is the article's public slug on the
+  /// no-wave backend; `article_id` is the server UUID needed for writes.
+  Future<void> _createBlogCache() => customStatement(
+    'CREATE TABLE blog_cache (id TEXT PRIMARY KEY, article_id TEXT NOT NULL DEFAULT \'\', title TEXT NOT NULL, content TEXT NOT NULL, poster_id TEXT NOT NULL, image_url TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL, poster_name TEXT, poster_avatar TEXT)',
   );
 
   /// Run before exposing this database to any UI. A marker and every imported
@@ -134,16 +148,35 @@ class AppDatabase extends GeneratedDatabase {
     [mode.name],
   );
 
+  /// Reads a `metadata` value, or null when the key is absent.
+  Future<String?> readMetadata(String key) async {
+    final rows = await customSelect(
+      'SELECT value FROM metadata WHERE key = ? LIMIT 1',
+      variables: [Variable<String>(key)],
+    ).get();
+    return rows.isEmpty ? null : rows.single.read<String>('value');
+  }
+
+  Future<void> writeMetadata(String key, String value) => customStatement(
+    'INSERT INTO metadata(key, value) VALUES (?, ?) '
+    'ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+    [key, value],
+  );
+
+  Future<void> deleteMetadata(String key) =>
+      customStatement('DELETE FROM metadata WHERE key = ?', [key]);
+
   Future<void> upsertBlog(BlogModel blog) => customStatement(
     '''
-    INSERT INTO blog_cache(id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET title = excluded.title, content = excluded.content,
+    INSERT INTO blog_cache(id, article_id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET article_id = excluded.article_id, title = excluded.title, content = excluded.content,
       poster_id = excluded.poster_id, image_url = excluded.image_url, tags = excluded.tags,
       updated_at = excluded.updated_at, poster_name = excluded.poster_name, poster_avatar = excluded.poster_avatar
     ''',
     [
       blog.id,
+      blog.articleId,
       blog.title,
       blog.content,
       blog.posterId,

@@ -128,8 +128,7 @@ jobs:
           umask 077
           cat > env.json <<'EOF'
           {
-            "SUPABASE_URL": "https://example.invalid",
-            "SUPABASE_KEY": "ci-placeholder-not-a-secret"
+            "API_BASE_URL": "https://example.invalid"
           }
           EOF
       - name: Resolve dependencies
@@ -179,8 +178,7 @@ jobs:
           umask 077
           cat > env.json <<'EOF'
           {
-            "SUPABASE_URL": "https://example.invalid",
-            "SUPABASE_KEY": "ci-placeholder-not-a-secret"
+            "API_BASE_URL": "https://example.invalid"
           }
           EOF
       - name: Resolve dependencies
@@ -237,8 +235,7 @@ jobs:
           umask 077
           cat > env.json <<'EOF'
           {
-            "SUPABASE_URL": "https://example.invalid",
-            "SUPABASE_KEY": "ci-placeholder-not-a-secret"
+            "API_BASE_URL": "https://example.invalid"
           }
           EOF
       - name: Resolve dependencies

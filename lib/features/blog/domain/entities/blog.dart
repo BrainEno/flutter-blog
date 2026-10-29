@@ -5,7 +5,10 @@
 /// collections lives in the data layer (`BlogModel` and
 /// `lib/core/storage/legacy/`).
 class Blog {
-  /// Stable business identifier (the remote row id).
+  /// Public identifier used for addressing: the article's slug on the
+  /// no-wave backend (`GET /articles/:slug`, likes, deep links). The
+  /// server's internal UUID is [BlogModel.articleId] in the data layer and
+  /// is only needed for update requests.
   final String id;
 
   final String title;
