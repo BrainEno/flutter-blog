@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # CI-only checks: the generated keystore/passwords are disposable test fixtures.
 set -euo pipefail
+bash "$(dirname "${BASH_SOURCE[0]}")/test_verify_apk.sh"
 unset ANDROID_KEYSTORE_PATH ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD
 if BELOG_QA_BUILD=false flutter build apk --release --dart-define-from-file=env.json > "$RUNNER_TEMP/missing-signing.log" 2>&1; then
   echo '::error::A release build succeeded without signing credentials.'
@@ -45,7 +46,9 @@ fi
 grep -Fq 'fingerprint does not match' "$RUNNER_TEMP/mismatch.log"
 QA_APK=build/reports/belog-QA-debug-signed.apk
 "$TOOLS/apksigner" verify --print-certs "$QA_APK" > "$RUNNER_TEMP/qa-cert.txt"
-qa_cert="$(awk -F ': ' '/Signer #1 certificate SHA-256 digest:/ {print $2}' "$RUNNER_TEMP/qa-cert.txt")"
+# shellcheck source=tool/release/apk_certificate.sh
+source "$(dirname "${BASH_SOURCE[0]}")/apk_certificate.sh"
+qa_cert="$(read_apk_signer_sha256 "$RUNNER_TEMP/qa-cert.txt")"
 if bash tool/release/verify_apk.sh "$QA_APK" "$name" "$number" "$qa_cert" > "$RUNNER_TEMP/debug-cert.log" 2>&1; then
   echo '::error::A debug-signed APK was accepted for release.'; exit 1
 fi
