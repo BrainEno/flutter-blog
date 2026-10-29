@@ -1,6 +1,6 @@
 import 'package:belog/core/theme/theme_preference.dart';
 import 'package:flutter/material.dart';
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 
 abstract interface class ThemePreferenceStore {
   Future<ThemeMode> load();

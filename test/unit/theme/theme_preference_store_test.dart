@@ -5,7 +5,7 @@ import 'package:belog/core/theme/theme_preference_store.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 
 void main() {
   late Directory directory;
