@@ -46,6 +46,13 @@ awk -v mode="$1" '
             }
           }
         }
+      # Load/crash summaries (no [E] progress line exists for these).
+      for (i = 1; i <= NR; i++)
+        if (lines[i] ~ /Failed to load|Some tests failed|Fatal error|Unhandled exception|Test failed/) {
+          has_failures = 1
+          for (j = i; j <= NR && j <= i + 12; j++) selected[j] = 1
+        }
+
       # Full exception blocks: two lines of lead-in, the bordered banner,
       # and everything up to (and including) the closing border line of
       # box-drawing characters, bounded per block.
@@ -78,8 +85,10 @@ awk -v mode="$1" '
       # GitHub caps annotation messages at 4096 bytes; the failing tests and
       # their details matter more than the trailing window.
       if (length(message) > 3600) message = substr(message, 1, 3600)
-    } else if (length(message) > 24000) {
-      message = substr(message, length(message) - 23999)
+    } else if (length(message) > 3600) {
+      # Without [E] progress lines the failure is a load/crash summary that
+      # lives at the END of the log; keep the tail, not the head.
+      message = substr(message, length(message) - 3599)
     }
     if (message == "") message = "No matching diagnostics; inspect the uploaded log artifact."
     gsub(/%/, "%25", message)

@@ -102,7 +102,7 @@ jobs:
                   dart format /tmp/fmt_copy.dart >/dev/null 2>&1 || true
                   if ! diff -u "$f" /tmp/fmt_copy.dart > /tmp/fmt_one.diff 2>&1; then
                     echo "### $f"
-                    grep -E '^(\+|-)[^+-]' /tmp/fmt_one.diff | head -20
+                    grep -E '^(\+|-)[^+-]' /tmp/fmt_one.diff | head -20 || true
                     echo
                   fi
                 done
