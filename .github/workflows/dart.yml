@@ -20,6 +20,7 @@ concurrency:
 
 env:
   FLUTTER_VERSION: "3.47.8"
+  BELOG_QA_BUILD: "true"
 
 jobs:
   android:
@@ -58,6 +59,9 @@ jobs:
         run: |
           set -o pipefail
           flutter build apk --release --dart-define-from-file=env.json --verbose 2>&1 | tee build/reports/android-release-build.log
+      - name: Label non-distributable QA APK
+        if: success()
+        run: cp build/app/outputs/flutter-apk/app-release.apk build/reports/belog-QA-debug-signed.apk
       - name: Upload Android validation evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -65,7 +69,7 @@ jobs:
           name: android-release-validation
           path: |
             build/reports/android-release-build.log
-            build/app/outputs/flutter-apk/app-release.apk
+            build/reports/belog-QA-debug-signed.apk
           if-no-files-found: warn
           retention-days: 14
 

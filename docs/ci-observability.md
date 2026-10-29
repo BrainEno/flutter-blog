@@ -9,7 +9,7 @@
 | Dart format | Pull request, push to `main`, manual | Blocks formatting issues in changed Dart files; separately audits repository-wide formatting drift | `format-audit` artifact and formatter logs |
 | Flutter analyze | Pull request, push to `main`, manual | `flutter analyze --fatal-infos` | `flutter-analyze-log` artifact (14 days) |
 | Flutter tests | Pull request, push to `main`, manual | `flutter test --coverage` | `flutter-test-evidence` artifact containing test log and LCOV when produced |
-| Android release | Pull request, push to `main`, manual | Release APK build and final APK `INTERNET` permission check | `android-release-evidence` artifact with build log and permission dump when available |
+| Android release | Pull request, push to `main`, manual | Explicitly debug-signed QA build, APK permission check, and isolated release-signing guard tests | `android-release-evidence` artifact with build log and permission dump when available |
 | Manual mobile build validation | Manually dispatched | Android release build and unsigned iOS compile check; it does not publish releases | Platform-specific build artifacts/logs; iOS output is clearly named as unsigned |
 
 ## Reproducibility
@@ -25,6 +25,8 @@
 Previous runs exposed failures tracked by Issues #4 and #5; consult the latest run rather than assuming they still apply. The first workflow run also found legacy formatting drift: 59 Dart files were reported by the repository-wide formatter audit. To avoid turning a small, focused PR into an unrelated 59-file reformat, the blocking format gate checks every Dart file changed by that PR, while the complete repository audit is retained as a diagnostic artifact/warning. A dedicated formatting normalization can later make the whole-repository check blocking.
 
 Analyzer and Android build failures also include a bounded diagnostic excerpt in the check annotations; the full log remains available as an artifact. Failures are signals to investigate, not reasons to weaken the workflow. The separate jobs should still run so the project has independent diagnostics.
+
+CI APKs are debug-signed QA artifacts, not production releases. See [release policy](releasing.md) for the separate signed tag workflow.
 
 No live Supabase login/list query is performed by these jobs: a PR must never use production secrets or production user data. Real-network smoke tests require a dedicated test backend and a separately reviewed, secret-safe design. Likewise, successful compilation alone is not proof of 16KB page-size compatibility, signed distribution, or on-device functionality.
 

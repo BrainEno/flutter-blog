@@ -1,0 +1,86 @@
+name: Publish signed Android release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish-android:
+    name: Signed Android release
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: write
+    steps:
+      - name: Check out tag
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - name: Require tagged commit to belong to main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Validate release inputs and prepare configuration
+        id: version
+        env:
+          ANDROID_APPLICATION_ID_APPROVED: ${{ vars.ANDROID_APPLICATION_ID_APPROVED }}
+          ANDROID_RELEASE_CERT_SHA256: ${{ vars.ANDROID_RELEASE_CERT_SHA256 }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: python3 tool/release/validate_release.py
+      - name: Set up Java 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up pinned Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: '3.47.8'
+          cache: true
+          pub-cache: true
+      - name: Decode signing key and build
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/belog-release.keystore
+          BUILD_NAME: ${{ steps.version.outputs.build_name }}
+          BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_KEYSTORE_PATH"
+          flutter pub get
+          flutter build apk --release --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER" --dart-define-from-file="$RUNNER_TEMP/belog-release-env.json"
+      - name: Verify signed APK identity, version, and certificate
+        env:
+          EXPECTED_CERT: ${{ vars.ANDROID_RELEASE_CERT_SHA256 }}
+          BUILD_NAME: ${{ steps.version.outputs.build_name }}
+          BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          bash tool/release/verify_apk.sh "$APK" "$BUILD_NAME" "$BUILD_NUMBER" "$EXPECTED_CERT"
+          cp "$APK" "belog-android-${GITHUB_REF_NAME}.apk"
+      - name: Create release without replacing existing assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: gh release create "$GITHUB_REF_NAME" "belog-android-${GITHUB_REF_NAME}.apk" --verify-tag --title "belog ${GITHUB_REF_NAME}" --generate-notes
+      - name: Delete temporary signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/belog-release.keystore" "$RUNNER_TEMP/belog-release-env.json"
