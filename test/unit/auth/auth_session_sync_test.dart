@@ -6,7 +6,7 @@ import 'package:belog/core/common/entities/user.dart' as app;
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/usecase/usecase.dart' show NoParams;
 import 'package:belog/features/auth/auth_session_sync.dart';
-import 'package:belog/features/auth/domain/repositories/auth_repository.dart';
+import 'package:belog/features/auth/domain/repository/auth_repository.dart';
 import 'package:belog/features/auth/domain/usecases/current_user.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';

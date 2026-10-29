@@ -1,11 +1,9 @@
-import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
 import 'package:belog/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:belog/features/auth/domain/entities/sign_up_outcome.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 

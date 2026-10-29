@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/usecase/usecase.dart';
 import 'package:belog/features/auth/domain/entities/sign_up_outcome.dart';
 import 'package:belog/features/auth/domain/usecases/current_user.dart';
 import 'package:belog/features/auth/domain/usecases/resend_confirmation_email.dart';
@@ -73,7 +74,7 @@ void main() {
     addTearDown(appUserCubit.close);
   });
 
-  Future<List<AuthState>> capture(Future<void> Function() trigger) async {
+  Future<List<AuthState>> capture(void Function() trigger) async {
     final done = Completer<void>();
     final states = <AuthState>[];
     late final StreamSubscription<AuthState> sub;
