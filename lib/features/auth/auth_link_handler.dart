@@ -32,12 +32,12 @@ class AppLinksDeepLinkSource implements DeepLinkSource {
 /// Outcome of handling an auth deep link.
 enum AuthLinkResult { accepted, rejected }
 
-/// Resolution of a Supabase auth callback URL: the session (when the link
-/// was valid) plus the auth event the exchange produced, which identifies
-/// the flow type ([AuthChangeEvent.signedIn] for e-mail confirmation,
+/// Resolution of a Supabase auth callback URL: the established session
+/// plus the auth event the exchange produced, which identifies the flow
+/// type ([AuthChangeEvent.signedIn] for e-mail confirmation,
 /// [AuthChangeEvent.passwordRecovery] for password-reset links).
 typedef AuthCallbackResolver =
-    Future<({AuthSessionUrlResponse? response, AuthChangeEvent? event})>
+    Future<({AuthSessionUrlResponse response, AuthChangeEvent? event})>
     Function(Uri url);
 
 /// Handles Supabase auth callback links (e-mail confirmation, password
@@ -105,12 +105,9 @@ class AuthLinkHandler {
       return;
     }
     try {
+      // The resolver throws for invalid/expired links; a returned
+      // response always carries an established session.
       final resolution = await _resolveCallbackUrl(uri);
-      final session = resolution.response?.session;
-      if (session == null) {
-        _onResult(AuthLinkResult.rejected, _kRejectedMessage);
-        return;
-      }
       switch (resolution.event) {
         case AuthChangeEvent.passwordRecovery:
           _onResult(AuthLinkResult.accepted, '身份验证成功，请前往「我的-账号安全」设置新密码');

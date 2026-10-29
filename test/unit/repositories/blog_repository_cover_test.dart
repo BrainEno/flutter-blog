@@ -42,6 +42,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(_blog());
+    registerFallbackValue(File('/nonexistent.jpg'));
   });
 
   setUp(() {

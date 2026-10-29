@@ -28,10 +28,14 @@ final class AuthNeedsEmailConfirmation extends AuthState {
 }
 
 /// A re-sent sign-up confirmation e-mail is on its way.
-final class AuthConfirmationEmailSent extends AuthState {}
+final class AuthConfirmationEmailSent extends AuthState {
+  const AuthConfirmationEmailSent();
+}
 
 /// A password-recovery e-mail is on its way.
-final class AuthPasswordResetEmailSent extends AuthState {}
+final class AuthPasswordResetEmailSent extends AuthState {
+  const AuthPasswordResetEmailSent();
+}
 
 final class AuthLogoutSuccess extends AuthState {}
 

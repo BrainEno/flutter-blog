@@ -2,27 +2,34 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
-import 'package:belog/core/common/entities/user.dart';
+import 'package:belog/core/common/entities/user.dart' as app;
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/usecase/usecase.dart' show NoParams;
 import 'package:belog/features/auth/auth_session_sync.dart';
+import 'package:belog/features/auth/domain/repositories/auth_repository.dart';
 import 'package:belog/features/auth/domain/usecases/current_user.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 /// Scriptable stand-in for the CurrentUser usecase.
 class FakeCurrentUser implements CurrentUser {
   FakeCurrentUser(this._results);
 
-  final Queue<Either<Failure, User>> _results;
+  final Queue<Either<Failure, app.User>> _results;
 
   /// When set, the in-flight call waits for this completer.
-  Completer<Either<Failure, User>>? gate;
+  Completer<Either<Failure, app.User>>? gate;
 
   int calls = 0;
 
+  // CurrentUser exposes its repository as a public getter; the interface
+  // requires it but the fake never touches it.
   @override
-  Future<Either<Failure, User>> call(NoParams params) async {
+  AuthRepository get authRepository => throw UnimplementedError();
+
+  @override
+  Future<Either<Failure, app.User>> call(NoParams params) async {
     calls++;
     if (gate != null) {
       return gate!.future;
@@ -34,10 +41,10 @@ class FakeCurrentUser implements CurrentUser {
   }
 }
 
-Session _session(String userId) => Session(
+sb.Session _session(String userId) => sb.Session(
   accessToken: 'token-$userId',
   tokenType: 'bearer',
-  user: User(
+  user: sb.User(
     id: userId,
     appMetadata: {},
     userMetadata: {},
@@ -46,7 +53,7 @@ Session _session(String userId) => Session(
   ),
 );
 
-User _appUser(String id) => User(
+app.User _appUser(String id) => app.User(
   id: id,
   email: 'user@example.invalid',
   name: '测试用户',
@@ -54,9 +61,9 @@ User _appUser(String id) => User(
 );
 
 void main() {
-  late StreamController<AuthState> authEvents;
+  late StreamController<sb.AuthState> authEvents;
   late AppUserCubit appUserCubit;
-  Session? currentSession;
+  sb.Session? currentSession;
 
   AuthSessionSync buildSync(FakeCurrentUser currentUser) => AuthSessionSync(
     authStateStream: authEvents.stream,
@@ -66,7 +73,7 @@ void main() {
   );
 
   setUp(() {
-    authEvents = StreamController<AuthState>.broadcast();
+    authEvents = StreamController<sb.AuthState>.broadcast();
     appUserCubit = AppUserCubit();
     currentSession = null;
   });
@@ -81,7 +88,7 @@ void main() {
     appUserCubit.updateUser(_appUser('u1'));
     sync.start();
 
-    authEvents.add(const AuthState(AuthChangeEvent.signedOut, null));
+    authEvents.add(const sb.AuthState(sb.AuthChangeEvent.signedOut, null));
     await Future<void>.delayed(Duration.zero);
 
     expect(appUserCubit.state, isA<AppUserInitial>());
@@ -90,13 +97,13 @@ void main() {
 
   test('signedIn refreshes the profile and updates the cubit', () async {
     final fakeCurrentUser = FakeCurrentUser(
-      Queue<Either<Failure, User>>()..add(Right(_appUser('u1'))),
+      Queue<Either<Failure, app.User>>()..add(Right(_appUser('u1'))),
     );
     final sync = buildSync(fakeCurrentUser);
     currentSession = _session('u1');
     sync.start();
 
-    authEvents.add(AuthState(AuthChangeEvent.signedIn, currentSession));
+    authEvents.add(sb.AuthState(sb.AuthChangeEvent.signedIn, currentSession));
     await Future<void>.delayed(Duration.zero);
 
     expect(appUserCubit.state, isA<AppUserLoggedIn>());
@@ -105,41 +112,43 @@ void main() {
     await sync.dispose();
   });
 
-  test(
-    'a refresh finishing after sign-out does not resurrect the login',
-    () async {
-      // The user refresh hangs until the gate is released.
-      final gate = Completer<Either<Failure, User>>();
-      final fakeCurrentUser = FakeCurrentUser(
-        Queue<Either<Failure, User>>()..add(Right(_appUser('u1'))),
-      );
-      fakeCurrentUser.gate = gate;
-      final sync = buildSync(fakeCurrentUser);
-      currentSession = _session('u1');
-      sync.start();
-
-      authEvents.add(AuthState(AuthChangeEvent.signedIn, currentSession));
-      // Sign out while the refresh is still in flight.
-      currentSession = null;
-      authEvents.add(const AuthState(AuthChangeEvent.signedOut, null));
-      await Future<void>.delayed(Duration.zero);
-      expect(appUserCubit.state, isA<AppUserInitial>());
-
-      gate.complete(Right(_appUser('u1')));
-      await Future<void>.delayed(Duration.zero);
-
-      expect(appUserCubit.state, isA<AppUserInitial>());
-      await sync.dispose();
-    },
-  );
-
-  test('tokenRefreshed does not trigger a profile refresh', () async {
-    final fakeCurrentUser = FakeCurrentUser(Queue<Either<Failure, User>>());
+  test('a refresh finishing after sign-out does not resurrect the login',
+      () async {
+    // The user refresh hangs until the gate is released.
+    final gate = Completer<Either<Failure, app.User>>();
+    final fakeCurrentUser = FakeCurrentUser(
+      Queue<Either<Failure, app.User>>()..add(Right(_appUser('u1'))),
+    );
+    fakeCurrentUser.gate = gate;
     final sync = buildSync(fakeCurrentUser);
     currentSession = _session('u1');
     sync.start();
 
-    authEvents.add(AuthState(AuthChangeEvent.tokenRefreshed, currentSession));
+    authEvents.add(sb.AuthState(sb.AuthChangeEvent.signedIn, currentSession));
+    // Sign out while the refresh is still in flight.
+    currentSession = null;
+    authEvents.add(const sb.AuthState(sb.AuthChangeEvent.signedOut, null));
+    await Future<void>.delayed(Duration.zero);
+    expect(appUserCubit.state, isA<AppUserInitial>());
+
+    gate.complete(Right(_appUser('u1')));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(appUserCubit.state, isA<AppUserInitial>());
+    await sync.dispose();
+  });
+
+  test('tokenRefreshed does not trigger a profile refresh', () async {
+    final fakeCurrentUser = FakeCurrentUser(
+      Queue<Either<Failure, app.User>>(),
+    );
+    final sync = buildSync(fakeCurrentUser);
+    currentSession = _session('u1');
+    sync.start();
+
+    authEvents.add(
+      sb.AuthState(sb.AuthChangeEvent.tokenRefreshed, currentSession),
+    );
     await Future<void>.delayed(Duration.zero);
 
     expect(fakeCurrentUser.calls, 0);
@@ -148,13 +157,15 @@ void main() {
 
   test('userUpdated refreshes the profile', () async {
     final fakeCurrentUser = FakeCurrentUser(
-      Queue<Either<Failure, User>>()..add(Right(_appUser('u1'))),
+      Queue<Either<Failure, app.User>>()..add(Right(_appUser('u1'))),
     );
     final sync = buildSync(fakeCurrentUser);
     currentSession = _session('u1');
     sync.start();
 
-    authEvents.add(AuthState(AuthChangeEvent.userUpdated, currentSession));
+    authEvents.add(
+      sb.AuthState(sb.AuthChangeEvent.userUpdated, currentSession),
+    );
     await Future<void>.delayed(Duration.zero);
 
     expect(appUserCubit.state, isA<AppUserLoggedIn>());
@@ -162,12 +173,16 @@ void main() {
   });
 
   test('initialSession is ignored', () async {
-    final fakeCurrentUser = FakeCurrentUser(Queue<Either<Failure, User>>());
+    final fakeCurrentUser = FakeCurrentUser(
+      Queue<Either<Failure, app.User>>(),
+    );
     final sync = buildSync(fakeCurrentUser);
     currentSession = _session('u1');
     sync.start();
 
-    authEvents.add(AuthState(AuthChangeEvent.initialSession, currentSession));
+    authEvents.add(
+      sb.AuthState(sb.AuthChangeEvent.initialSession, currentSession),
+    );
     await Future<void>.delayed(Duration.zero);
 
     expect(fakeCurrentUser.calls, 0);
@@ -176,14 +191,14 @@ void main() {
 
   test('start() is idempotent (only one subscription)', () async {
     final fakeCurrentUser = FakeCurrentUser(
-      Queue<Either<Failure, User>>()..add(Right(_appUser('u1'))),
+      Queue<Either<Failure, app.User>>()..add(Right(_appUser('u1'))),
     );
     final sync = buildSync(fakeCurrentUser);
     currentSession = _session('u1');
     sync.start();
     sync.start();
 
-    authEvents.add(AuthState(AuthChangeEvent.signedIn, currentSession));
+    authEvents.add(sb.AuthState(sb.AuthChangeEvent.signedIn, currentSession));
     await Future<void>.delayed(Duration.zero);
 
     expect(fakeCurrentUser.calls, 1);

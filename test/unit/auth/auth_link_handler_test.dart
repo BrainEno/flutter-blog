@@ -32,7 +32,7 @@ Session _session() => Session(
 void main() {
   late FakeDeepLinkSource links;
   late List<(AuthLinkResult, String)> results;
-  late Completer<({AuthSessionUrlResponse? response, AuthChangeEvent? event})>
+  late Completer<({AuthSessionUrlResponse response, AuthChangeEvent? event})>
   nextResolution;
 
   AuthLinkHandler buildHandler() => AuthLinkHandler(
@@ -44,10 +44,9 @@ void main() {
   setUp(() {
     links = FakeDeepLinkSource();
     results = [];
-    nextResolution =
-        Completer<
-          ({AuthSessionUrlResponse? response, AuthChangeEvent? event})
-        >();
+    nextResolution = Completer<
+      ({AuthSessionUrlResponse response, AuthChangeEvent? event})
+    >();
   });
 
   tearDown(() => links.controller.close());
@@ -59,10 +58,12 @@ void main() {
     final handler = buildHandler();
     await handler.start();
 
-    nextResolution.complete((
-      response: AuthSessionUrlResponse(session: _session()),
-      event: AuthChangeEvent.signedIn,
-    ));
+    nextResolution.complete(
+      (
+        response: AuthSessionUrlResponse(session: _session(), redirectType: null),
+        event: AuthChangeEvent.signedIn,
+      ),
+    );
     await Future<void>.delayed(Duration.zero);
 
     expect(results.single.$1, AuthLinkResult.accepted);
@@ -75,10 +76,12 @@ void main() {
     await handler.start();
 
     links.controller.add(Uri.parse('belog://auth-callback?code=abc'));
-    nextResolution.complete((
-      response: AuthSessionUrlResponse(session: _session()),
-      event: AuthChangeEvent.passwordRecovery,
-    ));
+    nextResolution.complete(
+      (
+        response: AuthSessionUrlResponse(session: _session(), redirectType: null),
+        event: AuthChangeEvent.passwordRecovery,
+      ),
+    );
     await Future<void>.delayed(Duration.zero);
 
     expect(results.single.$1, AuthLinkResult.accepted);
@@ -86,12 +89,16 @@ void main() {
     await handler.dispose();
   });
 
-  test('a link without a session is rejected with guidance', () async {
+  test('an expired/invalid link (resolver throws) is rejected with guidance',
+      () async {
     final handler = buildHandler();
     await handler.start();
 
-    links.controller.add(Uri.parse('belog://auth-callback?code=abc'));
-    nextResolution.complete((response: null, event: null));
+    links.controller.add(Uri.parse('belog://auth-callback?code=expired'));
+    nextResolution.completeError(
+      AuthException('Invalid request: both auth code and code verifier are '
+          'expired'),
+    );
     await Future<void>.delayed(Duration.zero);
 
     expect(results.single.$1, AuthLinkResult.rejected);
@@ -103,13 +110,8 @@ void main() {
     final handler = buildHandler();
     await handler.start();
 
-    links.controller.add(Uri.parse('belog://auth-callback?code=expired'));
-    nextResolution.completeError(
-      AuthException(
-        'Invalid request: both auth code and code verifier are '
-        'expired',
-      ),
-    );
+    links.controller.add(Uri.parse('belog://auth-callback?code=abc'));
+    nextResolution.completeError(StateError('resolver exploded'));
     await Future<void>.delayed(Duration.zero);
 
     expect(results.single.$1, AuthLinkResult.rejected);
@@ -134,10 +136,12 @@ void main() {
     await handler.start();
 
     links.controller.add(Uri.parse('belog://auth-callback?code=abc'));
-    nextResolution.complete((
-      response: AuthSessionUrlResponse(session: _session()),
-      event: AuthChangeEvent.signedIn,
-    ));
+    nextResolution.complete(
+      (
+        response: AuthSessionUrlResponse(session: _session(), redirectType: null),
+        event: AuthChangeEvent.signedIn,
+      ),
+    );
     await Future<void>.delayed(Duration.zero);
 
     expect(results, hasLength(1));

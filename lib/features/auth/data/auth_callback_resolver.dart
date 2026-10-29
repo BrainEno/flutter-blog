@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:belog/features/auth/auth_link_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Resolves a Supabase auth callback URL with gotrue's
@@ -12,7 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// receives every buffered historical event. The subscription below is
 /// armed only after one event-loop turn, by which time the replay has been
 /// flushed, so only events produced by the exchange itself are captured.
-Future<({AuthSessionUrlResponse? response, AuthChangeEvent? event})>
+Future<({AuthSessionUrlResponse response, AuthChangeEvent? event})>
 resolveSupabaseAuthCallback({
   required GoTrueClient auth,
   required Uri url,

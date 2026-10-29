@@ -18,6 +18,10 @@ void main() {
   late MockConnection connection;
   late UserRepositoryImpl repository;
 
+  setUpAll(() {
+    registerFallbackValue(File('/nonexistent.jpg'));
+  });
+
   setUp(() {
     remote = MockRemote();
     connection = MockConnection();
