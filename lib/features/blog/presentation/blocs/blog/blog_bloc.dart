@@ -38,8 +38,8 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
     final previous = state is BlogLoaded ? state as BlogLoaded : null;
     emit(BlogFirstPageLoading(previousBlogs: previous?.blogs ?? const []));
     final res = await _getAllBlogs(const GetAllBlogsParams(page: 1));
-    // A newer first-page request (or nothing at all) supersedes this one.
-    if (generation != _generation || isClosed) return;
+    // A newer first-page request supersedes this one.
+    if (generation != _generation) return;
     res.fold(
       (failure) =>
           emit(BlogListFailure(error: failure.message, previousState: state)),
@@ -68,7 +68,7 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
     final res = await _getAllBlogs(GetAllBlogsParams(page: nextPage));
     // A refresh started while this request was in flight; the fresh first
     // page supersedes anything this response would append.
-    if (generation != _generation || isClosed) return;
+    if (generation != _generation) return;
     final latest = state is BlogLoaded ? state as BlogLoaded : current;
     res.fold(
       (failure) => emit(

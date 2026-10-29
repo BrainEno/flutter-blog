@@ -62,7 +62,7 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
     var serverLiked = state.likedBlogs[event.blogId] ?? false;
     var anySuccess = false;
 
-    while (!isClosed && (_queuedToggles[event.blogId] ?? 0) > 0) {
+    while ((_queuedToggles[event.blogId] ?? 0) > 0) {
       _queuedToggles[event.blogId] = _queuedToggles[event.blogId]! - 1;
 
       // Optimistic flip, rendered immediately.
@@ -71,8 +71,6 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
       final res = await _toggleBlogLike(
         ToggleLikeParams(userId: event.userId, blogId: event.blogId),
       );
-      if (isClosed) return;
-
       res.fold(
         (failure) {
           // Roll the icon back to the server truth and surface the error;
@@ -94,7 +92,7 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
       );
     }
     _queuedToggles.remove(event.blogId);
-    if (anySuccess && !isClosed) {
+    if (anySuccess) {
       // Refresh the collection list once per burst, not once per tap.
       add(UserLikedBlogs(userId: event.userId));
     }
@@ -119,7 +117,6 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
     final res = await _isBlogLiked(
       IsBlogLikedParams(userId: event.userId, blogId: event.blogId),
     );
-    if (isClosed) return;
     res.fold(
       (failure) => emit(
         GetBlogIsLikedFailure(
@@ -149,7 +146,6 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
     final res = await _getUserLikedBlogs(
       GetUserLikedBlogsParams(userId: event.userId),
     );
-    if (isClosed) return;
     res.fold(
       (failure) => emit(
         UserLikedBlogsFailure(

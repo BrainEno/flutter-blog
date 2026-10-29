@@ -101,7 +101,7 @@ void main() {
     await bloc.stream.firstWhere((state) => state is UserLikedBlogsSuccess);
 
     // Two taps, two server round trips, final state = last server truth.
-    verify(remote.toggleLikeBlog('user', 'blog')).called(2);
+    verify(() => remote.toggleLikeBlog('user', 'blog')).called(2);
     expect(
       states.whereType<UserLikedBlogsLoading>(),
       hasLength(1),
@@ -145,7 +145,7 @@ void main() {
     bloc.add(ToggleBlogLike(userId: 'user', blogId: 'blog'));
     await bloc.stream.firstWhere((state) => state is UserLikedBlogsSuccess);
 
-    verify(remote.toggleLikeBlog('user', 'blog')).called(2);
+    verify(() => remote.toggleLikeBlog('user', 'blog')).called(2);
     final last = states.whereType<ToggleBlogLikeSuccess>().last;
     expect(last.isLiked, isTrue);
     expect(states.whereType<ToggleBlogLikeFailure>(), hasLength(1));
