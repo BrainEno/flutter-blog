@@ -129,7 +129,7 @@ void main() {
             ),
         () => remote.editUserInfo(captureAny()),
       ]);
-      final captured = order.captured.single as UserModel;
+      final captured = order.last.captured.single as UserModel;
       expect(captured.avatarUrl, newAvatarUrl);
     });
 

@@ -97,13 +97,11 @@ jobs:
               # change, so the failure is actionable from the check page.
               diff_out=""
               for f in "${dart_files[@]}"; do
-                formatted="$(mktemp)"
-                if dart format --output="$formatted" "$f" >/dev/null 2>&1; then
-                  if ! diff -u "$f" "$formatted" > /tmp/fmt_one.diff 2>&1; then
-                    diff_out+="$(head -c 2500 /tmp/fmt_one.diff)"$'\n'
-                  fi
+                cp "$f" /tmp/fmt_copy.dart
+                dart format /tmp/fmt_copy.dart >/dev/null 2>&1 || true
+                if ! diff -u "$f" /tmp/fmt_copy.dart > /tmp/fmt_one.diff 2>&1; then
+                  diff_out+="$(head -c 2500 /tmp/fmt_one.diff)"$'\n'
                 fi
-                rm -f "$formatted"
                 if (( ${#diff_out} > 20000 )); then break; fi
               done
               diff_out="$(printf '%s' "$diff_out" | head -c 20000)"

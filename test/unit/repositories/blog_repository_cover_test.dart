@@ -81,7 +81,7 @@ void main() {
             ),
         () => remote.uploadBlog(captureAny()),
       ]);
-      final created = order.captured.single as BlogModel;
+      final created = order.last.captured.single as BlogModel;
       expect(created.imageUrl, _kNewCoverUrl);
       expect(created.title, '标题');
     });
@@ -165,7 +165,7 @@ void main() {
             ),
         () => remote.editBlog(captureAny()),
       ]);
-      final updated = order.captured.single as BlogModel;
+      final updated = order.last.captured.single as BlogModel;
       expect(updated.imageUrl, _kNewCoverUrl);
       expect(updated.articleId, 'b1');
       expect(updated.id, 'my-slug');
