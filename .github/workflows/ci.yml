@@ -189,7 +189,7 @@ jobs:
           set -o pipefail
           mkdir -p build/reports
           set +e
-          flutter test --coverage --reporter expanded 2>&1 | tee build/reports/flutter-test.log
+          flutter test --coverage --concurrency=1 --reporter expanded 2>&1 | tee build/reports/flutter-test.log
           statuses=("${PIPESTATUS[@]}")
           status=${statuses[0]}
           set -e

@@ -1,8 +1,14 @@
+import 'dart:io';
+
+import 'package:belog/core/storage/app_database.dart';
+import 'package:belog/core/storage/sqlite_blog_cache.dart';
+import 'package:belog/core/storage/sqlite_draft_store.dart';
+import 'package:belog/core/storage/sqlite_theme_store.dart';
+import 'package:belog/features/blog/data/datasources/blog_draft_store.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/secrets/app_secrets.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
-import 'package:belog/core/theme/theme_preference.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
 import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:belog/features/auth/data/repositories/auth_repository_impl.dart';
@@ -15,8 +21,6 @@ import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart';
-import 'package:belog/features/blog/domain/entities/blog.dart';
-import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
@@ -42,12 +46,10 @@ import 'package:belog/features/user/domain/usecases/edit_user_usecase.dart';
 import 'package:belog/features/user/domain/usecases/reset_password_usecase.dart';
 import 'package:get_it/get_it.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
-import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 final serviceLocator = GetIt.instance;
-late Isar isar;
 
 Future<void> initDependencies() async {
   final supabaseUrl = AppSecrets.supabaseUrl;
@@ -85,67 +87,80 @@ Future<void> initDependencies() async {
     return input.replaceAll(RegExp(r'[^\x00-\x7F]'), '');
   }
 
-// Example usage
+  // Example usage
   final osInfo = sanitizeUserAgent('Windows 10 家庭中文版');
   final userAgent = 'belog-app/1.0 ($osInfo)';
 
   final supabase = await Supabase.initialize(
-      url: supabaseUrl,
-      publishableKey: supabaseKey,
-      headers: {
-        'User-Agent': userAgent,
-      });
-
-  final directory = await getApplicationDocumentsDirectory();
-  isar = await Isar.open(
-    [ThemePreferenceSchema, BlogSchema, BlogDraftSchema],
-    directory: directory.path,
+    url: supabaseUrl,
+    publishableKey: supabaseKey,
+    headers: {'User-Agent': userAgent},
   );
 
-  serviceLocator.registerLazySingleton(() => isar);
+  final directory = await getApplicationDocumentsDirectory();
+  final database = AppDatabase.open(File('${directory.path}/belog.sqlite'));
+  try {
+    await database.importLegacyIfNeeded(directory);
+  } catch (_) {
+    await database.close();
+    rethrow;
+  }
+
+  serviceLocator.registerLazySingleton(() => database);
+  serviceLocator.registerLazySingleton<BlogDraftStore>(
+    () => SqliteBlogDraftStore(database),
+  );
   serviceLocator.registerLazySingleton(() => supabase.client);
 
   serviceLocator.registerFactory(() => InternetConnection());
   // core
   serviceLocator.registerLazySingleton<ThemePreferenceStore>(
-      () => IsarThemePreferenceStore(serviceLocator<Isar>()));
+    () => SqliteThemePreferenceStore(serviceLocator<AppDatabase>()),
+  );
   serviceLocator.registerLazySingleton(() => ThemeBloc(serviceLocator()));
 
   serviceLocator.registerLazySingleton(() => AppUserCubit());
   serviceLocator.registerFactory<ConnectionChecker>(
-      () => ConnectionCheckerImpl(serviceLocator()));
+    () => ConnectionCheckerImpl(serviceLocator()),
+  );
 }
 
 void _initAuth() {
   // Datasource
   serviceLocator
     ..registerFactory<AuthRemoteDataSource>(
-        () => AuthRemoteDataSourceImpl(serviceLocator<SupabaseClient>()))
+      () => AuthRemoteDataSourceImpl(serviceLocator<SupabaseClient>()),
+    )
     // Repository
     ..registerFactory<AuthRepository>(
-        () => AuthRepositoryImpl(serviceLocator(), serviceLocator()))
+      () => AuthRepositoryImpl(serviceLocator(), serviceLocator()),
+    )
     // Usecases
     ..registerFactory(() => UserSignUp(serviceLocator()))
     ..registerFactory(() => UserLogin(serviceLocator()))
     ..registerFactory(() => UserSignOut(serviceLocator()))
     ..registerFactory(() => CurrentUser(serviceLocator()))
     // Bloc
-    ..registerLazySingleton(() => AuthBloc(
-          userSignUp: serviceLocator(),
-          userLogin: serviceLocator(),
-          userSignOut: serviceLocator(),
-          currentUser: serviceLocator(),
-          appUserCubit: serviceLocator(),
-        ));
+    ..registerLazySingleton(
+      () => AuthBloc(
+        userSignUp: serviceLocator(),
+        userLogin: serviceLocator(),
+        userSignOut: serviceLocator(),
+        currentUser: serviceLocator(),
+        appUserCubit: serviceLocator(),
+      ),
+    );
 }
 
 Future<void> _initBlog() async {
   // Datasource
   serviceLocator
     ..registerFactory<BlogRemoteDataSource>(
-        () => BlogRemoteDataSourceImpl(serviceLocator<SupabaseClient>()))
+      () => BlogRemoteDataSourceImpl(serviceLocator<SupabaseClient>()),
+    )
     ..registerFactory<BlogLocalDataSource>(
-        () => BlogLocalDataSourceImpl(isar: serviceLocator<Isar>()))
+      () => SqliteBlogCache(serviceLocator<AppDatabase>()),
+    )
     // Repository
     ..registerFactory<BlogRepository>(
       () => BlogRepositoryImpl(
@@ -166,43 +181,62 @@ Future<void> _initBlog() async {
     ..registerFactory(() => GetBlogsByPoster(serviceLocator<BlogRepository>()))
     // Bloc
     ..registerLazySingleton(
-        () => BlogBloc(getAllBlogs: serviceLocator<GetAllBlogs>()))
-    ..registerLazySingleton(() => BlogUploadBloc(
+      () => BlogBloc(getAllBlogs: serviceLocator<GetAllBlogs>()),
+    )
+    ..registerLazySingleton(
+      () => BlogUploadBloc(
         uploadBlog: serviceLocator<UploadBlog>(),
         updateBlog: serviceLocator<UpdateBlog>(),
-        deleteBlog: serviceLocator<DeleteBlog>()))
+        deleteBlog: serviceLocator<DeleteBlog>(),
+      ),
+    )
     ..registerLazySingleton(
-        () => BlogSearchBloc(searchBlogs: serviceLocator<SearchBlogs>()))
-    ..registerLazySingleton(() => BlogLikedBloc(
+      () => BlogSearchBloc(searchBlogs: serviceLocator<SearchBlogs>()),
+    )
+    ..registerLazySingleton(
+      () => BlogLikedBloc(
         toggleBlogLike: serviceLocator<ToggleLikeBlog>(),
         isBlogLiked: serviceLocator<IsBlogLiked>(),
-        getUserLikedBlogs: serviceLocator<GetUserLikedBlogs>()))
+        getUserLikedBlogs: serviceLocator<GetUserLikedBlogs>(),
+      ),
+    )
     ..registerLazySingleton(
-        () => BlogByBloc(getBlogsByPoster: serviceLocator<GetBlogsByPoster>()));
+      () => BlogByBloc(getBlogsByPoster: serviceLocator<GetBlogsByPoster>()),
+    );
 }
 
 Future<void> _initUser() async {
   // Datasource
   serviceLocator
     ..registerFactory<UserRemoteDataSource>(
-        () => UserRemoteDataSourceImpl(serviceLocator<SupabaseClient>()))
+      () => UserRemoteDataSourceImpl(serviceLocator<SupabaseClient>()),
+    )
     // Repository
-    ..registerFactory<UserRepository>(() => UserRepositoryImpl(
+    ..registerFactory<UserRepository>(
+      () => UserRepositoryImpl(
         serviceLocator<UserRemoteDataSource>(),
-        serviceLocator<ConnectionChecker>()))
+        serviceLocator<ConnectionChecker>(),
+      ),
+    )
     // Usecases
     ..registerFactory(() => EditUserUseCase(serviceLocator<UserRepository>()))
     ..registerFactory(
-        () => ChangeEmailUseCase(serviceLocator<UserRepository>()))
+      () => ChangeEmailUseCase(serviceLocator<UserRepository>()),
+    )
     ..registerFactory(
-        () => ResetPasswordUseCase(serviceLocator<UserRepository>()))
+      () => ResetPasswordUseCase(serviceLocator<UserRepository>()),
+    )
     //blocs
-    ..registerLazySingleton(() => UserEditBloc(
-          editUserUseCase: serviceLocator<EditUserUseCase>(),
-          appUserCubit: serviceLocator(),
-        ))
-    ..registerLazySingleton(() => EditAccountBloc(
-          changeEmailUseCase: serviceLocator<ChangeEmailUseCase>(),
-          resetPasswordUseCase: serviceLocator<ResetPasswordUseCase>(),
-        ));
+    ..registerLazySingleton(
+      () => UserEditBloc(
+        editUserUseCase: serviceLocator<EditUserUseCase>(),
+        appUserCubit: serviceLocator(),
+      ),
+    )
+    ..registerLazySingleton(
+      () => EditAccountBloc(
+        changeEmailUseCase: serviceLocator<ChangeEmailUseCase>(),
+        resetPasswordUseCase: serviceLocator<ResetPasswordUseCase>(),
+      ),
+    );
 }
