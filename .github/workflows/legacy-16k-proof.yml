@@ -23,7 +23,7 @@ jobs:
           export CC_aarch64_linux_android="$BIN/aarch64-linux-android21-clang"
           export AR_aarch64_linux_android="$BIN/llvm-ar"
           export RUSTFLAGS='-C link-arg=-Wl,-z,max-page-size=16384'
-          export BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
+          export BINDGEN_EXTRA_CLANG_ARGS="--target=aarch64-linux-android21 --sysroot=$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
           set +e
           (cd "$RUNNER_TEMP/isar-original" && cargo build --release --package isar --target aarch64-linux-android) > /tmp/legacy-build.log 2>&1
           status=$?
