@@ -15,6 +15,11 @@ def jwt(role):
 
 
 class ReleaseValidationTests(unittest.TestCase):
+    def test_apk_verifier_output_and_security_cases(self):
+        script = Path(__file__).with_name("test_verify_apk.sh").resolve()
+        result = subprocess.run(["bash", str(script)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_matching_tag(self):
         self.assertEqual(validate_version("v1.2.3+42", "name: belog\nversion: 1.2.3+42\n"), ("1.2.3", "42"))
 

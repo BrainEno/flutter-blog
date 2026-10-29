@@ -19,11 +19,9 @@ cert_file="$(mktemp "${RUNNER_TEMP:-/tmp}/belog-cert.XXXXXX")"
 badging_file="$(mktemp "${RUNNER_TEMP:-/tmp}/belog-badging.XXXXXX")"
 trap 'rm -f "$cert_file" "$badging_file"' EXIT
 "$TOOLS/apksigner" verify --verbose --print-certs "$APK" > "$cert_file"
-if [[ "$(grep -c 'certificate SHA-256 digest:' "$cert_file")" != 1 ]]; then
-  echo 'APK must have exactly one signing certificate.' >&2
-  exit 1
-fi
-actual="$(awk -F ': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2)}' "$cert_file")"
+# shellcheck source=tool/release/apk_certificate.sh
+source "$(dirname "${BASH_SOURCE[0]}")/apk_certificate.sh"
+actual="$(read_apk_signer_sha256 "$cert_file")"
 if [[ "$actual" != "${EXPECTED_CERT,,}" ]]; then
   echo 'APK certificate fingerprint does not match the approved certificate.' >&2
   exit 1
