@@ -1,6 +1,6 @@
 String calculateReadingTime(String articleText) {
   if (articleText.isEmpty) {
-    return 'Less than 1 minute';
+    return '约 1 分钟';
   }
 
   // Define reading speed for English and Chinese (words/characters per minute)
@@ -32,17 +32,18 @@ String calculateReadingTime(String articleText) {
     readingTimeInMinutes = englishWordCount / englishReadingSpeed;
   }
 
+  // Localized reading-time labels (issue #24: no English fallbacks).
   if (readingTimeInMinutes < 1) {
-    return '1min';
+    return '约 1 分钟';
   } else if (readingTimeInMinutes < 60) {
-    return '${readingTimeInMinutes.round()}min';
+    return '约 ${readingTimeInMinutes.round()} 分钟';
   } else {
     int hours = readingTimeInMinutes ~/ 60;
     int minutes = (readingTimeInMinutes % 60).round();
     if (minutes == 0) {
-      return '${hours}h';
+      return '约 $hours 小时';
     } else {
-      return '${hours}h ${minutes}min';
+      return '约 $hours 小时 $minutes 分钟';
     }
   }
 }
