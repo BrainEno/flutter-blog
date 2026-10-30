@@ -66,7 +66,7 @@ void main() {
   late MockCreateComment createComment;
   late MockDeleteComment deleteComment;
   late AppUserCubit appUserCubit;
-  late CommentBloc bloc;
+  late MockUuid uuid;
 
   setUpAll(() {
     registerFallbackValue(
@@ -79,21 +79,25 @@ void main() {
     createComment = MockCreateComment();
     deleteComment = MockDeleteComment();
     appUserCubit = AppUserCubit();
-    final uuid = MockUuid();
+    uuid = MockUuid();
     when(() => uuid.v4()).thenAnswer((_) => 'key-0');
-    bloc = CommentBloc(
-      getComments: getComments,
-      createComment: createComment,
-      deleteComment: deleteComment,
-      slug: 'my-slug',
-      uuidGenerator: uuid,
-    );
   });
 
   tearDown(() async {
-    await bloc.close();
     await appUserCubit.close();
   });
+
+  /// The bloc must be created inside the test body: its event queue is
+  /// zone-bound, so a bloc built in setUp (outside the widget test's
+  /// fake-async zone) would never deliver events and the section would
+  /// spin its loading indicator forever.
+  CommentBloc buildBloc() => CommentBloc(
+    getComments: getComments,
+    createComment: createComment,
+    deleteComment: deleteComment,
+    slug: 'my-slug',
+    uuidGenerator: uuid,
+  );
 
   testWidgets('renders the thread with nested replies (plain text)', (
     tester,
@@ -107,6 +111,9 @@ void main() {
         _comment('c3', content: '沙发'),
       ]),
     );
+
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
 
     await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
     await tester.pumpAndSettle();
@@ -125,6 +132,9 @@ void main() {
       () => getComments('my-slug'),
     ).thenAnswer((_) async => right<Failure, List<Comment>>(const []));
 
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+
     await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
     await tester.pumpAndSettle();
 
@@ -139,6 +149,8 @@ void main() {
       () => getComments('my-slug'),
     ).thenAnswer((_) async => right<Failure, List<Comment>>(const []));
     var requested = false;
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
 
     await tester.pumpWidget(
       MultiBlocProvider(
@@ -173,6 +185,9 @@ void main() {
       ),
     );
 
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+
     await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
     await tester.pumpAndSettle();
 
@@ -201,6 +216,9 @@ void main() {
         _comment('c2', authorId: 'viewer-1', content: '回复内容', parentId: 'c1'),
       ),
     );
+
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
 
     await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
     await tester.pumpAndSettle();
@@ -235,6 +253,9 @@ void main() {
       () => deleteComment('c1'),
     ).thenAnswer((_) async => right<Failure, void>(null));
 
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+
     await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
     await tester.pumpAndSettle();
 
@@ -257,6 +278,9 @@ void main() {
     when(
       () => getComments('my-slug'),
     ).thenAnswer((_) async => left<Failure, List<Comment>>(Failure('评论加载失败')));
+
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
 
     await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
     await tester.pumpAndSettle();

@@ -124,10 +124,10 @@ void main() {
       );
       verifyNever(
         () => remote.createComment(
-          slug: any(),
-          content: any(),
-          parentCommentId: any(),
-          idempotencyKey: any(),
+          slug: any(named: 'slug'),
+          content: any(named: 'content'),
+          parentCommentId: any(named: 'parentCommentId'),
+          idempotencyKey: any(named: 'idempotencyKey'),
         ),
       );
     });
