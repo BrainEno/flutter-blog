@@ -33,7 +33,7 @@ class BlogRepositoryImpl implements BlogRepository {
   }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
-        return left(Failure('无法连接到网络'));
+        return left(Failure.networkOffline());
       }
       // Media assets are immutable and addressed by their own id, so the
       // cover is uploaded first and the article row is created with it.
@@ -80,7 +80,7 @@ class BlogRepositoryImpl implements BlogRepository {
   Future<Either<Failure, List<Blog>>> getBlogsByUser(String userId) async {
     try {
       if (!await (connectionChecker.isConnected)) {
-        return left(Failure('无法连接到网络'));
+        return left(Failure.networkOffline());
       }
       final blogs = await blogRemoteDataSource.getBlogsByPosterId(userId);
       return right(blogs);
@@ -97,7 +97,7 @@ class BlogRepositoryImpl implements BlogRepository {
         if (cached != null) {
           return right(cached);
         }
-        return left(Failure('无法连接到网络'));
+        return left(Failure.networkOffline());
       }
       final blog = await blogRemoteDataSource.getBlogById(blogId);
       await blogLocalDataSource.uploadLocalBlogs(blogs: [blog]);
@@ -111,7 +111,7 @@ class BlogRepositoryImpl implements BlogRepository {
   Future<Either<Failure, List<Blog>>> getBlogsByTag(String tag) async {
     try {
       if (!await (connectionChecker.isConnected)) {
-        return left(Failure('无法连接到网络'));
+        return left(Failure.networkOffline());
       }
       final blogs = await blogRemoteDataSource.getBlogsByTag(tag);
       return right(blogs);
@@ -138,7 +138,7 @@ class BlogRepositoryImpl implements BlogRepository {
   Future<Either<Failure, bool>> deleteBlog(String blogId) async {
     try {
       if (!await (connectionChecker.isConnected)) {
-        return left(Failure('无法连接到网络'));
+        return left(Failure.networkOffline());
       }
       final res = await blogRemoteDataSource.deleteBlog(blogId);
       return right(res);
@@ -158,7 +158,7 @@ class BlogRepositoryImpl implements BlogRepository {
   }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
-        return left(Failure('无法连接到网络'));
+        return left(Failure.networkOffline());
       }
       // Fetch the current article first: the update addresses the server
       // article id carried on the model, and the existing cover is kept
@@ -192,7 +192,13 @@ class BlogRepositoryImpl implements BlogRepository {
   ) async {
     try {
       if (!await (connectionChecker.isConnected)) {
-        return left(Failure('无法连接到网络，收藏未同步'));
+        return left(
+          Failure(
+            '无法连接到网络，收藏未同步',
+            kind: FailureKind.network,
+            code: 'network.offline',
+          ),
+        );
       }
 
       final res = await blogRemoteDataSource.toggleLikeBlog(userId, blogId);
@@ -216,7 +222,7 @@ class BlogRepositoryImpl implements BlogRepository {
   ) async {
     try {
       if (!await connectionChecker.isConnected) {
-        return left(Failure('无法连接到网络'));
+        return left(Failure.networkOffline());
       }
       final res = await blogRemoteDataSource.isBlogLikedByUser(userId, blogId);
       return right(res);
@@ -232,7 +238,7 @@ class BlogRepositoryImpl implements BlogRepository {
   Future<Either<Failure, List<Blog>>> getUserLikedBlogs(String userId) async {
     try {
       if (!await connectionChecker.isConnected) {
-        return left(Failure('无法连接到网络'));
+        return left(Failure.networkOffline());
       }
       final res = await blogRemoteDataSource.getUserLikedBlogs(userId);
       return right(res);
