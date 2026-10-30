@@ -211,6 +211,12 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
+      final previousErrorHandler = FlutterError.onError;
+      FlutterError.onError = (details) {
+        FlutterError.dumpErrorToConsole(details, forceReport: true);
+        previousErrorHandler?.call(details);
+      };
+      try {
       final bloc = BlogSearchBloc(
         searchBlogs: _SearchArticles((_) async => right(const [])),
       );
@@ -223,9 +229,9 @@ void main() {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: const [Locale('zh'), Locale('en')],
             builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaler: const TextScaler.linear(2),
-              ),
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(2)),
               child: child!,
             ),
             home: const SearchBlogPage(),
@@ -237,6 +243,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(l10n.searchNoResults), findsOneWidget);
       expect(tester.takeException(), isNull);
+      } finally {
+        FlutterError.onError = previousErrorHandler;
+      }
     });
   }
 

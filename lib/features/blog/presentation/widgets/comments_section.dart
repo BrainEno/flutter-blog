@@ -80,7 +80,9 @@ class _CommentsSectionState extends State<CommentsSection> {
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(
               l10n.actionDelete,
-              style: TextStyle(color: Theme.of(dialogContext).colorScheme.error),
+              style: TextStyle(
+                color: Theme.of(dialogContext).colorScheme.error,
+              ),
             ),
           ),
         ],

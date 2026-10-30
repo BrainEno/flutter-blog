@@ -465,7 +465,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                   dashPattern: const [6, 3],
                                   strokeCap: StrokeCap.round,
                                   child: Container(
-                                    constraints: const BoxConstraints(minHeight: 250),
+                                    constraints: const BoxConstraints(
+                                      minHeight: 250,
+                                    ),
                                     width: double.infinity,
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(12),

@@ -99,7 +99,10 @@ void main() {
 
     for (final theme in [AppTheme.lightThemeMode, AppTheme.darkThemeMode]) {
       expect(
-        contrast(theme.textTheme.bodySmall!.color!, theme.scaffoldBackgroundColor),
+        contrast(
+          theme.textTheme.bodySmall!.color!,
+          theme.scaffoldBackgroundColor,
+        ),
         greaterThanOrEqualTo(4.5),
       );
       expect(

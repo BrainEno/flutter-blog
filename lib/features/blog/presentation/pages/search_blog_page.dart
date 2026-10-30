@@ -73,7 +73,13 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
           children: [
             ImageIcon(AssetImage('assets/images/icon.png'), size: 30),
             SizedBox(width: 7),
-            Text('Bottom Think'),
+            Flexible(
+              child: Text(
+                'Bottom Think',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
       ),

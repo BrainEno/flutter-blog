@@ -181,16 +181,21 @@ void main() {
         previousErrorHandler?.call(details);
       };
       try {
-      final l10n = lookupAppLocalizations(locale);
-      await openEditor(tester, FakeDraftStore(), locale: locale, textScale: 2);
-      expect(find.text(l10n.editorNewTitle), findsOneWidget);
-      expect(find.byTooltip(l10n.uploadCoverHint), findsOneWidget);
-      final preview = find.text(l10n.editorSegmentPreview);
-      await tester.ensureVisible(preview);
-      await tester.tap(preview);
-      await tester.pumpAndSettle();
-      expect(find.text(l10n.previewEmptyBody), findsOneWidget);
-      expect(tester.takeException(), isNull);
+        final l10n = lookupAppLocalizations(locale);
+        await openEditor(
+          tester,
+          FakeDraftStore(),
+          locale: locale,
+          textScale: 2,
+        );
+        expect(find.text(l10n.editorNewTitle), findsOneWidget);
+        expect(find.byTooltip(l10n.uploadCoverHint), findsOneWidget);
+        final preview = find.text(l10n.editorSegmentPreview);
+        await tester.ensureVisible(preview);
+        await tester.tap(preview);
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.previewEmptyBody), findsOneWidget);
+        expect(tester.takeException(), isNull);
       } finally {
         FlutterError.onError = previousErrorHandler;
       }
