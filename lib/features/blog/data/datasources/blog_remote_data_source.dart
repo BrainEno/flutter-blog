@@ -62,6 +62,17 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   /// articles does not re-create/resolve the same tags each time.
   final Map<String, Map<String, dynamic>> _tagByName = {};
 
+  /// In-flight `POST /tags` resolutions by tag name, so concurrent
+  /// publishes share one request per name.
+  final Map<String, Future<Map<String, dynamic>>> _tagLookups = {};
+
+  /// One in-flight like toggle per article. The API sets an explicit like
+  /// state rather than toggling, so two overlapping read-then-write pairs
+  /// would both read the same `current` and write the same new state -
+  /// silently dropping one of the taps. Serializing per slug keeps every
+  /// tap meaningful.
+  final Map<String, Future<bool>> _likeToggleBySlug = {};
+
   @override
   Future<BlogModel> uploadBlog(BlogModel blog) async {
     try {
@@ -237,7 +248,19 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   }
 
   @override
-  Future<bool> toggleLikeBlog(String userId, String blogId) async {
+  Future<bool> toggleLikeBlog(String userId, String blogId) {
+    // Share the in-flight toggle so concurrent callers queue behind it
+    // instead of racing each other; the slot frees on completion.
+    final inFlight = _likeToggleBySlug[blogId];
+    if (inFlight != null) {
+      return inFlight;
+    }
+    return _likeToggleBySlug[blogId] = _toggleLike(blogId).whenComplete(() {
+      _likeToggleBySlug.remove(blogId);
+    });
+  }
+
+  Future<bool> _toggleLike(String blogId) async {
     try {
       // The API sets an explicit like state rather than toggling, so the
       // current server state is read first and the opposite is written.
@@ -272,7 +295,8 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
 
   /// Resolves tag names to tag ids via `POST /tags` (create-or-reuse), with
   /// an in-memory cache. Concurrent calls for the same name share one
-  /// request.
+  /// request (the create-or-reuse endpoint is idempotent, but halving the
+  /// traffic is still worth it).
   Future<List<String>> _resolveTagIds(List<String> tags) async {
     final names = tags
         .map((tag) => tag.trim())
@@ -286,12 +310,32 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         ids.add(cached['id'] as String);
         continue;
       }
-      final data = await client.postJson('/tags', {'name': name});
-      final tag = _articleMap(data);
+      final lookup = _claimTag(name);
+      final tag = await lookup;
       _tagByName[name] = tag;
       ids.add(tag['id'] as String);
     }
     return ids;
+  }
+
+  /// Returns the in-flight (or freshly started) resolution for [name].
+  ///
+  /// The slot is released on success AND failure: a failed resolution
+  /// must not poison the name for the rest of the app session, it just
+  /// propagates its error to whoever joined it.
+  Future<Map<String, dynamic>> _claimTag(String name) {
+    final inFlight = _tagLookups[name];
+    if (inFlight != null) {
+      return inFlight;
+    }
+    return _tagLookups[name] = _resolveTag(name).whenComplete(() {
+      _tagLookups.remove(name);
+    });
+  }
+
+  Future<Map<String, dynamic>> _resolveTag(String name) async {
+    final data = await client.postJson('/tags', {'name': name});
+    return _articleMap(data);
   }
 
   /// Resolves a tag name to its slug via the public `GET /tags` listing
@@ -316,7 +360,11 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
 
   Map<String, dynamic> _articleMap(dynamic data) {
     if (data is Map<String, dynamic>) return data;
-    throw const ServerException('服务器返回了无法解析的数据', kind: FailureKind.server);
+    throw ServerException(
+      '服务器返回了无法解析的数据',
+      kind: FailureKind.server,
+      cause: data,
+    );
   }
 
   List<BlogModel> _articleList(dynamic data) {
@@ -326,6 +374,10 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           .map(BlogModel.fromNowaveArticle)
           .toList();
     }
-    throw const ServerException('服务器返回了无法解析的数据', kind: FailureKind.server);
+    throw ServerException(
+      '服务器返回了无法解析的数据',
+      kind: FailureKind.server,
+      cause: data,
+    );
   }
 }

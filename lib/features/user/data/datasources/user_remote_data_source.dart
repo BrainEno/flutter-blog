@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
@@ -78,6 +79,10 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
 
   Map<String, dynamic> _profileMap(dynamic data) {
     if (data is Map<String, dynamic>) return data;
-    throw const ServerException('服务器返回了无法解析的数据');
+    throw ServerException(
+      '服务器返回了无法解析的数据',
+      kind: FailureKind.server,
+      cause: data,
+    );
   }
 }

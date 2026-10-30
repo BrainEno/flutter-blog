@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -256,7 +257,53 @@ void main() {
     });
   });
 
+  group('error envelopes', () {
+    test(
+      'a 5xx JSON body without the error envelope still throws typed',
+      () async {
+        final client = clientFor(
+          MockClient(
+            (request) async => http.Response(jsonEncode({'data': null}), 503),
+          ),
+        );
+
+        await expectLater(
+          client.getJson('/articles'),
+          throwsA(
+            isA<NowaveApiException>()
+                .having((e) => e.statusCode, 'status', 503)
+                .having((e) => e.code, 'code', 'HTTP_503'),
+          ),
+        );
+      },
+    );
+  });
+
   group('base URL handling', () {
+    test('a base URL that already ends with /api/v1 is rejected', () {
+      expect(
+        () => NowaveApiClient(
+          baseUrl: Uri.parse('https://example.invalid/api/v1'),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('a base URL with a query or fragment drops them', () async {
+      Uri? seen;
+      final client = NowaveApiClient(
+        baseUrl: Uri.parse('https://example.invalid/base?token=x#frag'),
+        httpClient: MockClient((request) async {
+          seen = request.url;
+          return http.Response(jsonEncode({'data': null}), 200);
+        }),
+      );
+
+      await client.getJson('/articles');
+
+      expect(seen.toString(), 'https://example.invalid/base/api/v1/articles');
+    });
+
     test('a base URL with a path prefix keeps the prefix', () async {
       Uri? seen;
       final client = NowaveApiClient(
@@ -272,6 +319,27 @@ void main() {
       expect(
         seen.toString(),
         'https://example.invalid/backend/api/v1/articles',
+      );
+    });
+  });
+
+  group('timeouts', () {
+    test('a stalled response body times out instead of hanging', () async {
+      final client = NowaveApiClient(
+        baseUrl: Uri.parse('https://api.example.invalid'),
+        timeout: const Duration(milliseconds: 25),
+        httpClient: MockClient.streaming((request, body) async {
+          // Headers arrive, the body never does.
+          return http.StreamedResponse(
+            Completer<List<int>>().future.asStream().cast<List<int>>(),
+            200,
+          );
+        }),
+      );
+
+      await expectLater(
+        client.getJson('/articles'),
+        throwsA(isA<TimeoutException>()),
       );
     });
   });

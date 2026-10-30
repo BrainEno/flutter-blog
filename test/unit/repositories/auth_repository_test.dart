@@ -1,3 +1,4 @@
+import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
@@ -220,6 +221,39 @@ void main() {
         (failure) => expect(failure.message, contains('尝试次数过多')),
         (_) => fail('expected a failure'),
       );
+    });
+  });
+
+  group('logout', () {
+    test('signs out even when the device is offline', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => false);
+      when(() => remote.logout()).thenAnswer((_) async {});
+
+      final result = await repository.logout();
+
+      expect(result.isRight(), isTrue);
+      verify(() => remote.logout()).called(1);
+    });
+
+    test('online logout goes through the data source', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      when(() => remote.logout()).thenAnswer((_) async {});
+
+      final result = await repository.logout();
+
+      expect(result.isRight(), isTrue);
+      verify(() => remote.logout()).called(1);
+    });
+
+    test('a data source failure surfaces as a failure', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      when(
+        () => remote.logout(),
+      ).thenThrow(const ServerException('本地存储读写失败', kind: FailureKind.storage));
+
+      final result = await repository.logout();
+
+      expect(result.isLeft(), isTrue);
     });
   });
 }

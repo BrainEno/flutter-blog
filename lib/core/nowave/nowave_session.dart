@@ -25,6 +25,25 @@ class NowaveSessionData {
   final DateTime accessExpiresAt;
   final DateTime refreshExpiresAt;
 
+  /// Copy with the fields that change over a session's lifetime.
+  NowaveSessionData copyWith({
+    String? userId,
+    String? email,
+    String? accessToken,
+    String? refreshToken,
+    DateTime? accessExpiresAt,
+    DateTime? refreshExpiresAt,
+  }) {
+    return NowaveSessionData(
+      userId: userId ?? this.userId,
+      email: email ?? this.email,
+      accessToken: accessToken ?? this.accessToken,
+      refreshToken: refreshToken ?? this.refreshToken,
+      accessExpiresAt: accessExpiresAt ?? this.accessExpiresAt,
+      refreshExpiresAt: refreshExpiresAt ?? this.refreshExpiresAt,
+    );
+  }
+
   Map<String, dynamic> toJson() => <String, dynamic>{
     'userId': userId,
     'email': email,
@@ -172,14 +191,7 @@ class NowaveSessionManager implements NowaveAuthenticator {
   Future<void> updateUserId(String userId) async {
     final session = _session;
     if (session == null || session.userId == userId) return;
-    _session = NowaveSessionData(
-      userId: userId,
-      email: session.email,
-      accessToken: session.accessToken,
-      refreshToken: session.refreshToken,
-      accessExpiresAt: session.accessExpiresAt,
-      refreshExpiresAt: session.refreshExpiresAt,
-    );
+    _session = session.copyWith(userId: userId);
     await _persist();
   }
 
@@ -212,9 +224,7 @@ class NowaveSessionManager implements NowaveAuthenticator {
       final pair = NowaveTokenPair.fromDataMap(
         (data as Map).cast<String, dynamic>(),
       );
-      _session = NowaveSessionData(
-        userId: session.userId,
-        email: session.email,
+      _session = session.copyWith(
         accessToken: pair.accessToken,
         refreshToken: pair.refreshToken,
         accessExpiresAt: pair.accessExpiresAt,

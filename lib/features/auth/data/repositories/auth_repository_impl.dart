@@ -22,7 +22,7 @@ class AuthRepositoryImpl implements AuthRepository {
         final session = remoteDataSource.currentSession;
 
         if (session == null) {
-          return left(Failure('请登录账户'));
+          return left(Failure.auth('请登录账户'));
         }
 
         // Offline restore: the locally persisted session keeps the user
@@ -41,7 +41,7 @@ class AuthRepositoryImpl implements AuthRepository {
       if (userModel == null) {
         // No session, or the session could not be refreshed. Either way
         // the user is not logged in.
-        return left(Failure('登录状态已失效，请重新登录'));
+        return left(Failure.auth('登录状态已失效，请重新登录'));
       }
       return right(userModel);
     } on ServerException catch (e) {
@@ -56,7 +56,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
-        return left(Failure('无法连接到网络'));
+        return left(Failure.networkOffline());
       }
       final user = await remoteDataSource.loginWithEmailPassword(
         email: email,
@@ -78,7 +78,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
-        return left(Failure('无法连接到网络'));
+        return left(Failure.networkOffline());
       }
       // The backend signs the user in immediately: there is no e-mail
       // confirmation step.
@@ -98,10 +98,11 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, void>> logout() async {
+    // No connectivity gate: the local session must be droppable even when
+    // offline, otherwise a user could never sign out on a plane. The data
+    // source treats server-side revocation as best-effort and clears the
+    // local session regardless.
     try {
-      if (!await (connectionChecker.isConnected)) {
-        return left(Failure('无法连接到网络'));
-      }
       await remoteDataSource.logout();
       return right(null);
     } on ServerException catch (e) {

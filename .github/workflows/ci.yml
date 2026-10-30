@@ -106,11 +106,15 @@ jobs:
               git --no-pager diff -- "${dart_files[@]}" > /tmp/fmt_full.diff || true
               git checkout -- .
               # Compact per-file summary for the annotation (bounded).
+              # Write awk's output to a file first: piping into `head -c`
+              # would SIGPIPE awk under pipefail once the byte budget is
+              # reached, failing the whole step.
               awk '
                 /^diff --git a\// { file = $3; sub(/^a\//, "", file); print "### " file; next }
                 /^(index |--- a\/|\+\+\+ b\/|new file mode|deleted file mode|Binary files)/ { next }
                 /^[+-]/ { print }
-              ' /tmp/fmt_full.diff | head -c 3600 > /tmp/fmt_summary.txt
+              ' /tmp/fmt_full.diff > /tmp/fmt_all.txt || true
+              head -c 3600 /tmp/fmt_all.txt > /tmp/fmt_summary.txt
               cat /tmp/fmt_summary.txt >> "$GITHUB_STEP_SUMMARY"
               if [[ -s /tmp/fmt_full.diff ]]; then
                 {
