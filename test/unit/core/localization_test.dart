@@ -62,15 +62,24 @@ void main() {
     },
   );
 
-  test('locale resolution preserves English regions and uses Simplified Chinese', () {
-    const supported = [Locale('zh'), Locale('en')];
-    expect(resolveAppLocale([const Locale('en', 'GB')], supported),
-        const Locale('en', 'GB'));
-    expect(resolveAppLocale([const Locale('zh', 'TW')], supported),
-        const Locale('zh', 'CN'));
-    expect(resolveAppLocale([const Locale('ja')], supported),
-        const Locale('zh', 'CN'));
-  });
+  test(
+    'locale resolution preserves English regions and uses Simplified Chinese',
+    () {
+      const supported = [Locale('zh'), Locale('en')];
+      expect(
+        resolveAppLocale([const Locale('en', 'GB')], supported),
+        const Locale('en', 'GB'),
+      );
+      expect(
+        resolveAppLocale([const Locale('zh', 'TW')], supported),
+        const Locale('zh', 'CN'),
+      );
+      expect(
+        resolveAppLocale([const Locale('ja')], supported),
+        const Locale('zh', 'CN'),
+      );
+    },
+  );
 
   test('built-in tags are translated without changing custom tags', () {
     expect(localizedTag(zh, '诗歌'), '诗歌');
@@ -89,6 +98,10 @@ void main() {
     }
 
     for (final theme in [AppTheme.lightThemeMode, AppTheme.darkThemeMode]) {
+      expect(
+        contrast(theme.textTheme.bodySmall!.color!, theme.scaffoldBackgroundColor),
+        greaterThanOrEqualTo(4.5),
+      );
       expect(
         contrast(theme.colorScheme.primary, theme.colorScheme.onPrimary),
         greaterThanOrEqualTo(4.5),

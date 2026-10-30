@@ -105,9 +105,9 @@ Future<void> openEditor(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(
-          textScaler: TextScaler.linear(textScale),
-        ),
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(textScale)),
         child: child!,
       ),
       home: BlocProvider<BlogUploadBloc>.value(
@@ -175,6 +175,12 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
+      final previousErrorHandler = FlutterError.onError;
+      FlutterError.onError = (details) {
+        FlutterError.dumpErrorToConsole(details, forceReport: true);
+        previousErrorHandler?.call(details);
+      };
+      try {
       final l10n = lookupAppLocalizations(locale);
       await openEditor(tester, FakeDraftStore(), locale: locale, textScale: 2);
       expect(find.text(l10n.editorNewTitle), findsOneWidget);
@@ -185,6 +191,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(l10n.previewEmptyBody), findsOneWidget);
       expect(tester.takeException(), isNull);
+      } finally {
+        FlutterError.onError = previousErrorHandler;
+      }
     });
   }
 

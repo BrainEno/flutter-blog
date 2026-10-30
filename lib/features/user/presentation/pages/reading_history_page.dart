@@ -152,7 +152,8 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                   const SizedBox(height: 4),
                   Text(
                     context.l10n.historyEmptyHint,
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
@@ -162,7 +163,10 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
               separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final entry = _entries[index];
-                final readAtLabel = formatDate(Localizations.localeOf(context), entry.readAt);
+                final readAtLabel = formatDate(
+                  Localizations.localeOf(context),
+                  entry.readAt,
+                );
                 return Dismissible(
                   key: ValueKey(entry.blogId),
                   direction: DismissDirection.endToStart,

@@ -200,7 +200,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
             child: Center(
               child: Text(
                 l10n.feedNoMore,
-                style: const TextStyle(color: Colors.grey),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
           );

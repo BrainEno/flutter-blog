@@ -90,7 +90,7 @@ class BlogGridItem extends StatelessWidget {
                         description,
                         style: const TextStyle(
                           fontSize: 14.0,
-                          color: Colors.white70,
+                          color: Colors.white,
                         ),
                         maxLines: 7,
                         overflow: TextOverflow.ellipsis,
@@ -114,7 +114,10 @@ class BlogGridItem extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            formatDate(Localizations.localeOf(context), blog.updatedAt),
+                            formatDate(
+                              Localizations.localeOf(context),
+                              blog.updatedAt,
+                            ),
                             style: const TextStyle(
                               fontSize: 10,
                               color: Colors.white,

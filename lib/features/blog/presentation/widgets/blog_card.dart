@@ -132,7 +132,10 @@ class _BlogCardState extends State<BlogCard>
                     Align(
                       alignment: Alignment.centerRight,
                       child: Text(
-                        formatDate(Localizations.localeOf(context), blog.updatedAt),
+                        formatDate(
+                          Localizations.localeOf(context),
+                          blog.updatedAt,
+                        ),
                         style: const TextStyle(color: Colors.white),
                       ),
                     ),

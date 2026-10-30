@@ -1,7 +1,6 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
-import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
@@ -81,7 +80,7 @@ class _CommentsSectionState extends State<CommentsSection> {
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(
               l10n.actionDelete,
-              style: const TextStyle(color: AppPalette.errorColor),
+              style: TextStyle(color: Theme.of(dialogContext).colorScheme.error),
             ),
           ),
         ],
@@ -132,7 +131,9 @@ class _CommentsSectionState extends State<CommentsSection> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Divider(height: 32),
-            Row(
+            Wrap(
+              spacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(
                   context.l10n.commentsTitle,
@@ -141,10 +142,12 @@ class _CommentsSectionState extends State<CommentsSection> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(width: 6),
                 Text(
-                  formatNumber(Localizations.localeOf(context), state.totalCount),
-                  style: const TextStyle(color: Colors.grey, fontSize: 16),
+                  formatNumber(
+                    Localizations.localeOf(context),
+                    state.totalCount,
+                  ),
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
             ),
@@ -170,7 +173,7 @@ class _CommentsSectionState extends State<CommentsSection> {
         children: [
           Text(
             context.l10n.loginToComment,
-            style: const TextStyle(color: Colors.grey),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 12),
           FilledButton.tonal(
@@ -206,7 +209,7 @@ class _CommentsSectionState extends State<CommentsSection> {
               ),
               child: Text(
                 context.l10n.replyToLabel(_replyTargetName),
-                style: const TextStyle(color: Colors.grey, fontSize: 13),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
           ),
@@ -271,7 +274,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                         state.error,
                       )
                     : context.l10n.commentsLoadFailed,
-                style: const TextStyle(color: Colors.grey),
+                style: Theme.of(context).textTheme.bodySmall,
                 textAlign: TextAlign.center,
               ),
               TextButton(
@@ -289,7 +292,7 @@ class _CommentsSectionState extends State<CommentsSection> {
             child: Center(
               child: Text(
                 context.l10n.commentsEmpty,
-                style: const TextStyle(color: Colors.grey),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
           );
@@ -392,7 +395,12 @@ class _CommentTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Text(formatDate(Localizations.localeOf(context), comment.createdAt)),
+                    Text(
+                      formatDate(
+                        Localizations.localeOf(context),
+                        comment.createdAt,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     // Plain-text rendering (content version 0): no markup
                     // is interpreted, the body renders exactly as stored.

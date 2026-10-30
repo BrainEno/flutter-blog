@@ -100,7 +100,7 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
               return Center(
                 child: Text(
                   context.l10n.savedEmpty,
-                  style: const TextStyle(fontSize: 18, color: Colors.grey),
+                  style: Theme.of(context).textTheme.bodyLarge,
                 ),
               );
             }

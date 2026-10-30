@@ -205,6 +205,39 @@ void main() {
       expect(find.text(l10n.searchNoMore), findsNothing);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('$language search stays usable with 2x text', (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final bloc = BlogSearchBloc(
+        searchBlogs: _SearchArticles((_) async => right(const [])),
+      );
+      addTearDown(bloc.close);
+      await tester.pumpWidget(
+        BlocProvider<BlogSearchBloc>.value(
+          value: bloc,
+          child: MaterialApp(
+            locale: locale,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: const [Locale('zh'), Locale('en')],
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: const TextScaler.linear(2),
+              ),
+              child: child!,
+            ),
+            home: const SearchBlogPage(),
+          ),
+        ),
+      );
+      await tester.enterText(find.byType(TextField), 'search');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.searchNoResults), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   }
 
   testWidgets(
@@ -271,7 +304,9 @@ void main() {
     final bloc = BlogBloc(
       getAllBlogs: _GetArticles((_) async {
         calls++;
-        return calls == 1 ? right([_article()]) : left(Failure.networkOffline());
+        return calls == 1
+            ? right([_article()])
+            : left(Failure.networkOffline());
       }),
     );
     final user = AppUserCubit();

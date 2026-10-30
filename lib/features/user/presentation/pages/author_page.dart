@@ -105,7 +105,7 @@ class _AuthorPageState extends State<AuthorPage> {
                     state.error.isNotEmpty
                         ? localizedFailure(context.l10n, state.failure)
                         : context.l10n.authorMissing,
-                    style: const TextStyle(color: Colors.grey),
+                    style: Theme.of(context).textTheme.bodySmall,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
@@ -251,10 +251,16 @@ class _ProfileHeader extends StatelessWidget {
                     Text(
                       l10n.followerStats(
                         profile.followerCount,
-                        formatNumber(Localizations.localeOf(context), profile.followerCount),
-                        formatNumber(Localizations.localeOf(context), profile.followingCount),
+                        formatNumber(
+                          Localizations.localeOf(context),
+                          profile.followerCount,
+                        ),
+                        formatNumber(
+                          Localizations.localeOf(context),
+                          profile.followingCount,
+                        ),
                       ),
-                      style: const TextStyle(color: Colors.grey, fontSize: 13),
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),

@@ -465,7 +465,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                   dashPattern: const [6, 3],
                                   strokeCap: StrokeCap.round,
                                   child: Container(
-                                    height: 250,
+                                    constraints: const BoxConstraints(minHeight: 250),
                                     width: double.infinity,
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(12),
@@ -478,6 +478,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                     ),
                                     child: Center(
                                       child: Column(
+                                        mainAxisSize: MainAxisSize.min,
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         children: [
@@ -491,6 +492,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                           const SizedBox(height: 12),
                                           Text(
                                             context.l10n.uploadCoverHint,
+                                            textAlign: TextAlign.center,
                                             style: TextStyle(
                                               fontSize: 17,
                                               fontWeight: FontWeight.w500,
@@ -584,7 +586,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
                     const SizedBox(height: 30),
                     LayoutBuilder(
                       builder: (context, constraints) {
-                        final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
+                        final scale =
+                            MediaQuery.textScalerOf(context).scale(14) / 14;
                         return SegmentedButton<bool>(
                           direction: constraints.maxWidth / scale < 260
                               ? Axis.vertical
@@ -623,7 +626,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
                         child: contentController.text.trim().isEmpty
                             ? Text(
                                 context.l10n.previewEmptyBody,
-                                style: const TextStyle(color: Colors.grey),
+                                style: Theme.of(context).textTheme.bodySmall,
                               )
                             : MarkdownBody(markdown: contentController.text),
                       )
@@ -662,19 +665,21 @@ class _AutoSaveBanner extends StatelessWidget {
         return Text(
           context.l10n.autoSaveSaving,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
+          style: Theme.of(context).textTheme.bodySmall,
         );
       case _AutoSaveStatus.saved:
         return Text(
           context.l10n.autoSaveSaved,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
+          style: Theme.of(context).textTheme.bodySmall,
         );
       case _AutoSaveStatus.failed:
         return Text(
           context.l10n.autoSaveFailed,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 12, color: Colors.red),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.error,
+          ),
         );
     }
   }

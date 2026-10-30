@@ -37,7 +37,10 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
     if (days <= 0) {
       return l10n.purgeSoon;
     }
-    return l10n.purgeInDays(days, formatNumber(Localizations.localeOf(context), days));
+    return l10n.purgeInDays(
+      days,
+      formatNumber(Localizations.localeOf(context), days),
+    );
   }
 
   @override
