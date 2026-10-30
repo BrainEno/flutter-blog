@@ -14,6 +14,8 @@ import 'package:belog/features/blog/presentation/blocs/bog_upload/bloc/blog_uplo
 import 'package:belog/features/blog/presentation/pages/blog_editor_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
+import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
+import 'package:belog/features/blog/presentation/pages/recycle_bin_page.dart';
 import 'package:belog/features/blog/presentation/pages/saved_blogs_page.dart';
 import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/user_blogs_page.dart';
@@ -165,10 +167,26 @@ GoRouter createAppRouter({
                   editorRoute(),
                   GoRoute(
                     path: 'my-articles',
-                    builder: (context, state) => BlocProvider(
-                      create: (_) => serviceLocator<BlogByBloc>(),
+                    builder: (context, state) => MultiBlocProvider(
+                      providers: [
+                        BlocProvider(
+                          create: (_) => serviceLocator<BlogByBloc>(),
+                        ),
+                        BlocProvider(
+                          create: (_) => serviceLocator<BlogUploadBloc>(),
+                        ),
+                      ],
                       child: const UserBlogsPage(),
                     ),
+                    routes: [
+                      GoRoute(
+                        path: 'recycle-bin',
+                        builder: (context, state) => BlocProvider(
+                          create: (_) => serviceLocator<RecycleBinBloc>(),
+                          child: const RecycleBinPage(),
+                        ),
+                      ),
+                    ],
                   ),
                   GoRoute(
                     path: 'edit',

@@ -7,7 +7,15 @@ class BlogGridItem extends StatelessWidget {
   final Blog blog;
   final VoidCallback onTap;
 
-  const BlogGridItem({super.key, required this.blog, required this.onTap});
+  /// Long-press action (delete in "my articles"); absent by default.
+  final VoidCallback? onLongPress;
+
+  const BlogGridItem({
+    super.key,
+    required this.blog,
+    required this.onTap,
+    this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -15,6 +23,7 @@ class BlogGridItem extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Card(
         elevation: 4.0,
         shape: RoundedRectangleBorder(

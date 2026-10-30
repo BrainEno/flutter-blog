@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
@@ -159,6 +160,146 @@ void main() {
       ]);
 
       expect(tagPosts, 1);
+    });
+  });
+
+  group('deleteArticle', () {
+    test('DELETEs the article by its server UUID', () async {
+      when(() => client.deleteJson('/articles/server-uuid-1')).thenAnswer(
+        (_) async => <String, dynamic>{
+          'id': 'server-uuid-1',
+          'deletedAt': '2026-10-30T00:00:00.000Z',
+        },
+      );
+
+      expect(await dataSource.deleteArticle('server-uuid-1'), isTrue);
+      verify(() => client.deleteJson('/articles/server-uuid-1')).called(1);
+    });
+
+    test('an empty article id is rejected without a request', () async {
+      await expectLater(
+        () => dataSource.deleteArticle(''),
+        throwsA(isA<ServerException>()),
+      );
+      verifyNever(() => client.deleteJson(any()));
+    });
+
+    test('a 404 tombstone maps to a ServerException', () async {
+      when(() => client.deleteJson('/articles/server-uuid-1')).thenThrow(
+        const NowaveApiException(
+          statusCode: 404,
+          code: 'NOT_FOUND',
+          message: 'The article was not found.',
+        ),
+      );
+
+      await expectLater(
+        () => dataSource.deleteArticle('server-uuid-1'),
+        throwsA(isA<ServerException>()),
+      );
+    });
+  });
+
+  group('getDeletedBlogs', () {
+    Map<String, dynamic> tombstone({String? purgesAt}) => <String, dynamic>{
+      'id': 'server-uuid-1',
+      'slug': 'gone-deleted-abcdef12',
+      'title': '被删的文章',
+      'contentBlocks': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'id': 'b0',
+          'type': 'image',
+          'src': 'https://api.example.invalid/cover.webp',
+        },
+        <String, dynamic>{'id': 'b1', 'type': 'paragraph', 'text': '正文'},
+      ],
+      'deletedAt': '2026-10-01T00:00:00.000Z',
+      if (purgesAt != null) 'purgesAt': purgesAt,
+    };
+
+    test('lists tombstones with the server-computed purge deadline', () async {
+      when(
+        () =>
+            client.getJson('/me/articles/deleted', query: any(named: 'query')),
+      ).thenAnswer(
+        (_) async => [tombstone(purgesAt: '2026-10-31T00:00:00.000Z')],
+      );
+
+      final blogs = await dataSource.getDeletedBlogs();
+
+      expect(blogs, hasLength(1));
+      final entry = blogs.single;
+      expect(entry.articleId, 'server-uuid-1');
+      expect(entry.title, '被删的文章');
+      expect(entry.imageUrl, 'https://api.example.invalid/cover.webp');
+      expect(entry.deletedAt, DateTime.parse('2026-10-01T00:00:00.000Z'));
+      expect(entry.purgesAt, DateTime.parse('2026-10-31T00:00:00.000Z'));
+    });
+
+    test('a tombstone without purgesAt carries no expiry promise', () async {
+      when(
+        () =>
+            client.getJson('/me/articles/deleted', query: any(named: 'query')),
+      ).thenAnswer((_) async => [tombstone()]);
+
+      expect((await dataSource.getDeletedBlogs()).single.purgesAt, isNull);
+    });
+
+    test('a non-list payload is a server failure', () async {
+      when(
+        () =>
+            client.getJson('/me/articles/deleted', query: any(named: 'query')),
+      ).thenAnswer((_) async => <String, dynamic>{'unexpected': true});
+
+      await expectLater(
+        () => dataSource.getDeletedBlogs(),
+        throwsA(isA<ServerException>()),
+      );
+    });
+  });
+
+  group('restoreArticle', () {
+    test('POSTs the restore with the locale and parses the draft', () async {
+      when(
+        () => client.postJson(
+          '/articles/server-uuid-1/restore',
+          null,
+          query: any(named: 'query'),
+        ),
+      ).thenAnswer((_) async => _articleMap());
+
+      final blog = await dataSource.restoreArticle('server-uuid-1');
+
+      expect(blog.id, _kSlug);
+      expect(blog.articleId, 'server-uuid-1');
+      verify(
+        () => client.postJson(
+          '/articles/server-uuid-1/restore',
+          null,
+          query: {'locale': 'zh-CN'},
+        ),
+      ).called(1);
+    });
+
+    test('a 404 (not a tombstone) maps to a ServerException', () async {
+      when(
+        () => client.postJson(
+          '/articles/server-uuid-1/restore',
+          null,
+          query: any(named: 'query'),
+        ),
+      ).thenThrow(
+        const NowaveApiException(
+          statusCode: 404,
+          code: 'NOT_FOUND',
+          message: 'The article was not found.',
+        ),
+      );
+
+      await expectLater(
+        () => dataSource.restoreArticle('server-uuid-1'),
+        throwsA(isA<ServerException>()),
+      );
     });
   });
 }

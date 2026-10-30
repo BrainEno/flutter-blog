@@ -8,6 +8,7 @@ import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:fpdart/fpdart.dart';
 
@@ -140,8 +141,44 @@ class BlogRepositoryImpl implements BlogRepository {
       if (!await (connectionChecker.isConnected)) {
         return left(Failure.networkOffline());
       }
-      final res = await blogRemoteDataSource.deleteBlog(blogId);
+      // The delete endpoint addresses the server UUID, the app addresses
+      // articles by slug: resolve via the cache first (no extra request),
+      // falling back to a remote fetch like editBlog does.
+      var articleId =
+          (await blogLocalDataSource.loadBlogById(blogId))?.articleId ?? '';
+      if (articleId.isEmpty) {
+        articleId = (await blogRemoteDataSource.getBlogById(blogId)).articleId;
+      }
+      final res = await blogRemoteDataSource.deleteArticle(articleId);
+      if (res) {
+        // The cached copy must not outlive the server article offline.
+        await blogLocalDataSource.deleteCachedBlog(blogId);
+      }
       return right(res);
+    } on ServerException catch (e) {
+      return left(e.toFailure());
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<DeletedBlog>>> getDeletedBlogs() async {
+    try {
+      if (!await (connectionChecker.isConnected)) {
+        return left(Failure.networkOffline());
+      }
+      return right(await blogRemoteDataSource.getDeletedBlogs());
+    } on ServerException catch (e) {
+      return left(e.toFailure());
+    }
+  }
+
+  @override
+  Future<Either<Failure, Blog>> restoreDeletedBlog(String articleId) async {
+    try {
+      if (!await (connectionChecker.isConnected)) {
+        return left(Failure.networkOffline());
+      }
+      return right(await blogRemoteDataSource.restoreArticle(articleId));
     } on ServerException catch (e) {
       return left(e.toFailure());
     }

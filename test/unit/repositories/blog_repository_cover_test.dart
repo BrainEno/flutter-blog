@@ -201,21 +201,6 @@ void main() {
     });
   });
 
-  group('deleteBlog', () {
-    test('reports the backend gap as a validation failure', () async {
-      when(
-        () => remote.deleteBlog('my-slug'),
-      ).thenThrow(const ServerException('当前后端暂不支持删除文章，敬请期待'));
-
-      final result = await repository.deleteBlog('my-slug');
-
-      result.fold(
-        (failure) => expect(failure.message, contains('暂不支持删除')),
-        (_) => fail('expected a failure'),
-      );
-    });
-  });
-
   group('getBlogById', () {
     test('caches a fetched article locally', () async {
       when(

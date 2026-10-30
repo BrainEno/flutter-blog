@@ -7,6 +7,7 @@ import 'package:belog/core/storage/legacy/theme_preference.dart' as legacy;
 import 'package:belog/core/storage/sqlite_blog_cache.dart';
 import 'package:belog/core/storage/sqlite_draft_store.dart';
 import 'package:belog/core/storage/sqlite_theme_store.dart';
+import 'package:belog/features/auth/data/datasources/profile_cache_store.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:drift/native.dart';
@@ -40,6 +41,41 @@ void main() {
     posterName: 'Alice',
     posterAvatar: 'avatar',
   );
+
+  test('the profile cache round-trips and clears (issue #50)', () async {
+    final cache = SqliteProfileCache(db);
+    expect(await cache.read(), isNull);
+
+    await cache.write(
+      CachedProfile(
+        displayName: '测试用户',
+        avatarUrl: 'https://api.example.invalid/avatar.webp',
+        website: 'https://example.invalid',
+        updatedAt: DateTime.utc(2026, 10, 1),
+      ),
+    );
+    final read = await cache.read();
+    expect(read?.displayName, '测试用户');
+    expect(read?.avatarUrl, 'https://api.example.invalid/avatar.webp');
+    expect(read?.website, 'https://example.invalid');
+
+    await cache.clear();
+    expect(await cache.read(), isNull);
+  });
+
+  test('deleting a cached blog drops only that row', () async {
+    final cache = SqliteBlogCache(db);
+    await cache.uploadLocalBlogs(blogs: [blog('slug-1', 'one')]);
+    await cache.uploadLocalBlogs(blogs: [blog('slug-2', 'two')]);
+
+    await cache.deleteCachedBlog('slug-1');
+
+    expect(await cache.loadBlogById('slug-1'), isNull);
+    expect((await cache.loadBlogById('slug-2'))?.title, 'two');
+    expect((await cache.loadBlogs()).map((b) => b.id), ['slug-2']);
+    // Idempotent: a missing row deletes silently.
+    await cache.deleteCachedBlog('slug-1');
+  });
 
   test('fresh database preserves themes, drafts and upserted cache', () async {
     await db.importLegacyIfNeeded(dir);
