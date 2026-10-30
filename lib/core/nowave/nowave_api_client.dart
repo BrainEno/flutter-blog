@@ -345,11 +345,22 @@ class NowaveApiClient {
         '$method ${uri.path} -> ${response.statusCode} '
         '(${stopwatch.elapsedMilliseconds}ms)',
       );
+      if (response.statusCode >= HttpStatus.badRequest) {
+        // Release-build observability (issue #49): path and status only,
+        // never the query string, headers or body.
+        AppLogger.request(
+          method,
+          uri.path,
+          response.statusCode,
+          stopwatch.elapsedMilliseconds,
+        );
+      }
       return response;
     } on TimeoutException {
       AppLogger.debug(
         '$method ${uri.path} timed out after ${budget.inMilliseconds}ms',
       );
+      AppLogger.requestTimeout(method, uri.path, budget.inMilliseconds);
       throw TimeoutException(
         '$method ${uri.path} did not answer within '
         '${budget.inMilliseconds}ms',
