@@ -233,6 +233,7 @@ class NowaveSessionManager implements NowaveProactiveAuthenticator {
   /// is used and the 401 path stays the authority for unrecoverable
   /// sessions). A refresh token that has already expired ends the session
   /// locally without any network call.
+  @override
   Future<bool> ensureFreshAccess() async {
     final session = _session;
     if (session == null) return false;
@@ -351,11 +352,13 @@ class NowaveSessionManager implements NowaveProactiveAuthenticator {
 
   static NowaveSessionData? decodeSession(String? raw) {
     if (raw == null || raw.isEmpty) return null;
-    final decoded = jsonDecode(raw);
-    if (decoded is! Map<String, dynamic>) return null;
     try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return null;
       return NowaveSessionData.fromJson(decoded);
     } on FormatException {
+      // A corrupt payload (bad JSON, unparsable dates) reads as "no
+      // session" rather than crashing every launch.
       return null;
     }
   }

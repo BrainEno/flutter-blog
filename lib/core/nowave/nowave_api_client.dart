@@ -246,7 +246,7 @@ class NowaveApiClient {
         timeout: timeout,
       );
     } else {
-      final authenticator = _authenticator!;
+      final authenticator = _authenticator;
       if (authenticator is NowaveProactiveAuthenticator) {
         // Cheap time check inside; rotates only when expiry is close. A
         // failure here never blocks the request - the 401 path below is

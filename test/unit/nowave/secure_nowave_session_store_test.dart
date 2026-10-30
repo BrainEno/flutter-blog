@@ -4,8 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-class MockFlutterSecureStorage extends Mock
-    implements FlutterSecureStorage {}
+class MockFlutterSecureStorage extends Mock implements FlutterSecureStorage {}
 
 NowaveSessionData _session() => NowaveSessionData(
   userId: 'u1',
@@ -20,9 +19,9 @@ void main() {
   group('SecureNowaveSessionStore', () {
     test('read returns the decoded session', () async {
       final storage = MockFlutterSecureStorage();
-      when(() => storage.read(key: 'nowave_session_v1')).thenAnswer(
-        (_) async => NowaveSessionManager.encodeSession(_session()),
-      );
+      when(
+        () => storage.read(key: 'nowave_session_v1'),
+      ).thenAnswer((_) async => NowaveSessionManager.encodeSession(_session()));
       final store = SecureNowaveSessionStore(storage);
 
       final session = await store.read();
@@ -33,8 +32,9 @@ void main() {
 
     test('read of corrupt or missing data yields null', () async {
       final storage = MockFlutterSecureStorage();
-      when(() => storage.read(key: 'nowave_session_v1'))
-          .thenAnswer((_) async => 'not json {');
+      when(
+        () => storage.read(key: 'nowave_session_v1'),
+      ).thenAnswer((_) async => 'not json {');
       final store = SecureNowaveSessionStore(storage);
 
       expect(await store.read(), isNull);
@@ -65,8 +65,9 @@ void main() {
 
     test('clear deletes the fixed key', () async {
       final storage = MockFlutterSecureStorage();
-      when(() => storage.delete(key: 'nowave_session_v1'))
-          .thenAnswer((_) async {});
+      when(
+        () => storage.delete(key: 'nowave_session_v1'),
+      ).thenAnswer((_) async {});
       final store = SecureNowaveSessionStore(storage);
 
       await store.clear();

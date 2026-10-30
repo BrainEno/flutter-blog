@@ -311,38 +311,35 @@ void main() {
       },
     );
 
-    test(
-      'a network failure during the rotation keeps the session',
-      () async {
-        final client = NowaveApiClient(
-          baseUrl: Uri.parse('https://api.example.invalid'),
-          httpClient: MockClient((request) async {
-            throw const SocketException('network unreachable');
-          }),
+    test('a network failure during the rotation keeps the session', () async {
+      final client = NowaveApiClient(
+        baseUrl: Uri.parse('https://api.example.invalid'),
+        httpClient: MockClient((request) async {
+          throw const SocketException('network unreachable');
+        }),
+      );
+      final store = MemorySessionStore()
+        ..stored = _sessionExpiring(
+          accessExpiresAt: now.add(const Duration(seconds: 10)),
+          refreshExpiresAt: now.add(const Duration(days: 30)),
         );
-        final store = MemorySessionStore()
-          ..stored = _sessionExpiring(
-            accessExpiresAt: now.add(const Duration(seconds: 10)),
-            refreshExpiresAt: now.add(const Duration(days: 30)),
-          );
-        final manager = NowaveSessionManager(
-          client: client,
-          store: store,
-          now: () => now,
-        );
-        await manager.restore();
-        final statuses = <NowaveAuthStatus>[];
-        final sub = manager.statusStream.listen(statuses.add);
+      final manager = NowaveSessionManager(
+        client: client,
+        store: store,
+        now: () => now,
+      );
+      await manager.restore();
+      final statuses = <NowaveAuthStatus>[];
+      final sub = manager.statusStream.listen(statuses.add);
 
-        expect(await manager.ensureFreshAccess(), isFalse);
-        await Future<void>.delayed(Duration.zero);
+      expect(await manager.ensureFreshAccess(), isFalse);
+      await Future<void>.delayed(Duration.zero);
 
-        expect(manager.currentSession, isNotNull);
-        expect(store.stored, isNotNull);
-        expect(statuses, isEmpty);
-        await sub.cancel();
-      },
-    );
+      expect(manager.currentSession, isNotNull);
+      expect(store.stored, isNotNull);
+      expect(statuses, isEmpty);
+      await sub.cancel();
+    });
   });
 
   group('clear', () {
