@@ -57,7 +57,6 @@ class _BlogEditorState extends State<BlogEditorPage> {
   bool _draftsReady = false;
   bool _hasUnsavedEdits = false;
   bool _editedDuringPublish = false;
-  bool _suppressDraftFlush = false;
   DateTime? _publishStartedAt;
 
   @override
@@ -130,7 +129,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
   /// Best-effort save when the page is disposed mid-edit. Must not touch
   /// [context] - the widget is already unmounted.
   void _flushDraftOnDispose() {
-    if (_suppressDraftFlush || !_hasUnsavedEdits || _isBlankDraft()) return;
+    if (!_hasUnsavedEdits || _isBlankDraft()) return;
     // Only edits made while a publish was uploading should survive it.
     if (_publishStartedAt != null && !_editedDuringPublish) return;
     final draft = _currentDraft();
@@ -222,20 +221,13 @@ class _BlogEditorState extends State<BlogEditorPage> {
             imageMimeType: isNewImageSelected ? imageMimeType : null,
           ),
         );
+      } else {
+        // New articles still need a cover at this point (the editor's
+        // upload flow always pairs a cover with the first publish).
+        showSnackBar(context, '请填写所有必填字段并上传封面图片');
       }
     } else {
       showSnackBar(context, '请填写所有必填字段并上传封面图片');
-    }
-  }
-
-  void deleteBlog() {
-    _draftRequestVersion++;
-    if (widget.blog != null) {
-      context.read<BlogUploadBloc>().add(
-        DeleteBlogEvent(blogId: widget.blog!.id),
-      );
-    } else {
-      showSnackBar(context, '无法删除未保存的文章');
     }
   }
 
@@ -328,15 +320,15 @@ class _BlogEditorState extends State<BlogEditorPage> {
                 case 'save_draft':
                   saveDraft();
                   break;
-                case 'delete':
-                  deleteBlog();
-                  break;
                 case 'cancel':
                   Navigator.of(context).pop();
                   break;
               }
             },
             itemBuilder: (BuildContext context) {
+              // No delete entry: the backend has no article deletion
+              // endpoint yet (gap G1, see
+              // docs/supabase-to-nowave-migration.md).
               if (widget.blog == null) {
                 return [
                   PopupMenuItem<String>(
@@ -353,10 +345,6 @@ class _BlogEditorState extends State<BlogEditorPage> {
                   PopupMenuItem<String>(
                     value: 'save',
                     child: Center(child: Text('保存更改')),
-                  ),
-                  PopupMenuItem<String>(
-                    value: 'delete',
-                    child: Center(child: Text('删除文章')),
                   ),
                   PopupMenuItem<String>(
                     value: 'save_draft',
@@ -377,31 +365,20 @@ class _BlogEditorState extends State<BlogEditorPage> {
           if (state is BlogUploadFailure) {
             showSnackBar(context, state.error);
           } else if (state is BlogUploadSuccess) {
-            // No manual imageCache eviction needed: covers are served
-            // through versioned, cache-busting URLs (cover_url.dart), so
+            // No manual imageCache eviction needed: covers are immutable
+            // media URLs that change whenever a new cover is uploaded, so
             // the refreshed list/editor automatically fetches the new
-            // object.
+            // asset.
             showSnackBar(context, widget.blog == null ? '上传成功' : '更新成功');
             // Drop the drafts that were published; keep anything typed
             // during the upload (see _clearPublishedDrafts).
             _hasUnsavedEdits = _editedDuringPublish;
             unawaited(_clearPublishedDrafts());
             Navigator.of(context).pop(true);
-          } else if (state is BlogDeleteSuccess) {
-            showSnackBar(context, '删除成功');
-            // The article is gone: clear all of its drafts and do not let
-            // the dispose flush resurrect one.
-            _suppressDraftFlush = true;
-            unawaited(
-              _draftStore
-                  .deleteDraftsFor(widget.blog?.id)
-                  .then((_) {}, onError: (_) {}),
-            );
-            Navigator.of(context).pop(true);
           }
         },
         builder: (context, state) {
-          if (state is BlogUploadLoading || state is BlogDeleteLoading) {
+          if (state is BlogUploadLoading) {
             return const Loader();
           }
           return SingleChildScrollView(

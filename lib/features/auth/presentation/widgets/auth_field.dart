@@ -11,6 +11,10 @@ class AuthField extends StatelessWidget {
   final Color? borderColor; // New: Optional border color
   final Color? focusedBorderColor; // New: Optional focused border color
 
+  /// Optional extra validation. When null the field only requires
+  /// non-empty input.
+  final FormFieldValidator<String>? validator;
+
   const AuthField({
     super.key,
     required this.hintText,
@@ -21,6 +25,7 @@ class AuthField extends StatelessWidget {
     this.hintStyle,
     this.borderColor,
     this.focusedBorderColor,
+    this.validator,
   });
 
   @override
@@ -30,60 +35,90 @@ class AuthField extends StatelessWidget {
       autofocus: false,
       controller: controller,
       obscureText: isObscureText,
-      style: style ??
+      style:
+          style ??
           TextStyle(
             fontSize: 16,
             color: isDarkMode
-                ? AppPallete.whiteColor // White text in dark mode
+                ? AppPallete
+                      .whiteColor // White text in dark mode
                 : AppPallete.lightBlack, // Black text in light mode
           ),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: hintStyle ??
+        hintStyle:
+            hintStyle ??
             TextStyle(
               fontSize: 16,
               color: isDarkMode
-                  ? AppPallete.greyColor // Medium grey hint in dark mode
+                  ? AppPallete
+                        .greyColor // Medium grey hint in dark mode
                   : AppPallete.lightGreyText, // Light grey hint in light mode
             ),
         prefixIcon: prefixIcon != null
             ? Icon(
                 prefixIcon,
                 color: isDarkMode
-                    ? AppPallete.greyColor // Medium grey icon in dark mode
+                    ? AppPallete
+                          .greyColor // Medium grey icon in dark mode
                     : AppPallete.lightGreyText, // Light grey icon in light mode
               )
             : null,
         filled: true,
         fillColor: isDarkMode
-            ? AppPallete.greyColorDark // Dark grey background in dark mode
+            ? AppPallete
+                  .greyColorDark // Dark grey background in dark mode
             : AppPallete.lightBackground, // White background in light mode
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16.0,
+          horizontal: 20.0,
+        ),
         border: _authFieldBorder(
-            context, isDarkMode, borderColor), // Theme aware border
+          context,
+          isDarkMode,
+          borderColor,
+        ), // Theme aware border
         enabledBorder: _authFieldBorder(
-            context, isDarkMode, borderColor), // Theme aware enabled border
+          context,
+          isDarkMode,
+          borderColor,
+        ), // Theme aware enabled border
         focusedBorder: _authFieldFocusedBorder(
-            context, focusedBorderColor), // Focused border remains gradient
+          context,
+          focusedBorderColor,
+        ), // Focused border remains gradient
         errorBorder: _authFieldErrorBorder(context), // Error border remains red
-        focusedErrorBorder:
-            _authFieldErrorBorder(context), // Focused error border remains red
+        focusedErrorBorder: _authFieldErrorBorder(
+          context,
+        ), // Focused error border remains red
       ),
-      validator: (value) =>
-          value == null || value.isEmpty ? "请输入$hintText!" : null,
+      validator: _effectiveValidator,
     );
   }
 
-  // Theme-aware border for AuthField
+  /// The custom [validator] when provided, otherwise a plain non-empty
+  /// check.
+  String? _effectiveValidator(String? value) {
+    if (validator != null) {
+      return validator!(value);
+    }
+    return value == null || value.isEmpty ? "请输入$hintText!" : null;
+  }
+
+  // Theme-aware border for the auth field
   OutlineInputBorder _authFieldBorder(
-      BuildContext context, bool isDarkMode, Color? borderColor) {
+    BuildContext context,
+    bool isDarkMode,
+    Color? borderColor,
+  ) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
       borderSide: BorderSide(
-        color: borderColor ??
+        color:
+            borderColor ??
             (isDarkMode
-                ? AppPallete.greyColorLight // Light grey border in dark mode
+                ? AppPallete
+                      .greyColorLight // Light grey border in dark mode
                 : AppPallete.lightBorder), // Light border in light mode
       ),
     );
@@ -91,12 +126,12 @@ class AuthField extends StatelessWidget {
 
   // Focused border remains Gradient independent of theme
   OutlineInputBorder _authFieldFocusedBorder(
-      BuildContext context, Color? focusedBorderColor) {
+    BuildContext context,
+    Color? focusedBorderColor,
+  ) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(
-        color: focusedBorderColor ?? AppPallete.gradient2,
-      ),
+      borderSide: BorderSide(color: focusedBorderColor ?? AppPallete.gradient2),
     );
   }
 

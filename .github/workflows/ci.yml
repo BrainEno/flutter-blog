@@ -57,6 +57,11 @@ jobs:
   format:
     name: format / changed-Dart-format
     runs-on: ubuntu-latest
+    permissions:
+      # The failure step comments the full formatting diff on the PR so it
+      # survives the 4096-byte annotation cap. Nothing else is writable.
+      contents: read
+      pull-requests: write
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -85,7 +90,50 @@ jobs:
             echo "No Dart files changed; formatting gate is not applicable to this PR."
           else
             printf 'Formatting check: %s\n' "${dart_files[@]}"
-            dart format --output=none --set-exit-if-changed "${dart_files[@]}"
+            mkdir -p build/reports
+            set +e
+            dart format --output=none --set-exit-if-changed "${dart_files[@]}" 2>&1 | tee build/reports/format-check.log
+            fmt_status=${PIPESTATUS[0]}
+            set -e
+            if [[ "$fmt_status" -ne 0 ]]; then
+              changed_paths="$(grep '^Changed ' build/reports/format-check.log | tr '\n' ',' | sed 's/,$//')"
+              echo "files needing formatting: ${changed_paths}"
+              # Format the real files in place (this checkout is disposable)
+              # and capture the exact diff with git. Formatting copies under
+              # /tmp loses the package context and produces a DIFFERENT
+              # dialect than the gate, so the copy approach is forbidden.
+              dart format "${dart_files[@]}" >/dev/null 2>&1 || true
+              git --no-pager diff -- "${dart_files[@]}" > /tmp/fmt_full.diff || true
+              git checkout -- .
+              # Compact per-file summary for the annotation (bounded).
+              awk '
+                /^diff --git a\// { file = $3; sub(/^a\//, "", file); print "### " file; next }
+                /^(index |--- a\/|\+\+\+ b\/|new file mode|deleted file mode|Binary files)/ { next }
+                /^[+-]/ { print }
+              ' /tmp/fmt_full.diff | head -c 3600 > /tmp/fmt_summary.txt
+              cat /tmp/fmt_summary.txt >> "$GITHUB_STEP_SUMMARY"
+              if [[ -s /tmp/fmt_full.diff ]]; then
+                {
+                  echo "### dart format diff (run ${GITHUB_RUN_ID})"
+                  echo
+                  echo '```diff'
+                  head -c 60000 /tmp/fmt_full.diff
+                  echo '```'
+                  echo
+                  echo "_Automated diagnostic comment from the CI workflow; \`dart format\` output versus the current files._"
+                } > /tmp/fmt-comment.md
+              fi
+              if [[ -s /tmp/fmt_summary.txt ]]; then
+                diff_out="$(cat /tmp/fmt_summary.txt)"
+              else
+                diff_out="files needing formatting: ${changed_paths}"
+              fi
+              diff_out="${diff_out//'%'/'%25'}"
+              diff_out="${diff_out//$'\r'/'%0D'}"
+              diff_out="${diff_out//$'\n'/'%0A'}"
+              echo "::error title=format failure (${changed_paths})::${diff_out}"
+            fi
+            exit "$fmt_status"
           fi
       - name: Audit repository-wide formatting drift
         shell: bash
@@ -109,6 +157,18 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Comment the format diff on the PR when files need formatting
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
+          if [[ -f /tmp/fmt-comment.md ]]; then
+            gh pr comment "$PR_NUMBER" --body-file /tmp/fmt-comment.md
+          else
+            echo "No format diff was produced; nothing to comment."
+          fi
+
   analyze:
     name: analyze / flutter-analyze
     runs-on: ubuntu-latest
@@ -128,8 +188,7 @@ jobs:
           umask 077
           cat > env.json <<'EOF'
           {
-            "SUPABASE_URL": "https://example.invalid",
-            "SUPABASE_KEY": "ci-placeholder-not-a-secret"
+            "API_BASE_URL": "https://example.invalid"
           }
           EOF
       - name: Resolve dependencies
@@ -163,6 +222,11 @@ jobs:
   test:
     name: test / flutter-test
     runs-on: ubuntu-latest
+    permissions:
+      # The failure step comments the log tail on the PR so the crash reason
+      # survives GitHub's 4096-byte annotation cap. Nothing else is writable.
+      contents: read
+      pull-requests: write
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -179,8 +243,7 @@ jobs:
           umask 077
           cat > env.json <<'EOF'
           {
-            "SUPABASE_URL": "https://example.invalid",
-            "SUPABASE_KEY": "ci-placeholder-not-a-secret"
+            "API_BASE_URL": "https://example.invalid"
           }
           EOF
       - name: Resolve dependencies
@@ -202,6 +265,22 @@ jobs:
             bash tool/ci/annotate_failure.sh analyze build/reports/flutter-test.log
           fi
           exit "$status"
+      - name: Comment the log tail on the PR when tests fail
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
+          {
+            echo "### flutter test log tail (run ${GITHUB_RUN_ID})"
+            echo
+            echo '```'
+            tail -c 30000 build/reports/flutter-test.log
+            echo '```'
+            echo
+            echo "_Automated diagnostic comment from the CI workflow; the same log is uploaded as the \`flutter-test-evidence\` artifact._"
+          } > /tmp/pr-comment.md
+          gh pr comment "$PR_NUMBER" --body-file /tmp/pr-comment.md
       - name: Upload test log and LCOV
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -237,8 +316,7 @@ jobs:
           umask 077
           cat > env.json <<'EOF'
           {
-            "SUPABASE_URL": "https://example.invalid",
-            "SUPABASE_KEY": "ci-placeholder-not-a-secret"
+            "API_BASE_URL": "https://example.invalid"
           }
           EOF
       - name: Resolve dependencies

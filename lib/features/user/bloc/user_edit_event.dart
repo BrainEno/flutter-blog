@@ -8,8 +8,8 @@ abstract class UserEditEvent extends Equatable {
 }
 
 /// Profile display data submission. The e-mail address is not part of it:
-/// it only changes through the account-security flow (Supabase Auth
-/// update + confirmation e-mail).
+/// the backend offers no e-mail change endpoint yet (gap G2, see
+/// docs/supabase-to-nowave-migration.md).
 class UserEditSubmitted extends UserEditEvent {
   final String name;
   final String? website;

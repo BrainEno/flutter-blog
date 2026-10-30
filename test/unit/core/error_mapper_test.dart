@@ -4,8 +4,8 @@ import 'dart:io';
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 void main() {
   group('mapToServerException classifies by exception type', () {
@@ -26,50 +26,98 @@ void main() {
       expect(exception.toFailure().message, contains('超时'));
     });
 
-    test('PostgREST 42501 becomes a permission error without SQL detail', () {
-      final raw = sb.PostgrestException(
-        message: 'permission denied for table blogs (details: policy xyz)',
-        code: '42501',
+    test('NowaveApiException FORBIDDEN becomes a permission error without '
+        'backend detail', () {
+      final raw = const NowaveApiException(
+        statusCode: 403,
+        code: 'FORBIDDEN',
+        message: 'actor does not own article 123',
       );
       final exception = mapToServerException(raw);
       final failure = exception.toFailure();
       expect(failure.kind, FailureKind.permission);
       expect(failure.message, '没有权限执行此操作');
-      expect(failure.message, isNot(contains('permission denied')));
-      expect(failure.message, isNot(contains('policy')));
+      expect(failure.message, isNot(contains('actor')));
+      expect(failure.message, isNot(contains('article')));
       expect(failure.cause, same(raw));
     });
 
-    test('PostgREST unique violation becomes a validation error', () {
+    test('NowaveApiException CONFLICT becomes a validation error', () {
       final exception = mapToServerException(
-        sb.PostgrestException(message: 'duplicate key', code: '23505'),
+        const NowaveApiException(
+          statusCode: 409,
+          code: 'CONFLICT',
+          message: 'identity already exists',
+        ),
       );
       expect(exception.kind, FailureKind.validation);
     });
 
-    test('other PostgREST errors become generic server errors, no leakage', () {
+    test('NowaveApiException NOT_FOUND becomes a validation error', () {
       final exception = mapToServerException(
-        sb.PostgrestException(message: 'syntax error at or near "SELECT"'),
+        const NowaveApiException(
+          statusCode: 404,
+          code: 'NOT_FOUND',
+          message: 'The article was not found.',
+        ),
+      );
+      expect(exception.kind, FailureKind.validation);
+      expect(exception.message, contains('不存在'));
+    });
+
+    test('NowaveApiException UNAUTHENTICATED becomes an auth error', () {
+      final exception = mapToServerException(
+        const NowaveApiException(
+          statusCode: 401,
+          code: 'UNAUTHENTICATED',
+          message: 'Authentication is required.',
+        ),
+      );
+      expect(exception.kind, FailureKind.auth);
+      expect(exception.message, contains('重新登录'));
+    });
+
+    test('NowaveApiException RATE_LIMITED becomes a server error with a '
+        'friendly message', () {
+      final raw = const NowaveApiException(
+        statusCode: 429,
+        code: 'RATE_LIMITED',
+        message: 'too many requests',
+        retryAfterSeconds: 42,
+      );
+      final exception = mapToServerException(raw);
+      expect(exception.kind, FailureKind.server);
+      expect(exception.message, contains('频繁'));
+      expect(exception.cause, same(raw));
+    });
+
+    test('NowaveApiException BAD_USER_INPUT becomes a validation error '
+        'without echoing backend text', () {
+      final exception = mapToServerException(
+        const NowaveApiException(
+          statusCode: 400,
+          code: 'BAD_USER_INPUT',
+          message: 'title must be a string.',
+        ),
+      );
+      final failure = exception.toFailure();
+      expect(failure.kind, FailureKind.validation);
+      expect(failure.message, isNot(contains('title')));
+      expect(failure.message, isNot(contains('string')));
+    });
+
+    test('unknown NowaveApiException codes become generic server errors, '
+        'no leakage', () {
+      final exception = mapToServerException(
+        const NowaveApiException(
+          statusCode: 500,
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'The request could not be completed.',
+        ),
       );
       final failure = exception.toFailure();
       expect(failure.kind, FailureKind.server);
-      expect(failure.message, isNot(contains('SELECT')));
-      expect(failure.message, isNot(contains('syntax')));
-    });
-
-    test('storage exceptions keep their category', () {
-      final exception = mapToServerException(
-        sb.StorageException('bucket not found', statusCode: '404'),
-      );
-      expect(exception.kind, FailureKind.storage);
-    });
-
-    test('auth exceptions keep their message (it is user-facing)', () {
-      final exception = mapToServerException(
-        sb.AuthException('New password should be at least 6 characters.'),
-      );
-      expect(exception.kind, FailureKind.auth);
-      expect(exception.message, contains('6 characters'));
+      expect(failure.message, isNot(contains('completed')));
     });
 
     test('unknown errors get a safe generic message and keep the cause', () {
@@ -80,6 +128,11 @@ void main() {
       expect(failure.message, '发生未知错误，请稍后重试');
       expect(failure.message, isNot(contains('secret')));
       expect(failure.cause, same(raw));
+    });
+
+    test('format exceptions become validation errors', () {
+      final exception = mapToServerException(const FormatException('bad'));
+      expect(exception.kind, FailureKind.validation);
     });
 
     test('ServerException instances pass through untouched', () {

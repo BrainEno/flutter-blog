@@ -1,13 +1,21 @@
 import 'package:belog/core/error/exceptions.dart';
-import 'package:belog/features/auth/auth_constants.dart';
+import 'package:belog/core/nowave/nowave_api_client.dart';
+import 'package:belog/core/nowave/nowave_session.dart';
+import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
-import 'package:belog/features/auth/domain/entities/sign_up_outcome.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// Authentication against the no-wave backend.
+///
+/// There is no e-mail verification, password reset or e-mail/password
+/// change flow on the backend (see docs/supabase-to-nowave-migration.md,
+/// gap G2), so those operations do not exist here. `GET /me` returns only
+/// the user id; the e-mail shown in the UI is the one cached locally at
+/// sign-in time.
 abstract interface class AuthRemoteDataSource {
-  Session? get currentUserSession;
+  /// The locally persisted session, without any network traffic.
+  NowaveSessionData? get currentSession;
 
-  Future<SignUpOutcome> signUpWithEmailPassword({
+  Future<UserModel> signUpWithEmailPassword({
     required String name,
     required String email,
     required String password,
@@ -18,49 +26,50 @@ abstract interface class AuthRemoteDataSource {
     required String password,
   });
 
+  /// The signed-in user, or null when there is no usable session.
   Future<UserModel?> getCurrentUserData();
 
-  /// Re-sends the sign-up confirmation e-mail for [email].
-  Future<void> resendConfirmationEmail(String email);
-
-  /// Sends a password-recovery e-mail for [email]; the link inside opens
-  /// the app via [kAuthCallbackUrl].
-  Future<void> sendPasswordResetEmail(String email);
-
+  /// Revokes the session family server-side and drops the local session.
   Future<void> logout();
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
-  final SupabaseClient supabaseClient;
-  AuthRemoteDataSourceImpl(this.supabaseClient);
+  final NowaveApiClient client;
+  final NowaveSessionManager sessionManager;
+
+  AuthRemoteDataSourceImpl(this.client, this.sessionManager);
 
   @override
-  Session? get currentUserSession => supabaseClient.auth.currentSession;
+  NowaveSessionData? get currentSession => sessionManager.currentSession;
 
   @override
-  Future<UserModel?> getCurrentUserData() async {
+  Future<UserModel> signUpWithEmailPassword({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    // Registration is immediate: the backend returns a session without an
+    // e-mail confirmation step, so the user is signed in right away.
+    final tokens = await _exchangeTokens(
+      () => client.postJson('/auth/register', {
+        'email': email,
+        'password': password,
+      }, authenticate: false),
+    );
+    await sessionManager.adoptSession(tokens, email: email);
     try {
-      final session = currentUserSession;
-      if (session == null) {
-        return null;
-      }
-      // A valid session without a profile row means the server-side
-      // profile trigger has not produced (or no longer has) a profile.
-      // Report "no profile" instead of crashing, and let the caller decide
-      // how to treat it - the auth user is never fabricated into a
-      // logged-in profile.
-      final userData = await supabaseClient
-          .from('profiles')
-          .select()
-          .eq('id', session.user.id)
-          .maybeSingle();
-      if (userData == null) {
-        return null;
-      }
-      return UserModel.fromJson(userData).copyWith(email: session.user.email);
-    } catch (e) {
-      throw ServerException(e.toString());
+      await _resolveUserIdentity();
+      // The backend has no name field at registration: the display name is
+      // written to the profile right after the account exists.
+      await client.putJson('/me/profile', {'displayName': name});
+    } catch (_) {
+      // The account exists and the session is valid; a failed profile
+      // write must not fail the whole sign-up. The name can be edited
+      // later in the profile page.
     }
+    final user = await _loadCurrentUser(email: email);
+    sessionManager.notifySignedIn();
+    return user;
   }
 
   @override
@@ -68,90 +77,78 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String email,
     required String password,
   }) async {
-    try {
-      final response = await supabaseClient.auth.signInWithPassword(
-        password: password,
-        email: email,
-      );
-      if (response.user == null) {
-        throw ServerException("User is null!");
-      }
-      return UserModel.fromJson(response.user!.toJson());
-    } catch (e) {
-      throw ServerException(e.toString());
-    }
+    final tokens = await _exchangeTokens(
+      () => client.postJson('/auth/login', {
+        'email': email,
+        'password': password,
+      }, authenticate: false),
+    );
+    await sessionManager.adoptSession(tokens, email: email);
+    await _resolveUserIdentity();
+    final user = await _loadCurrentUser(email: email);
+    sessionManager.notifySignedIn();
+    return user;
   }
 
   @override
-  Future<SignUpOutcome> signUpWithEmailPassword({
-    required String name,
-    required String email,
-    required String password,
-  }) async {
-    try {
-      final response = await supabaseClient.auth.signUp(
-        password: password,
-        email: email,
-        emailRedirectTo: kAuthCallbackUrl,
-        data: {'name': name},
-      );
-      final authUser = response.user;
-      if (authUser == null) {
-        throw ServerException("User is null!");
-      }
-      if (response.session == null) {
-        // E-mail confirmation is required: no session exists, so the user
-        // is NOT signed in yet.
-        return SignUpOutcome(email: authUser.email ?? email);
-      }
-      // A session exists (confirmation disabled or already satisfied).
-      // This is an auth-level identity only - the full profile is fetched
-      // separately and refreshed through the auth state sync.
-      return SignUpOutcome(
-        email: authUser.email ?? email,
-        user: UserModel(
-          id: authUser.id,
-          email: authUser.email ?? email,
-          name: name,
-          updatedAt: DateTime.now(),
-        ),
-      );
-    } catch (e) {
-      throw ServerException(e.toString());
+  Future<UserModel?> getCurrentUserData() async {
+    final email = currentSession?.email ?? '';
+    if (sessionManager.accessToken == null) {
+      return null;
     }
-  }
-
-  @override
-  Future<void> resendConfirmationEmail(String email) async {
     try {
-      await supabaseClient.auth.resend(
-        type: OtpType.signup,
-        email: email,
-        emailRedirectTo: kAuthCallbackUrl,
-      );
-    } catch (e) {
-      throw ServerException(e.toString());
-    }
-  }
-
-  @override
-  Future<void> sendPasswordResetEmail(String email) async {
-    try {
-      await supabaseClient.auth.resetPasswordForEmail(
-        email,
-        redirectTo: kAuthCallbackUrl,
-      );
-    } catch (e) {
-      throw ServerException(e.toString());
+      return await _loadCurrentUser(email: email);
+    } on NowaveApiException catch (e) {
+      if (e.statusCode == 401) {
+        // The session could not be refreshed: not signed in.
+        return null;
+      }
+      rethrow;
     }
   }
 
   @override
   Future<void> logout() async {
     try {
-      await supabaseClient.auth.signOut();
+      // Revokes the whole session family (access and refresh tokens).
+      await client.deleteJson('/me/session');
     } catch (e) {
-      throw ServerException(e.toString());
+      // Best-effort server-side revocation: the local session is dropped
+      // regardless, so the user is signed out on this device either way
+      // and a leftover refresh token simply expires unused.
+      AppLogger.debug('session revocation failed during logout: $e');
     }
+    await sessionManager.clear();
+  }
+
+  Future<NowaveTokenPair> _exchangeTokens(
+    Future<dynamic> Function() call,
+  ) async {
+    final data = await call();
+    if (data is! Map) {
+      throw const ServerException('登录响应格式错误');
+    }
+    return NowaveTokenPair.fromDataMap(data.cast<String, dynamic>());
+  }
+
+  /// Fetches the user id via `GET /me` and records it on the session.
+  Future<void> _resolveUserIdentity() async {
+    final data = await client.getJson('/me');
+    final id = (data as Map?)?['id'] as String?;
+    if (id == null || id.isEmpty) {
+      throw const ServerException('登录响应缺少用户信息');
+    }
+    await sessionManager.updateUserId(id);
+  }
+
+  Future<UserModel> _loadCurrentUser({required String email}) async {
+    final profile = await client.getJson('/me/profile');
+    if (profile is! Map) {
+      throw const ServerException('个人资料响应格式错误');
+    }
+    return UserModel.fromNowaveProfile(
+      profile.cast<String, dynamic>(),
+      email: email,
+    );
   }
 }

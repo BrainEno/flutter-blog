@@ -6,8 +6,6 @@ import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
 import 'package:belog/features/auth/domain/usecases/current_user.dart';
-import 'package:belog/features/auth/domain/usecases/resend_confirmation_email.dart';
-import 'package:belog/features/auth/domain/usecases/send_password_reset_email.dart';
 import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
@@ -157,8 +155,6 @@ class Harness {
       userLogin: UserLogin(authRepository),
       userSignOut: UserSignOut(authRepository),
       currentUser: CurrentUser(authRepository),
-      resendConfirmationEmail: ResendConfirmationEmail(authRepository),
-      sendPasswordResetEmail: SendPasswordResetEmail(authRepository),
       appUserCubit: appUserCubit,
     );
   }
@@ -276,12 +272,18 @@ void main() {
     await harness.pump(tester);
     await tester.pumpAndSettle();
 
+    // The profile list lost an entry in the no-wave migration (G2 hides
+    // account settings), which moved the sign-out tile to a screen position
+    // where tapping the Text widget itself lands outside its render box.
+    // Tap the ListTile instead: its whole area belongs to the ink response.
+    final signOutTile = find.widgetWithText(ListTile, '退出登录');
     await tester.scrollUntilVisible(
-      find.text('退出登录'),
+      signOutTile,
       120,
       scrollable: find.byType(Scrollable).last,
     );
-    await tester.tap(find.text('退出登录'));
+    await tester.pumpAndSettle();
+    await tester.tap(signOutTile);
     await tester.pumpAndSettle();
 
     expect(find.byType(LoginPage), findsOneWidget);

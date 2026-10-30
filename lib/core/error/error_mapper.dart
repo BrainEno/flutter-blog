@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' as sb;
+import 'package:belog/core/nowave/nowave_api_client.dart';
 
 /// Single place where raw exceptions become typed, display-safe errors.
 ///
@@ -22,48 +22,50 @@ Failure mapErrorToFailure(Object error) {
 ServerException mapToServerException(Object error) {
   if (error is ServerException) return error;
 
-  if (error is sb.AuthException) {
-    // Supabase can require recent authentication for sensitive changes
-    // (e-mail/password updates): surface a clear "sign in again" message
-    // instead of the raw error.
-    if (error.code == 'reauthentication_required' ||
-        error.message.toLowerCase().contains('reauthentication')) {
-      return ServerException(
-        '出于安全考虑，请退出后重新登录，再进行此操作',
-        kind: FailureKind.auth,
-        cause: error,
-      );
-    }
-    // Supabase auth messages ("New password should be at least 6
-    // characters.") are user-facing and worth showing verbatim; the raw
-    // exception itself stays in `cause`.
-    return ServerException(
-      error.message.isNotEmpty ? error.message : '认证失败，请重新登录',
-      kind: FailureKind.auth,
-      cause: error,
-    );
-  }
-
-  if (error is sb.PostgrestException) {
-    // PostgREST messages can embed SQL and schema details - never surface
-    // them. Classify by the PostgreSQL / PostgREST error code instead.
+  if (error is NowaveApiException) {
+    // The backend's error codes are stable; its messages are English and
+    // may embed validation details, so they are classified, never shown.
     switch (error.code) {
-      case '42501':
+      case 'UNAUTHENTICATED':
+        return ServerException(
+          '登录已过期，请重新登录',
+          kind: FailureKind.auth,
+          cause: error,
+        );
+      case 'FORBIDDEN':
         return ServerException(
           '没有权限执行此操作',
           kind: FailureKind.permission,
           cause: error,
         );
-      case '23505':
+      case 'NOT_FOUND':
+        return ServerException(
+          '相关数据不存在或已被删除',
+          kind: FailureKind.validation,
+          cause: error,
+        );
+      case 'CONFLICT':
         return ServerException(
           '该内容已存在，请勿重复操作',
           kind: FailureKind.validation,
           cause: error,
         );
-      case '23503':
+      case 'BAD_USER_INPUT':
         return ServerException(
-          '相关数据不存在或已被删除',
+          '提交的内容不符合要求，请检查后重试',
           kind: FailureKind.validation,
+          cause: error,
+        );
+      case 'RATE_LIMITED':
+        return ServerException(
+          '操作过于频繁，请稍后再试',
+          kind: FailureKind.server,
+          cause: error,
+        );
+      case 'SERVICE_UNAVAILABLE':
+        return ServerException(
+          '服务器暂时不可用，请稍后重试',
+          kind: FailureKind.server,
           cause: error,
         );
       default:
@@ -73,14 +75,6 @@ ServerException mapToServerException(Object error) {
           cause: error,
         );
     }
-  }
-
-  if (error is sb.StorageException) {
-    return ServerException(
-      '文件存储服务暂时不可用，请稍后重试',
-      kind: FailureKind.storage,
-      cause: error,
-    );
   }
 
   if (error is SocketException || error is HttpException) {

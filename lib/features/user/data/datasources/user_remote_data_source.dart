@@ -1,78 +1,56 @@
 import 'dart:io';
 
 import 'package:belog/core/error/error_mapper.dart';
-import 'package:belog/core/utils/app_logger.dart';
-import 'package:belog/core/utils/storage_objects.dart';
+import 'package:belog/core/error/exceptions.dart';
+import 'package:belog/core/nowave/nowave_api_client.dart';
+import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// User profile operations against the no-wave backend.
+///
+/// The profile is read via `GET /authors/:userId` and written via
+/// `PUT /me/profile` (fields: displayName, bio, avatarUrl, websiteUrl).
+/// E-mail/password changes have no backend endpoint yet (gap G2, see
+/// docs/supabase-to-nowave-migration.md) and are therefore not offered;
+/// avatar images are immutable media assets.
 abstract interface class UserRemoteDataSource {
   Future<UserModel> getUserById(String userId);
 
-  /// Uploads an avatar to a fresh, versioned object path and returns its
-  /// public URL. [mimeType] is sent as the object's contentType.
-  Future<String> uploadAvatar({
-    required File image,
-    required String userId,
-    String? mimeType,
-  });
-
-  /// Removes the avatar object a public URL points at. Throws on failure;
-  /// callers decide whether that is fatal or an orphan to log.
-  Future<void> removeAvatar(String publicUrl);
+  /// Uploads an avatar (`POST /me/media`, raw bytes + MIME type) and
+  /// returns its immutable public URL. The server re-encodes to WebP.
+  Future<String> uploadAvatar({required File image, String? mimeType});
 
   Future<UserModel> editUserInfo(UserModel user);
-  Future<void> changeEmail(String newEmail);
-  Future<void> changePassword(String newPassword);
 }
 
 class UserRemoteDataSourceImpl implements UserRemoteDataSource {
-  final SupabaseClient supabaseClient;
-  UserRemoteDataSourceImpl(this.supabaseClient);
+  final NowaveApiClient client;
+  final NowaveSessionManager sessionManager;
+
+  UserRemoteDataSourceImpl(this.client, this.sessionManager);
 
   @override
-  Future<String> uploadAvatar({
-    required File image,
-    required String userId,
-    String? mimeType,
-  }) async {
+  Future<UserModel> getUserById(String userId) async {
     try {
-      final path = avatarObjectPath(
-        userId: userId,
-        version: storageVersionNow(),
-        extension: extensionForMime(mimeType),
+      final data = await client.getJson(
+        '/authors/$userId',
+        query: {'locale': 'zh-CN'},
       );
-      await supabaseClient.storage
-          .from(kAvatarsBucket)
-          .upload(
-            path,
-            image,
-            fileOptions: FileOptions(
-              // Explicit MIME so the object is served with the right
-              // Content-Type (the picker already re-encoded the bytes).
-              contentType: mimeType ?? 'image/jpeg',
-              // Fresh versioned path: never overwrite in place, so the
-              // old avatar stays reachable until the profile row flips.
-              upsert: false,
-            ),
-          );
-      return supabaseClient.storage.from(kAvatarsBucket).getPublicUrl(path);
+      return UserModel.fromNowaveProfile(
+        _profileMap(data),
+        email: sessionManager.currentSession?.email ?? '',
+      );
     } catch (e) {
       throw mapToServerException(e);
     }
   }
 
   @override
-  Future<void> removeAvatar(String publicUrl) async {
-    // Parses both legacy flat paths (path = user id) and current
-    // versioned paths, and ignores cache-busting query parameters.
-    final path = objectPathFromPublicUrl(publicUrl);
-    if (path == null) {
-      AppLogger.debug('avatar cleanup skipped: unrecognized object URL');
-      return;
-    }
+  Future<String> uploadAvatar({required File image, String? mimeType}) async {
     try {
-      await supabaseClient.storage.from(kAvatarsBucket).remove([path]);
+      final bytes = await image.readAsBytes();
+      final asset = await client.uploadMedia(bytes, mimeType ?? 'image/jpeg');
+      return client.mediaUri(asset.id).toString();
     } catch (e) {
       throw mapToServerException(e);
     }
@@ -81,68 +59,25 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
   @override
   Future<UserModel> editUserInfo(UserModel user) async {
     try {
-      // toProfileUpdateJson() deliberately excludes the e-mail column:
-      // the auth e-mail only changes via Supabase Auth's confirmation
-      // flow (changeEmail), never a direct profiles write.
-      final userUpdated = await supabaseClient
-          .from('profiles')
-          .update(user.toProfileUpdateJson())
-          .eq('id', user.id)
-          .select()
-          .single();
-      return UserModel.fromJson(userUpdated);
-    } catch (e) {
-      throw mapToServerException(e);
-    }
-  }
-
-  @override
-  Future<UserModel> getUserById(String userId) async {
-    try {
-      final res = await supabaseClient
-          .from('profiles')
-          .select()
-          .eq('id', userId)
-          .single();
-
-      return UserModel.fromJson(res);
-    } catch (e) {
-      throw mapToServerException(e);
-    }
-  }
-
-  @override
-  Future<void> changeEmail(String newEmail) async {
-    try {
-      // Supabase sends a confirmation email; the outcome surfaces through
-      // the returned future or a thrown error - there is nothing to print.
-      await supabaseClient.auth.updateUser(UserAttributes(email: newEmail));
-    } catch (e) {
-      throw mapToServerException(e);
-    }
-  }
-
-  @override
-  Future<void> changePassword(String newPassword) async {
-    try {
-      await supabaseClient.auth.updateUser(
-        UserAttributes(password: newPassword),
+      // The write body is a strict whitelist: only fields with a value are
+      // sent (empty strings are rejected for the URL fields server-side).
+      final data = await client.putJson('/me/profile', <String, dynamic>{
+        'displayName': user.name,
+        'bio': '',
+        if (user.avatarUrl.isNotEmpty) 'avatarUrl': user.avatarUrl,
+        if (user.website.isNotEmpty) 'websiteUrl': user.website,
+      });
+      return UserModel.fromNowaveProfile(
+        _profileMap(data),
+        email: sessionManager.currentSession?.email ?? user.email,
       );
     } catch (e) {
-      // Never swallow: the repository must see the failure so the UI
-      // reports it instead of pretending the password was changed.
       throw mapToServerException(e);
     }
-    // The password changed: revoke sessions on other devices but keep the
-    // current one signed in. Best-effort - the password itself already
-    // changed, so a failure here must not fail the whole operation.
-    try {
-      await supabaseClient.auth.signOut(scope: SignOutScope.others);
-    } catch (e) {
-      AppLogger.error(
-        'revoking other sessions after password change failed',
-        error: e,
-      );
-    }
+  }
+
+  Map<String, dynamic> _profileMap(dynamic data) {
+    if (data is Map<String, dynamic>) return data;
+    throw const ServerException('服务器返回了无法解析的数据');
   }
 }

@@ -17,10 +17,8 @@ import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
 import 'package:belog/features/blog/presentation/pages/saved_blogs_page.dart';
 import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/user_blogs_page.dart';
-import 'package:belog/features/user/bloc/edit_account_bloc.dart';
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/presentation/pages/about_page.dart';
-import 'package:belog/features/user/presentation/pages/edit_account_page.dart';
 import 'package:belog/features/user/presentation/pages/edit_user_info_page.dart';
 import 'package:belog/features/user/presentation/pages/profile_page.dart';
 
@@ -180,13 +178,6 @@ GoRouter createAppRouter({
                     ),
                   ),
                   GoRoute(
-                    path: 'account',
-                    builder: (context, state) => BlocProvider(
-                      create: (_) => serviceLocator<EditAccountBloc>(),
-                      child: const EditAccountPage(),
-                    ),
-                  ),
-                  GoRoute(
                     path: 'about',
                     builder: (context, state) => const AboutPage(),
                   ),
@@ -202,7 +193,8 @@ GoRouter createAppRouter({
 
 /// The viewer route, nested inside every tab branch so it pushes onto that
 /// tab's own navigator and keeps the bottom bar plus the tab's back stack.
-/// `/view/:id` (the copy in the feed branch) is the canonical deep-link path.
+/// `/view/:id` (the copy in the feed branch) is the canonical deep-link
+/// path; `:id` is the article's public slug on the no-wave backend.
 GoRoute viewerRoute() {
   return GoRoute(
     path: 'view/:id',

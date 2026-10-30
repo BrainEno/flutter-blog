@@ -8,21 +8,6 @@
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
 		<string>Bottom Think</string>
-		<!-- Supabase auth deep links (sign-up confirmation, password
-		     recovery): the e-mails redirect to belog://auth-callback.
-		     Keep in sync with the Android intent-filter and the Supabase
-		     redirect URL whitelist (see README "深链与邮箱流程"). -->
-		<key>CFBundleURLTypes</key>
-		<array>
-			<dict>
-				<key>CFBundleURLName</key>
-				<string>com.belog.auth</string>
-				<key>CFBundleURLSchemes</key>
-				<array>
-					<string>belog</string>
-				</array>
-			</dict>
-		</array>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>

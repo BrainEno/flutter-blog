@@ -7,9 +7,10 @@ import 'package:fpdart/fpdart.dart';
 abstract class UserRepository {
   /// Edits profile display data (name, website, avatar).
   ///
-  /// The e-mail address is deliberately NOT editable here: changing it
-  /// must go through [changeEmail], i.e. Supabase Auth's update +
-  /// confirmation flow, never a direct `profiles.email` write.
+  /// The e-mail address is not part of the editable profile: the backend
+  /// offers no e-mail or password change endpoint yet (gap G2, see
+  /// docs/supabase-to-nowave-migration.md), so those operations are not
+  /// offered at all.
   Future<Either<Failure, User>> editUserInfo({
     required String userId,
     required String name,
@@ -17,7 +18,4 @@ abstract class UserRepository {
     String? avatarMimeType,
     required String website,
   });
-
-  Future<Either<Failure, void>> changeEmail(String newEmail);
-  Future<Either<Failure, void>> resetPassword(String newPassword);
 }

@@ -1,17 +1,12 @@
-import base64
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
 
-from validate_release import validate_public_config, validate_version
-
-
-def jwt(role):
-    payload = base64.urlsafe_b64encode(json.dumps({"role": role}).encode()).decode().rstrip("=")
-    return f"header.{payload}.signature"
+from validate_release import validate_api_base_url, validate_version
 
 
 class ReleaseValidationTests(unittest.TestCase):
@@ -28,17 +23,11 @@ class ReleaseValidationTests(unittest.TestCase):
             with self.subTest(tag=tag), self.assertRaises(ValueError):
                 validate_version(tag, "version: 1.2.3+42\n")
 
-    def test_public_key_only(self):
-        for key in ("sb_publishable_abc", jwt("anon")):
-            validate_public_config("https://project.supabase.co", key)
-        for key in ("sb_secret_abc", jwt("service_role"), "not-a-key", ""):
-            with self.subTest(key=key), self.assertRaises(ValueError):
-                validate_public_config("https://project.supabase.co", key)
-
     def test_real_https_url_required(self):
-        for url in ("https://example.invalid", "http://project.supabase.co", "https://localhost", "https://user:pass@host.example", "https://site.test", "https://127.0.0.1", "https://example.com"):
+        validate_api_base_url("https://api.example-real.com")
+        for url in ("https://example.invalid", "http://api.example-real.com", "https://localhost", "https://user:pass@host.example", "https://site.test", "https://127.0.0.1", "https://example.com", ""):
             with self.subTest(url=url), self.assertRaises(ValueError):
-                validate_public_config(url, "sb_publishable_abc")
+                validate_api_base_url(url)
 
     def test_main_fails_closed_and_writes_private_fixture(self):
         script = Path(__file__).with_name("validate_release.py").resolve()
@@ -55,10 +44,9 @@ class ReleaseValidationTests(unittest.TestCase):
                 "ANDROID_KEYSTORE_PASSWORD": "test-only-store-password",
                 "ANDROID_KEY_ALIAS": "test-only-alias",
                 "ANDROID_KEY_PASSWORD": "test-only-key-password",
-                "SUPABASE_URL": "https://project.supabase.co",
-                "SUPABASE_KEY": "sb_publishable_test_only",
+                "API_BASE_URL": "https://api.example-real.com",
             }
-            for missing in ("ANDROID_KEYSTORE_BASE64", "ANDROID_KEY_PASSWORD", "ANDROID_APPLICATION_ID_APPROVED", "ANDROID_RELEASE_CERT_SHA256", "SUPABASE_KEY"):
+            for missing in ("ANDROID_KEYSTORE_BASE64", "ANDROID_KEY_PASSWORD", "ANDROID_APPLICATION_ID_APPROVED", "ANDROID_RELEASE_CERT_SHA256", "API_BASE_URL"):
                 result = subprocess.run([sys.executable, str(script)], cwd=root, env={**env, missing: ""}, capture_output=True, text=True)
                 self.assertNotEqual(result.returncode, 0, missing)
                 self.assertNotIn("test-only", result.stderr)
@@ -67,7 +55,7 @@ class ReleaseValidationTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             config = root / "belog-release-env.json"
             self.assertEqual(config.stat().st_mode & 0o777, 0o600)
-            self.assertEqual(json.loads(config.read_text())["SUPABASE_KEY"], env["SUPABASE_KEY"])
+            self.assertEqual(json.loads(config.read_text())["API_BASE_URL"], env["API_BASE_URL"])
             self.assertIn("build_number=42", (root / "output").read_text())
 
 

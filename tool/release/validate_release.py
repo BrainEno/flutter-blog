@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Validate release inputs without printing client keys or signing material."""
 
-import base64
-import json
 import ipaddress
+import json
 import os
 from pathlib import Path
 import re
@@ -23,7 +22,7 @@ def validate_version(tag: str, pubspec: str) -> tuple[str, str]:
     return ".".join(match.group(i) for i in (1, 2, 3)), match[4]
 
 
-def validate_public_config(url: str, key: str) -> None:
+def validate_api_base_url(url: str) -> None:
     try:
         uri = urlsplit(url)
         host = uri.hostname or ""
@@ -39,18 +38,7 @@ def validate_public_config(url: str, key: str) -> None:
         if address is not None and not address.is_global:
             raise ValueError
     except ValueError:
-        raise ValueError("SUPABASE_URL must be a real HTTPS endpoint.") from None
-    if re.fullmatch(r"sb_publishable_[A-Za-z0-9_-]+", key):
-        return
-    try:
-        parts = key.split(".")
-        if len(parts) != 3:
-            raise ValueError
-        payload = json.loads(base64.urlsafe_b64decode(parts[1] + "=" * (-len(parts[1]) % 4)))
-        if payload.get("role") != "anon":
-            raise ValueError
-    except (ValueError, TypeError, AttributeError, UnicodeError, json.JSONDecodeError):
-        raise ValueError("SUPABASE_KEY must be a publishable key or legacy anon JWT, never a secret/service-role key.") from None
+        raise ValueError("API_BASE_URL must be a real HTTPS endpoint.") from None
 
 
 def main() -> int:
@@ -66,12 +54,12 @@ def main() -> int:
             raise ValueError("All Android release signing secrets are required.")
         if os.environ["ANDROID_KEY_ALIAS"].lower() == "androiddebugkey":
             raise ValueError("The Android debug key cannot be used for production signing.")
-        url, key = os.environ.get("SUPABASE_URL", ""), os.environ.get("SUPABASE_KEY", "")
-        validate_public_config(url, key)
+        url = os.environ.get("API_BASE_URL", "")
+        validate_api_base_url(url)
         config = Path(os.environ["RUNNER_TEMP"]) / "belog-release-env.json"
         fd = os.open(config, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, "w") as stream:
-            json.dump({"SUPABASE_URL": url, "SUPABASE_KEY": key}, stream)
+            json.dump({"API_BASE_URL": url}, stream)
         with open(os.environ["GITHUB_OUTPUT"], "a") as stream:
             stream.write(f"build_name={name}\nbuild_number={number}\n")
     except (ValueError, OSError, KeyError) as error:

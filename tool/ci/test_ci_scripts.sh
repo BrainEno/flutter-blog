@@ -94,10 +94,13 @@ output="$(bash "$annotation" android "$tmp/log")"
 awk 'BEGIN { for (i=1; i<=105; i++) print "line " i }' > "$tmp/log"
 output="$(bash "$annotation" analyze "$tmp/log")"
 [[ "$output" == *'::line 6%0Aline 7'* && "$output" != *'line 5%0A'* && "$output" == *'line 105' ]]
+# GitHub truncates annotation messages at 4096 bytes; the script caps at
+# 3600 (keeping the tail, where crash summaries live) so nothing important
+# is cut by the platform.
 awk 'BEGIN { for (i=1; i<=25000; i++) printf "x"; print "END" }' > "$tmp/log"
 output="$(bash "$annotation" analyze "$tmp/log")"
 message="${output#*diagnostics::}"
-[[ ${#message} == 24000 && "$message" == *END ]]
+[[ ${#message} == 3600 && "$message" == *END ]]
 expect_failure 'Usage:' bash "$annotation" unknown "$tmp/log"
 expect_failure 'not readable' bash "$annotation" analyze "$tmp/missing"
 echo 'CI script tests passed.'
