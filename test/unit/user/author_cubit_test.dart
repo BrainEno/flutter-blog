@@ -33,6 +33,12 @@ void main() {
     getAuthorProfile = MockGetAuthorProfile();
     followAuthor = MockFollowAuthor();
     unfollowAuthor = MockUnfollowAuthor();
+    // The constructor starts loading immediately, so a default answer must
+    // exist before the cubit is built; individual tests override it before
+    // their own load() call.
+    when(() => getAuthorProfile('author-1')).thenAnswer(
+      (_) async => right<Failure, AuthorProfile>(_profile()),
+    );
     cubit = AuthorCubit(
       getAuthorProfile: getAuthorProfile,
       followAuthor: followAuthor,
