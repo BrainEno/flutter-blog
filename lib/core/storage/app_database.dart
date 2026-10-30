@@ -166,6 +166,10 @@ class AppDatabase extends GeneratedDatabase {
   Future<void> deleteMetadata(String key) =>
       customStatement('DELETE FROM metadata WHERE key = ?', [key]);
 
+  /// Drops a cached article row by its business id (slug).
+  Future<void> deleteBlogCacheRow(String id) =>
+      customStatement('DELETE FROM blog_cache WHERE id = ?', [id]);
+
   Future<void> upsertBlog(BlogModel blog) => customStatement(
     '''
     INSERT INTO blog_cache(id, article_id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar)

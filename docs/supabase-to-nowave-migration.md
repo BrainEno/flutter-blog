@@ -12,7 +12,7 @@
 
 | # | 缺口 | 影响的 App 功能 | 处置选项 |
 |---|------|----------------|---------|
-| G1 | 无 `DELETE /articles/:id`（路由表 `articles.item` 仅 GET/PUT） | `deleteBlog`（我的博客页删除文章） | A. 先在 no-wave 加端点（推荐，改动小：owner 校验 + 软删/硬删 + taxonomy 清理已有事务样板）；B. 迁移时暂时隐藏删除入口 |
+| G1 | ~~无 `DELETE /articles/:id`~~ **已解决**：no-wave #100/#101 落地墓碑软删 + 回收站（`GET /me/articles/deleted`）+ 恢复（`POST /articles/:id/restore`）+ 过期清扫 | `deleteBlog`（我的博客页删除文章）+ 新增回收站/恢复 | ✅ 已接入：`DELETE /articles/{articleId}`（owner 校验、重复删除 404、非本人 403），App 侧按 slug→UUID 解析后调用，删除后本地缓存行同步清除 |
 | G2 | 无任何账号安全端点：无改密码、无改邮箱、无密码重置邮件、无邮箱验证/resend | `changePassword`、`changeEmail`、`sendPasswordResetEmail`、`resendConfirmationEmail` 及整个深链验证流（auth_link_handler） | A. 先在 no-wave 加端点（需要新的邮件基础设施）；B. 迁移时下线「账号安全」页与忘记密码入口 |
 | G3 | `GET /me` 只返回 `{data:{id}}`，不回 email | 账号页展示邮箱、`getCurrentUserData` 组装 | 客户端本地缓存登录时输入的 email（登录/注册响应也不含 email，需在 UI 层留存），或推动 `/me` 返回 email |
 
@@ -134,7 +134,7 @@ G3 用本地缓存即可，不阻塞。
 | `getBlogsByTag(tag)` | `GET /tags?query=<名>`（或全量 `GET /tags` 后本地匹配）→ `GET /tags/{slug}/articles` | ✅（两跳；slug 无法本地推导，必须先解析） |
 | `searchBlogs(query)` | `GET /articles?query=<q>&limit=kMaxSearchResults` | ✅。trigram 全文检索，语义优于现在的 ilike |
 | `editBlog(blog)` | `PUT /articles/{articleId}` body **必须含** `{slug(当前或新), publish:true, title, contentBlocks, tagIds?, summary?, workType?}` | ✅（需 BlogModel 存服务端 articleId + slug） |
-| `deleteBlog(id)` | **无端点** | ❌ G1，硬缺口 |
+| `deleteBlog(id)` | `DELETE /articles/{articleId}`（墓碑软删，200 返回 `{id, deletedAt}`；地址是服务端 UUID 非 slug） | ✅ 已接入（缓存/远端解析 UUID，成功后清除本地缓存行）。配套：`GET /me/articles/deleted`（回收站，含 `purgesAt`）与 `POST /articles/{id}/restore?locale=`（恢复为草稿） |
 | `getUserLikedBlogs(userId)` | `GET /me/liked-articles?limit=100` | ✅（只能看自己的，现有调用即当前用户，等价） |
 | `toggleLikeBlog(userId,blogId)` | `PUT /articles/{slug}/like {liked:!当前态}` → 响应即新状态 `{likedByViewer,likeCount}` | ✅。改造为「读当前态（可来自 UI 缓存）→ 显式置反」，响应为准回写 |
 | `isBlogLikedByUser(userId,blogId)` | `GET /articles/{slug}/like` → `likedByViewer` | ✅ |
@@ -197,7 +197,7 @@ G3 用本地缓存即可，不阻塞。
 - 注册页密码规则 6 位 → **12 位**（服务端硬校验，客户端同步前移）。
 - 「邮箱验证」「忘记密码」「重发邮件」入口：G2 决策前先隐藏。
 - 账号安全页（改密码/改邮箱）：同上。
-- 删除博客入口：G1 决策前先隐藏或保留报「暂不支持」。
+- 删除博客入口：已接入——我的文章页长按删除（确认弹窗），AppBar 进入回收站（恢复/查看剩余保留天数）。
 - 封面图说明：上传后服务端转 WebP（体积更小），无需改动选择器；现有 imageQuality 压缩可保留亦可移除（服务端会再压）。
 
 ---
@@ -207,7 +207,7 @@ G3 用本地缓存即可，不阻塞。
 **A. 可直接迁移（无需后端改动）**：登录/注册/登出/会话恢复、博客 CRUD（除删除）、搜索、标签、点赞、收藏、作者页、头像、资料编辑。
 
 **B. 需 no-wave 加端点（建议先做）**：
-1. `DELETE /articles/:articleId`（G1）—— owner 校验 + 删除 + 事务清理 taxonomy 关联即可。
+1. ~~`DELETE /articles/:articleId`（G1）~~ 已落地（no-wave #100/#101）：软删墓碑 + 回收站 + 恢复 + `ARTICLE_TOMBSTONE_RETENTION_DAYS` 过期清扫（默认 30 天）。
 2. 改密码（`PUT /auth/password`，带旧密码验证）+ 改邮箱 + 密码重置邮件流（G2）—— 依赖邮件基础设施，工作量最大，可后置。
 
 **C. 需 no-wave 修的小问题（顺手）**：

@@ -35,6 +35,10 @@ class SqliteBlogCache implements BlogLocalDataSource {
   Future<List<BlogModel>> searchLocalBlogs(String query) => _load(query);
 
   @override
+  Future<void> deleteCachedBlog(String id) =>
+      database.deleteBlogCacheRow(id);
+
+  @override
   Future<BlogModel?> loadBlogById(String id) async {
     final rows = await database
         .customSelect(

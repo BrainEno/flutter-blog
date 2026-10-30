@@ -178,9 +178,16 @@ class NowaveApiClient {
   Future<dynamic> postJson(
     String path,
     Object? body, {
+    Map<String, String>? query,
     bool authenticate = true,
   }) {
-    return _request('POST', path, body: body, authenticate: authenticate);
+    return _request(
+      'POST',
+      path,
+      query: query,
+      body: body,
+      authenticate: authenticate,
+    );
   }
 
   /// PUT a JSON body; returns the unwrapped `data` payload.

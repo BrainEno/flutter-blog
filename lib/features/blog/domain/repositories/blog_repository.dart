@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:fpdart/fpdart.dart';
 
 abstract interface class BlogRepository {
@@ -14,7 +15,18 @@ abstract interface class BlogRepository {
     String? imageMimeType,
   });
 
+  /// Soft-deletes the article with the public id [blogId] (slug): it
+  /// leaves every list and moves to the author's recycle bin, where the
+  /// server purge will remove it for good once the retention window
+  /// ends. The offline cache row is evicted on success.
   Future<Either<Failure, bool>> deleteBlog(String blogId);
+
+  /// The author's recycle bin: tombstones most recently deleted first.
+  Future<Either<Failure, List<DeletedBlog>>> getDeletedBlogs();
+
+  /// Restores a tombstone by its server article id; the article comes
+  /// back as a draft.
+  Future<Either<Failure, Blog>> restoreDeletedBlog(String articleId);
 
   Future<Either<Failure, List<Blog>>> getAllBlogs({required int page});
 

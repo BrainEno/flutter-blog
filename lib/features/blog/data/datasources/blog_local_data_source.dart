@@ -15,4 +15,8 @@ abstract interface class BlogLocalDataSource {
 
   /// Returns the cached article with the given business id, if present.
   Future<BlogModel?> loadBlogById(String id);
+
+  /// Drops the cached article with the given business id (the server copy
+  /// was deleted, so the cached row must not outlive it offline).
+  Future<void> deleteCachedBlog(String id);
 }

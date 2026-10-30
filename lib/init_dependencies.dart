@@ -32,8 +32,10 @@ import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
+import 'package:belog/features/blog/domain/usecase/get_deleted_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/get_user_liked_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/is_blog_liked.dart';
+import 'package:belog/features/blog/domain/usecase/restore_deleted_blog.dart';
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/toggle_like_blog.dart';
 import 'package:belog/features/blog/domain/usecase/update_blog.dart';
@@ -43,6 +45,7 @@ import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/bog_upload/bloc/blog_upload_bloc.dart';
+import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/data/datasources/user_remote_data_source.dart';
 import 'package:belog/features/user/data/repositories/user_repository_impl.dart';
@@ -195,6 +198,10 @@ Future<void> _initBlog(NowaveApiClient apiClient) async {
     ..registerFactory(() => UpdateBlog(serviceLocator<BlogRepository>()))
     ..registerFactory(() => DeleteBlog(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetBlogsByPoster(serviceLocator<BlogRepository>()))
+    ..registerFactory(() => GetDeletedBlogs(serviceLocator<BlogRepository>()))
+    ..registerFactory(
+      () => RestoreDeletedBlog(serviceLocator<BlogRepository>()),
+    )
     // Page-scoped blocs. Routes create one instance per page and dispose it
     // with the page, so request state never leaks across pages.
     ..registerFactory(
@@ -219,6 +226,12 @@ Future<void> _initBlog(NowaveApiClient apiClient) async {
     )
     ..registerFactory(
       () => BlogByBloc(getBlogsByPoster: serviceLocator<GetBlogsByPoster>()),
+    )
+    ..registerFactory(
+      () => RecycleBinBloc(
+        getDeletedBlogs: serviceLocator<GetDeletedBlogs>(),
+        restoreDeletedBlog: serviceLocator<RestoreDeletedBlog>(),
+      ),
     );
 }
 

@@ -7,6 +7,8 @@ import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/utils/retry_on_connection_closed.dart';
 import 'package:belog/features/blog/data/datasources/nowave_article_codec.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/data/models/deleted_blog_model.dart';
+import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart'
     show kBlogPageSize;
 
@@ -36,10 +38,21 @@ abstract interface class BlogRemoteDataSource {
   Future<List<BlogModel>> searchBlogs(String query);
   Future<BlogModel> editBlog(BlogModel blog);
 
-  /// The no-wave backend does not expose article deletion yet. The entry
-  /// point is hidden in the UI; this reports the gap until the endpoint
-  /// lands (see docs/supabase-to-nowave-migration.md, gap G1).
-  Future<bool> deleteBlog(String blogId);
+  /// Soft-deletes an article (`DELETE /articles/:articleId`): the row
+  /// becomes a tombstone, leaves every list and moves to the author's
+  /// recycle bin until the server sweep purges it. [articleId] is the
+  /// server UUID ([BlogModel.articleId]), not the slug.
+  Future<bool> deleteArticle(String articleId);
+
+  /// Lists the author's own tombstones (`GET /me/articles/deleted`),
+  /// most recently deleted first, each with the server-computed purge
+  /// deadline.
+  Future<List<DeletedBlog>> getDeletedBlogs();
+
+  /// Restores a tombstone (`POST /articles/:articleId/restore`); the
+  /// article comes back as a draft with its original slug reclaimed
+  /// when it is still free.
+  Future<BlogModel> restoreArticle(String articleId);
   Future<List<BlogModel>> getUserLikedBlogs(String userId);
 
   /// Sets the like to the opposite of the current server state and returns
@@ -224,12 +237,67 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   }
 
   @override
-  Future<bool> deleteBlog(String blogId) async {
-    // Gap G1: the no-wave backend exposes no article deletion endpoint.
-    throw const ServerException(
-      '当前后端暂不支持删除文章，敬请期待',
-      kind: FailureKind.validation,
-    );
+  Future<bool> deleteArticle(String articleId) async {
+    try {
+      if (articleId.isEmpty) {
+        throw const ServerException(
+          '该文章缺少服务端编号，无法删除',
+          kind: FailureKind.validation,
+        );
+      }
+      // 200 with `{id, deletedAt}` means tombstoned; every other outcome
+      // (404 not-yours-or-gone, 403 foreign author, ...) throws.
+      await client.deleteJson('/articles/$articleId');
+      return true;
+    } catch (e) {
+      throw mapToServerException(e);
+    }
+  }
+
+  @override
+  Future<List<DeletedBlog>> getDeletedBlogs() async {
+    try {
+      final data = await retryOnConnectionClosed(
+        () => client.getJson(
+          '/me/articles/deleted',
+          query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
+        ),
+      );
+      if (data is List) {
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(DeletedBlogModel.fromNowaveArticle)
+            .toList();
+      }
+      throw ServerException(
+        '服务器返回了无法解析的数据',
+        kind: FailureKind.server,
+        cause: data,
+      );
+    } catch (e) {
+      throw mapToServerException(e);
+    }
+  }
+
+  @override
+  Future<BlogModel> restoreArticle(String articleId) async {
+    try {
+      if (articleId.isEmpty) {
+        throw const ServerException(
+          '该文章缺少服务端编号，无法恢复',
+          kind: FailureKind.validation,
+        );
+      }
+      // The restore route reads the locale from the query string.
+      final data = await client.postJson(
+        '/articles/$articleId/restore',
+        null,
+        query: {'locale': 'zh-CN'},
+      );
+      return BlogModel.fromNowaveArticle(_articleMap(data));
+    } catch (e) {
+      throw mapToServerException(e);
+    }
   }
 
   @override

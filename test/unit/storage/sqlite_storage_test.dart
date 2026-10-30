@@ -41,6 +41,20 @@ void main() {
     posterAvatar: 'avatar',
   );
 
+  test('deleting a cached blog drops only that row', () async {
+    final cache = SqliteBlogCache(db);
+    await cache.uploadLocalBlogs(blogs: [blog('slug-1', 'one')]);
+    await cache.uploadLocalBlogs(blogs: [blog('slug-2', 'two')]);
+
+    await cache.deleteCachedBlog('slug-1');
+
+    expect(await cache.loadBlogById('slug-1'), isNull);
+    expect((await cache.loadBlogById('slug-2'))?.title, 'two');
+    expect((await cache.loadBlogs()).map((b) => b.id), ['slug-2']);
+    // Idempotent: a missing row deletes silently.
+    await cache.deleteCachedBlog('slug-1');
+  });
+
   test('fresh database preserves themes, drafts and upserted cache', () async {
     await db.importLegacyIfNeeded(dir);
     final themes = SqliteThemePreferenceStore(db);
