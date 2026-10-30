@@ -71,9 +71,6 @@ void main() {
     );
 
     expect(document['articles'], isEmpty);
-    expect(
-      (document['profile']! as Map<String, Object?>)['id'],
-      'u1',
-    );
+    expect((document['profile']! as Map<String, Object?>)['id'], 'u1');
   });
 }

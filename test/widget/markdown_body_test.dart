@@ -74,9 +74,10 @@ print('hi');
 
     expect(find.text('点我'), findsOneWidget);
     final rich = tester.widget<Text>(find.byType(Text).first);
+    final paragraph = rich.textSpan! as TextSpan;
     // No recognizer on a non-http(s) target: the span cannot be tapped.
     expect(
-      rich.textSpan!.children!.every(
+      paragraph.children!.every(
         (span) => span is! TextSpan || span.recognizer == null,
       ),
       isTrue,
@@ -87,8 +88,9 @@ print('hi');
     await pumpMarkdown(tester, '[官网](https://example.invalid)');
 
     final rich = tester.widget<Text>(find.byType(Text).first);
+    final paragraph = rich.textSpan! as TextSpan;
     expect(
-      rich.textSpan!.children!.any(
+      paragraph.children!.any(
         (span) => span is TextSpan && span.recognizer != null,
       ),
       isTrue,

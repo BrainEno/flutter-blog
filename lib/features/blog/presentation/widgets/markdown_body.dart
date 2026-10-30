@@ -26,7 +26,7 @@ class MarkdownBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final node in nodes) _block(context, node, const EdgeInsets()),
+        for (final node in nodes) _block(context, node, EdgeInsets.zero),
       ],
     );
   }
@@ -80,7 +80,7 @@ class MarkdownBody extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 for (final child in node.children ?? const <md.Node>[])
-                  _block(context, child, const EdgeInsets()),
+                  _block(context, child, EdgeInsets.zero),
               ],
             ),
           ),

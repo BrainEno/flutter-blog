@@ -568,9 +568,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
                         ),
                       ],
                       selected: {_previewMode},
-                      onSelectionChanged: (selection) => setState(
-                        () => _previewMode = selection.first,
-                      ),
+                      onSelectionChanged: (selection) =>
+                          setState(() => _previewMode = selection.first),
                     ),
                     const SizedBox(height: 12),
                     if (_previewMode)
@@ -590,9 +589,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                 '正文为空，开始输入后这里会显示预览',
                                 style: TextStyle(color: Colors.grey),
                               )
-                            : MarkdownBody(
-                                markdown: contentController.text,
-                              ),
+                            : MarkdownBody(markdown: contentController.text),
                       )
                     else
                       EditorField(

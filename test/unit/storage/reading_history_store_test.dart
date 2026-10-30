@@ -130,7 +130,7 @@ void main() {
       'CREATE TABLE blog_cache (id TEXT PRIMARY KEY, article_id TEXT NOT NULL DEFAULT \'\', title TEXT NOT NULL, content TEXT NOT NULL, poster_id TEXT NOT NULL, image_url TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL, poster_name TEXT, poster_avatar TEXT)',
     );
     old.execute('PRAGMA user_version = 2');
-    old.dispose();
+    old.close();
 
     final upgraded = AppDatabase(NativeDatabase(file));
     addTearDown(upgraded.close);
