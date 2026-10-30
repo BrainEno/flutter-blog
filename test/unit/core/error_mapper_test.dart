@@ -53,6 +53,20 @@ void main() {
       expect(exception.kind, FailureKind.validation);
     });
 
+    test(
+      'NowaveApiException IDEMPOTENCY_CONFLICT becomes a validation error',
+      () {
+        final exception = mapToServerException(
+          NowaveApiException(
+            statusCode: 409,
+            code: 'IDEMPOTENCY_CONFLICT',
+            message: 'idempotency key reused with a different request',
+          ),
+        );
+        expect(exception.kind, FailureKind.validation);
+      },
+    );
+
     test('NowaveApiException NOT_FOUND becomes a validation error', () {
       final exception = mapToServerException(
         const NowaveApiException(

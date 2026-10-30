@@ -50,6 +50,14 @@ ServerException mapToServerException(Object error) {
           kind: FailureKind.validation,
           cause: error,
         );
+      case 'IDEMPOTENCY_CONFLICT':
+        // Same Idempotency-Key reused with a different request (issue #19:
+        // the server replays the original work on a same-key retry).
+        return ServerException(
+          '重复提交的内容不一致，请刷新后重试',
+          kind: FailureKind.validation,
+          cause: error,
+        );
       case 'BAD_USER_INPUT':
         return ServerException(
           '提交的内容不符合要求，请检查后重试',

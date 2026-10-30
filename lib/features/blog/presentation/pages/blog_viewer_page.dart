@@ -11,7 +11,10 @@ import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_viewer/blog_viewer_cubit.dart';
 import 'package:belog/features/blog/presentation/utils/cover_url.dart';
+import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
+import 'package:belog/features/blog/presentation/widgets/comments_section.dart';
 import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
+import 'package:belog/features/blog/presentation/widgets/related_articles_section.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -30,7 +33,15 @@ class BlogViewerPage extends StatefulWidget {
   /// Device-local reading history sink (issue #22); injectable for tests,
   /// resolved from the service locator when absent.
   final ReadingHistoryStore? historyStore;
-  const BlogViewerPage({super.key, required this.blogId, this.historyStore});
+
+  /// Related-articles rider loader (issue #19); same injection pattern.
+  final GetRelatedArticles? getRelatedArticles;
+  const BlogViewerPage({
+    super.key,
+    required this.blogId,
+    this.historyStore,
+    this.getRelatedArticles,
+  });
 
   @override
   State<BlogViewerPage> createState() => _BlogViewerPageState();
@@ -105,6 +116,9 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
           return _ViewerScaffold(
             blog: state.blog,
             onRequestLogin: _requestLogin,
+            getRelatedArticles:
+                widget.getRelatedArticles ??
+                GetIt.instance<GetRelatedArticles>(),
           );
         }
         if (state is BlogViewerFailure) {
@@ -133,10 +147,15 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
 }
 
 class _ViewerScaffold extends StatelessWidget {
-  const _ViewerScaffold({required this.blog, this.onRequestLogin});
+  const _ViewerScaffold({
+    required this.blog,
+    this.onRequestLogin,
+    this.getRelatedArticles,
+  });
 
   final Blog blog;
   final VoidCallback? onRequestLogin;
+  final GetRelatedArticles? getRelatedArticles;
 
   @override
   Widget build(BuildContext context) {
@@ -332,6 +351,17 @@ class _ViewerScaffold extends StatelessWidget {
                           ),
                         )
                         .toList(),
+                  ),
+                  // Related-articles rider and the comment thread
+                  // (issue #19). Comments live in the page-scoped
+                  // CommentBloc created by the viewer route.
+                  RelatedArticlesSection(
+                    getRelatedArticles: getRelatedArticles!,
+                    slug: blog.id,
+                  ),
+                  CommentsSection(
+                    slug: blog.id,
+                    onRequestLogin: onRequestLogin,
                   ),
                   const SizedBox(height: 40),
                 ],

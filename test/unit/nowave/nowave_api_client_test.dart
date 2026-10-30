@@ -126,6 +126,27 @@ void main() {
       },
     );
 
+    test(
+      'extra headers ride along on a POST (Idempotency-Key, issue #19)',
+      () async {
+        String? idempotencyKey;
+        final client = clientFor(
+          MockClient((request) async {
+            idempotencyKey = request.headers['idempotency-key'];
+            return http.Response(jsonEncode({'data': {}}), 201);
+          }),
+        );
+
+        await client.postJson(
+          '/articles/my-slug/comments',
+          {'content': '好文章'},
+          extraHeaders: {'Idempotency-Key': 'belog-comment-abc123'},
+        );
+
+        expect(idempotencyKey, 'belog-comment-abc123');
+      },
+    );
+
     test('a 401 refreshes once and retries the request', () async {
       final authenticator = FakeAuthenticator('expired');
       final seenTokens = <String?>[];

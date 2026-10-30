@@ -274,6 +274,26 @@ class BlogRepositoryImpl implements BlogRepository {
   }
 
   @override
+  Future<Either<Failure, List<Blog>>> getRelatedArticles(String blogId) async {
+    try {
+      if (!await connectionChecker.isConnected) {
+        return left(Failure.networkOffline());
+      }
+      final res = await blogRemoteDataSource.getRelatedArticles(blogId);
+      return right(res);
+    } on ServerException catch (e) {
+      return left(e.toFailure());
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'getRelatedArticles failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return left(Failure('无法获取相关文章'));
+    }
+  }
+
+  @override
   Future<Either<Failure, List<Blog>>> getUserLikedBlogs(String userId) async {
     try {
       if (!await connectionChecker.isConnected) {
