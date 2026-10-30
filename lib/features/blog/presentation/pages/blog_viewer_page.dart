@@ -2,6 +2,7 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/calculate_reading_time.dart';
+import 'package:belog/core/utils/article_share.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -159,6 +160,19 @@ class _ViewerScaffold extends StatelessWidget {
               ),
             ),
             actions: [
+              // Share (issue #21): visible only when WEB_BASE_URL is
+              // configured - a link that cannot open must never be
+              // shared. Blog.id is the article's public slug. The
+              // payload is title + canonical web URL only.
+              if (articleWebUrl(blog.id) != null)
+                IconButton(
+                  tooltip: '分享文章',
+                  icon: const Icon(Icons.share, color: Colors.white),
+                  onPressed: () => shareArticle(
+                    title: blog.title,
+                    slug: blog.id,
+                  ),
+                ),
               BlocConsumer<BlogLikedBloc, BlogLikedState>(
                 listener: (context, state) {
                   if (state is ToggleBlogLikeFailure) {

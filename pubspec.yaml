@@ -56,6 +56,10 @@ dependencies:
   go_router: ^14.8.0
   equatable: ^2.0.7
   url_launcher: ^6.3.1
+  # Native share sheet (issue #21). Deep-link *receiving* is deferred
+  # until the web origin is deployed and association files can be
+  # hosted - see docs/supabase-to-nowave-migration.md and issue #21.
+  share_plus: ^13.3.1
   cached_network_image: ^3.4.1
 
 dev_dependencies:
