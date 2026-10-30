@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 part 'blog_liked_state.dart';
-part 'bog_liked_event.dart';
+part 'blog_liked_event.dart';
 
 /// Tracks like status per blog.
 ///

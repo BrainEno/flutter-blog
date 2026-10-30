@@ -1,4 +1,4 @@
-import 'package:belog/core/theme/app_pallete.dart'; // Import your color palette
+import 'package:belog/core/theme/app_palette.dart'; // Import your color palette
 import 'package:flutter/material.dart';
 
 class AuthGradientButton extends StatelessWidget {
@@ -13,9 +13,9 @@ class AuthGradientButton extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppPallete.greenColor.withAlpha((0.9 * 255)
+            AppPalette.greenColor.withAlpha((0.9 * 255)
                 .toInt()), // Slightly less opaque Spotify Green for start
-            AppPallete.greenColor, // Full Spotify Green for end
+            AppPalette.greenColor, // Full Spotify Green for end
           ],
           begin: Alignment.bottomLeft,
           end: Alignment.topRight,
@@ -36,7 +36,7 @@ class AuthGradientButton extends StatelessWidget {
           textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppPallete
+                color: AppPalette
                     .blackColor, // Ensure text is still readable on the gradient
               ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

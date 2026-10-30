@@ -1,6 +1,6 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/loader.dart';
-import 'package:belog/core/theme/app_pallete.dart';
+import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/auth/presentation/widgets/auth_field.dart';
@@ -143,7 +143,7 @@ class _LoginPageState extends State<LoginPage> {
                                       .textTheme
                                       .titleMedium!
                                       .copyWith(
-                                        color: AppPallete.gradient2,
+                                        color: AppPalette.gradient2,
                                         fontWeight: FontWeight.bold,
                                       ),
                                 ),

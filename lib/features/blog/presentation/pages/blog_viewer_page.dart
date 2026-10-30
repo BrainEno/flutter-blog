@@ -1,6 +1,6 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/loader.dart';
-import 'package:belog/core/theme/app_pallete.dart';
+import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/calculate_reading_time.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -275,7 +275,7 @@ class _ViewerScaffold extends StatelessWidget {
                               tag,
                               style: const TextStyle(
                                 fontSize: 12,
-                                color: AppPallete.gradient1,
+                                color: AppPalette.gradient1,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 1.5,
                               ),

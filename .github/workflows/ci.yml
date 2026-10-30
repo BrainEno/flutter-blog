@@ -325,6 +325,11 @@ jobs:
           EOF
       - name: Resolve dependencies
         run: flutter pub get
+      - name: Generate launcher icons
+        # Executes the flutter_launcher_icons config in pubspec.yaml so the
+        # release APK really carries the brand icons instead of the Flutter
+        # default (issue #25: the old `flutter_icons:` key was never read).
+        run: dart run flutter_launcher_icons
       - name: Build Android release APK
         shell: bash
         run: |

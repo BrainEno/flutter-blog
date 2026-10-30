@@ -1,4 +1,4 @@
-import 'package:belog/core/theme/app_pallete.dart'; // Import your color palette
+import 'package:belog/core/theme/app_palette.dart'; // Import your color palette
 import 'package:flutter/material.dart';
 
 enum BlogEditorContentType {
@@ -61,8 +61,8 @@ class EditorField extends StatelessWidget {
                 fontWeight: hintFontWeight, // Dynamic hint font weight
                 fontFamily: 'Roboto',
                 color: isDarkMode
-                    ? AppPallete.greyColorLight.withAlpha((0.5 * 255).toInt())
-                    : AppPallete.lightGreyText.withAlpha((0.5 * 255).toInt()),
+                    ? AppPalette.greyColorLight.withAlpha((0.5 * 255).toInt())
+                    : AppPalette.lightGreyText.withAlpha((0.5 * 255).toInt()),
               ),
           border: InputBorder.none,
           focusedBorder: InputBorder.none,
@@ -77,11 +77,11 @@ class EditorField extends StatelessWidget {
               height: 1.6,
               fontWeight: fontWeight, // Dynamic font weight
               fontFamily: 'Roboto',
-              color: isDarkMode ? AppPallete.whiteColor : AppPallete.lightBlack,
+              color: isDarkMode ? AppPalette.whiteColor : AppPalette.lightBlack,
             ),
         maxLines: maxLines,
         expands: expands,
-        cursorColor: isDarkMode ? AppPallete.whiteColor : AppPallete.lightBlack,
+        cursorColor: isDarkMode ? AppPalette.whiteColor : AppPalette.lightBlack,
       ),
     );
   }

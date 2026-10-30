@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class AppPallete {
+class AppPalette {
   // ** Spotify Inspired Dark Theme Colors **
   static const Color blackColor =
       Color(0xFF121212); // Spotify's main dark background
