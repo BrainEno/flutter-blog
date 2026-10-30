@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
@@ -33,6 +34,20 @@ NowaveSessionData _session({
   refreshToken: refreshToken,
   accessExpiresAt: DateTime.utc(2030),
   refreshExpiresAt: DateTime.utc(2030),
+);
+
+/// Session with explicit clock-relative expiries for the proactive
+/// refresh tests.
+NowaveSessionData _sessionExpiring({
+  required DateTime accessExpiresAt,
+  required DateTime refreshExpiresAt,
+}) => NowaveSessionData(
+  userId: 'u1',
+  email: 'user@example.invalid',
+  accessToken: 'access-1',
+  refreshToken: 'refresh-1',
+  accessExpiresAt: accessExpiresAt,
+  refreshExpiresAt: refreshExpiresAt,
 );
 
 NowaveTokenPair _tokens(String n) => NowaveTokenPair(
@@ -212,6 +227,119 @@ void main() {
         expect(await manager.refresh(), isFalse);
       },
     );
+  });
+
+  group('ensureFreshAccess', () {
+    final now = DateTime.utc(2026, 1, 1);
+
+    test('a fresh access token skips rotation entirely', () async {
+      int refreshRequests = 0;
+      final client = NowaveApiClient(
+        baseUrl: Uri.parse('https://api.example.invalid'),
+        httpClient: MockClient((request) async {
+          refreshRequests++;
+          return http.Response(jsonEncode({'data': null}), 200);
+        }),
+      );
+      final store = MemorySessionStore()
+        ..stored = _sessionExpiring(
+          accessExpiresAt: now.add(const Duration(hours: 1)),
+          refreshExpiresAt: now.add(const Duration(days: 30)),
+        );
+      final manager = NowaveSessionManager(
+        client: client,
+        store: store,
+        now: () => now,
+      );
+      await manager.restore();
+
+      expect(await manager.ensureFreshAccess(), isFalse);
+      expect(refreshRequests, 0);
+    });
+
+    test('an access token inside the lead time rotates once', () async {
+      final store = MemorySessionStore()
+        ..stored = _sessionExpiring(
+          accessExpiresAt: now.add(const Duration(seconds: 10)),
+          refreshExpiresAt: now.add(const Duration(days: 30)),
+        );
+      final manager = NowaveSessionManager(
+        client: clientFor(body: _tokenBody('2')),
+        store: store,
+        now: () => now,
+      );
+      await manager.restore();
+
+      expect(await manager.ensureFreshAccess(), isTrue);
+      expect(manager.accessToken, 'access-2');
+      expect(store.stored?.refreshToken, 'refresh-2');
+    });
+
+    test(
+      'an expired refresh token ends the session without any network call',
+      () async {
+        int requests = 0;
+        final client = NowaveApiClient(
+          baseUrl: Uri.parse('https://api.example.invalid'),
+          httpClient: MockClient((request) async {
+            requests++;
+            return http.Response(jsonEncode({'data': null}), 200);
+          }),
+        );
+        final store = MemorySessionStore()
+          ..stored = _sessionExpiring(
+            accessExpiresAt: now.add(const Duration(seconds: 10)),
+            refreshExpiresAt: now.subtract(const Duration(minutes: 1)),
+          );
+        final manager = NowaveSessionManager(
+          client: client,
+          store: store,
+          now: () => now,
+        );
+        await manager.restore();
+        final statuses = <NowaveAuthStatus>[];
+        final sub = manager.statusStream.listen(statuses.add);
+
+        expect(await manager.ensureFreshAccess(), isFalse);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(requests, 0);
+        expect(manager.currentSession, isNull);
+        expect(store.stored, isNull);
+        expect(statuses, [isA<NowaveAuthSignedOut>()]);
+        await sub.cancel();
+      },
+    );
+
+    test('a network failure during the rotation keeps the session', () async {
+      final client = NowaveApiClient(
+        baseUrl: Uri.parse('https://api.example.invalid'),
+        httpClient: MockClient((request) async {
+          throw const SocketException('network unreachable');
+        }),
+      );
+      final store = MemorySessionStore()
+        ..stored = _sessionExpiring(
+          accessExpiresAt: now.add(const Duration(seconds: 10)),
+          refreshExpiresAt: now.add(const Duration(days: 30)),
+        );
+      final manager = NowaveSessionManager(
+        client: client,
+        store: store,
+        now: () => now,
+      );
+      await manager.restore();
+      final statuses = <NowaveAuthStatus>[];
+      final sub = manager.statusStream.listen(statuses.add);
+
+      expect(await manager.ensureFreshAccess(), isFalse);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(manager.currentSession, isNotNull);
+      expect(store.stored, isNotNull);
+      expect(statuses, isEmpty);
+      await sub.cancel();
+    });
   });
 
   group('clear', () {

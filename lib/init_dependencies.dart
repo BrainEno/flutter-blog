@@ -4,6 +4,8 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
+import 'package:belog/core/nowave/secure_nowave_session_store.dart';
+import 'package:belog/core/nowave/session_store_migration.dart';
 import 'package:belog/core/nowave/sqlite_nowave_session_store.dart';
 import 'package:belog/core/secrets/app_secrets.dart';
 import 'package:belog/core/storage/app_database.dart';
@@ -86,11 +88,16 @@ Future<void> initDependencies() async {
     rethrow;
   }
 
-  // The no-wave session: SQLite-backed token store plus the API client
-  // that refreshes the rotated token pair transparently.
+  // The no-wave session. Tokens live in the platform secure storage
+  // (issue #46); the SQLite-backed store remains as the migration source
+  // and the fallback when the secure store is unavailable.
+  final sessionStore = await migrateSessionStoreToSecureStorage(
+    legacy: SqliteNowaveSessionStore(database),
+    secure: const SecureNowaveSessionStore(),
+  );
   final sessionManager = NowaveSessionManager(
     client: NowaveApiClient(baseUrl: uri),
-    store: SqliteNowaveSessionStore(database),
+    store: sessionStore,
   );
   final apiClient = NowaveApiClient(
     baseUrl: uri,
