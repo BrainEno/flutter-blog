@@ -180,6 +180,7 @@ class NowaveApiClient {
     Object? body, {
     Map<String, String>? query,
     bool authenticate = true,
+    Map<String, String>? extraHeaders,
   }) {
     return _request(
       'POST',
@@ -187,6 +188,7 @@ class NowaveApiClient {
       query: query,
       body: body,
       authenticate: authenticate,
+      extraHeaders: extraHeaders,
     );
   }
 
@@ -238,6 +240,7 @@ class NowaveApiClient {
     bool authenticate = true,
     bool allowRefresh = true,
     Duration? timeout,
+    Map<String, String>? extraHeaders,
   }) async {
     final uri = path.startsWith(_kApiPrefix)
         ? _resolveUri(path, query)
@@ -248,7 +251,11 @@ class NowaveApiClient {
       response = await _send(
         method,
         uri,
-        _headers(body: body, rawBody: rawBody, contentType: contentType),
+        _headers(
+          body: body,
+          rawBody: rawBody,
+          contentType: contentType,
+        ).merge(extraHeaders),
         rawBody ?? (body == null ? null : jsonEncode(body)),
         timeout: timeout,
       );
@@ -271,7 +278,7 @@ class NowaveApiClient {
           rawBody: rawBody,
           contentType: contentType,
           token: authenticator.accessToken,
-        ),
+        ).merge(extraHeaders),
         rawBody ?? (body == null ? null : jsonEncode(body)),
         timeout: timeout,
       );
@@ -289,7 +296,7 @@ class NowaveApiClient {
               rawBody: rawBody,
               contentType: contentType,
               token: authenticator.accessToken,
-            ),
+            ).merge(extraHeaders),
             rawBody ?? (body == null ? null : jsonEncode(body)),
             timeout: timeout,
           );
