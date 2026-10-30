@@ -91,8 +91,9 @@ void main() {
     });
 
     test('a failed sign-up emits a failure and does not log in', () async {
-      when(() => userSignUp(any()))
-          .thenAnswer((_) async => Left(Failure('该邮箱已被注册，请直接登录')));
+      when(
+        () => userSignUp(any()),
+      ).thenAnswer((_) async => Left(Failure('该邮箱已被注册，请直接登录')));
 
       final states = await capture(
         () => bloc.add(
@@ -125,8 +126,9 @@ void main() {
     });
 
     test('a rejected login emits a failure', () async {
-      when(() => userLogin(any()))
-          .thenAnswer((_) async => Left(Failure.auth('邮箱或密码不正确')));
+      when(
+        () => userLogin(any()),
+      ).thenAnswer((_) async => Left(Failure.auth('邮箱或密码不正确')));
 
       final states = await capture(
         () => bloc.add(
@@ -145,8 +147,9 @@ void main() {
       'logout clears the identity even when the server call fails',
       () async {
         appUserCubit.updateUser(_user());
-        when(() => userSignOut(any()))
-            .thenAnswer((_) async => Left(Failure('无法连接到网络')));
+        when(
+          () => userSignOut(any()),
+        ).thenAnswer((_) async => Left(Failure('无法连接到网络')));
 
         final states = await capture(() => bloc.add(AuthLogout()));
 
@@ -157,8 +160,9 @@ void main() {
 
     test('a successful logout emits success', () async {
       appUserCubit.updateUser(_user());
-      when(() => userSignOut(any()))
-          .thenAnswer((_) async => Right<Failure, void>(null));
+      when(
+        () => userSignOut(any()),
+      ).thenAnswer((_) async => Right<Failure, void>(null));
 
       final states = await capture(() => bloc.add(AuthLogout()));
 
@@ -181,8 +185,9 @@ void main() {
     );
 
     test('a missing session emits a failure', () async {
-      when(() => currentUser(any()))
-          .thenAnswer((_) async => Left(Failure('登录状态已失效，请重新登录')));
+      when(
+        () => currentUser(any()),
+      ).thenAnswer((_) async => Left(Failure('登录状态已失效，请重新登录')));
 
       final states = await capture(() => bloc.add(AuthIsUserLoggedIn()));
 

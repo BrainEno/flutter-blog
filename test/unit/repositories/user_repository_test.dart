@@ -142,8 +142,9 @@ void main() {
           updatedAt: DateTime.utc(2024),
         ),
       );
-      when(() => remote.editUserInfo(any()))
-          .thenThrow(const ServerException('rls denied'));
+      when(
+        () => remote.editUserInfo(any()),
+      ).thenThrow(const ServerException('rls denied'));
 
       final result = await repository.editUserInfo(
         userId: 'u1',

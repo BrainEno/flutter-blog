@@ -93,8 +93,9 @@ Future<void> openEditor(
 }) async {
   final bloc = MockUploadBloc();
   when(() => bloc.state).thenReturn(BlogUploadInitial());
-  when(() => bloc.stream)
-      .thenAnswer((_) => const Stream<BlogUploadState>.empty());
+  when(
+    () => bloc.stream,
+  ).thenAnswer((_) => const Stream<BlogUploadState>.empty());
   await tester.pumpWidget(
     MaterialApp(
       home: BlocProvider<BlogUploadBloc>.value(
