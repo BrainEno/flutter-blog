@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:belog/core/nowave/nowave_api_client.dart';
+import 'package:belog/core/utils/app_logger.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -340,6 +341,66 @@ void main() {
       await expectLater(
         client.getJson('/articles'),
         throwsA(isA<TimeoutException>()),
+      );
+    });
+  });
+
+  group('diagnostics buffer (issue #49)', () {
+    setUp(AppLogger.clearDiagnostics);
+
+    test('a failing status is recorded with path, status and duration',
+        () async {
+      final client = clientFor(
+        MockClient(
+          (request) async =>
+              http.Response(jsonEncode({'data': null}), 503),
+        ),
+      );
+
+      await expectLater(
+        client.getJson('/articles', query: {'limit': '10'}),
+        throwsA(isA<NowaveApiException>()),
+      );
+
+      final report = AppLogger.diagnosticsReport();
+      expect(report, contains('GET /api/v1/articles -> 503'));
+      expect(report, contains('ms)'));
+      // The query string must never reach the buffer.
+      expect(report.contains('limit'), isFalse);
+    });
+
+    test('a successful request is not recorded', () async {
+      final client = clientFor(
+        MockClient(
+          (request) async => http.Response(jsonEncode({'data': null}), 200),
+        ),
+      );
+
+      await client.getJson('/articles');
+
+      expect(AppLogger.diagnosticsReport(), isEmpty);
+    });
+
+    test('a timeout is recorded with its budget', () async {
+      final client = NowaveApiClient(
+        baseUrl: Uri.parse('https://api.example.invalid'),
+        timeout: const Duration(milliseconds: 25),
+        httpClient: MockClient.streaming((request, body) async {
+          return http.StreamedResponse(
+            Completer<List<int>>().future.asStream().cast<List<int>>(),
+            200,
+          );
+        }),
+      );
+
+      await expectLater(
+        client.getJson('/articles'),
+        throwsA(isA<TimeoutException>()),
+      );
+
+      expect(
+        AppLogger.diagnosticsReport(),
+        contains('timeout GET /api/v1/articles (budget 25ms)'),
       );
     });
   });
