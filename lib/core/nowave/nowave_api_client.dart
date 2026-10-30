@@ -121,17 +121,18 @@ class NowaveApiClient {
 
   /// Drops any query or fragment a configured base URL may carry; request
   /// queries are composed per call and a stray fragment would corrupt them.
+  ///
+  /// Rebuilding via string surgery + reparse (instead of the Uri
+  /// constructor) keeps the exact original authority: an implicit default
+  /// port stays implicit and an explicit one survives verbatim.
   static Uri _sanitizeBase(Uri url) {
     if (!url.hasQuery && !url.hasFragment) return url;
-    return Uri(
-      scheme: url.scheme,
-      userInfo: url.userInfo,
-      host: url.host,
-      // Only forward an explicitly written port; passing the scheme
-      // default would render as a redundant ':443' in every request URL.
-      port: url.hasPort ? url.port : 0,
-      path: url.path,
-    );
+    var cleaned = url.toString();
+    final queryAt = cleaned.indexOf('?');
+    if (queryAt >= 0) cleaned = cleaned.substring(0, queryAt);
+    final fragmentAt = cleaned.indexOf('#');
+    if (fragmentAt >= 0) cleaned = cleaned.substring(0, fragmentAt);
+    return Uri.parse(cleaned);
   }
 
   static String _basePrefixOf(Uri url) {
@@ -321,11 +322,11 @@ class NowaveApiClient {
       return response;
     } on TimeoutException {
       AppLogger.debug(
-        '$method ${uri.path} timed out after ${budget.inSeconds}s',
+        '$method ${uri.path} timed out after ${budget.inMilliseconds}ms',
       );
       throw TimeoutException(
         '$method ${uri.path} did not answer within '
-        '${budget.inSeconds}s',
+        '${budget.inMilliseconds}ms',
         budget,
       );
     }
