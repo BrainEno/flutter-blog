@@ -186,7 +186,7 @@ G3 用本地缓存即可，不阻塞。
 
 ### 3.4 会话管理器（新组件）
 
-- 存储：flutter_secure_storage 存 `{accessToken, accessExpiresAt, refreshToken, refreshExpiresAt, userId, email}`。
+- 存储：flutter_secure_storage（iOS Keychain / Android Keystore 加密存储，issue #46）存 `{accessToken, accessExpiresAt, refreshToken, refreshExpiresAt, userId, email}`。旧版曾落在 SQLite `metadata` 表，启动时由 `migrateSessionStoreToSecureStorage` 一次性迁入安全存储并删除旧行；迁移失败（安全存储不可用）保留 SQLite 兜底，下次启动重试。
 - 请求封装：统一加 Bearer；遇 401 → 单飞 `POST /auth/refresh` → 重放原请求；刷新 401 → 清储并广播登出。
 - 启动恢复：本地有对 → `GET /me` 校验 → 失败尝试刷新一次。
 - 注意并发：refresh 轮换下**绝不能并发刷新两次**（第二次会因重用旧 token 撤销全家）。
