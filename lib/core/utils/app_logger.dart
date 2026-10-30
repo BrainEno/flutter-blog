@@ -60,6 +60,27 @@ class AppLogger {
     diagnostics.recordTimeout(method, path, budgetMs);
   }
 
+  /// Records an HTTP exchange that failed before any response arrived
+  /// (socket/transport errors). [errorType] is the error's runtime type.
+  static void requestUnreachable(
+    String method,
+    String path,
+    String errorType,
+  ) {
+    diagnostics.recordUnreachable(method, path, errorType);
+  }
+
+  /// Records a response whose body could not be decoded; [reason] is a
+  /// fixed token (`non-utf8`, `non-json`), never body content.
+  static void responseMalformed(
+    String method,
+    String path,
+    int statusCode,
+    String reason,
+  ) {
+    diagnostics.recordMalformed(method, path, statusCode, reason);
+  }
+
   /// Plain-text diagnostics report, newest first; empty when nothing
   /// failed. The user sees exactly this text before copying it.
   static String diagnosticsReport() => diagnostics.export();

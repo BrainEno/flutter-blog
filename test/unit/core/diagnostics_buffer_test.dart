@@ -65,6 +65,41 @@ void main() {
       expect(report.contains('user@example.invalid'), isFalse);
     });
 
+    test('transport failures record the method, path and error type', () {
+      final buffer = DiagnosticsBuffer();
+
+      buffer.recordUnreachable('POST', '/api/v1/me/media', 'SocketException');
+
+      expect(
+        buffer.export(),
+        contains('request POST /api/v1/me/media unreachable (SocketException)'),
+      );
+    });
+
+    test('transport failures never keep the query string', () {
+      final buffer = DiagnosticsBuffer();
+
+      buffer.recordUnreachable(
+        'GET',
+        '/api/v1/articles?token=secret-token',
+        'ClientException',
+      );
+
+      expect(buffer.export(), contains('/api/v1/articles unreachable'));
+      expect(buffer.export().contains('secret-token'), isFalse);
+    });
+
+    test('malformed responses record status and a fixed reason token', () {
+      final buffer = DiagnosticsBuffer();
+
+      buffer.recordMalformed('GET', '/api/v1/articles', 502, 'non-json');
+
+      expect(
+        buffer.export(),
+        contains('response GET /api/v1/articles -> 502 malformed (non-json)'),
+      );
+    });
+
     test('timeout records carry the budget', () {
       final buffer = DiagnosticsBuffer();
 
