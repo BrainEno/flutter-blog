@@ -53,4 +53,9 @@ abstract interface class BlogRepository {
   Future<Either<Failure, bool>> isBlogLiked(String userId, String blogId);
 
   Future<Either<Failure, List<Blog>>> getUserLikedBlogs(String userId);
+
+  /// Articles the server recommends next to [blogId] (slug). Related
+  /// articles are a best-effort rider: failures can safely hide the
+  /// section without breaking the viewer.
+  Future<Either<Failure, List<Blog>>> getRelatedArticles(String blogId);
 }

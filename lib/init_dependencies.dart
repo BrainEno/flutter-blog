@@ -28,8 +28,12 @@ import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/blog/data/datasources/blog_draft_store.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
+import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
 import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart';
+import 'package:belog/features/blog/data/repositories/comment_repository_impl.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
+import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
+import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
@@ -113,6 +117,7 @@ Future<void> initDependencies() async {
 
   _initAuth(sessionManager, apiClient);
   await _initBlog(apiClient);
+  _initComments(apiClient);
   _initUser(apiClient, sessionManager);
 
   serviceLocator.registerLazySingleton(() => database);
@@ -244,6 +249,27 @@ Future<void> _initBlog(NowaveApiClient apiClient) async {
         restoreDeletedBlog: serviceLocator<RestoreDeletedBlog>(),
       ),
     );
+}
+
+void _initComments(NowaveApiClient apiClient) {
+  serviceLocator
+    // Datasource
+    ..registerFactory<CommentRemoteDataSource>(
+      () => CommentRemoteDataSourceImpl(apiClient),
+    )
+    // Repository
+    ..registerFactory<CommentRepository>(
+      () => CommentRepositoryImpl(
+        commentRemoteDataSource: serviceLocator<CommentRemoteDataSource>(),
+        connectionChecker: serviceLocator<ConnectionChecker>(),
+      ),
+    )
+    // Usecases
+    ..registerFactory(() => GetComments(serviceLocator<CommentRepository>()))
+    ..registerFactory(() => CreateComment(serviceLocator<CommentRepository>()))
+    ..registerFactory(() => DeleteComment(serviceLocator<CommentRepository>()));
+    // CommentBloc is page-scoped and built by the viewer route with the
+    // article's slug, like BlogViewerCubit.
 }
 
 void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {

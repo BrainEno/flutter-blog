@@ -33,6 +33,10 @@ abstract interface class BlogRemoteDataSource {
 
   /// Loads an article by its public slug ([Blog.id]).
   Future<BlogModel> getBlogById(String blogId);
+
+  /// Same-topic articles the server recommends next to [slug]
+  /// (`GET /articles/:slug/related`).
+  Future<List<BlogModel>> getRelatedArticles(String slug);
   Future<List<BlogModel>> getBlogsByPosterId(String posterId);
   Future<List<BlogModel>> getBlogsByTag(String tag);
   Future<List<BlogModel>> searchBlogs(String query);
@@ -66,6 +70,10 @@ const int kMaxSearchResults = 50;
 
 /// Upper bound for author/tag/liked listings (the API caps `limit` at 100).
 const int _kListLimit = 100;
+
+/// Related articles are a reading suggestion rider (issue #19), not a
+/// primary list: the server caps the endpoint at 50, we show a handful.
+const int _kRelatedLimit = 6;
 
 class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   final NowaveApiClient client;
@@ -157,6 +165,18 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   }
 
   @override
+  Future<List<BlogModel>> getRelatedArticles(String slug) async {
+    try {
+      final data = await client.getJson(
+        '/articles/$slug/related',
+        query: {'limit': '$_kRelatedLimit', 'locale': 'zh-CN'},
+      );
+      return _articleList(data);
+    } catch (e) {
+      throw mapToServerException(e);
+    }
+  }
+
   Future<List<BlogModel>> getBlogsByPosterId(String posterId) async {
     try {
       final data = await client.getJson(
