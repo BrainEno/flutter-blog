@@ -36,7 +36,7 @@ class DiagnosticsBuffer {
   bool get isEmpty => _entries.isEmpty;
 
   void _add(String line) {
-    _entries.add(DiagnosticsEntry(DateTime.now(), _scrub(line)));
+    _entries.add(DiagnosticsEntry(DateTime.now(), line));
     while (_entries.length > capacity) {
       _entries.removeFirst();
     }
@@ -46,29 +46,41 @@ class DiagnosticsBuffer {
   /// error's runtime type. The error object itself (whose toString can
   /// embed anything) is deliberately not recorded.
   void recordError(String message, Object? error) {
-    _add('error $message (${error?.runtimeType ?? 'no error object'})');
+    // The message is a caller-owned static category string; scrubbing
+    // it whole is safe because nothing after a '?' or '#' is ever part
+    // of the contract.
+    _add(
+      'error ${_scrubFragment(message)} '
+      '(${error?.runtimeType ?? 'no error object'})',
+    );
   }
 
-  /// Records a failed request summary. [path] is the URL path only.
+  /// Records a failed request summary. [path] is sanitized to the URL
+  /// path proper, so the status and duration after it survive intact.
   void recordRequest(
     String method,
     String path,
     int statusCode,
     int durationMs,
   ) {
-    _add('request $method $path -> $statusCode (${durationMs}ms)');
+    _add(
+      'request $method ${_scrubFragment(path)} -> $statusCode '
+      '(${durationMs}ms)',
+    );
   }
 
   /// Records a request that exceeded its timeout budget.
   void recordTimeout(String method, String path, int budgetMs) {
-    _add('timeout $method $path (budget ${budgetMs}ms)');
+    _add('timeout $method ${_scrubFragment(path)} (budget ${budgetMs}ms)');
   }
 
   void clear() => _entries.clear();
 
-  /// Defense in depth: even if a caller ever passes a path or message
-  /// carrying a query string or fragment, it never reaches the buffer.
-  static String _scrub(String line) => line.split('?').first.split('#').first;
+  /// Defense in depth: everything from a '?' or '#' on is dropped, so a
+  /// query string or fragment can never reach the buffer - even when a
+  /// future caller misbehaves.
+  static String _scrubFragment(String part) =>
+      part.split('?').first.split('#').first;
 
   /// Plain-text export, newest first (the most recent failure is what
   /// support reads first). One entry per line, no decoration.
