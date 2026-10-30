@@ -16,6 +16,7 @@ import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
 import 'package:belog/features/auth/auth_session_sync.dart';
 import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dart';
+import 'package:belog/features/auth/data/datasources/profile_cache_store.dart';
 import 'package:belog/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
 import 'package:belog/features/auth/domain/usecases/current_user.dart';
@@ -140,7 +141,11 @@ void _initAuth(NowaveSessionManager sessionManager, NowaveApiClient apiClient) {
     )
     // Repository
     ..registerFactory<AuthRepository>(
-      () => AuthRepositoryImpl(serviceLocator(), serviceLocator()),
+      () => AuthRepositoryImpl(
+        serviceLocator(),
+        serviceLocator(),
+        SqliteProfileCache(database),
+      ),
     )
     // Usecases
     ..registerFactory(() => UserSignUp(serviceLocator()))

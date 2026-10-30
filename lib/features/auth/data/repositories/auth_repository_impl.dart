@@ -4,7 +4,9 @@ import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
+import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dart';
+import 'package:belog/features/auth/data/datasources/profile_cache_store.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
 import 'package:fpdart/fpdart.dart';
@@ -13,7 +15,15 @@ class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
   final ConnectionChecker connectionChecker;
 
-  const AuthRepositoryImpl(this.remoteDataSource, this.connectionChecker);
+  /// Last confirmed profile, so an offline restore still shows a name
+  /// and an avatar (issue #50). Display-layer fallback only.
+  final ProfileCacheStore profileCache;
+
+  const AuthRepositoryImpl(
+    this.remoteDataSource,
+    this.connectionChecker,
+    this.profileCache,
+  );
 
   @override
   Future<Either<Failure, User>> currentUser() async {
@@ -26,13 +36,17 @@ class AuthRepositoryImpl implements AuthRepository {
         }
 
         // Offline restore: the locally persisted session keeps the user
-        // signed in with a minimal identity; the full profile is fetched
-        // once the network is back.
+        // signed in with a minimal identity; the last confirmed profile
+        // fills in name/avatar so the page does not look broken, and the
+        // fresh profile is fetched once the network is back.
+        final cached = await _readCachedProfile();
         return right(
           UserModel(
             id: session.userId,
             email: session.email,
-            name: '',
+            name: cached?.displayName ?? '',
+            avatarUrl: cached?.avatarUrl ?? '',
+            website: cached?.website ?? '',
             updatedAt: DateTime.now(),
           ),
         );
@@ -43,6 +57,7 @@ class AuthRepositoryImpl implements AuthRepository {
         // the user is not logged in.
         return left(Failure.auth('登录状态已失效，请重新登录'));
       }
+      await _writeCachedProfile(userModel);
       return right(userModel);
     } on ServerException catch (e) {
       return left(e.toFailure());
@@ -62,6 +77,7 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
       );
+      await _writeCachedProfile(user);
       return right(user);
     } on NowaveApiException catch (e) {
       return left(_loginFailure(e));
@@ -82,13 +98,13 @@ class AuthRepositoryImpl implements AuthRepository {
       }
       // The backend signs the user in immediately: there is no e-mail
       // confirmation step.
-      return right(
-        await remoteDataSource.signUpWithEmailPassword(
-          name: name,
-          email: email,
-          password: password,
-        ),
+      final user = await remoteDataSource.signUpWithEmailPassword(
+        name: name,
+        email: email,
+        password: password,
       );
+      await _writeCachedProfile(user);
+      return right(user);
     } on NowaveApiException catch (e) {
       return left(_signUpFailure(e));
     } on ServerException catch (e) {
@@ -104,9 +120,57 @@ class AuthRepositoryImpl implements AuthRepository {
     // local session regardless.
     try {
       await remoteDataSource.logout();
+      // The cached profile must not leak into the next account.
+      await _clearCachedProfile();
       return right(null);
     } on ServerException catch (e) {
       return left(e.toFailure());
+    }
+  }
+
+  /// Cache reads/writes are display conveniences: a storage hiccup is
+  /// logged and swallowed, never surfaced as a login failure.
+  Future<CachedProfile?> _readCachedProfile() async {
+    try {
+      return await profileCache.read();
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'reading the cached profile failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
+
+  Future<void> _writeCachedProfile(UserModel user) async {
+    try {
+      await profileCache.write(
+        CachedProfile(
+          displayName: user.name,
+          avatarUrl: user.avatarUrl,
+          website: user.website,
+          updatedAt: user.updatedAt,
+        ),
+      );
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'writing the cached profile failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<void> _clearCachedProfile() async {
+    try {
+      await profileCache.clear();
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'clearing the cached profile failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 

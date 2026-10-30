@@ -4,6 +4,7 @@ import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dart';
+import 'package:belog/features/auth/data/datasources/profile_cache_store.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
 import 'package:belog/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +13,8 @@ import 'package:mocktail/mocktail.dart';
 class MockRemote extends Mock implements AuthRemoteDataSource {}
 
 class MockConnection extends Mock implements ConnectionChecker {}
+
+class MockProfileCache extends Mock implements ProfileCacheStore {}
 
 NowaveSessionData _session({String userId = 'u1'}) => NowaveSessionData(
   userId: userId,
@@ -32,12 +35,28 @@ UserModel _user({String name = '测试用户'}) => UserModel(
 void main() {
   late MockRemote remote;
   late MockConnection connection;
+  late MockProfileCache profileCache;
   late AuthRepositoryImpl repository;
+
+  setUpAll(() {
+    registerFallbackValue(
+      CachedProfile(
+        displayName: '',
+        avatarUrl: '',
+        website: '',
+        updatedAt: DateTime.utc(2026),
+      ),
+    );
+  });
 
   setUp(() {
     remote = MockRemote();
     connection = MockConnection();
-    repository = AuthRepositoryImpl(remote, connection);
+    profileCache = MockProfileCache();
+    repository = AuthRepositoryImpl(remote, connection, profileCache);
+    when(() => profileCache.read()).thenAnswer((_) async => null);
+    when(() => profileCache.write(any())).thenAnswer((_) async {});
+    when(() => profileCache.clear()).thenAnswer((_) async {});
   });
 
   group('currentUser (offline session restore)', () {
@@ -63,6 +82,40 @@ void main() {
 
       final result = await repository.currentUser();
       expect(result.isLeft(), isTrue);
+    });
+
+    test('the cached profile fills name and avatar offline (#50)', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => false);
+      when(() => remote.currentSession).thenReturn(_session());
+      when(() => profileCache.read()).thenAnswer(
+        (_) async => CachedProfile(
+          displayName: '测试用户',
+          avatarUrl: 'https://api.example.invalid/avatar.webp',
+          website: 'https://example.invalid',
+          updatedAt: DateTime.utc(2026, 10, 1),
+        ),
+      );
+
+      final result = await repository.currentUser();
+
+      result.fold((_) => fail('expected a restored user'), (user) {
+        expect(user.name, '测试用户');
+        expect(user.avatarUrl, 'https://api.example.invalid/avatar.webp');
+        expect(user.website, 'https://example.invalid');
+      });
+    });
+
+    test('an unreadable cache degrades to the minimal identity', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => false);
+      when(() => remote.currentSession).thenReturn(_session());
+      when(() => profileCache.read()).thenThrow(StateError('db locked'));
+
+      final result = await repository.currentUser();
+
+      result.fold((_) => fail('expected a restored user'), (user) {
+        expect(user.id, 'u1');
+        expect(user.name, '');
+      });
     });
   });
 
@@ -93,6 +146,16 @@ void main() {
       result.fold((_) => fail('expected a user'), (user) {
         expect(user.name, '测试用户');
       });
+    });
+
+    test('a successful online restore refreshes the profile cache', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      when(() => remote.currentSession).thenReturn(_session());
+      when(() => remote.getCurrentUserData()).thenAnswer((_) async => _user());
+
+      await repository.currentUser();
+
+      verify(() => profileCache.write(any())).called(1);
     });
   });
 
@@ -243,6 +306,8 @@ void main() {
 
       expect(result.isRight(), isTrue);
       verify(() => remote.logout()).called(1);
+      // The cached profile must not leak into the next account.
+      verify(() => profileCache.clear()).called(1);
     });
 
     test('a data source failure surfaces as a failure', () async {
