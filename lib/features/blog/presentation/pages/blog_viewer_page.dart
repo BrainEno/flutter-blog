@@ -100,10 +100,7 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
     return BlocConsumer<BlogViewerCubit, BlogViewerState>(
       listener: (context, state) {
         if (state is BlogViewerFailure) {
-          showSnackBar(
-            context,
-            localizedFailure(context.l10n, state.failure),
-          );
+          showSnackBar(context, localizedFailure(context.l10n, state.failure));
         } else if (state is BlogViewerLoaded) {
           final appUserState = context.read<AppUserCubit>().state;
           if (appUserState is AppUserLoggedIn) {
@@ -300,8 +297,11 @@ class _ViewerScaffold extends StatelessWidget {
                               ),
                               child: CircleAvatar(
                                 radius: 20,
-                                backgroundImage: blog.posterAvatar?.isNotEmpty == true
-                                    ? CachedNetworkImageProvider(blog.posterAvatar!)
+                                backgroundImage:
+                                    blog.posterAvatar?.isNotEmpty == true
+                                    ? CachedNetworkImageProvider(
+                                        blog.posterAvatar!,
+                                      )
                                     : null,
                                 child: blog.posterAvatar?.isNotEmpty == true
                                     ? null
@@ -325,13 +325,27 @@ class _ViewerScaffold extends StatelessWidget {
                                   Wrap(
                                     spacing: 4,
                                     runSpacing: 4,
-                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
                                     children: [
-                                      const Icon(Icons.calendar_today, size: 14),
-                                      Text(formatDate(context.l10n, blog.updatedAt)),
+                                      const Icon(
+                                        Icons.calendar_today,
+                                        size: 14,
+                                      ),
+                                      Text(
+                                        formatDate(
+                                          context.l10n,
+                                          blog.updatedAt,
+                                        ),
+                                      ),
                                       const SizedBox(width: 4),
                                       const Icon(Icons.access_time, size: 14),
-                                      Text(calculateReadingTime(context.l10n, blog.content)),
+                                      Text(
+                                        calculateReadingTime(
+                                          context.l10n,
+                                          blog.content,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -358,7 +372,9 @@ class _ViewerScaffold extends StatelessWidget {
                               localizedTag(context.l10n, tag),
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Theme.of(context).brightness == Brightness.dark
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
                                     ? AppPalette.greenColor
                                     : AppPalette.accessibleGreen,
                                 fontWeight: FontWeight.w600,

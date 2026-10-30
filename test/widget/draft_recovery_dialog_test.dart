@@ -56,11 +56,7 @@ void main() {
   }
 
   testWidgets('warns when the published article is newer', (tester) async {
-    await openDialog(
-      tester,
-      isOlderThanPublished: true,
-      onChoice: (_) {},
-    );
+    await openDialog(tester, isOlderThanPublished: true, onChoice: (_) {});
     expect(find.textContaining('比已发布文章旧'), findsOneWidget);
   });
 

@@ -33,7 +33,8 @@ void main() {
         locale: const Locale('zh'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-home: AboutPage(packageInfoLoader: _fakePackageInfo)),
+        home: AboutPage(packageInfoLoader: _fakePackageInfo),
+      ),
     );
     await tester.pumpAndSettle();
   }

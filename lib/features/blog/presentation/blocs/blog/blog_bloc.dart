@@ -42,8 +42,12 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
     // A newer first-page request supersedes this one.
     if (generation != _generation) return;
     res.fold(
-      (failure) =>
-          emit(BlogListFailure(failure: failure.forPresentation(), previousState: state)),
+      (failure) => emit(
+        BlogListFailure(
+          failure: failure.forPresentation(),
+          previousState: state,
+        ),
+      ),
       (blogs) => emit(
         BlogLoaded(
           blogs: blogs,

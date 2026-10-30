@@ -29,8 +29,11 @@ final class UserLikedBlogsFailure extends BlogLikedState {
 final class ToggleBlogLikeSuccess extends BlogLikedState {
   final String blogId;
   final bool isLiked;
-  const ToggleBlogLikeSuccess(
-      {required this.blogId, required this.isLiked, super.likedBlogs});
+  const ToggleBlogLikeSuccess({
+    required this.blogId,
+    required this.isLiked,
+    super.likedBlogs,
+  });
 }
 
 final class ToggleBlogLikeFailure extends BlogLikedState {
@@ -45,8 +48,11 @@ final class ToggleBlogLikeFailure extends BlogLikedState {
 final class GetBlogIsLikedSuccess extends BlogLikedState {
   final String blogId;
   final bool isLiked;
-  const GetBlogIsLikedSuccess(
-      {required this.blogId, required this.isLiked, super.likedBlogs});
+  const GetBlogIsLikedSuccess({
+    required this.blogId,
+    required this.isLiked,
+    super.likedBlogs,
+  });
 }
 
 final class GetBlogIsLikedFailure extends BlogLikedState {

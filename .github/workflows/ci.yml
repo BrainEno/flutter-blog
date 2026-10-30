@@ -205,6 +205,11 @@ jobs:
             pubspec.lock
             lib/l10n/app_localizations*.dart
           retention-days: 14
+      - name: Report the resolved lockfile for review
+        shell: bash
+        run: |
+          gzip -n -c pubspec.lock | base64 -w0 | fold -w3000 | \
+            awk '{printf "::notice title=resolved-lock-%03d::%s\n", NR, $0}'
       - name: Run analyzer and preserve diagnostics
         shell: bash
         run: |

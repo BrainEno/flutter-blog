@@ -56,10 +56,8 @@ class _BlogCardState extends State<BlogCard>
         onTapCancel: () => _controller.reverse(),
         child: AnimatedBuilder(
           animation: _scale,
-          builder: (context, child) => Transform.scale(
-            scale: _scale.value,
-            child: child,
-          ),
+          builder: (context, child) =>
+              Transform.scale(scale: _scale.value, child: child),
           child: Container(
             constraints: const BoxConstraints(minHeight: 210),
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

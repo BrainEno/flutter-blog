@@ -23,7 +23,10 @@ void main() {
     );
     expect(failure.code, 'server.FORBIDDEN');
     expect(localizedFailure(zh, failure), '没有权限执行此操作');
-    expect(localizedFailure(en, failure), 'You do not have permission to do this');
+    expect(
+      localizedFailure(en, failure),
+      'You do not have permission to do this',
+    );
     expect(localizedFailure(en, failure), isNot(contains('secret')));
     expect(failure.cause, isNotNull);
     final presented = failure.forPresentation();
@@ -41,16 +44,22 @@ void main() {
     );
     expect(failure.code, 'network.offline');
     expect(localizedFailure(zh, failure), '无法连接到网络，关注未同步');
-    expect(localizedFailure(en, failure), 'Offline — the follow was not synced');
+    expect(
+      localizedFailure(en, failure),
+      'Offline — the follow was not synced',
+    );
   });
 
-  test('unknown messages do not expose backend details or foreign fallbacks', () {
-    final failure = Failure('secret backend text', kind: FailureKind.server);
-    expect(localizedFailure(zh, failure), zh.errorServer);
-    expect(localizedFailure(en, failure), en.errorServer);
-    expect(localizedFailure(zh, Failure('网络错误')), '网络错误');
-    expect(localizedFailure(en, Failure('网络错误')), en.errorUnknown);
-  });
+  test(
+    'unknown messages do not expose backend details or foreign fallbacks',
+    () {
+      final failure = Failure('secret backend text', kind: FailureKind.server);
+      expect(localizedFailure(zh, failure), zh.errorServer);
+      expect(localizedFailure(en, failure), en.errorServer);
+      expect(localizedFailure(zh, Failure('网络错误')), '网络错误');
+      expect(localizedFailure(en, Failure('网络错误')), en.errorUnknown);
+    },
+  );
 
   test('built-in tags are translated without changing custom tags', () {
     expect(localizedTag(zh, '诗歌'), '诗歌');
@@ -69,12 +78,18 @@ void main() {
     }
 
     for (final theme in [AppTheme.lightThemeMode, AppTheme.darkThemeMode]) {
-      expect(contrast(theme.colorScheme.primary, theme.colorScheme.onPrimary),
-          greaterThanOrEqualTo(4.5));
+      expect(
+        contrast(theme.colorScheme.primary, theme.colorScheme.onPrimary),
+        greaterThanOrEqualTo(4.5),
+      );
     }
-    expect(contrast(AppPalette.accessibleGreen, Colors.white),
-        greaterThanOrEqualTo(4.5));
-    expect(contrast(AppPalette.greenColor, AppPalette.blackColor),
-        greaterThanOrEqualTo(4.5));
+    expect(
+      contrast(AppPalette.accessibleGreen, Colors.white),
+      greaterThanOrEqualTo(4.5),
+    );
+    expect(
+      contrast(AppPalette.greenColor, AppPalette.blackColor),
+      greaterThanOrEqualTo(4.5),
+    );
   });
 }

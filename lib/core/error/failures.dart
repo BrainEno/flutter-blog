@@ -105,12 +105,8 @@ class Failure {
   );
 
   /// Drops the diagnostic-only cause before a failure is stored in UI state.
-  Failure forPresentation() => Failure(
-    message,
-    kind: kind,
-    code: code,
-    l10nKey: l10nKey,
-  );
+  Failure forPresentation() =>
+      Failure(message, kind: kind, code: code, l10nKey: l10nKey);
 
   @override
   String toString() =>

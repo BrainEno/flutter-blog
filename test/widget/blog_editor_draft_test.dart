@@ -99,9 +99,9 @@ Future<void> openEditor(
   ).thenAnswer((_) => const Stream<BlogUploadState>.empty());
   await tester.pumpWidget(
     MaterialApp(
-        locale: const Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('zh'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
 
       home: BlocProvider<BlogUploadBloc>.value(
         value: bloc,
@@ -130,9 +130,9 @@ Future<RecordingUploadBloc> openEditorLive(
   addTearDown(appUser.close);
   await tester.pumpWidget(
     MaterialApp(
-        locale: const Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('zh'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
 
       home: MultiBlocProvider(
         providers: [

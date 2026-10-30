@@ -358,7 +358,9 @@ class _CommentTile extends StatelessWidget {
                         child: CircleAvatar(
                           radius: depth == 0 ? 16 : 13,
                           backgroundImage: comment.authorAvatarUrl.isNotEmpty
-                              ? CachedNetworkImageProvider(comment.authorAvatarUrl)
+                              ? CachedNetworkImageProvider(
+                                  comment.authorAvatarUrl,
+                                )
                               : null,
                           child: comment.authorAvatarUrl.isEmpty
                               ? Icon(Icons.person, size: depth == 0 ? 16 : 13)
@@ -458,9 +460,6 @@ class _ActionText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: onPressed,
-      child: Text(label),
-    );
+    return TextButton(onPressed: onPressed, child: Text(label));
   }
 }

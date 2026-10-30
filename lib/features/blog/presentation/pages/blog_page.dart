@@ -81,10 +81,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ImageIcon(
-              AssetImage('assets/images/icon.png'),
-              size: 30,
-            ),
+            ImageIcon(AssetImage('assets/images/icon.png'), size: 30),
             SizedBox(width: 7),
             const Text('Bottom Think'),
           ],

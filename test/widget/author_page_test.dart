@@ -93,9 +93,9 @@ Future<void> _pumpPage(
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: router,
       builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(
-          textScaler: TextScaler.linear(textScale),
-        ),
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(textScale)),
         child: child!,
       ),
     ),
@@ -169,7 +169,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
+    try {
     appUserCubit.updateUser(_user());
     when(() => getAuthorProfile('author-1')).thenAnswer(
       (_) async => right<Failure, AuthorProfile>(
@@ -182,9 +182,9 @@ void main() {
         ),
       ),
     );
-    when(() => blogRepository.getBlogsByUser('author-1')).thenAnswer(
-      (_) async => right<Failure, List<Blog>>(const []),
-    );
+    when(
+      () => blogRepository.getBlogsByUser('author-1'),
+    ).thenAnswer((_) async => right<Failure, List<Blog>>(const []));
     when(() => followAuthor('author-1')).thenAnswer(
       (_) async => left<Failure, AuthorProfile>(Failure.networkOffline()),
     );
@@ -204,16 +204,26 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Anonymous author'), findsOneWidget);
     expect(find.text('1,234 followers · 5 following'), findsOneWidget);
-    expect(find.text('No articles yet'), findsOneWidget);
-    expect(find.bySemanticsLabel(RegExp('Avatar of Anonymous author')), findsWidgets);
+    expect(
+      find.bySemanticsLabel(RegExp('Avatar of Anonymous author')),
+      findsWidgets,
+    );
     expect(tester.takeException(), isNull);
+    await tester.scrollUntilVisible(find.text('No articles yet'), 140);
+    expect(find.text('No articles yet'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Follow'));
+    await tester.scrollUntilVisible(find.text('Follow'), -140);
     await tester.tap(find.text('Follow'));
     await tester.pumpAndSettle();
-    expect(find.text('No network connection — check your settings'), findsOneWidget);
+    expect(
+      find.text('No network connection — check your settings'),
+      findsOneWidget,
+    );
     expect(find.text('Follow'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    } finally {
+      semantics.dispose();
+    }
   });
 
   testWidgets('following takes the server answer and flips the button', (

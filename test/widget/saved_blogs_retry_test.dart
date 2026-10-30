@@ -56,7 +56,7 @@ void main() {
           BlocProvider<AppUserCubit>.value(value: user),
         ],
         child: const MaterialApp(
-        locale: const Locale('zh'),
+        locale: Locale('zh'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
 home: SavedBlogsPage()),

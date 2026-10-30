@@ -379,5 +379,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "pageNotFound": "Page not found",
+  "backToHome": "Back to home"
 }

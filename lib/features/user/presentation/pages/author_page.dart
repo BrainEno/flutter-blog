@@ -82,7 +82,10 @@ class _AuthorPageState extends State<AuthorPage> {
         listener: (context, state) {
           showSnackBar(
             context,
-            localizedFailure(context.l10n, (state as AuthorLoaded).followFailure!),
+            localizedFailure(
+              context.l10n,
+              (state as AuthorLoaded).followFailure!,
+            ),
           );
         },
         builder: (context, state) {

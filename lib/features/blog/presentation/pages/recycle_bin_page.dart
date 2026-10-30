@@ -57,10 +57,7 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
           } else if (state is RecycleBinSuccess) {
             final title = state.lastRestoredTitle;
             if (title != null) {
-              showSnackBar(
-                context,
-                context.l10n.restoredAsDraft(title),
-              );
+              showSnackBar(context, context.l10n.restoredAsDraft(title));
             }
           }
         },

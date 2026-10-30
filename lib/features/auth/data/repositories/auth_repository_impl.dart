@@ -43,7 +43,7 @@ class AuthRepositoryImpl implements AuthRepository {
               '请登录账户',
               kind: FailureKind.auth,
               code: 'auth.rejected',
-            l10nKey: 'auth.required',
+              l10nKey: 'auth.required',
             ),
           );
         }
@@ -222,7 +222,7 @@ class AuthRepositoryImpl implements AuthRepository {
           '邮箱或密码不正确',
           kind: FailureKind.auth,
           code: 'auth.rejected',
-            l10nKey: 'auth.invalidCredentials',
+          l10nKey: 'auth.invalidCredentials',
           cause: e,
         );
       case 'RATE_LIMITED':

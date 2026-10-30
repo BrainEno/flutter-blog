@@ -53,7 +53,7 @@ class EditorField extends StatelessWidget {
         },
         decoration: InputDecoration(
           labelText: hintText,
-        hintText: hintText,
+          hintText: hintText,
           hintStyle:
               hintStyle ??
               TextStyle(

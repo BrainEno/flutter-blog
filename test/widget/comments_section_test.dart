@@ -56,11 +56,11 @@ Future<void> _pumpSection(
         BlocProvider<CommentBloc>.value(value: commentBloc),
       ],
       child: const MaterialApp(
-        locale: const Locale('zh'),
+        locale: Locale('zh'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
 
-        home: Scaffold(body: CommentsSection(slug: 'my-slug')),
+        home: Scaffold(body: SingleChildScrollView(child: CommentsSection(slug: 'my-slug'))),
       ),
     ),
   );
@@ -164,9 +164,9 @@ void main() {
           BlocProvider<CommentBloc>.value(value: bloc),
         ],
         child: MaterialApp(
-        locale: const Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
 
           home: Scaffold(
             body: CommentsSection(

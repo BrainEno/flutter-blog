@@ -219,7 +219,7 @@ class Harness {
     );
   }
 
-  Future<void> pump(WidgetTester tester) async {
+  Future<void> pump(WidgetTester tester, {Locale locale = const Locale('zh')}) async {
     final currentRouter = router;
     assert(currentRouter != null, 'call buildRouter before pump');
     await tester.pumpWidget(
@@ -230,10 +230,11 @@ class Harness {
           BlocProvider<AppUserCubit>.value(value: appUserCubit),
         ],
         child: MaterialApp.router(
-        locale: const Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-routerConfig: currentRouter),
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: currentRouter,
+        ),
       ),
     );
   }
@@ -282,7 +283,10 @@ void main() {
     expect(find.byType(BlogPage), findsNothing);
 
     // Back returns to the feed inside the same tab.
-    await tester.pageBack();
+    final backLabel = MaterialLocalizations.of(
+      tester.element(find.byType(BlogViewerPage)),
+    ).backButtonTooltip;
+    await tester.tap(find.byTooltip(backLabel));
     await tester.pumpAndSettle();
     expect(find.byType(BlogPage), findsOneWidget);
   });
@@ -361,6 +365,22 @@ void main() {
     expect(find.byType(ProfilePage), findsNothing);
     verify(() => harness.authRepository.logout()).called(1);
   });
+
+  for (final locale in [const Locale('zh'), const Locale('en')]) {
+    testWidgets('unknown routes have a localized recovery action: $locale', (
+      tester,
+    ) async {
+      final harness = Harness()..buildRouter(initialLocation: '/missing-page');
+      addTearDown(harness.dispose);
+      await harness.pump(tester, locale: locale);
+      await tester.pumpAndSettle();
+      final l10n = lookupAppLocalizations(locale);
+      expect(find.text(l10n.pageNotFound), findsOneWidget);
+      await tester.tap(find.text(l10n.backToHome));
+      await tester.pumpAndSettle();
+      expect(find.byType(BlogPage), findsOneWidget);
+    });
+  }
 
   testWidgets('the editor is not reachable without an account', (tester) async {
     final harness = Harness()..buildRouter();

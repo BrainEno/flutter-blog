@@ -180,26 +180,26 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                         image: true,
                         label: context.l10n.coverOf(entry.title),
                         child: SizedBox(
-                        width: 56,
-                        height: 56,
-                        child: entry.imageUrl.isEmpty
-                            ? Icon(
-                                Icons.article,
-                                size: 32,
-                                color: Colors.grey.shade400,
-                              )
-                            : CachedNetworkImage(
-                                imageUrl: entry.imageUrl,
-                                fit: BoxFit.cover,
-                                width: 56,
-                                height: 56,
-                                errorWidget: (context, error, stackTrace) =>
-                                    Icon(
-                                      Icons.broken_image,
-                                      size: 32,
-                                      color: Colors.grey.shade400,
-                                    ),
-                              ),
+                          width: 56,
+                          height: 56,
+                          child: entry.imageUrl.isEmpty
+                              ? Icon(
+                                  Icons.article,
+                                  size: 32,
+                                  color: Colors.grey.shade400,
+                                )
+                              : CachedNetworkImage(
+                                  imageUrl: entry.imageUrl,
+                                  fit: BoxFit.cover,
+                                  width: 56,
+                                  height: 56,
+                                  errorWidget: (context, error, stackTrace) =>
+                                      Icon(
+                                        Icons.broken_image,
+                                        size: 32,
+                                        color: Colors.grey.shade400,
+                                      ),
+                                ),
                         ),
                       ),
                     ),

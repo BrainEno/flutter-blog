@@ -134,9 +134,7 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    l10n.loadErrorPrefix(
-                      localizedFailure(l10n, state.failure),
-                    ),
+                    l10n.loadErrorPrefix(localizedFailure(l10n, state.failure)),
                   ),
                   const SizedBox(height: 12),
                   TextButton(

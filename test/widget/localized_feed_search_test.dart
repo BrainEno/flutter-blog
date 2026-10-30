@@ -69,7 +69,7 @@ void main() {
       tester,
     ) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
+      try {
       final first = Completer<Either<Failure, List<Blog>>>();
       var calls = 0;
       final bloc = BlogBloc(
@@ -110,87 +110,104 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(l10n.feedNoMore), findsOneWidget);
       expect(find.text(l10n.anonymousAuthor), findsOneWidget);
-      expect(find.bySemanticsLabel(RegExp(l10n.coverOf('Sample'))), findsWidgets);
+      expect(
+        find.bySemanticsLabel(RegExp(l10n.coverOf('Sample'))),
+        findsWidgets,
+      );
       expect(tester.takeException(), isNull);
+      } finally {
+        semantics.dispose();
+      }
     });
 
-    testWidgets('$language search distinguishes loading, error and no results', (
-      tester,
-    ) async {
-      final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
-      final first = Completer<Either<Failure, List<Blog>>>();
-      var calls = 0;
+    testWidgets(
+      '$language search distinguishes loading, error and no results',
+      (tester) async {
+        final semantics = tester.ensureSemantics();
+        try {
+        final first = Completer<Either<Failure, List<Blog>>>();
+        var calls = 0;
+        final bloc = BlogSearchBloc(
+          searchBlogs: _SearchArticles((_) {
+            calls++;
+            if (calls == 1) return first.future;
+            if (calls == 2) return Future.value(right(const []));
+            return Future.value(right([_article()]));
+          }),
+        );
+        addTearDown(bloc.close);
+        await tester.pumpWidget(
+          BlocProvider<BlogSearchBloc>.value(
+            value: bloc,
+            child: _app(locale: locale, child: const SearchBlogPage()),
+          ),
+        );
+        expect(find.text(l10n.searchInitial), findsOneWidget);
+        await tester.enterText(find.byType(TextField), 'search term');
+        await tester.pump(const Duration(milliseconds: 350));
+        await tester.pump();
+        expect(find.bySemanticsLabel(l10n.searching), findsOneWidget);
+
+        first.complete(left(Failure.networkOffline()));
+        await tester.pumpAndSettle();
+        expect(
+          find.text(l10n.searchFailed(l10n.errorNetworkOffline)),
+          findsWidgets,
+        );
+        expect(find.text(l10n.actionRetry), findsOneWidget);
+        await tester.tap(find.text(l10n.actionRetry));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.searchNoResults), findsOneWidget);
+        expect(find.text(l10n.actionRetry), findsNothing);
+        expect(find.byTooltip(l10n.clearSearch), findsOneWidget);
+        bloc.add(const SearchBlogsEvent(query: 'another query'));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.searchNoMore), findsOneWidget);
+        expect(
+          find.text(l10n.posterLabel(l10n.anonymousAuthor)),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+        } finally {
+          semantics.dispose();
+        }
+      },
+    );
+  }
+
+  testWidgets(
+    'system locale changes rebuild existing screen; unsupported falls back to Chinese',
+    (tester) async {
+      tester.platformDispatcher.localesTestValue = const [Locale('zh', 'CN')];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
       final bloc = BlogSearchBloc(
-        searchBlogs: _SearchArticles((_) {
-          calls++;
-          if (calls == 1) return first.future;
-          if (calls == 2) return Future.value(right(const []));
-          return Future.value(right([_article()]));
-        }),
+        searchBlogs: _SearchArticles((_) async => right(const [])),
       );
       addTearDown(bloc.close);
       await tester.pumpWidget(
         BlocProvider<BlogSearchBloc>.value(
           value: bloc,
-          child: _app(locale: locale, child: const SearchBlogPage()),
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: const [Locale('zh'), Locale('en')],
+            home: const SearchBlogPage(),
+          ),
         ),
       );
-      expect(find.text(l10n.searchInitial), findsOneWidget);
-      await tester.enterText(find.byType(TextField), 'search term');
-      await tester.pump(const Duration(milliseconds: 350));
-      await tester.pump();
-      expect(find.bySemanticsLabel(l10n.searching), findsOneWidget);
+      expect(find.text('输入关键词，搜索你感兴趣的文章'), findsOneWidget);
 
-      first.complete(left(Failure.networkOffline()));
+      tester.platformDispatcher.localesTestValue = const [Locale('en', 'US')];
       await tester.pumpAndSettle();
       expect(
-        find.text(l10n.searchFailed(l10n.errorNetworkOffline)),
-        findsWidgets,
+        find.text('Type a keyword to find articles you like'),
+        findsOneWidget,
       );
-      expect(find.text(l10n.actionRetry), findsOneWidget);
-      await tester.tap(find.text(l10n.actionRetry));
+
+      tester.platformDispatcher.localesTestValue = const [Locale('ja', 'JP')];
       await tester.pumpAndSettle();
-      expect(find.text(l10n.searchNoResults), findsOneWidget);
-      expect(find.text(l10n.actionRetry), findsNothing);
-      expect(find.byTooltip(l10n.clearSearch), findsOneWidget);
-      bloc.add(const SearchBlogsEvent(query: 'another query'));
-      await tester.pumpAndSettle();
-      expect(find.text(l10n.searchNoMore), findsOneWidget);
-      expect(find.text(l10n.posterLabel(l10n.anonymousAuthor)), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-  }
-
-  testWidgets('system locale changes rebuild existing screen; unsupported falls back to Chinese', (
-    tester,
-  ) async {
-    tester.platformDispatcher.localeTestValue = const Locale('zh', 'CN');
-    addTearDown(tester.platformDispatcher.clearLocaleTestValue);
-    final bloc = BlogSearchBloc(
-      searchBlogs: _SearchArticles((_) async => right(const [])),
-    );
-    addTearDown(bloc.close);
-    await tester.pumpWidget(
-      BlocProvider<BlogSearchBloc>.value(
-        value: bloc,
-        child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: const [Locale('zh'), Locale('en')],
-          home: const SearchBlogPage(),
-        ),
-      ),
-    );
-    expect(find.text('输入关键词，搜索你感兴趣的文章'), findsOneWidget);
-
-    tester.platformDispatcher.localeTestValue = const Locale('en', 'US');
-    await tester.pumpAndSettle();
-    expect(find.text('Type a keyword to find articles you like'), findsOneWidget);
-
-    tester.platformDispatcher.localeTestValue = const Locale('ja', 'JP');
-    await tester.pumpAndSettle();
-    expect(find.text('输入关键词，搜索你感兴趣的文章'), findsOneWidget);
-  });
+      expect(find.text('输入关键词，搜索你感兴趣的文章'), findsOneWidget);
+    },
+  );
 
   testWidgets('large text and keyboard access work on an article card', (
     tester,
@@ -200,7 +217,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
+    try {
     final router = GoRouter(
       routes: [
         GoRoute(
@@ -223,9 +240,9 @@ void main() {
         supportedLocales: const [Locale('zh'), Locale('en')],
         routerConfig: router,
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: const TextScaler.linear(2),
-          ),
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
           child: child!,
         ),
       ),
@@ -241,5 +258,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Opened'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    } finally {
+      semantics.dispose();
+    }
   });
 }

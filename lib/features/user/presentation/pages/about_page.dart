@@ -51,7 +51,11 @@ class _AboutPageState extends State<AboutPage> {
     try {
       if (await canLaunchUrl(uri) && await launchUrl(uri)) return;
     } catch (error, stackTrace) {
-      AppLogger.error('opening a contact link failed', error: error, stackTrace: stackTrace);
+      AppLogger.error(
+        'opening a contact link failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
     if (context.mounted) showSnackBar(context, context.l10n.cannotOpenLink);
   }
@@ -68,11 +72,17 @@ class _AboutPageState extends State<AboutPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(l10n.aboutHeading, style: AppTheme.darkThemeMode.textTheme.headlineSmall),
+              Text(
+                l10n.aboutHeading,
+                style: AppTheme.darkThemeMode.textTheme.headlineSmall,
+              ),
               const SizedBox(height: 16),
               Text(l10n.aboutBody),
               const SizedBox(height: 20),
-              Text(l10n.contactHeading, style: AppTheme.darkThemeMode.textTheme.headlineSmall),
+              Text(
+                l10n.contactHeading,
+                style: AppTheme.darkThemeMode.textTheme.headlineSmall,
+              ),
               const SizedBox(height: 16),
               Text(l10n.emailLabel),
               TextButton(
@@ -92,7 +102,10 @@ class _AboutPageState extends State<AboutPage> {
                 child: const Text('https://github.com/BrainEno'),
               ),
               const SizedBox(height: 20),
-              Text(l10n.versionHeading, style: AppTheme.darkThemeMode.textTheme.headlineSmall),
+              Text(
+                l10n.versionHeading,
+                style: AppTheme.darkThemeMode.textTheme.headlineSmall,
+              ),
               const SizedBox(height: 16),
               // Long-press remains the user-controlled support entry: the
               // report is still never sent automatically (issue #49).
@@ -176,7 +189,10 @@ class _AboutPageState extends State<AboutPage> {
                   Navigator.of(dialogContext).pop();
                   try {
                     await SharePlus.instance.share(
-                      ShareParams(title: l10n.diagnosticsShareTitle, text: report),
+                      ShareParams(
+                        title: l10n.diagnosticsShareTitle,
+                        text: report,
+                      ),
                     );
                   } catch (e, stackTrace) {
                     AppLogger.error(

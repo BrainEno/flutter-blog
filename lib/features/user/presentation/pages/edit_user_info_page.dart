@@ -132,41 +132,44 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                     onTap: selectImage,
                     customBorder: const CircleBorder(),
                     child: Stack(
-                    alignment: Alignment.bottomRight,
-                    children: [
-                      CircleAvatar(
-                        radius: 60,
-                        backgroundColor: Theme.of(context).colorScheme.surface,
-                        backgroundImage: isNewImageSelected
-                            ? (image != null
-                                  ? FileImage(image!) as ImageProvider<Object>?
-                                  : null) // Added null check
-                            : avatarUrl != null && avatarUrl!.isNotEmpty
-                            ? CachedNetworkImageProvider(
-                                '$avatarUrl?v=${updatedAt?.millisecondsSinceEpoch ?? ''}',
-                              )
-                            : null,
-                        child: isNewImageSelected || avatarUrl != null
-                            ? null
-                            : const Icon(
-                                Icons.person,
-                                size: 60,
-                                color: Colors.grey,
-                              ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary,
-                          shape: BoxShape.circle,
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        CircleAvatar(
+                          radius: 60,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.surface,
+                          backgroundImage: isNewImageSelected
+                              ? (image != null
+                                    ? FileImage(image!)
+                                          as ImageProvider<Object>?
+                                    : null) // Added null check
+                              : avatarUrl != null && avatarUrl!.isNotEmpty
+                              ? CachedNetworkImageProvider(
+                                  '$avatarUrl?v=${updatedAt?.millisecondsSinceEpoch ?? ''}',
+                                )
+                              : null,
+                          child: isNewImageSelected || avatarUrl != null
+                              ? null
+                              : const Icon(
+                                  Icons.person,
+                                  size: 60,
+                                  color: Colors.grey,
+                                ),
                         ),
-                        child: const Icon(
-                          Icons.edit,
-                          size: 20,
-                          color: Colors.white,
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.edit,
+                            size: 20,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
                     ),
                   ),
                 ),

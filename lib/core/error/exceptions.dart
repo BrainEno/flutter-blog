@@ -21,8 +21,7 @@ class ServerException implements Exception {
   });
 
   /// Converts this exception into the failure the UI receives.
-  Failure toFailure() =>
-      Failure(message, kind: kind, code: code, cause: cause);
+  Failure toFailure() => Failure(message, kind: kind, code: code, cause: cause);
 
   @override
   String toString() => 'ServerException($kind, $message)';

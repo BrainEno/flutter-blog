@@ -149,7 +149,8 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                           ),
                           const SizedBox(height: 12),
                           TextButton(
-                            onPressed: () => _onSubmitted(_searchController.text),
+                            onPressed: () =>
+                                _onSubmitted(_searchController.text),
                             child: Text(l10n.actionRetry),
                           ),
                         ],
@@ -163,7 +164,8 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                 }
                 return ListView.separated(
                   itemCount: blogs.length + 1,
-                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 1),
                   itemBuilder: (context, index) {
                     if (index == blogs.length) {
                       return Padding(
@@ -187,10 +189,8 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                       title: Text(blog.title),
                       subtitle: Text(l10n.posterLabel(name)),
                       leading: const Icon(Icons.article),
-                      onTap: () => context.push(
-                        '/search/view/${blog.id}',
-                        extra: blog,
-                      ),
+                      onTap: () =>
+                          context.push('/search/view/${blog.id}', extra: blog),
                     );
                   },
                 );

@@ -6,7 +6,9 @@ import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 
 /// Give grid cards additional vertical space when the system font grows.
-SliverGridDelegateWithFixedCrossAxisCount blogGridDelegate(BuildContext context) {
+SliverGridDelegateWithFixedCrossAxisCount blogGridDelegate(
+  BuildContext context,
+) {
   final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
   return SliverGridDelegateWithFixedCrossAxisCount(
     crossAxisCount: 2,
