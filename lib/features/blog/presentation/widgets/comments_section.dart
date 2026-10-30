@@ -9,6 +9,7 @@ import 'package:belog/features/blog/presentation/blocs/comment/comment_event.dar
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 /// Comment thread under a viewed article (issue #19).
 ///
@@ -315,14 +316,20 @@ class _CommentTile extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: depth == 0 ? 16 : 13,
-                backgroundImage: comment.authorAvatarUrl.isNotEmpty
-                    ? CachedNetworkImageProvider(comment.authorAvatarUrl)
-                    : null,
-                child: comment.authorAvatarUrl.isEmpty
-                    ? Icon(Icons.person, size: depth == 0 ? 16 : 13)
-                    : null,
+              // The avatar and name open the author's public page
+              // (issue #20).
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => context.push('/author/${comment.authorId}'),
+                child: CircleAvatar(
+                  radius: depth == 0 ? 16 : 13,
+                  backgroundImage: comment.authorAvatarUrl.isNotEmpty
+                      ? CachedNetworkImageProvider(comment.authorAvatarUrl)
+                      : null,
+                  child: comment.authorAvatarUrl.isEmpty
+                      ? Icon(Icons.person, size: depth == 0 ? 16 : 13)
+                      : null,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -332,15 +339,20 @@ class _CommentTile extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            comment.authorName.isNotEmpty
-                                ? comment.authorName
-                                : '匿名读者',
-                            style: TextStyle(
-                              fontSize: depth == 0 ? 14 : 13,
-                              fontWeight: FontWeight.w600,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () =>
+                                context.push('/author/${comment.authorId}'),
+                            child: Text(
+                              comment.authorName.isNotEmpty
+                                  ? comment.authorName
+                                  : '匿名读者',
+                              style: TextStyle(
+                                fontSize: depth == 0 ? 14 : 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Text(

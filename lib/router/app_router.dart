@@ -16,12 +16,15 @@ import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upl
 import 'package:belog/features/blog/presentation/pages/blog_editor_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
+import 'package:belog/features/user/presentation/pages/author_page.dart';
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/recycle_bin_page.dart';
 import 'package:belog/features/blog/presentation/pages/saved_blogs_page.dart';
 import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/user_blogs_page.dart';
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
+import 'package:belog/features/user/domain/usecases/author.dart';
+import 'package:belog/features/user/presentation/bloc/author/author_cubit.dart';
 import 'package:belog/features/user/presentation/pages/about_page.dart';
 import 'package:belog/features/user/presentation/pages/edit_user_info_page.dart';
 import 'package:belog/features/user/presentation/pages/profile_page.dart';
@@ -126,7 +129,7 @@ GoRouter createAppRouter({
                   create: (_) => serviceLocator<BlogBloc>(),
                   child: const BlogPage(),
                 ),
-                routes: [viewerRoute(), editorRoute()],
+                routes: [viewerRoute(), editorRoute(), authorRoute()],
               ),
             ],
           ),
@@ -140,7 +143,7 @@ GoRouter createAppRouter({
                   create: (_) => serviceLocator<BlogSearchBloc>(),
                   child: const SearchBlogPage(),
                 ),
-                routes: [viewerRoute()],
+                routes: [viewerRoute(), authorRoute()],
               ),
             ],
           ),
@@ -154,7 +157,7 @@ GoRouter createAppRouter({
                   create: (_) => serviceLocator<BlogLikedBloc>(),
                   child: const SavedBlogsPage(),
                 ),
-                routes: [viewerRoute()],
+                routes: [viewerRoute(), authorRoute()],
               ),
             ],
           ),
@@ -168,6 +171,7 @@ GoRouter createAppRouter({
                 routes: [
                   viewerRoute(),
                   editorRoute(),
+                  authorRoute(),
                   GoRoute(
                     path: 'my-articles',
                     builder: (context, state) => MultiBlocProvider(
@@ -248,6 +252,33 @@ GoRoute viewerRoute() {
           ),
         ],
         child: BlogViewerPage(blogId: blogId),
+      );
+    },
+  );
+}
+
+/// The public author profile page (issue #20), nested inside every tab
+/// branch so it pushes onto the current tab's stack from the viewer's
+/// author row or a comment's author. `:userId` is the stable user id
+/// (Blog.posterId / Comment.authorId), not a slug.
+GoRoute authorRoute() {
+  return GoRoute(
+    path: 'author/:userId',
+    builder: (context, state) {
+      final userId = state.pathParameters['userId']!;
+      return MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (_) => AuthorCubit(
+              getAuthorProfile: serviceLocator<GetAuthorProfile>(),
+              followAuthor: serviceLocator<FollowAuthor>(),
+              unfollowAuthor: serviceLocator<UnfollowAuthor>(),
+              userId: userId,
+            ),
+          ),
+          BlocProvider(create: (_) => serviceLocator<BlogByBloc>()),
+        ],
+        child: AuthorPage(userId: userId),
       );
     },
   );

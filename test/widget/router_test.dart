@@ -40,6 +40,11 @@ import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
 import 'package:belog/features/blog/presentation/pages/saved_blogs_page.dart';
 import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
+import 'package:belog/features/user/data/datasources/author_remote_data_source.dart';
+import 'package:belog/features/user/data/models/author_profile_model.dart';
+import 'package:belog/features/user/data/repositories/author_repository_impl.dart';
+import 'package:belog/features/user/domain/usecases/author.dart';
+import 'package:belog/features/user/presentation/pages/author_page.dart';
 import 'package:belog/features/user/presentation/pages/profile_page.dart';
 import 'package:belog/router/app_router.dart';
 import 'package:flutter/material.dart';
@@ -59,6 +64,8 @@ class MockConnection extends Mock implements ConnectionChecker {}
 class MockAuthRepository extends Mock implements AuthRepository {}
 
 class MockCommentRemote extends Mock implements CommentRemoteDataSource {}
+
+class MockAuthorRemote extends Mock implements AuthorRemoteDataSource {}
 
 class MemoryThemeStore implements ThemePreferenceStore {
   ThemeMode mode = ThemeMode.system;
@@ -92,6 +99,7 @@ User sampleUser() => User(
 class Harness {
   final MockBlogRemote remote = MockBlogRemote();
   final MockCommentRemote commentRemote = MockCommentRemote();
+  final MockAuthorRemote authorRemote = MockAuthorRemote();
   final MockBlogLocal local = MockBlogLocal();
   final MockConnection connection = MockConnection();
   final MockAuthRepository authRepository = MockAuthRepository();
@@ -117,6 +125,17 @@ class Harness {
     when(
       () => commentRemote.getComments(any()),
     ).thenAnswer((_) async => <CommentModel>[]);
+    when(() => authorRemote.getAuthorProfile(any())).thenAnswer(
+      (_) async => AuthorProfileModel(
+        userId: 'author',
+        displayName: '深链作者',
+        followerCount: 1,
+        updatedAt: DateTime.utc(2025),
+      ),
+    );
+    when(
+      () => remote.getBlogsByUser('author'),
+    ).thenAnswer((_) async => <BlogModel>[]);
     when(
       () => local.uploadLocalBlogs(blogs: any(named: 'blogs')),
     ).thenAnswer((_) async {});
@@ -171,6 +190,15 @@ class Harness {
       ..registerFactory(() => GetComments(commentRepository))
       ..registerFactory(() => CreateComment(commentRepository))
       ..registerFactory(() => DeleteComment(commentRepository));
+
+    final authorRepository = AuthorRepositoryImpl(
+      authorRemoteDataSource: authorRemote,
+      connectionChecker: connection,
+    );
+    sl
+      ..registerFactory(() => GetAuthorProfile(authorRepository))
+      ..registerFactory(() => FollowAuthor(authorRepository))
+      ..registerFactory(() => UnfollowAuthor(authorRepository));
 
     themeBloc = ThemeBloc(MemoryThemeStore());
     appUserCubit = AppUserCubit();
@@ -284,6 +312,20 @@ void main() {
     expect(find.byType(BlogViewerPage), findsOneWidget);
     expect(find.text('深链文章'), findsOneWidget);
     verify(() => harness.remote.getBlogById('abc')).called(1);
+  });
+
+  testWidgets('deep link /author/:userId loads the author page', (
+    tester,
+  ) async {
+    final harness = Harness()..buildRouter(initialLocation: '/author/author');
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AuthorPage), findsOneWidget);
+    expect(find.text('深链作者'), findsOneWidget);
+    expect(find.text('还没有发布文章'), findsOneWidget);
+    verify(() => harness.authorRemote.getAuthorProfile('author')).called(1);
   });
 
   testWidgets('signing out from the profile lands on the login page', (
