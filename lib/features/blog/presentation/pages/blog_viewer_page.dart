@@ -261,65 +261,72 @@ class _ViewerScaffold extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundImage: blog.posterAvatar != null
-                            ? CachedNetworkImageProvider(blog.posterAvatar!)
-                            : null,
-                        child: blog.posterAvatar == null
-                            ? const Icon(Icons.person, size: 20)
-                            : null,
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            blog.posterName?.isNotEmpty == true
-                                ? blog.posterName!
-                                : '匿名作者',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                  // The author row opens the public author page
+                  // (issue #20); posterId is the stable user id the
+                  // follow endpoints address.
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => context.push('/author/${blog.posterId}'),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundImage: blog.posterAvatar != null
+                              ? CachedNetworkImageProvider(blog.posterAvatar!)
+                              : null,
+                          child: blog.posterAvatar == null
+                              ? const Icon(Icons.person, size: 20)
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              blog.posterName?.isNotEmpty == true
+                                  ? blog.posterName!
+                                  : '匿名作者',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.calendar_today,
-                                size: 14,
-                                color: Colors.grey,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                formatDate(blog.updatedAt),
-                                style: const TextStyle(
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.calendar_today,
+                                  size: 14,
                                   color: Colors.grey,
-                                  fontSize: 14,
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              const Icon(
-                                Icons.access_time,
-                                size: 14,
-                                color: Colors.grey,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                calculateReadingTime(blog.content),
-                                style: const TextStyle(
+                                const SizedBox(width: 4),
+                                Text(
+                                  formatDate(blog.updatedAt),
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Icon(
+                                  Icons.access_time,
+                                  size: 14,
                                   color: Colors.grey,
-                                  fontSize: 14,
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
+                                const SizedBox(width: 4),
+                                Text(
+                                  calculateReadingTime(blog.content),
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 24),
                   // Markdown rendering (issue #17): plain-text articles
