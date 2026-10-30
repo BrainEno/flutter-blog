@@ -60,6 +60,9 @@ dependencies:
   # until the web origin is deployed and association files can be
   # hosted - see docs/supabase-to-nowave-migration.md and issue #21.
   share_plus: ^13.3.1
+  # Real app version for the about page and the diagnostics header
+  # (issue #49 follow-up); replaces a hardcoded, already-stale string.
+  package_info_plus: ^10.2.2
   cached_network_image: ^3.4.1
 
 dev_dependencies:
