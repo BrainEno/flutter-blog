@@ -106,7 +106,11 @@ class _CommentsSectionState extends State<CommentsSection> {
           (previous.submitting && !current.submitting),
       listener: (context, state) {
         if (state.error.isNotEmpty) {
-          showSnackBar(context, state.error);
+          // Load failures render inline next to their retry button;
+          // submit/delete failures surface as a snackbar instead.
+          if (state.status != CommentListStatus.failure) {
+            showSnackBar(context, state.error);
+          }
           return;
         }
         // No error and a submit just finished: the server echoed the
