@@ -217,32 +217,32 @@ void main() {
         previousErrorHandler?.call(details);
       };
       try {
-      final bloc = BlogSearchBloc(
-        searchBlogs: _SearchArticles((_) async => right(const [])),
-      );
-      addTearDown(bloc.close);
-      await tester.pumpWidget(
-        BlocProvider<BlogSearchBloc>.value(
-          value: bloc,
-          child: MaterialApp(
-            locale: locale,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: const [Locale('zh'), Locale('en')],
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).copyWith(textScaler: const TextScaler.linear(2)),
-              child: child!,
+        final bloc = BlogSearchBloc(
+          searchBlogs: _SearchArticles((_) async => right(const [])),
+        );
+        addTearDown(bloc.close);
+        await tester.pumpWidget(
+          BlocProvider<BlogSearchBloc>.value(
+            value: bloc,
+            child: MaterialApp(
+              locale: locale,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: const [Locale('zh'), Locale('en')],
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: const TextScaler.linear(2)),
+                child: child!,
+              ),
+              home: const SearchBlogPage(),
             ),
-            home: const SearchBlogPage(),
           ),
-        ),
-      );
-      await tester.enterText(find.byType(TextField), 'search');
-      await tester.pump(const Duration(milliseconds: 350));
-      await tester.pumpAndSettle();
-      expect(find.text(l10n.searchNoResults), findsOneWidget);
-      expect(tester.takeException(), isNull);
+        );
+        await tester.enterText(find.byType(TextField), 'search');
+        await tester.pump(const Duration(milliseconds: 350));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.searchNoResults), findsOneWidget);
+        expect(tester.takeException(), isNull);
       } finally {
         FlutterError.onError = previousErrorHandler;
       }
