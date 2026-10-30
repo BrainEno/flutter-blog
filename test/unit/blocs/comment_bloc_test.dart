@@ -15,13 +15,7 @@ class MockCreateComment extends Mock implements CreateComment {}
 
 class MockDeleteComment extends Mock implements DeleteComment {}
 
-class FakeUuid extends Fake implements Uuid {
-  int _counter = 0;
-
-  @override
-  String v4({V4Options? config, Map<String, dynamic>? options}) =>
-      'key-${_counter++}';
-}
+class MockUuid extends Mock implements Uuid {}
 
 Comment _comment(String id, {String? parentId}) => Comment(
   id: id,
@@ -36,7 +30,7 @@ void main() {
   late MockGetComments getComments;
   late MockCreateComment createComment;
   late MockDeleteComment deleteComment;
-  late FakeUuid uuid;
+  late MockUuid uuid;
   late CommentBloc bloc;
 
   setUpAll(() {
@@ -49,7 +43,9 @@ void main() {
     getComments = MockGetComments();
     createComment = MockCreateComment();
     deleteComment = MockDeleteComment();
-    uuid = FakeUuid();
+    uuid = MockUuid();
+    var sequence = 0;
+    when(() => uuid.v4()).thenAnswer((_) => 'key-${sequence++}');
     bloc = CommentBloc(
       getComments: getComments,
       createComment: createComment,

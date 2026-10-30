@@ -18,11 +18,7 @@ class MockCreateComment extends Mock implements CreateComment {}
 
 class MockDeleteComment extends Mock implements DeleteComment {}
 
-class FakeUuid extends Fake implements Uuid {
-  @override
-  String v4({V4Options? config, Map<String, dynamic>? options}) =>
-      'key-0';
-}
+class MockUuid extends Mock implements Uuid {}
 
 Comment _comment(
   String id, {
@@ -83,12 +79,14 @@ void main() {
     createComment = MockCreateComment();
     deleteComment = MockDeleteComment();
     appUserCubit = AppUserCubit();
+    final uuid = MockUuid();
+    when(() => uuid.v4()).thenAnswer((_) => 'key-0');
     bloc = CommentBloc(
       getComments: getComments,
       createComment: createComment,
       deleteComment: deleteComment,
       slug: 'my-slug',
-      uuidGenerator: FakeUuid(),
+      uuidGenerator: uuid,
     );
   });
 
