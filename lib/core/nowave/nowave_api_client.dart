@@ -366,6 +366,19 @@ class NowaveApiClient {
         '${budget.inMilliseconds}ms',
         budget,
       );
+    } on SocketException {
+      // Release-build observability (issue #49): "no network" is the most
+      // common support case - it must not leave the diagnostics buffer
+      // empty. The record keeps method and path; the error type says what
+      // happened, never the error's text.
+      AppLogger.requestUnreachable(method, uri.path, 'SocketException');
+      rethrow;
+    } on HttpException {
+      AppLogger.requestUnreachable(method, uri.path, 'HttpException');
+      rethrow;
+    } on http.ClientException {
+      AppLogger.requestUnreachable(method, uri.path, 'ClientException');
+      rethrow;
     }
   }
 
@@ -374,6 +387,12 @@ class NowaveApiClient {
     try {
       rawBody = utf8.decode(response.bodyBytes);
     } on FormatException {
+      AppLogger.responseMalformed(
+        method,
+        uri.path,
+        response.statusCode,
+        'non-utf8',
+      );
       throw NowaveApiException(
         statusCode: response.statusCode,
         code: 'HTTP_${response.statusCode}',
@@ -384,6 +403,12 @@ class NowaveApiClient {
     try {
       body = rawBody.isEmpty ? null : jsonDecode(rawBody);
     } on FormatException {
+      AppLogger.responseMalformed(
+        method,
+        uri.path,
+        response.statusCode,
+        'non-json',
+      );
       throw NowaveApiException(
         statusCode: response.statusCode,
         code: 'HTTP_${response.statusCode}',

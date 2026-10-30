@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:belog/core/nowave/nowave_api_client.dart';
@@ -380,6 +381,47 @@ void main() {
       await client.getJson('/articles');
 
       expect(AppLogger.diagnosticsReport(), isEmpty);
+    });
+
+    test(
+      'a transport failure is recorded - no network is not silence',
+      () async {
+        final client = clientFor(
+          MockClient((request) async {
+            throw const SocketException('network unreachable');
+          }),
+        );
+
+        await expectLater(
+          client.getJson('/articles'),
+          throwsA(isA<SocketException>()),
+        );
+
+        // The exception text embeds details; only the type may be recorded.
+        final report = AppLogger.diagnosticsReport();
+        expect(report, contains('unreachable (SocketException)'));
+        expect(report, contains('GET /api/v1/articles'));
+        expect(report.contains('network unreachable'), isFalse);
+      },
+    );
+
+    test('a non-UTF-8 body is recorded as a malformed response', () async {
+      final client = clientFor(
+        MockClient(
+          (request) async =>
+              http.Response.bytes(Uint8List.fromList([0xFF, 0xFE, 0x00]), 200),
+        ),
+      );
+
+      await expectLater(
+        client.getJson('/articles'),
+        throwsA(isA<NowaveApiException>()),
+      );
+
+      expect(
+        AppLogger.diagnosticsReport(),
+        contains('response GET /api/v1/articles -> 200 malformed (non-utf8)'),
+      );
     });
 
     test('a timeout is recorded with its budget', () async {

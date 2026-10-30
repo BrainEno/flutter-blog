@@ -74,6 +74,29 @@ class DiagnosticsBuffer {
     _add('timeout $method ${_scrubFragment(path)} (budget ${budgetMs}ms)');
   }
 
+  /// Records a request that never got a response because the transport
+  /// failed (no route, connection reset, ...). [errorType] is the thrown
+  /// error's runtime type - the most common support case ("no network")
+  /// must not leave the buffer empty.
+  void recordUnreachable(String method, String path, String errorType) {
+    _add('request $method ${_scrubFragment(path)} unreachable ($errorType)');
+  }
+
+  /// Records a response that arrived but could not be decoded. The status
+  /// code is kept; [reason] is a fixed token like `non-utf8` or `non-json`,
+  /// never part of the body.
+  void recordMalformed(
+    String method,
+    String path,
+    int statusCode,
+    String reason,
+  ) {
+    _add(
+      'response $method ${_scrubFragment(path)} -> $statusCode '
+      'malformed ($reason)',
+    );
+  }
+
   void clear() => _entries.clear();
 
   /// Defense in depth: everything from a '?' or '#' on is dropped, so a
