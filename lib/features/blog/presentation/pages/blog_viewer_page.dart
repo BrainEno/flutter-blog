@@ -3,7 +3,9 @@ import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/calculate_reading_time.dart';
 import 'package:belog/core/utils/article_share.dart';
+import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/format_date.dart';
+import 'package:belog/core/storage/reading_history_store.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
@@ -13,6 +15,7 @@ import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 
 /// Shows a single article.
@@ -23,13 +26,21 @@ import 'package:go_router/go_router.dart';
 /// page-scoped [BlogLikedBloc] created with this route.
 class BlogViewerPage extends StatefulWidget {
   final String blogId;
-  const BlogViewerPage({super.key, required this.blogId});
+
+  /// Device-local reading history sink (issue #22); injectable for tests,
+  /// resolved from the service locator when absent.
+  final ReadingHistoryStore? historyStore;
+  const BlogViewerPage({super.key, required this.blogId, this.historyStore});
 
   @override
   State<BlogViewerPage> createState() => _BlogViewerPageState();
 }
 
 class _BlogViewerPageState extends State<BlogViewerPage> {
+  /// Guards the history write so retries and like refreshes do not spam
+  /// the store (the upsert would deduplicate anyway, but skip for free).
+  String? _historyRecordedFor;
+
   @override
   void initState() {
     super.initState();
@@ -42,6 +53,24 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
     if (appUserState is AppUserLoggedIn) {
       context.read<BlogLikedBloc>().add(
         GetIsBlogLiked(userId: appUserState.user.id, blogId: widget.blogId),
+      );
+    }
+  }
+
+  /// Reading history is device-local and per account (issue #22): only
+  /// signed-in users are recorded, failures are swallowed (the reader must
+  /// never break because a bookkeeping write failed).
+  Future<void> _recordReadingHistory(String userId, Blog blog) async {
+    if (_historyRecordedFor == '${userId}_${blog.id}') return;
+    _historyRecordedFor = '${userId}_${blog.id}';
+    try {
+      final store = widget.historyStore ?? GetIt.instance<ReadingHistoryStore>();
+      await store.record(userId: userId, blog: blog);
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'recording the reading history failed',
+        error: e,
+        stackTrace: stackTrace,
       );
     }
   }
@@ -66,6 +95,7 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
                 blogId: state.blog.id,
               ),
             );
+            _recordReadingHistory(appUserState.user.id, state.blog);
           }
         }
       },

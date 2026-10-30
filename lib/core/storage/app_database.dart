@@ -18,7 +18,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -37,6 +37,7 @@ class AppDatabase extends GeneratedDatabase {
       );
       await customStatement('CREATE INDEX drafts_blog_id ON drafts(blog_id)');
       await _createBlogCache();
+      await _createReadingHistory();
     },
     onUpgrade: (m, from, to) async {
       if (from < 2) {
@@ -47,6 +48,11 @@ class AppDatabase extends GeneratedDatabase {
           'ALTER TABLE blog_cache ADD COLUMN article_id TEXT NOT NULL DEFAULT \'\'',
         );
       }
+      if (from < 3) {
+        // v3 adds the device-local reading history (issue #22). Pure
+        // addition: no existing table is touched.
+        await _createReadingHistory();
+      }
     },
   );
 
@@ -55,6 +61,22 @@ class AppDatabase extends GeneratedDatabase {
   Future<void> _createBlogCache() => customStatement(
     'CREATE TABLE blog_cache (id TEXT PRIMARY KEY, article_id TEXT NOT NULL DEFAULT \'\', title TEXT NOT NULL, content TEXT NOT NULL, poster_id TEXT NOT NULL, image_url TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL, poster_name TEXT, poster_avatar TEXT)',
   );
+
+  /// Device-local reading history (issue #22), scoped per signed-in
+  /// account. `blog_id` is the article's public slug; the display fields
+  /// are snapshots taken at read time so the list stays presentable even
+  /// after the article drops out of the 500-row blog cache.
+  Future<void> _createReadingHistory() async {
+    await customStatement(
+      'CREATE TABLE reading_history ('
+      'user_id TEXT NOT NULL, blog_id TEXT NOT NULL, title TEXT NOT NULL, '
+      'poster_name TEXT NOT NULL DEFAULT \'\', image_url TEXT NOT NULL DEFAULT \'\', '
+      'read_at INTEGER NOT NULL, PRIMARY KEY (user_id, blog_id))',
+    );
+    await customStatement(
+      'CREATE INDEX reading_history_by_user ON reading_history(user_id, read_at DESC)',
+    );
+  }
 
   /// Run before exposing this database to any UI. A marker and every imported
   /// row commit together; failure leaves the old database intact and retries

@@ -4,6 +4,7 @@ import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
+import 'package:belog/core/storage/reading_history_store.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:belog/features/auth/data/datasources/profile_cache_store.dart';
@@ -19,11 +20,16 @@ class AuthRepositoryImpl implements AuthRepository {
   /// and an avatar (issue #50). Display-layer fallback only.
   final ProfileCacheStore profileCache;
 
+  /// Device-local reading history (issue #22). Optional so tests that do
+  /// not care about it keep constructing the repository with three args.
+  final ReadingHistoryStore? readingHistoryStore;
+
   const AuthRepositoryImpl(
     this.remoteDataSource,
     this.connectionChecker,
-    this.profileCache,
-  );
+    this.profileCache, {
+    this.readingHistoryStore,
+  });
 
   @override
   Future<Either<Failure, User>> currentUser() async {
@@ -118,13 +124,32 @@ class AuthRepositoryImpl implements AuthRepository {
     // offline, otherwise a user could never sign out on a plane. The data
     // source treats server-side revocation as best-effort and clears the
     // local session regardless.
+    // The reading history belongs to the account that is signing out and
+    // must not leak into the next account on a shared device.
+    final historyUserId = remoteDataSource.currentSession?.userId;
     try {
       await remoteDataSource.logout();
       // The cached profile must not leak into the next account.
       await _clearCachedProfile();
+      await _clearReadingHistory(historyUserId);
       return right(null);
     } on ServerException catch (e) {
       return left(e.toFailure());
+    }
+  }
+
+  /// Best-effort like the profile cache: a storage hiccup is logged and
+  /// swallowed, never surfaced as a logout failure.
+  Future<void> _clearReadingHistory(String? userId) async {
+    if (userId == null || readingHistoryStore == null) return;
+    try {
+      await readingHistoryStore!.clear(userId: userId);
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'clearing the reading history failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 

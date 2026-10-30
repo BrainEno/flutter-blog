@@ -11,6 +11,7 @@ import 'package:belog/core/secrets/app_secrets.dart';
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/core/storage/sqlite_blog_cache.dart';
 import 'package:belog/core/storage/sqlite_draft_store.dart';
+import 'package:belog/core/storage/reading_history_store.dart';
 import 'package:belog/core/storage/sqlite_theme_store.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
@@ -51,6 +52,7 @@ import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/data/datasources/user_remote_data_source.dart';
 import 'package:belog/features/user/data/repositories/user_repository_impl.dart';
 import 'package:belog/features/user/domain/repositories/user_repository.dart';
+import 'package:belog/features/user/data/user_data_export.dart';
 import 'package:belog/features/user/domain/usecases/edit_user_usecase.dart';
 import 'package:get_it/get_it.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
@@ -124,6 +126,10 @@ Future<void> initDependencies() async {
   // core
   serviceLocator.registerLazySingleton<ThemePreferenceStore>(
     () => SqliteThemePreferenceStore(serviceLocator<AppDatabase>()),
+  );
+  // Device-local reading history (issue #22); never synced anywhere.
+  serviceLocator.registerLazySingleton<ReadingHistoryStore>(
+    () => SqliteReadingHistoryStore(database),
   );
   serviceLocator.registerLazySingleton(() => ThemeBloc(serviceLocator()));
 
@@ -260,6 +266,12 @@ void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {
       () => UserEditBloc(
         editUserUseCase: serviceLocator<EditUserUseCase>(),
         appUserCubit: serviceLocator(),
+      ),
+    )
+    // Data export (issue #22): profile + own articles as a JSON file.
+    ..registerLazySingleton(
+      () => UserDataExporter(
+        getBlogsByPoster: serviceLocator<GetBlogsByPoster>(),
       ),
     );
 }
