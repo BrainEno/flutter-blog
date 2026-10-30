@@ -1,4 +1,6 @@
 import 'package:belog/core/error/exceptions.dart';
+import 'dart:io';
+
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/utils/app_logger.dart';
@@ -62,10 +64,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       // The backend has no name field at registration: the display name is
       // written to the profile right after the account exists.
       await client.putJson('/me/profile', {'displayName': name});
-    } catch (_) {
+    } catch (e, stackTrace) {
       // The account exists and the session is valid; a failed profile
       // write must not fail the whole sign-up. The name can be edited
-      // later in the profile page.
+      // later in the profile page - but the failure must leave a trace,
+      // or support has nothing to work with.
+      AppLogger.error(
+        'writing the display name during sign-up failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
     final user = await _loadCurrentUser(email: email);
     sessionManager.notifySignedIn();
@@ -99,7 +107,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       return await _loadCurrentUser(email: email);
     } on NowaveApiException catch (e) {
-      if (e.statusCode == 401) {
+      if (e.statusCode == HttpStatus.unauthorized) {
         // The session could not be refreshed: not signed in.
         return null;
       }
@@ -126,7 +134,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   ) async {
     final data = await call();
     if (data is! Map) {
-      throw const ServerException('登录响应格式错误');
+      throw ServerException('登录响应格式错误', cause: data);
     }
     return NowaveTokenPair.fromDataMap(data.cast<String, dynamic>());
   }
@@ -144,7 +152,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<UserModel> _loadCurrentUser({required String email}) async {
     final profile = await client.getJson('/me/profile');
     if (profile is! Map) {
-      throw const ServerException('个人资料响应格式错误');
+      throw ServerException('个人资料响应格式错误', cause: profile);
     }
     return UserModel.fromNowaveProfile(
       profile.cast<String, dynamic>(),

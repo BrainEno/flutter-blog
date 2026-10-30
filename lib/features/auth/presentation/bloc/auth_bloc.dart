@@ -61,31 +61,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onAuthLogin(AuthLogin event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
-    // Step 1: Perform login authentication
-    final loginRes = await _userLogin(
+    // The data source resolves the full profile (GET /me + /me/profile)
+    // as part of the login exchange, so the returned user is complete -
+    // a second fetch here would only add a failure mode that signs the
+    // user out of the UI even though the session is valid.
+    final res = await _userLogin(
       UserLoginParams(email: event.email, password: event.password),
     );
 
-    // Check if login failed
-    if (loginRes.isLeft()) {
-      final failure = loginRes.fold((l) => l, (_) => null)!;
-      emit(AuthFailure(failure.message));
-      return;
-    }
-
-    // Login succeeded, proceed to fetch full user profile
-    final currentUserRes = await _currentUser(NoParams());
-
-    // Check if fetching user profile failed
-    if (currentUserRes.isLeft()) {
-      final failure = currentUserRes.fold((l) => l, (_) => null)!;
-      emit(AuthFailure('Failed to fetch user profile: ${failure.message}'));
-      return;
-    }
-
-    // Both operations succeeded, emit success
-    final fullUser = currentUserRes.fold((_) => null, (r) => r)!;
-    _emitAuthSuccess(fullUser, emit);
+    res.fold(
+      (failure) => emit(AuthFailure(failure.message)),
+      (user) => _emitAuthSuccess(user, emit),
+    );
   }
 
   Future<void> _isUserLoggedIn(

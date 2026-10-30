@@ -1,13 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:belog/core/utils/app_logger.dart';
 import 'package:http/http.dart' as http;
 
 /// Error returned by the no-wave REST API.
 ///
 /// The backend answers every failure with
-/// `{"error": {"code": "...", "message": "..."}}`; [code] is the stable
+/// `{\"error\": {\"code\": \"...\", \"message\": \"...\"}}`; [code] is the stable
 /// machine-readable identifier (e.g. `BAD_USER_INPUT`, `UNAUTHENTICATED`,
 /// `RATE_LIMITED`) and [statusCode] the HTTP status. The message may be
 /// English/technical: it is never rendered directly in the UI - it travels
@@ -31,7 +33,7 @@ class NowaveApiException implements Exception {
   @override
   String toString() =>
       'NowaveApiException($statusCode $code: $message'
-      '${retryAfterSeconds == null ? '' : ', retryAfter ${retryAfterSeconds}s'})';
+      '${retryAfterSeconds == null ? '' : ', retry after ${retryAfterSeconds}s'})';
 }
 
 /// A media asset created by `POST /me/media`.
@@ -70,12 +72,18 @@ abstract class NowaveAuthenticator {
 ///
 /// Responsibilities:
 /// - unwrap the `{data: ...}` envelope and throw [NowaveApiException] for
-///   `{error: ...}` bodies,
+///   `{error: ...}` bodies (and for any other >= 400 response, so callers
+///   never see a vague unparseable-payload error for server failures),
 /// - attach the bearer token when signed in,
 /// - transparently refresh an expired access token once on 401 and retry
 ///   the original request,
+/// - bound the whole exchange - sending AND reading the response body -
+///   with a timeout, so a stalled connection cannot hang a UI flow,
 /// - upload raw image bytes to `POST /me/media` (the server re-encodes to
 ///   WebP; the returned URL is immutable).
+///
+/// Observability: every request is logged in debug builds with method,
+/// path, status and duration. Headers, bodies and tokens are never logged.
 ///
 /// Endpoint details verified against the no-wave `apps/api` source:
 /// see docs/supabase-to-nowave-migration.md.
@@ -84,19 +92,52 @@ class NowaveApiClient {
     required Uri baseUrl,
     NowaveAuthenticator? authenticator,
     http.Client? httpClient,
-  }) : _baseUrl = baseUrl,
-       _basePrefix = baseUrl.path.endsWith('/')
-           ? baseUrl.path.substring(0, baseUrl.path.length - 1)
-           : baseUrl.path,
+    this.timeout = const Duration(seconds: 30),
+  }) : _baseUrl = _sanitizeBase(baseUrl),
+       _basePrefix = _basePrefixOf(baseUrl),
        _authenticator = authenticator,
-       _httpClient = httpClient ?? http.Client();
+       _httpClient = httpClient ?? http.Client() {
+    if (_basePrefix.endsWith(_kApiPrefix)) {
+      // A base URL that already contains the versioned prefix would make
+      // every request hit `/api/v1/api/v1/...` - a silent, total outage.
+      // Fail fast with an actionable message instead.
+      throw ArgumentError(
+        'API_BASE_URL must not end with \"$_kApiPrefix\"; the client adds '
+        'it itself. Got: $_baseUrl',
+      );
+    }
+  }
 
   static const String _kApiPrefix = '/api/v1';
+
+  /// Timeout applied to each phase of an exchange (send, body read) for
+  /// JSON requests. Media uploads pass their own, longer budget.
+  final Duration timeout;
 
   final Uri _baseUrl;
   final String _basePrefix;
   final NowaveAuthenticator? _authenticator;
   final http.Client _httpClient;
+
+  /// Drops any query or fragment a configured base URL may carry; request
+  /// queries are composed per call and a stray fragment would corrupt them.
+  static Uri _sanitizeBase(Uri url) {
+    if (!url.hasQuery && !url.hasFragment) return url;
+    return Uri(
+      scheme: url.scheme,
+      userInfo: url.userInfo,
+      host: url.host,
+      // Only forward an explicitly written port; passing the scheme
+      // default would render as a redundant ':443' in every request URL.
+      port: url.hasPort ? url.port : 0,
+      path: url.path,
+    );
+  }
+
+  static String _basePrefixOf(Uri url) {
+    final path = url.path;
+    return path.endsWith('/') ? path.substring(0, path.length - 1) : path;
+  }
 
   /// Immutable public URL of an uploaded media asset.
   ///
@@ -144,7 +185,8 @@ class NowaveApiClient {
   /// Uploads raw image bytes to `POST /me/media`.
   ///
   /// [contentType] is the picked file's MIME type; the server validates and
-  /// re-encodes the image to WebP regardless of the input format.
+  /// re-encodes the image to WebP regardless of the input format. The
+  /// upload gets a longer timeout budget than JSON calls.
   Future<NowaveMediaAsset> uploadMedia(
     Uint8List bytes,
     String contentType,
@@ -154,6 +196,7 @@ class NowaveApiClient {
       '$_kApiPrefix/me/media',
       rawBody: bytes,
       contentType: contentType,
+      timeout: const Duration(seconds: 90),
     );
     final map = _asMap(data, 'media asset');
     return NowaveMediaAsset(
@@ -174,6 +217,7 @@ class NowaveApiClient {
     Map<String, String>? query,
     bool authenticate = true,
     bool allowRefresh = true,
+    Duration? timeout,
   }) async {
     final uri = path.startsWith(_kApiPrefix)
         ? _resolveUri(path, query)
@@ -186,6 +230,7 @@ class NowaveApiClient {
         uri,
         _headers(body: body, rawBody: rawBody, contentType: contentType),
         rawBody ?? (body == null ? null : jsonEncode(body)),
+        timeout: timeout,
       );
     } else {
       // Attach the bearer token; a 401 rotates the access token exactly
@@ -201,10 +246,12 @@ class NowaveApiClient {
           token: _authenticator.accessToken,
         ),
         rawBody ?? (body == null ? null : jsonEncode(body)),
+        timeout: timeout,
       );
       if (response.statusCode == HttpStatus.unauthorized &&
           allowRefresh &&
           _authenticator.accessToken != null) {
+        AppLogger.debug('401 from $method ${uri.path}; refreshing session');
         final refreshed = await _authenticator.refresh();
         if (refreshed) {
           response = await _send(
@@ -217,6 +264,12 @@ class NowaveApiClient {
               token: _authenticator.accessToken,
             ),
             rawBody ?? (body == null ? null : jsonEncode(body)),
+            timeout: timeout,
+          );
+        } else {
+          AppLogger.debug(
+            'session refresh failed; surfacing the 401 from $method'
+            ' ${uri.path}',
           );
         }
       }
@@ -244,18 +297,42 @@ class NowaveApiClient {
     String method,
     Uri uri,
     Map<String, String> headers,
-    Object? payload,
-  ) async {
+    Object? payload, {
+    Duration? timeout,
+  }) async {
+    final budget = timeout ?? this.timeout;
     final request = http.Request(method, uri)..headers.addAll(headers);
     if (payload is Uint8List) {
       request.bodyBytes = payload;
     } else if (payload is String) {
       request.body = payload;
     }
-    final streamed = await _httpClient
-        .send(request)
-        .timeout(const Duration(seconds: 30));
-    return http.Response.fromStream(streamed);
+    final stopwatch = Stopwatch()..start();
+    try {
+      // The timeout covers both phases of the exchange: sending the
+      // request and draining the response body. `fromStream` otherwise
+      // has no bound at all and a stalled server could hang the caller.
+      final streamed = await _httpClient
+          .send(request)
+          .timeout(budget);
+      final response = await http.Response.fromStream(streamed).timeout(
+        budget,
+      );
+      AppLogger.debug(
+        '$method ${uri.path} -> ${response.statusCode} '
+        '(${stopwatch.elapsedMilliseconds}ms)',
+      );
+      return response;
+    } on TimeoutException {
+      AppLogger.debug(
+        '$method ${uri.path} timed out after ${budget.inSeconds}s',
+      );
+      throw TimeoutException(
+        '$method ${uri.path} did not answer within '
+        '${budget.inSeconds}s',
+        budget,
+      );
+    }
   }
 
   dynamic _decode(String method, Uri uri, http.Response response) {
@@ -289,6 +366,17 @@ class NowaveApiClient {
           retryAfterSeconds: int.tryParse(
             response.headers['retry-after'] ?? '',
           ),
+        );
+      }
+      if (response.statusCode >= 400) {
+        // A 4xx/5xx body that is not the documented error envelope: treat
+        // it as a server failure instead of returning a null `data` payload
+        // that callers would report as an unparseable response.
+        throw NowaveApiException(
+          statusCode: response.statusCode,
+          code: 'HTTP_${response.statusCode}',
+          message: 'Unexpected error response shape from $method $uri: '
+              '${body.keys.join(',')}',
         );
       }
       return body['data'];

@@ -284,4 +284,20 @@ NowaveApiClient clientFor({
       return http.Response(jsonEncode({'data': body}), status);
     }),
   );
+  group('copyWith', () {
+    test('replaces only the given fields', () {
+      final session = _session();
+      final rotated = session.copyWith(
+        accessToken: 'access-2',
+        refreshToken: 'refresh-2',
+      );
+
+      expect(rotated.accessToken, 'access-2');
+      expect(rotated.refreshToken, 'refresh-2');
+      expect(rotated.userId, session.userId);
+      expect(rotated.email, session.email);
+      expect(rotated.accessExpiresAt, session.accessExpiresAt);
+      expect(rotated.refreshExpiresAt, session.refreshExpiresAt);
+    });
+  });
 }
