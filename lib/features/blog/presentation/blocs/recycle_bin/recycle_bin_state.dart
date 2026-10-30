@@ -25,6 +25,16 @@ final class RecycleBinSuccess extends RecycleBinState {
     this.restoringArticleId,
     this.lastRestoredTitle,
   });
+
+  /// Marks the tombstone being restored; restore completion rebuilds the
+  /// state outright, so the marker is only ever set, never cleared here.
+  RecycleBinSuccess copyWith({String? restoringArticleId}) {
+    return RecycleBinSuccess(
+      blogs,
+      restoringArticleId: restoringArticleId,
+      lastRestoredTitle: lastRestoredTitle,
+    );
+  }
 }
 
 /// A restore failed: the list survives (the tombstone is still in the
