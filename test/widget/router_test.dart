@@ -1,3 +1,4 @@
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
@@ -218,7 +219,11 @@ class Harness {
     );
   }
 
-  Future<void> pump(WidgetTester tester) async {
+  Future<void> pump(
+    WidgetTester tester, {
+    Locale locale = const Locale('zh'),
+    double textScale = 1,
+  }) async {
     final currentRouter = router;
     assert(currentRouter != null, 'call buildRouter before pump');
     await tester.pumpWidget(
@@ -228,7 +233,18 @@ class Harness {
           BlocProvider<AuthBloc>.value(value: authBloc),
           BlocProvider<AppUserCubit>.value(value: appUserCubit),
         ],
-        child: MaterialApp.router(routerConfig: currentRouter),
+        child: MaterialApp.router(
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: currentRouter,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
+        ),
       ),
     );
   }
@@ -277,7 +293,10 @@ void main() {
     expect(find.byType(BlogPage), findsNothing);
 
     // Back returns to the feed inside the same tab.
-    await tester.pageBack();
+    final backLabel = MaterialLocalizations.of(
+      tester.element(find.byType(BlogViewerPage)),
+    ).backButtonTooltip;
+    await tester.tap(find.byTooltip(backLabel));
     await tester.pumpAndSettle();
     expect(find.byType(BlogPage), findsOneWidget);
   });
@@ -313,6 +332,47 @@ void main() {
     expect(find.text('深链文章'), findsOneWidget);
     verify(() => harness.remote.getBlogById('abc')).called(1);
   });
+
+  for (final locale in [const Locale('zh'), const Locale('en')]) {
+    testWidgets('viewer metadata and images are accessible at 2x: $locale', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final semantics = tester.ensureSemantics();
+      final previousErrorHandler = FlutterError.onError;
+      FlutterError.onError = (details) {
+        FlutterError.dumpErrorToConsole(details, forceReport: true);
+        previousErrorHandler?.call(details);
+      };
+      try {
+        final harness = Harness()..buildRouter(initialLocation: '/view/abc');
+        addTearDown(harness.dispose);
+        await harness.pump(tester, locale: locale, textScale: 2);
+        await tester.pumpAndSettle();
+        final l10n = lookupAppLocalizations(locale);
+        expect(find.text(l10n.anonymousAuthor), findsOneWidget);
+        expect(find.text(l10n.readingTimeMinutes(1)), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byType(BlogViewerPage),
+            matching: find.byTooltip(l10n.saveTooltip),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel(RegExp(l10n.coverOf('深链文章'))),
+          findsWidgets,
+        );
+        expect(tester.takeException(), isNull);
+      } finally {
+        FlutterError.onError = previousErrorHandler;
+        semantics.dispose();
+      }
+    });
+  }
 
   testWidgets('deep link /author/:userId loads the author page', (
     tester,
@@ -356,6 +416,22 @@ void main() {
     expect(find.byType(ProfilePage), findsNothing);
     verify(() => harness.authRepository.logout()).called(1);
   });
+
+  for (final locale in [const Locale('zh'), const Locale('en')]) {
+    testWidgets('unknown routes have a localized recovery action: $locale', (
+      tester,
+    ) async {
+      final harness = Harness()..buildRouter(initialLocation: '/missing-page');
+      addTearDown(harness.dispose);
+      await harness.pump(tester, locale: locale);
+      await tester.pumpAndSettle();
+      final l10n = lookupAppLocalizations(locale);
+      expect(find.text(l10n.pageNotFound), findsOneWidget);
+      await tester.tap(find.text(l10n.backToHome));
+      await tester.pumpAndSettle();
+      expect(find.byType(BlogPage), findsOneWidget);
+    });
+  }
 
   testWidgets('the editor is not reachable without an account', (tester) async {
     final harness = Harness()..buildRouter();

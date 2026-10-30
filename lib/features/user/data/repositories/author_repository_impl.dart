@@ -33,7 +33,7 @@ class AuthorRepositoryImpl implements AuthorRepository {
         error: e,
         stackTrace: stackTrace,
       );
-      return left(Failure('作者信息加载失败，请稍后重试'));
+      return left(Failure('作者信息加载失败，请稍后重试', code: 'author.load'));
     }
   }
 
@@ -42,6 +42,7 @@ class AuthorRepositoryImpl implements AuthorRepository {
     return _mutateFollow(
       () => authorRemoteDataSource.followAuthor(userId),
       offlineMessage: '无法连接到网络，关注未同步',
+      offlineCode: 'follow.sync',
       logName: 'followAuthor',
     );
   }
@@ -51,6 +52,7 @@ class AuthorRepositoryImpl implements AuthorRepository {
     return _mutateFollow(
       () => authorRemoteDataSource.unfollowAuthor(userId),
       offlineMessage: '无法连接到网络，取消关注未同步',
+      offlineCode: 'unfollow.sync',
       logName: 'unfollowAuthor',
     );
   }
@@ -58,6 +60,7 @@ class AuthorRepositoryImpl implements AuthorRepository {
   Future<Either<Failure, AuthorProfile>> _mutateFollow(
     Future<AuthorProfile> Function() call, {
     required String offlineMessage,
+    required String offlineCode,
     required String logName,
   }) async {
     try {
@@ -67,6 +70,7 @@ class AuthorRepositoryImpl implements AuthorRepository {
             offlineMessage,
             kind: FailureKind.network,
             code: 'network.offline',
+            l10nKey: offlineCode,
           ),
         );
       }
@@ -77,7 +81,7 @@ class AuthorRepositoryImpl implements AuthorRepository {
       return left(e.toFailure());
     } catch (e, stackTrace) {
       AppLogger.error(logName, error: e, stackTrace: stackTrace);
-      return left(Failure('关注操作失败，请稍后重试'));
+      return left(Failure('关注操作失败，请稍后重试', code: 'follow.toggle'));
     }
   }
 }

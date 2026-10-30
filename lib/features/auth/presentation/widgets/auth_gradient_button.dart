@@ -36,6 +36,7 @@ class AuthGradientButton extends StatelessWidget {
           backgroundColor:
               Colors.transparent, // Keep button background transparent
           shadowColor: Colors.transparent, // Remove shadow
+          foregroundColor: AppPalette.blackColor,
           padding: const EdgeInsets.symmetric(vertical: 14),
           textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
             fontSize: 18,

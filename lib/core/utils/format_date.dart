@@ -1,7 +1,16 @@
-/// Locale-aware date label without an intl dependency: Chinese UI, so
-/// `2026年10月30日`. Kept dependency-free on purpose (issue #24: no more
-/// `DateTime.toString().substring(0, 10)` slicing in widgets).
-String formatDate(DateTime date) {
-  final local = date.toLocal();
-  return '${local.year}年${local.month}月${local.day}日';
-}
+import 'dart:ui' show Locale;
+
+import 'package:intl/intl.dart';
+
+/// Formats an instant in local time using the resolved locale, including its
+/// region (for example en_GB versus en_US).
+///
+/// Material's localization delegate initializes intl's date symbols before
+/// widgets are built. Unit tests outside a localized app must call
+/// `initializeDateFormatting` before using this helper.
+String formatDate(Locale locale, DateTime date) =>
+    DateFormat.yMMMd(locale.toString()).format(date.toLocal());
+
+/// Formats a count according to the resolved locale, including grouping.
+String formatNumber(Locale locale, int number) =>
+    NumberFormat.decimalPattern(locale.toString()).format(number);

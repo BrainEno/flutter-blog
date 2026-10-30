@@ -1,3 +1,4 @@
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,8 +17,12 @@ final class BlogViewerLoaded extends BlogViewerState {
 }
 
 final class BlogViewerFailure extends BlogViewerState {
-  final String error;
-  const BlogViewerFailure(this.error);
+  final Failure failure;
+  const BlogViewerFailure(this.failure);
+
+  /// Display-safe Chinese fallback; the UI localizes via
+  /// `localizedFailure` (issue #24).
+  String get error => failure.message;
 }
 
 /// Page-scoped Cubit that resolves the article shown by [BlogViewerPage].
@@ -44,7 +49,7 @@ class BlogViewerCubit extends Cubit<BlogViewerState> {
     emit(const BlogViewerLoading());
     final res = await _getBlogById(GetBlogByIdParams(blogId: blogId));
     res.fold(
-      (failure) => emit(BlogViewerFailure(failure.message)),
+      (failure) => emit(BlogViewerFailure(failure.forPresentation())),
       (blog) => emit(BlogViewerLoaded(blog)),
     );
   }

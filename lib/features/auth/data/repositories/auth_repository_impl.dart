@@ -38,7 +38,14 @@ class AuthRepositoryImpl implements AuthRepository {
         final session = remoteDataSource.currentSession;
 
         if (session == null) {
-          return left(Failure.auth('请登录账户'));
+          return left(
+            Failure(
+              '请登录账户',
+              kind: FailureKind.auth,
+              code: 'auth.rejected',
+              l10nKey: 'auth.required',
+            ),
+          );
         }
 
         // Offline restore: the locally persisted session keeps the user
@@ -61,7 +68,14 @@ class AuthRepositoryImpl implements AuthRepository {
       if (userModel == null) {
         // No session, or the session could not be refreshed. Either way
         // the user is not logged in.
-        return left(Failure.auth('登录状态已失效，请重新登录'));
+        return left(
+          Failure(
+            '登录状态已失效，请重新登录',
+            kind: FailureKind.auth,
+            code: 'auth.rejected',
+            l10nKey: 'auth.sessionExpired',
+          ),
+        );
       }
       await _writeCachedProfile(userModel);
       return right(userModel);
@@ -204,11 +218,27 @@ class AuthRepositoryImpl implements AuthRepository {
   Failure _loginFailure(NowaveApiException e) {
     switch (e.code) {
       case 'UNAUTHENTICATED':
-        return Failure.auth('邮箱或密码不正确', cause: e);
+        return Failure(
+          '邮箱或密码不正确',
+          kind: FailureKind.auth,
+          code: 'auth.rejected',
+          l10nKey: 'auth.invalidCredentials',
+          cause: e,
+        );
       case 'RATE_LIMITED':
-        return Failure('尝试次数过多，请稍后再试', cause: e);
+        return Failure(
+          '尝试次数过多，请稍后再试',
+          kind: FailureKind.auth,
+          code: 'auth.rateLimited',
+          cause: e,
+        );
       case 'BAD_USER_INPUT':
-        return Failure('邮箱或密码格式不正确', kind: FailureKind.validation, cause: e);
+        return Failure(
+          '邮箱或密码格式不正确',
+          kind: FailureKind.validation,
+          code: 'auth.emailPasswordFormat',
+          cause: e,
+        );
       default:
         return mapToServerException(e).toFailure();
     }
@@ -217,15 +247,26 @@ class AuthRepositoryImpl implements AuthRepository {
   Failure _signUpFailure(NowaveApiException e) {
     switch (e.code) {
       case 'CONFLICT':
-        return Failure('该邮箱已被注册，请直接登录', kind: FailureKind.validation, cause: e);
+        return Failure(
+          '该邮箱已被注册，请直接登录',
+          kind: FailureKind.validation,
+          code: 'auth.emailTaken',
+          cause: e,
+        );
       case 'BAD_USER_INPUT':
         return Failure(
           '注册信息不符合要求，请检查邮箱与密码（密码至少 12 位）',
           kind: FailureKind.validation,
+          code: 'auth.signupBadInput',
           cause: e,
         );
       case 'RATE_LIMITED':
-        return Failure('注册过于频繁，请稍后再试', cause: e);
+        return Failure(
+          '注册过于频繁，请稍后再试',
+          kind: FailureKind.auth,
+          code: 'auth.signupRateLimited',
+          cause: e,
+        );
       default:
         return mapToServerException(e).toFailure();
     }

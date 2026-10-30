@@ -1,3 +1,4 @@
+import 'package:belog/core/l10n/l10n.dart'; // Shorthand for AppLocalizations
 import 'package:belog/core/theme/app_palette.dart'; // Import your color palette
 import 'package:flutter/material.dart';
 
@@ -38,19 +39,25 @@ class EditorField extends StatelessWidget {
     final hintFontSize = _getHintFontSize(contentType);
     final hintFontWeight = _getHintFontWeight(contentType);
 
+    final scale = MediaQuery.textScalerOf(context).scale(16) / 16;
+    final heightScale = scale < 1 ? 1.0 : scale;
     return Container(
-      constraints: BoxConstraints(minHeight: 80, maxHeight: 300),
+      constraints: BoxConstraints(
+        minHeight: 80 * heightScale,
+        maxHeight: 300 * heightScale,
+      ),
       padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 8.0),
       child: TextFormField(
         controller: controller,
         autofocus: false,
         validator: (value) {
           if (value!.isEmpty) {
-            return '请输入$hintText';
+            return context.l10n.editorFieldRequiredPrompt(hintText);
           }
           return null;
         },
         decoration: InputDecoration(
+          labelText: hintText,
           hintText: hintText,
           hintStyle:
               hintStyle ??
@@ -59,8 +66,8 @@ class EditorField extends StatelessWidget {
                 fontWeight: hintFontWeight, // Dynamic hint font weight
                 fontFamily: 'Roboto',
                 color: isDarkMode
-                    ? AppPalette.greyColorLight.withAlpha((0.5 * 255).toInt())
-                    : AppPalette.lightGreyText.withAlpha((0.5 * 255).toInt()),
+                    ? AppPalette.greyColorLight
+                    : AppPalette.lightGreyText,
               ),
           border: InputBorder.none,
           focusedBorder: InputBorder.none,

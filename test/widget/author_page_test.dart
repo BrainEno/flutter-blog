@@ -1,3 +1,4 @@
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
@@ -60,6 +61,8 @@ Future<void> _pumpPage(
   required AppUserCubit appUserCubit,
   required AuthorCubit authorCubit,
   required BlogByBloc blogByBloc,
+  Locale locale = const Locale('zh'),
+  double textScale = 1,
 }) {
   final router = GoRouter(
     initialLocation: '/',
@@ -83,7 +86,20 @@ Future<void> _pumpPage(
     ],
   );
   addTearDown(router.dispose);
-  return tester.pumpWidget(MaterialApp.router(routerConfig: router));
+  return tester.pumpWidget(
+    MaterialApp.router(
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: router,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
+    ),
+  );
 }
 
 void main() {
@@ -143,6 +159,71 @@ void main() {
     expect(find.text('粉丝 12 · 关注 3'), findsOneWidget);
     expect(find.text('作者的文章'), findsOneWidget);
     expect(find.text('关注'), findsOneWidget);
+  });
+
+  testWidgets('English author page localizes counts, empty and follow errors', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final semantics = tester.ensureSemantics();
+    try {
+      appUserCubit.updateUser(_user());
+      when(() => getAuthorProfile('author-1')).thenAnswer(
+        (_) async => right<Failure, AuthorProfile>(
+          AuthorProfile(
+            userId: 'author-1',
+            displayName: '',
+            followerCount: 1234,
+            followingCount: 5,
+            updatedAt: DateTime.utc(2025),
+          ),
+        ),
+      );
+      when(
+        () => blogRepository.getBlogsByUser('author-1'),
+      ).thenAnswer((_) async => right<Failure, List<Blog>>(const []));
+      when(() => followAuthor('author-1')).thenAnswer(
+        (_) async => left<Failure, AuthorProfile>(Failure.networkOffline()),
+      );
+      final authorCubit = buildAuthorCubit();
+      final blogByBloc = buildBlogByBloc();
+      addTearDown(authorCubit.close);
+      addTearDown(blogByBloc.close);
+
+      await _pumpPage(
+        tester,
+        appUserCubit: appUserCubit,
+        authorCubit: authorCubit,
+        blogByBloc: blogByBloc,
+        locale: const Locale('en'),
+        textScale: 2,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Anonymous author'), findsOneWidget);
+      expect(find.text('1,234 followers · 5 following'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(RegExp('Avatar of Anonymous author')),
+        findsWidgets,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.scrollUntilVisible(find.text('No articles yet'), 140);
+      expect(find.text('No articles yet'), findsOneWidget);
+
+      await tester.scrollUntilVisible(find.text('Follow'), -140);
+      await tester.tap(find.text('Follow'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('No network connection — check your settings'),
+        findsOneWidget,
+      );
+      expect(find.text('Follow'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    } finally {
+      semantics.dispose();
+    }
   });
 
   testWidgets('following takes the server answer and flips the button', (

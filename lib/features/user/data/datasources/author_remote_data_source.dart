@@ -62,7 +62,7 @@ class AuthorRemoteDataSourceImpl implements AuthorRemoteDataSource {
 
   AuthorProfileModel _profile(dynamic data) {
     if (data is! Map<String, dynamic>) {
-      throw const ServerException('服务器返回了无法解析的数据');
+      throw const ServerException('服务器返回了无法解析的数据', code: 'server.parse');
     }
     return AuthorProfileModel.fromMap(data);
   }

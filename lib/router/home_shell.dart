@@ -1,4 +1,6 @@
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -18,22 +20,31 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  static const List<(String, IconData)> _tabs = [
-    ('首页', Icons.home),
-    ('搜索', Icons.search),
-    ('收藏', Icons.bookmark),
-    ('个人中心', Icons.person),
+  static const List<IconData> _tabIcons = [
+    Icons.home,
+    Icons.search,
+    Icons.bookmark,
+    Icons.person,
+  ];
+
+  List<String> _tabLabels(AppLocalizations l10n) => [
+    l10n.tabHome,
+    l10n.tabSearch,
+    l10n.tabSaved,
+    l10n.tabProfile,
   ];
 
   List<NavigationDestination> _destinations(BuildContext context) {
+    final l10n = context.l10n;
+    final labels = _tabLabels(l10n);
     final iconColor = Theme.of(context).brightness == Brightness.light
         ? AppPalette.greyColorDark
         : AppPalette.whiteColor;
     return [
-      for (final (label, icon) in _tabs)
+      for (var i = 0; i < _tabIcons.length; i++)
         NavigationDestination(
-          icon: Icon(icon, color: iconColor),
-          label: label,
+          icon: Icon(_tabIcons[i], color: iconColor),
+          label: labels[i],
         ),
     ];
   }

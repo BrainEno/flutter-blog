@@ -1,3 +1,4 @@
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:flutter/material.dart';
@@ -35,14 +36,19 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
     Emitter<BlogState> emit,
   ) async {
     final generation = ++_generation;
-    final previous = state is BlogLoaded ? state as BlogLoaded : null;
-    emit(BlogFirstPageLoading(previousBlogs: previous?.blogs ?? const []));
+    // Retry/refresh after a failure must keep the last rendered articles,
+    // including when that failure wrapped a previous refresh state.
+    emit(BlogFirstPageLoading(previousBlogs: _previousBlogs(state)));
     final res = await _getAllBlogs(const GetAllBlogsParams(page: 1));
     // A newer first-page request supersedes this one.
     if (generation != _generation) return;
     res.fold(
-      (failure) =>
-          emit(BlogListFailure(error: failure.message, previousState: state)),
+      (failure) => emit(
+        BlogListFailure(
+          failure: failure.forPresentation(),
+          previousState: state,
+        ),
+      ),
       (blogs) => emit(
         BlogLoaded(
           blogs: blogs,
@@ -51,6 +57,15 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
         ),
       ),
     );
+  }
+
+  List<Blog> _previousBlogs(BlogState current) {
+    if (current is BlogLoaded) return current.blogs;
+    if (current is BlogFirstPageLoading) return current.previousBlogs;
+    if (current is BlogListFailure && current.previousState != null) {
+      return _previousBlogs(current.previousState!);
+    }
+    return const [];
   }
 
   Future<void> _onLoadMore(BlogLoadMore event, Emitter<BlogState> emit) async {
@@ -73,7 +88,7 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
     res.fold(
       (failure) => emit(
         BlogListFailure(
-          error: failure.message,
+          failure: failure.forPresentation(),
           previousState: latest.copyWith(isLoadingMore: false),
         ),
       ),

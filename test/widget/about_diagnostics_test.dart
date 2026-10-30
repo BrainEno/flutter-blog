@@ -1,3 +1,4 @@
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/user/presentation/pages/about_page.dart';
 import 'package:flutter/material.dart';
@@ -28,7 +29,12 @@ void main() {
     tester.platformDispatcher.localeTestValue = const Locale('zh');
     addTearDown(tester.platformDispatcher.clearLocaleTestValue);
     await tester.pumpWidget(
-      MaterialApp(home: AboutPage(packageInfoLoader: _fakePackageInfo)),
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AboutPage(packageInfoLoader: _fakePackageInfo),
+      ),
     );
     await tester.pumpAndSettle();
   }

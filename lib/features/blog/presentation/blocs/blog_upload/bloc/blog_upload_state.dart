@@ -20,9 +20,13 @@ class BlogUploadSuccess extends BlogUploadState {
 }
 
 class BlogUploadFailure extends BlogUploadState {
-  final String error;
+  final Failure failure;
 
-  const BlogUploadFailure(this.error);
+  const BlogUploadFailure(this.failure);
+
+  /// Display-safe Chinese fallback; the UI localizes via
+  /// `localizedFailure` (issue #24).
+  String get error => failure.message;
 
   @override
   List<Object> get props => [error];

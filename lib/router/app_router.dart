@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/auth/presentation/pages/login_page.dart';
 import 'package:belog/features/auth/presentation/pages/signup_page.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -85,6 +86,24 @@ GoRouter createAppRouter({
     navigatorKey: rootNavigatorKey,
     initialLocation: initialLocation,
     refreshListenable: _StreamListenable(appUserCubit.stream),
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(context.l10n.pageNotFound),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () => context.go('/'),
+                child: Text(context.l10n.backToHome),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
     redirect: (context, state) {
       final loggedIn = appUserCubit.state is AppUserLoggedIn;
       final inAuthFlow =

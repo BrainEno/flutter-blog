@@ -55,6 +55,7 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
         state.copyWith(
           status: CommentListStatus.failure,
           error: _messageFor(failure, fallback: '评论加载失败，请稍后重试'),
+          failure: _withCode(failure, 'comments.load'),
         ),
       ),
       (comments) => emit(
@@ -76,7 +77,16 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
       return;
     }
     if (content.length > maxContentLength) {
-      emit(state.copyWith(error: '评论太长了（最多 $maxContentLength 字）'));
+      emit(
+        state.copyWith(
+          error: '评论太长了（最多 $maxContentLength 字）',
+          failure: Failure(
+            '评论太长了（最多 $maxContentLength 字）',
+            kind: FailureKind.validation,
+            code: 'comments.tooLong',
+          ),
+        ),
+      );
       return;
     }
 
@@ -110,6 +120,7 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
           state.copyWith(
             submitting: false,
             error: _messageFor(failure, fallback: '评论发送失败，请稍后重试'),
+            failure: _withCode(failure, 'comments.send'),
           ),
         );
       },
@@ -147,6 +158,7 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
           state.copyWith(
             deletingIds: remaining,
             error: _messageFor(failure, fallback: '评论删除失败，请稍后重试'),
+            failure: _withCode(failure, 'comments.delete'),
           ),
         );
       },
@@ -172,6 +184,26 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
     final message = failure.message;
     return message.isNotEmpty ? message : fallback;
   }
+
+  /// The fallback failures minted here (empty message from a stub or an
+  /// unexpected catch-all) get a stable code so the UI can still
+  /// localize them (issue #24); real failures keep their own code.
+  Failure _withCode(Failure failure, String code) {
+    return failure.message.isEmpty
+        ? Failure(
+            _fallbackFor(code),
+            kind: failure.kind,
+            code: code,
+            l10nKey: failure.l10nKey,
+          )
+        : failure.forPresentation();
+  }
+
+  String _fallbackFor(String code) => switch (code) {
+    'comments.send' => '评论发送失败，请稍后重试',
+    'comments.delete' => '评论删除失败，请稍后重试',
+    _ => '评论加载失败，请稍后重试',
+  };
 
   /// Appends a root comment at the end (oldest first) or nests a reply
   /// under its direct parent.

@@ -1,4 +1,5 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/storage/reading_history_store.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/router/app_router.dart';
@@ -88,19 +89,20 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
   Future<void> _confirmClearAll() async {
     final userId = _userId;
     if (userId == null) return;
+    final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('清空阅读历史'),
-        content: const Text('将删除这台设备上的全部阅读记录，且无法恢复。确定吗？'),
+        title: Text(l10n.clearHistoryTitle),
+        content: Text(l10n.clearHistoryBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('取消'),
+            child: Text(l10n.actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('清空'),
+            child: Text(l10n.actionClear),
           ),
         ],
       ),
@@ -116,19 +118,23 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: const Text('阅读历史'),
+        title: Text(context.l10n.historyTitle),
         elevation: 1.0,
         actions: [
           if (_entries.isNotEmpty)
             IconButton(
-              tooltip: '清空阅读历史',
+              tooltip: context.l10n.clearHistoryTitle,
               icon: const Icon(Icons.delete_sweep),
               onPressed: _confirmClearAll,
             ),
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(
+                semanticsLabel: context.l10n.loading,
+              ),
+            )
           : _entries.isEmpty
           ? Center(
               child: Column(
@@ -137,7 +143,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                   Icon(Icons.history, size: 64, color: Colors.grey.shade400),
                   const SizedBox(height: 12),
                   Text(
-                    '还没有阅读记录',
+                    context.l10n.historyEmpty,
                     style: TextStyle(
                       fontSize: 16,
                       color: isDarkMode ? Colors.white70 : Colors.black54,
@@ -145,8 +151,9 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '阅读过的文章会记录在这台设备上，仅自己可见',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                    context.l10n.historyEmptyHint,
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
@@ -156,6 +163,10 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
               separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final entry = _entries[index];
+                final readAtLabel = formatDate(
+                  Localizations.localeOf(context),
+                  entry.readAt,
+                );
                 return Dismissible(
                   key: ValueKey(entry.blogId),
                   direction: DismissDirection.endToStart,
@@ -173,27 +184,31 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                     ),
                     leading: ClipRRect(
                       borderRadius: BorderRadius.circular(6),
-                      child: SizedBox(
-                        width: 56,
-                        height: 56,
-                        child: entry.imageUrl.isEmpty
-                            ? Icon(
-                                Icons.article,
-                                size: 32,
-                                color: Colors.grey.shade400,
-                              )
-                            : CachedNetworkImage(
-                                imageUrl: entry.imageUrl,
-                                fit: BoxFit.cover,
-                                width: 56,
-                                height: 56,
-                                errorWidget: (context, error, stackTrace) =>
-                                    Icon(
-                                      Icons.broken_image,
-                                      size: 32,
-                                      color: Colors.grey.shade400,
-                                    ),
-                              ),
+                      child: Semantics(
+                        image: true,
+                        label: context.l10n.coverOf(entry.title),
+                        child: SizedBox(
+                          width: 56,
+                          height: 56,
+                          child: entry.imageUrl.isEmpty
+                              ? Icon(
+                                  Icons.article,
+                                  size: 32,
+                                  color: Colors.grey.shade400,
+                                )
+                              : CachedNetworkImage(
+                                  imageUrl: entry.imageUrl,
+                                  fit: BoxFit.cover,
+                                  width: 56,
+                                  height: 56,
+                                  errorWidget: (context, error, stackTrace) =>
+                                      Icon(
+                                        Icons.broken_image,
+                                        size: 32,
+                                        color: Colors.grey.shade400,
+                                      ),
+                                ),
+                        ),
                       ),
                     ),
                     title: Text(
@@ -207,13 +222,13 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                     ),
                     subtitle: Text(
                       entry.posterName.isEmpty
-                          ? formatDate(entry.readAt)
-                          : '${entry.posterName} · ${formatDate(entry.readAt)}',
+                          ? readAtLabel
+                          : '${entry.posterName} · $readAtLabel',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     trailing: IconButton(
-                      tooltip: '删除这条记录',
+                      tooltip: context.l10n.removeHistoryEntry,
                       icon: Icon(
                         Icons.close,
                         size: 20,

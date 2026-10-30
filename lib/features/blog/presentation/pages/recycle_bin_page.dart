@@ -1,3 +1,6 @@
+import 'package:belog/core/l10n/failure_l10n.dart';
+import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
@@ -25,49 +28,62 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
   /// Days left until the server sweep purges the tombstone for good.
   /// The retention window is server policy, so the deadline is taken
   /// from the API's `purgesAt` instead of being recomputed locally.
-  String _purgeDeadlineText(DeletedBlog blog) {
+  String _purgeDeadlineText(AppLocalizations l10n, DeletedBlog blog) {
     final purgesAt = blog.purgesAt;
     if (purgesAt == null) {
-      return '超过保留期限后将被永久删除';
+      return l10n.purgeAfterRetention;
     }
     final days = purgesAt.difference(DateTime.now()).inDays + 1;
     if (days <= 0) {
-      return '即将被永久删除';
+      return l10n.purgeSoon;
     }
-    return '$days 天后将被永久删除';
+    return l10n.purgeInDays(
+      days,
+      formatNumber(Localizations.localeOf(context), days),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('回收站'), centerTitle: true),
+      appBar: AppBar(
+        title: Text(context.l10n.recycleBinTitle),
+        centerTitle: true,
+      ),
       body: BlocConsumer<RecycleBinBloc, RecycleBinState>(
         listener: (context, state) {
           if (state is RecycleBinRestoreFailure) {
-            showSnackBar(context, state.message);
+            showSnackBar(
+              context,
+              localizedFailure(context.l10n, state.failure),
+            );
           } else if (state is RecycleBinSuccess) {
             final title = state.lastRestoredTitle;
             if (title != null) {
-              showSnackBar(context, '「$title」已恢复为草稿，可在我的文章中查看');
+              showSnackBar(context, context.l10n.restoredAsDraft(title));
             }
           }
         },
         builder: (context, state) {
           if (state is RecycleBinLoading || state is RecycleBinInitial) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(
+                semanticsLabel: context.l10n.loading,
+              ),
+            );
           }
           if (state is RecycleBinFailure) {
             return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(state.error),
+                  Text(localizedFailure(context.l10n, state.failure)),
                   const SizedBox(height: 12),
                   FilledButton.tonal(
                     onPressed: () => context.read<RecycleBinBloc>().add(
                       RecycleBinRequested(),
                     ),
-                    child: const Text('重试'),
+                    child: Text(context.l10n.actionRetry),
                   ),
                 ],
               ),
@@ -80,7 +96,7 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
               ? state.restoringArticleId
               : null;
           if (blogs.isEmpty) {
-            return const Center(child: Text('回收站是空的'));
+            return Center(child: Text(context.l10n.recycleBinEmpty));
           }
           return RefreshIndicator(
             onRefresh: () async {
@@ -97,6 +113,9 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
               itemBuilder: (context, index) {
                 final blog = blogs[index];
                 final restoring = restoringArticleId == blog.articleId;
+                final deletedLabel = context.l10n.deletedOn(
+                  formatDate(Localizations.localeOf(context), blog.deletedAt),
+                );
                 return ListTile(
                   leading: blog.imageUrl.isEmpty
                       ? null
@@ -106,6 +125,7 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                           child: Image.network(
                             blog.imageUrl,
                             fit: BoxFit.cover,
+                            semanticLabel: context.l10n.coverOf(blog.title),
                             errorBuilder: (context, error, stackTrace) =>
                                 const SizedBox(),
                           ),
@@ -116,14 +136,17 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   subtitle: Text(
-                    '删除于 ${formatDate(blog.deletedAt)}'
-                    ' · ${_purgeDeadlineText(blog)}',
+                    '$deletedLabel'
+                    ' · ${_purgeDeadlineText(context.l10n, blog)}',
                   ),
                   trailing: restoring
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            semanticsLabel: context.l10n.loading,
+                          ),
                         )
                       : TextButton(
                           onPressed: () => context.read<RecycleBinBloc>().add(
@@ -131,7 +154,7 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                               articleId: blog.articleId,
                             ),
                           ),
-                          child: const Text('恢复'),
+                          child: Text(context.l10n.actionRestore),
                         ),
                 );
               },

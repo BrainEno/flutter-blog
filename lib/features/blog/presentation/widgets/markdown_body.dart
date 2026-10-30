@@ -1,3 +1,4 @@
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/gestures.dart';
@@ -254,8 +255,9 @@ class MarkdownBody extends StatelessWidget {
       case 'img':
         final src = node.attributes['src'] ?? '';
         final uri = _httpUrl(src);
+        final l10n = context.l10n;
         if (uri == null) {
-          return const TextSpan(text: '[图片]');
+          return TextSpan(text: l10n.markdownImageAlt);
         }
         return WidgetSpan(
           alignment: PlaceholderAlignment.middle,
@@ -265,12 +267,18 @@ class MarkdownBody extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 320),
-                child: CachedNetworkImage(
-                  imageUrl: uri.toString(),
-                  fit: BoxFit.contain,
-                  errorWidget: (context, error, stackTrace) => const SizedBox(
-                    height: 40,
-                    child: Center(child: Text('[图片加载失败]')),
+                child: Semantics(
+                  image: true,
+                  label: (node.attributes['alt'] ?? '').trim().isEmpty
+                      ? l10n.imageLabel
+                      : node.attributes['alt'],
+                  child: CachedNetworkImage(
+                    imageUrl: uri.toString(),
+                    fit: BoxFit.contain,
+                    errorWidget: (context, error, stackTrace) => SizedBox(
+                      height: 40,
+                      child: Center(child: Text(l10n.markdownImageFailed)),
+                    ),
                   ),
                 ),
               ),

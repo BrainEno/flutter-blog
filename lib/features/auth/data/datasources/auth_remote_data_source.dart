@@ -134,7 +134,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   ) async {
     final data = await call();
     if (data is! Map) {
-      throw ServerException('登录响应格式错误', cause: data);
+      throw ServerException('登录响应格式错误', code: 'auth.parse', cause: data);
     }
     return NowaveTokenPair.fromDataMap(data.cast<String, dynamic>());
   }
@@ -144,7 +144,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     final data = await client.getJson('/me');
     final id = (data as Map?)?['id'] as String?;
     if (id == null || id.isEmpty) {
-      throw const ServerException('登录响应缺少用户信息');
+      throw const ServerException('登录响应缺少用户信息', code: 'auth.parse.missingUser');
     }
     await sessionManager.updateUserId(id);
   }
@@ -152,7 +152,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<UserModel> _loadCurrentUser({required String email}) async {
     final profile = await client.getJson('/me/profile');
     if (profile is! Map) {
-      throw ServerException('个人资料响应格式错误', cause: profile);
+      throw ServerException(
+        '个人资料响应格式错误',
+        code: 'profile.parse',
+        cause: profile,
+      );
     }
     return UserModel.fromNowaveProfile(
       profile.cast<String, dynamic>(),

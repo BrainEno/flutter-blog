@@ -21,8 +21,8 @@ class AppTheme {
       primary: AppPalette.greenColor,
       secondary: AppPalette.greenColor,
       surface: AppPalette.blackColorLight, // For cards and surfaces
-      onPrimary: AppPalette.whiteColor,
-      onSecondary: AppPalette.whiteColor,
+      onPrimary: AppPalette.blackColor,
+      onSecondary: AppPalette.blackColor,
       onSurface: AppPalette.whiteColor,
     ),
     appBarTheme: const AppBarTheme(
@@ -118,9 +118,8 @@ class AppTheme {
     scaffoldBackgroundColor: AppPalette.lightBackground, // Light background
     colorScheme: const ColorScheme.light(
       // Define color scheme for light mode
-      primary:
-          AppPalette.gradient1, // Use gradient 1 as primary, adjust as needed
-      secondary: AppPalette.gradient1,
+      primary: AppPalette.accessibleGreen,
+      secondary: AppPalette.accessibleGreen,
       surface: AppPalette.lightGrey, // Light grey for surfaces
       onPrimary: AppPalette.whiteColor, // White text on primary (gradient)
       onSecondary: AppPalette.whiteColor, // Dark text on light background
@@ -194,7 +193,7 @@ class AppTheme {
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: AppPalette.gradient1, // Gradient button background
-        foregroundColor: AppPalette.whiteColor, // White text on button
+        foregroundColor: AppPalette.blackColor, // High contrast on green
         textStyle: const TextStyle(fontWeight: FontWeight.bold),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -202,7 +201,7 @@ class AppTheme {
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: AppPalette.gradient1, // Gradient text for text buttons
+        foregroundColor: AppPalette.accessibleGreen, // Contrast on white
         textStyle: const TextStyle(fontWeight: FontWeight.bold),
       ),
     ),

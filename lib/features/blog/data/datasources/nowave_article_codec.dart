@@ -88,7 +88,11 @@ List<Map<String, dynamic>> blogToContentBlocks({
 }) {
   final paragraphs = splitContentParagraphs(content);
   if (paragraphs.isEmpty) {
-    throw const ServerException('正文不能为空', kind: FailureKind.validation);
+    throw const ServerException(
+      '正文不能为空',
+      kind: FailureKind.validation,
+      code: 'article.emptyBody',
+    );
   }
   final uuid = const Uuid();
   final blocks = <Map<String, dynamic>>[

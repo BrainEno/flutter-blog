@@ -1,6 +1,8 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/l10n/failure_l10n.dart';
+import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/widgets/loader.dart';
-import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/auth/presentation/widgets/auth_field.dart';
@@ -44,13 +46,13 @@ class _SignUpPageState extends State<SignUpPage> {
 
   /// The backend enforces a 12-character minimum at registration (see
   /// docs/supabase-to-nowave-migration.md); checking it here keeps the
-  /// error message in Chinese and off the network.
-  String? _validatePassword(String? value) {
+  /// error message localized and off the network.
+  String? _validatePassword(AppLocalizations l10n, String? value) {
     if (value == null || value.isEmpty) {
-      return '请输入密码!';
+      return l10n.passwordRequired;
     }
     if (value.length < 12) {
-      return '密码至少需要 12 位字符';
+      return l10n.passwordMinLength;
     }
     return null;
   }
@@ -74,7 +76,10 @@ class _SignUpPageState extends State<SignUpPage> {
                   // Only surface failures once the user has acted: the
                   // initial cold-start restore must not toast noise.
                   if (state.message.isNotEmpty) {
-                    showSnackBar(context, state.message);
+                    showSnackBar(
+                      context,
+                      localizedFailure(context.l10n, state.failure),
+                    );
                   }
                 }
               },
@@ -91,7 +96,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     children: [
                       const SizedBox(height: 60),
                       Text(
-                        '注册',
+                        context.l10n.signUpTitle,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 32,
@@ -100,27 +105,28 @@ class _SignUpPageState extends State<SignUpPage> {
                       ),
                       const SizedBox(height: 40),
                       AuthField(
-                        hintText: "用户名",
+                        hintText: context.l10n.fieldName,
                         controller: nameController,
                         prefixIcon: Icons.person_outline,
                       ),
                       const SizedBox(height: 15),
                       AuthField(
-                        hintText: "邮箱",
+                        hintText: context.l10n.fieldEmail,
                         controller: emailController,
                         prefixIcon: Icons.email_outlined,
                       ),
                       const SizedBox(height: 15),
                       AuthField(
-                        hintText: "密码（至少 12 位）",
+                        hintText: context.l10n.fieldPasswordWithMin,
                         controller: passwordController,
                         isObscureText: true,
                         prefixIcon: Icons.lock_outline,
-                        validator: _validatePassword,
+                        validator: (value) =>
+                            _validatePassword(context.l10n, value),
                       ),
                       const SizedBox(height: 30),
                       AuthGradientButton(
-                        buttonText: '提交',
+                        buttonText: context.l10n.submit,
                         onPressed: () {
                           if (formKey.currentState!.validate()) {
                             context.read<AuthBloc>().add(
@@ -135,33 +141,18 @@ class _SignUpPageState extends State<SignUpPage> {
                       ),
                       const SizedBox(height: 30),
                       Center(
-                        child: GestureDetector(
-                          onTap: _openLogin,
-                          child: RichText(
+                        child: TextButton(
+                          onPressed: _openLogin,
+                          child: Text(
+                            '${context.l10n.hasAccountPrompt}${context.l10n.signInLink}',
                             textAlign: TextAlign.center,
-                            text: TextSpan(
-                              text: "已有账号？",
-                              style: Theme.of(context).textTheme.titleMedium,
-                              children: [
-                                TextSpan(
-                                  text: '登录',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium!
-                                      .copyWith(
-                                        color: AppPalette.gradient2,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                ),
-                              ],
-                            ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 12),
                       TextButton(
                         onPressed: () => context.go('/'),
-                        child: const Text('暂不注册，先去逛逛'),
+                        child: Text(context.l10n.browseWithoutSignUp),
                       ),
                       const SizedBox(height: 60),
                     ],

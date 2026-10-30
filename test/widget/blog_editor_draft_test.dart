@@ -1,3 +1,4 @@
+import 'package:belog/l10n/app_localizations.dart';
 import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
@@ -90,6 +91,8 @@ Future<void> openEditor(
   WidgetTester tester,
   FakeDraftStore store, {
   Blog? blog,
+  Locale locale = const Locale('zh'),
+  double textScale = 1,
 }) async {
   final bloc = MockUploadBloc();
   when(() => bloc.state).thenReturn(BlogUploadInitial());
@@ -98,6 +101,15 @@ Future<void> openEditor(
   ).thenAnswer((_) => const Stream<BlogUploadState>.empty());
   await tester.pumpWidget(
     MaterialApp(
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
       home: BlocProvider<BlogUploadBloc>.value(
         value: bloc,
         child: BlogEditorPage(blog: blog, draftStore: store),
@@ -125,6 +137,10 @@ Future<RecordingUploadBloc> openEditorLive(
   addTearDown(appUser.close);
   await tester.pumpWidget(
     MaterialApp(
+      locale: const Locale('zh'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+
       home: MultiBlocProvider(
         providers: [
           BlocProvider<BlogUploadBloc>.value(value: bloc),
@@ -151,6 +167,41 @@ Future<void> tapSaveDraft(WidgetTester tester) async {
 }
 
 void main() {
+  for (final locale in [const Locale('zh'), const Locale('en')]) {
+    testWidgets('editor supports larger text and localized controls: $locale', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final previousErrorHandler = FlutterError.onError;
+      FlutterError.onError = (details) {
+        FlutterError.dumpErrorToConsole(details, forceReport: true);
+        previousErrorHandler?.call(details);
+      };
+      try {
+        final l10n = lookupAppLocalizations(locale);
+        await openEditor(
+          tester,
+          FakeDraftStore(),
+          locale: locale,
+          textScale: 2,
+        );
+        expect(find.text(l10n.editorNewTitle), findsOneWidget);
+        expect(find.byTooltip(l10n.uploadCoverHint), findsOneWidget);
+        final preview = find.text(l10n.editorSegmentPreview);
+        await tester.ensureVisible(preview);
+        await tester.tap(preview);
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.previewEmptyBody), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      } finally {
+        FlutterError.onError = previousErrorHandler;
+      }
+    });
+  }
+
   testWidgets('an existing article asks for its own draft, not a new draft', (
     tester,
   ) async {

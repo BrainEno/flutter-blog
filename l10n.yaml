@@ -1,0 +1,13 @@
+# flutter gen-l10n configuration (issue #24).
+#
+# The English ARB is the template (source of keys and placeholder
+# metadata); app_zh.arb carries the authoritative Chinese product copy
+# that ships today. Output goes next to the ARB files and is gitignored -
+# `flutter pub get` regenerates it on every machine and CI job.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localizations-file: app_localizations.dart
+output-dir: lib/l10n
+# AppLocalizations.of(context) returns a non-null value; a missing
+# delegate is a programming error that should fail loudly, not null-hunt.
+nullable-getter: false

@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/l10n/failure_l10n.dart';
+import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/l10n/tag_l10n.dart';
 import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/pick_image.dart';
@@ -162,15 +165,18 @@ class _BlogEditorState extends State<BlogEditorPage> {
           contentController.text = draft.content;
           selectedTags = List.from(draft.tags);
         });
-        showSnackBar(context, '已恢复草稿');
+        if (mounted) showSnackBar(context, context.l10n.draftRestored);
       } else if (choice == DraftRecoveryChoice.discard) {
         final deleted = await _draftStore.discardIfUnchanged(draft);
         if (mounted) {
-          showSnackBar(context, deleted ? '草稿已丢弃' : '草稿已更改，请重新打开编辑器');
+          showSnackBar(
+            context,
+            deleted ? context.l10n.draftDiscarded : context.l10n.draftChanged,
+          );
         }
       }
     } catch (_) {
-      if (mounted) showSnackBar(context, '无法读取或处理草稿，请重试');
+      if (mounted) showSnackBar(context, context.l10n.draftReadFailed);
     } finally {
       _draftsReady = true;
     }
@@ -191,7 +197,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
       // Picking failed (as opposed to being cancelled): surface it
       // instead of silently keeping the old cover.
       if (mounted) {
-        showSnackBar(context, '选择图片失败，请重试');
+        showSnackBar(context, context.l10n.imagePickFailed);
       }
     }
   }
@@ -230,7 +236,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
         );
       }
     } else {
-      showSnackBar(context, '请填写标题与正文');
+      showSnackBar(context, context.l10n.editorRequiredFields);
     }
   }
 
@@ -249,9 +255,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
       await _draftStore.save(draft);
       // A pending auto-save timer means newer edits are waiting; let it run.
       _hasUnsavedEdits = _autoSaveTimer?.isActive ?? false;
-      if (mounted) showSnackBar(context, '草稿已保存');
+      if (mounted) showSnackBar(context, context.l10n.draftSaved);
     } catch (_) {
-      if (mounted) showSnackBar(context, '草稿保存失败，请重试');
+      if (mounted) showSnackBar(context, context.l10n.draftSaveFailed);
     }
   }
 
@@ -280,7 +286,11 @@ class _BlogEditorState extends State<BlogEditorPage> {
           color: isDarkMode ? AppPalette.whiteColor : AppPalette.lightBlack,
         ),
         title: Text(
-          widget.blog == null ? '撰写新文章' : '编辑文章',
+          widget.blog == null
+              ? context.l10n.editorNewTitle
+              : context.l10n.editorEditTitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: isDarkMode ? AppPalette.whiteColor : AppPalette.lightBlack,
             fontWeight: FontWeight.bold,
@@ -291,7 +301,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
           ElevatedButton(
             onPressed: saveBlog,
             style: ElevatedButton.styleFrom(
-              minimumSize: Size(60, 30),
+              minimumSize: const Size(60, 48),
               backgroundColor: Theme.of(
                 context,
               ).colorScheme.primary, // Theme-based background
@@ -311,7 +321,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
               ),
               elevation: 0,
             ),
-            child: Text('发布'),
+            child: Text(context.l10n.actionPublish),
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
@@ -336,26 +346,26 @@ class _BlogEditorState extends State<BlogEditorPage> {
                 return [
                   PopupMenuItem<String>(
                     value: 'save',
-                    child: Center(child: Text('保存并发布')),
+                    child: Center(child: Text(context.l10n.saveAndPublish)),
                   ),
                   PopupMenuItem<String>(
                     value: 'save_draft',
-                    child: Center(child: Text('保存草稿')),
+                    child: Center(child: Text(context.l10n.saveDraft)),
                   ),
                 ];
               } else {
                 return [
                   PopupMenuItem<String>(
                     value: 'save',
-                    child: Center(child: Text('保存更改')),
+                    child: Center(child: Text(context.l10n.actionSaveChanges)),
                   ),
                   PopupMenuItem<String>(
                     value: 'save_draft',
-                    child: Center(child: Text('保存草稿')),
+                    child: Center(child: Text(context.l10n.saveDraft)),
                   ),
                   PopupMenuItem<String>(
                     value: 'cancel',
-                    child: Center(child: Text('取消')),
+                    child: Center(child: Text(context.l10n.actionCancel)),
                   ),
                 ];
               }
@@ -366,13 +376,21 @@ class _BlogEditorState extends State<BlogEditorPage> {
       body: BlocConsumer<BlogUploadBloc, BlogUploadState>(
         listener: (context, state) {
           if (state is BlogUploadFailure) {
-            showSnackBar(context, state.error);
+            showSnackBar(
+              context,
+              localizedFailure(context.l10n, state.failure),
+            );
           } else if (state is BlogUploadSuccess) {
             // No manual imageCache eviction needed: covers are immutable
             // media URLs that change whenever a new cover is uploaded, so
             // the refreshed list/editor automatically fetches the new
             // asset.
-            showSnackBar(context, widget.blog == null ? '上传成功' : '更新成功');
+            showSnackBar(
+              context,
+              widget.blog == null
+                  ? context.l10n.uploadSuccess
+                  : context.l10n.updateSuccess,
+            );
             // Drop the drafts that were published; keep anything typed
             // during the upload (see _clearPublishedDrafts).
             _hasUnsavedEdits = _editedDuringPublish;
@@ -400,84 +418,98 @@ class _BlogEditorState extends State<BlogEditorPage> {
                       height: 20,
                     ), // Space between buttons and image
                     // Existing image container
-                    GestureDetector(
-                      onTap: selectImage,
-                      child: image != null && isNewImageSelected
-                          ? SizedBox(
-                              height: 250,
-                              width: double.infinity,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.file(image!, fit: BoxFit.cover),
-                              ),
-                            )
-                          : widget.blog != null &&
-                                widget.blog!.imageUrl.isNotEmpty
-                          ? SizedBox(
-                              height: 250,
-                              width: double.infinity,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: CachedNetworkImage(
-                                  // Versioned, cache-busting URL shared
-                                  // with the feed card and viewer page.
-                                  imageUrl: coverUrlOf(widget.blog!),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            )
-                          : DottedBorder(
-                              color: isDarkMode
-                                  ? AppPalette.greyColorLight.withAlpha(
-                                      (0.6 * 255).toInt(),
-                                    )
-                                  : AppPalette.lightBorder.withAlpha(
-                                      (0.8 * 255).toInt(),
+                    Tooltip(
+                      message: context.l10n.uploadCoverHint,
+                      child: Semantics(
+                        image: true,
+                        label: context.l10n.coverImage,
+                        child: InkWell(
+                          onTap: selectImage,
+                          child: image != null && isNewImageSelected
+                              ? SizedBox(
+                                  height: 250,
+                                  width: double.infinity,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.file(
+                                      image!,
+                                      fit: BoxFit.cover,
                                     ),
-                              radius: const Radius.circular(12),
-                              borderType: BorderType.RRect,
-                              dashPattern: const [6, 3],
-                              strokeCap: StrokeCap.round,
-                              child: Container(
-                                height: 250,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
+                                  ),
+                                )
+                              : widget.blog != null &&
+                                    widget.blog!.imageUrl.isNotEmpty
+                              ? SizedBox(
+                                  height: 250,
+                                  width: double.infinity,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: CachedNetworkImage(
+                                      // Versioned, cache-busting URL shared
+                                      // with the feed card and viewer page.
+                                      imageUrl: coverUrlOf(widget.blog!),
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                )
+                              : DottedBorder(
                                   color: isDarkMode
-                                      ? AppPalette.blackColorLight.withAlpha(
-                                          (0.3 * 255).toInt(),
+                                      ? AppPalette.greyColorLight.withAlpha(
+                                          (0.6 * 255).toInt(),
                                         )
-                                      : AppPalette.lightGrey.withAlpha(
-                                          (0.15 * 255).toInt(),
+                                      : AppPalette.lightBorder.withAlpha(
+                                          (0.8 * 255).toInt(),
                                         ),
-                                ),
-                                child: Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.image_outlined,
-                                        size: 55,
-                                        color: isDarkMode
-                                            ? AppPalette.greyColor
-                                            : AppPalette.lightGreyText,
+                                  radius: const Radius.circular(12),
+                                  borderType: BorderType.RRect,
+                                  dashPattern: const [6, 3],
+                                  strokeCap: StrokeCap.round,
+                                  child: Container(
+                                    constraints: const BoxConstraints(
+                                      minHeight: 250,
+                                    ),
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      color: isDarkMode
+                                          ? AppPalette.blackColorLight
+                                                .withAlpha((0.3 * 255).toInt())
+                                          : AppPalette.lightGrey.withAlpha(
+                                              (0.15 * 255).toInt(),
+                                            ),
+                                    ),
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.image_outlined,
+                                            size: 55,
+                                            color: isDarkMode
+                                                ? AppPalette.greyColor
+                                                : AppPalette.lightGreyText,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            context.l10n.uploadCoverHint,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w500,
+                                              color: isDarkMode
+                                                  ? AppPalette.greyColor
+                                                  : AppPalette.lightGreyText,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        '点击上传封面（可选）',
-                                        style: TextStyle(
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w500,
-                                          color: isDarkMode
-                                              ? AppPalette.greyColor
-                                              : AppPalette.lightGreyText,
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 36),
                     Wrap(
@@ -487,12 +519,12 @@ class _BlogEditorState extends State<BlogEditorPage> {
                           .map(
                             (e) => InputChip(
                               label: Text(
-                                e,
+                                localizedTag(context.l10n, e),
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
                                   color: selectedTags.contains(e)
-                                      ? AppPalette.whiteColor
+                                      ? AppPalette.blackColor
                                       : isDarkMode
                                       ? AppPalette.whiteColor
                                       : AppPalette.lightBlack,
@@ -550,26 +582,35 @@ class _BlogEditorState extends State<BlogEditorPage> {
                     const SizedBox(height: 40),
                     EditorField(
                       controller: titleController,
-                      hintText: '标题',
+                      hintText: context.l10n.fieldTitleHint,
                       contentType: BlogEditorContentType.title,
                     ),
                     const SizedBox(height: 30),
-                    SegmentedButton<bool>(
-                      segments: const [
-                        ButtonSegment(
-                          value: false,
-                          icon: Icon(Icons.edit_outlined),
-                          label: Text('编辑'),
-                        ),
-                        ButtonSegment(
-                          value: true,
-                          icon: Icon(Icons.visibility_outlined),
-                          label: Text('预览'),
-                        ),
-                      ],
-                      selected: {_previewMode},
-                      onSelectionChanged: (selection) =>
-                          setState(() => _previewMode = selection.first),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final scale =
+                            MediaQuery.textScalerOf(context).scale(14) / 14;
+                        return SegmentedButton<bool>(
+                          direction: constraints.maxWidth / scale < 260
+                              ? Axis.vertical
+                              : Axis.horizontal,
+                          segments: [
+                            ButtonSegment(
+                              value: false,
+                              icon: const Icon(Icons.edit_outlined),
+                              label: Text(context.l10n.editorSegmentEdit),
+                            ),
+                            ButtonSegment(
+                              value: true,
+                              icon: const Icon(Icons.visibility_outlined),
+                              label: Text(context.l10n.editorSegmentPreview),
+                            ),
+                          ],
+                          selected: {_previewMode},
+                          onSelectionChanged: (selection) =>
+                              setState(() => _previewMode = selection.first),
+                        );
+                      },
                     ),
                     const SizedBox(height: 12),
                     if (_previewMode)
@@ -585,16 +626,16 @@ class _BlogEditorState extends State<BlogEditorPage> {
                           ),
                         ),
                         child: contentController.text.trim().isEmpty
-                            ? const Text(
-                                '正文为空，开始输入后这里会显示预览',
-                                style: TextStyle(color: Colors.grey),
+                            ? Text(
+                                context.l10n.previewEmptyBody,
+                                style: Theme.of(context).textTheme.bodySmall,
                               )
                             : MarkdownBody(markdown: contentController.text),
                       )
                     else
                       EditorField(
                         controller: contentController,
-                        hintText: '正文（支持 Markdown）',
+                        hintText: context.l10n.fieldBodyHint,
                         maxLines: null,
                         expands: true,
                         contentType: BlogEditorContentType.body,
@@ -623,22 +664,24 @@ class _AutoSaveBanner extends StatelessWidget {
       case _AutoSaveStatus.idle:
         return const SizedBox.shrink();
       case _AutoSaveStatus.saving:
-        return const Text(
-          '草稿自动保存中…',
+        return Text(
+          context.l10n.autoSaveSaving,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: Colors.grey),
+          style: Theme.of(context).textTheme.bodySmall,
         );
       case _AutoSaveStatus.saved:
-        return const Text(
-          '草稿已自动保存',
+        return Text(
+          context.l10n.autoSaveSaved,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: Colors.grey),
+          style: Theme.of(context).textTheme.bodySmall,
         );
       case _AutoSaveStatus.failed:
-        return const Text(
-          '自动保存失败，请手动保存草稿',
+        return Text(
+          context.l10n.autoSaveFailed,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: Colors.red),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.error,
+          ),
         );
     }
   }

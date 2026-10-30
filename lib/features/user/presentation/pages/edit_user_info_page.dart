@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/l10n/failure_l10n.dart';
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/pick_image.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -27,13 +29,15 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
   String? avatarUrl;
   String? email;
   DateTime? updatedAt;
-  bool _isDisposed = false; // Add this flag
+  bool _isDisposed = false;
+  bool _initialized = false;
 
   @override
   void didChangeDependencies() {
     final state = context.read<AppUserCubit>().state;
-    if (state is AppUserLoggedIn) {
+    if (state is AppUserLoggedIn && !_initialized) {
       if (!_isDisposed) {
+        _initialized = true;
         _nameController.text = state.user.name;
         _websiteController.text = state.user.website;
         avatarUrl = state.user.avatarUrl;
@@ -60,7 +64,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
       // Picking failed (as opposed to being cancelled): surface it
       // instead of silently keeping the old avatar.
       if (mounted) {
-        showSnackBar(context, '选择图片失败，请重试');
+        showSnackBar(context, context.l10n.imagePickFailed);
       }
     }
   }
@@ -88,20 +92,31 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('编辑个人资料'),
+        title: Text(context.l10n.editProfileTitle),
         centerTitle: true,
         elevation: 0,
         actions: [
-          IconButton(icon: const Icon(Icons.check), onPressed: _submit),
+          IconButton(
+            tooltip: context.l10n.actionSaveChanges,
+            icon: const Icon(Icons.check),
+            onPressed: _submit,
+          ),
         ],
       ),
       body: BlocConsumer<UserEditBloc, UserEditState>(
         listener: (context, state) {
           if (state is UserEditSuccess) {
             Navigator.pop(context);
-            showSnackBar(context, '个人资料更新成功!');
+            showSnackBar(context, context.l10n.profileUpdated);
           } else if (state is UserEditFailure) {
-            showSnackBar(context, state.message);
+            final l10n = context.l10n;
+            final reason = localizedFailure(l10n, state.failure);
+            showSnackBar(
+              context,
+              state.failure.code == 'auth.notSignedIn'
+                  ? reason
+                  : l10n.errorProfileSave(reason),
+            );
           }
         },
         builder: (context, state) {
@@ -111,44 +126,55 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Circle Avatar
-                GestureDetector(
-                  onTap: selectImage,
-                  child: Stack(
-                    alignment: Alignment.bottomRight,
-                    children: [
-                      CircleAvatar(
-                        radius: 60,
-                        backgroundColor: Theme.of(context).colorScheme.surface,
-                        backgroundImage: isNewImageSelected
-                            ? (image != null
-                                  ? FileImage(image!) as ImageProvider<Object>?
-                                  : null) // Added null check
-                            : avatarUrl != null && avatarUrl!.isNotEmpty
-                            ? CachedNetworkImageProvider(
-                                '$avatarUrl?v=${updatedAt?.millisecondsSinceEpoch ?? ''}',
-                              )
-                            : null,
-                        child: isNewImageSelected || avatarUrl != null
-                            ? null
-                            : const Icon(
-                                Icons.person,
-                                size: 60,
-                                color: Colors.grey,
-                              ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary,
-                          shape: BoxShape.circle,
+                Tooltip(
+                  message: context.l10n.changeAvatarTooltip,
+                  child: InkWell(
+                    onTap: selectImage,
+                    customBorder: const CircleBorder(),
+                    child: Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        Semantics(
+                          image: true,
+                          label: context.l10n.avatarImage,
+                          child: CircleAvatar(
+                            radius: 60,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surface,
+                            backgroundImage: isNewImageSelected
+                                ? (image != null
+                                      ? FileImage(image!)
+                                            as ImageProvider<Object>?
+                                      : null) // Added null check
+                                : avatarUrl != null && avatarUrl!.isNotEmpty
+                                ? CachedNetworkImageProvider(
+                                    '$avatarUrl?v=${updatedAt?.millisecondsSinceEpoch ?? ''}',
+                                  )
+                                : null,
+                            child: isNewImageSelected || avatarUrl != null
+                                ? null
+                                : const Icon(
+                                    Icons.person,
+                                    size: 60,
+                                    color: Colors.grey,
+                                  ),
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.edit,
-                          size: 20,
-                          color: Colors.white,
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.edit,
+                            size: 20,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -156,9 +182,9 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                 TextFormField(
                   controller: _nameController,
                   autofocus: false,
-                  decoration: const InputDecoration(
-                    labelText: '姓名',
-                    prefixIcon: Icon(Icons.person_outline),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.labelName,
+                    prefixIcon: const Icon(Icons.person_outline),
                   ),
                   keyboardType: TextInputType.text,
                 ),
@@ -167,9 +193,9 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                   controller: _websiteController,
                   autofocus: false,
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: '简介',
-                    prefixIcon: Icon(Icons.person_outline),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.labelBio,
+                    prefixIcon: const Icon(Icons.person_outline),
                   ),
                   keyboardType: TextInputType.url,
                 ),
@@ -179,20 +205,24 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                 // docs/supabase-to-nowave-migration.md); the shown address
                 // is the one cached at sign-in.
                 InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: '邮箱',
-                    prefixIcon: Icon(Icons.email_outlined),
-                    helperText: '邮箱暂不支持修改',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.labelEmail,
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    helperText: context.l10n.emailReadOnly,
                   ),
                   child: Text(
-                    (email == null || email!.isEmpty) ? '未设置' : email!,
+                    (email == null || email!.isEmpty)
+                        ? context.l10n.notSet
+                        : email!,
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 ),
                 const SizedBox(height: 32),
                 // Save Button or Loading Indicator
                 if (state is UserEditLoading)
-                  const CircularProgressIndicator()
+                  CircularProgressIndicator(
+                    semanticsLabel: context.l10n.loading,
+                  )
                 else
                   SizedBox(
                     width: double.infinity,
@@ -204,9 +234,9 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text(
-                        '保存更改',
-                        style: TextStyle(
+                      child: Text(
+                        context.l10n.actionSaveChanges,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),

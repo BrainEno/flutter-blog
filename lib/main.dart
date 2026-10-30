@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:ui' show PlatformDispatcher;
 
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/theme.dart';
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/global_snackbar.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
@@ -82,13 +84,18 @@ void _installGlobalErrorHandlers() {
   };
 }
 
-/// Root widget: theme plus routing.
+/// Root widget: theme, localization and routing.
 ///
 /// Only the app-wide ThemeBloc, AuthBloc and AppUserCubit live above the
 /// router. Every page-scoped bloc (feed, search, likes, upload, editor
 /// state, profile edits) is created by its route in [createAppRouter] and
 /// disposed together with that page, so state can no longer leak between
 /// pages.
+///
+/// Localization (issue #24): the system locale picks between the Chinese
+/// and English ARB catalogs. `supportedLocales` lists Chinese first on
+/// purpose - an unmatched device locale (say Japanese) falls back to
+/// Chinese, the product's primary language, not to English.
 class BelogApp extends StatefulWidget {
   const BelogApp({super.key});
 
@@ -118,6 +125,9 @@ class _BelogAppState extends State<BelogApp> {
           themeMode: state.themeMode,
           theme: AppTheme.lightThemeMode,
           darkTheme: AppTheme.darkThemeMode,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localeListResolutionCallback: resolveAppLocale,
+          supportedLocales: const [Locale('zh'), Locale('en')],
         );
       },
     );

@@ -19,6 +19,10 @@ class BlogSearchSuccess extends BlogSearchState {
 }
 
 class BlogSearchFailure extends BlogSearchState {
-  final String error;
-  BlogSearchFailure({required this.error});
+  final Failure failure;
+  BlogSearchFailure({required this.failure});
+
+  /// Display-safe Chinese fallback; the UI localizes via
+  /// `localizedFailure` (issue #24).
+  String get error => failure.message;
 }

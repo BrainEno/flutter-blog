@@ -38,16 +38,24 @@ final class RecycleBinSuccess extends RecycleBinState {
 }
 
 /// A restore failed: the list survives (the tombstone is still in the
-/// bin) and [message] is surfaced once by the page.
+/// bin) and the failure is surfaced once by the page.
 final class RecycleBinRestoreFailure extends RecycleBinState {
-  final String message;
+  final Failure failure;
   final List<DeletedBlog> blogs;
 
-  const RecycleBinRestoreFailure({required this.message, required this.blogs});
+  const RecycleBinRestoreFailure({required this.failure, required this.blogs});
+
+  /// Display-safe Chinese fallback; the UI localizes via
+  /// `localizedFailure` (issue #24).
+  String get message => failure.message;
 }
 
 final class RecycleBinFailure extends RecycleBinState {
-  final String error;
+  final Failure failure;
 
-  const RecycleBinFailure(this.error);
+  const RecycleBinFailure(this.failure);
+
+  /// Display-safe Chinese fallback; the UI localizes via
+  /// `localizedFailure` (issue #24).
+  String get error => failure.message;
 }

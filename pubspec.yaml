@@ -64,6 +64,14 @@ dependencies:
   # (issue #49 follow-up); replaces a hardcoded, already-stale string.
   package_info_plus: ^10.2.2
   cached_network_image: ^3.4.1
+  # Localized Material/Cupertino widget chrome (issue #24). The ARB
+  # pipeline is driven by `generate: true` below plus l10n.yaml.
+  flutter_localizations:
+    sdk: flutter
+  # Imported by the generated AppLocalizations for plural messages; left
+  # as `any` so it always resolves to the exact pin flutter_localizations
+  # uses on the current Flutter SDK.
+  intl: any
 
 dev_dependencies:
   flutter_test:
@@ -93,6 +101,11 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # l10n ARB pipeline (issue #24): `flutter pub get` regenerates
+  # lib/l10n/app_localizations*.dart from lib/l10n/*.arb. The generated
+  # files are gitignored - every CI job regenerates them via pub get.
+  generate: true
 
   # To add assets to your application, add an assets section, like this:
   assets:

@@ -1,0 +1,2 @@
+"NSCameraUsageDescription" = "Allow camera access to take a photo.";
+"NSPhotoLibraryUsageDescription" = "Allow access to your photo library to choose a cover or profile picture.";

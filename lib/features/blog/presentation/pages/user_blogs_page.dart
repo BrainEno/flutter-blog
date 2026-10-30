@@ -1,4 +1,6 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/l10n/failure_l10n.dart';
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
@@ -58,19 +60,20 @@ class _UserBlogsPageState extends State<UserBlogsPage>
   /// Long-press delete: the article moves to the recycle bin, where it can
   /// still be restored until the server purge.
   Future<void> _confirmDelete(Blog blog) async {
+    final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('删除文章'),
-        content: Text('确定删除「${blog.title}」吗？删除后可在回收站中恢复。'),
+        title: Text(l10n.deleteArticleTitle),
+        content: Text(l10n.deleteArticleBody(blog.title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('删除'),
+            child: Text(l10n.actionDelete),
           ),
         ],
       ),
@@ -83,11 +86,11 @@ class _UserBlogsPageState extends State<UserBlogsPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('我的文章'),
+        title: Text(context.l10n.myArticlesTitle),
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: '回收站',
+            tooltip: context.l10n.recycleBinTooltip,
             icon: const Icon(Icons.delete_outline),
             onPressed: () => context.push('/profile/recycle-bin'),
           ),
@@ -98,17 +101,23 @@ class _UserBlogsPageState extends State<UserBlogsPage>
           BlocListener<BlogByBloc, BlogByState>(
             listener: (context, state) {
               if (state is GetBlogsByUserFailure) {
-                showSnackBar(context, state.error);
+                showSnackBar(
+                  context,
+                  localizedFailure(context.l10n, state.failure),
+                );
               }
             },
           ),
           BlocListener<BlogUploadBloc, BlogUploadState>(
             listener: (context, state) {
               if (state is BlogDeleteSuccess) {
-                showSnackBar(context, '已删除，可在回收站中恢复');
+                showSnackBar(context, context.l10n.articleDeletedNotice);
                 _fetchUserBlogs();
               } else if (state is BlogUploadFailure) {
-                showSnackBar(context, state.error);
+                showSnackBar(
+                  context,
+                  localizedFailure(context.l10n, state.failure),
+                );
               }
             },
           ),
@@ -116,11 +125,15 @@ class _UserBlogsPageState extends State<UserBlogsPage>
         child: BlocBuilder<BlogByBloc, BlogByState>(
           builder: (context, state) {
             if (state is GetBlogsByUserLoading) {
-              return const Center(child: CircularProgressIndicator());
+              return Center(
+                child: CircularProgressIndicator(
+                  semanticsLabel: context.l10n.loadingArticles,
+                ),
+              );
             } else if (state is GetBlogsByUserSuccess) {
               final blogs = state.blogs;
               if (blogs.isEmpty) {
-                return const Center(child: Text('您还没有发布任何文章'));
+                return Center(child: Text(context.l10n.noArticlesYet));
               }
               return RefreshIndicator(
                 onRefresh: () async {
@@ -132,12 +145,7 @@ class _UserBlogsPageState extends State<UserBlogsPage>
                   );
                 },
                 child: GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16.0,
-                    mainAxisSpacing: 16.0,
-                    childAspectRatio: 0.75,
-                  ),
+                  gridDelegate: blogGridDelegate(context),
                   itemCount: blogs.length,
                   itemBuilder: (context, index) {
                     final blog = blogs[index];
@@ -150,7 +158,21 @@ class _UserBlogsPageState extends State<UserBlogsPage>
                 ),
               );
             }
-            return const Center(child: Text('无法加载文章'));
+            if (state is GetBlogsByUserFailure) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(localizedFailure(context.l10n, state.failure)),
+                    TextButton(
+                      onPressed: _fetchUserBlogs,
+                      child: Text(context.l10n.actionRetry),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return Center(child: Text(context.l10n.myArticlesLoadFailed));
           },
         ),
       ),

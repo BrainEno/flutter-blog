@@ -236,6 +236,7 @@ class BlogRepositoryImpl implements BlogRepository {
             '无法连接到网络，收藏未同步',
             kind: FailureKind.network,
             code: 'network.offline',
+            l10nKey: 'likes.sync',
           ),
         );
       }
@@ -250,7 +251,7 @@ class BlogRepositoryImpl implements BlogRepository {
         error: e,
         stackTrace: stackTrace,
       );
-      return left(Failure('收藏操作失败，请稍后重试'));
+      return left(Failure('收藏操作失败，请稍后重试', code: 'likes.toggle'));
     }
   }
 
@@ -269,7 +270,7 @@ class BlogRepositoryImpl implements BlogRepository {
       return left(e.toFailure());
     } catch (e, stackTrace) {
       AppLogger.error('isBlogLiked failed', error: e, stackTrace: stackTrace);
-      return left(Failure('无法获取收藏状态，请稍后重试'));
+      return left(Failure('无法获取收藏状态，请稍后重试', code: 'likes.status'));
     }
   }
 
@@ -289,7 +290,7 @@ class BlogRepositoryImpl implements BlogRepository {
         error: e,
         stackTrace: stackTrace,
       );
-      return left(Failure('无法获取相关文章'));
+      return left(Failure('无法获取相关文章', code: 'related.load'));
     }
   }
 
@@ -309,7 +310,7 @@ class BlogRepositoryImpl implements BlogRepository {
         error: e,
         stackTrace: stackTrace,
       );
-      return left(Failure('无法获取收藏列表，请稍后重试'));
+      return left(Failure('无法获取收藏列表，请稍后重试', code: 'likes.list'));
     }
   }
 }
