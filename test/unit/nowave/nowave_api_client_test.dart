@@ -301,10 +301,7 @@ void main() {
 
       await client.getJson('/articles');
 
-      expect(
-        seen.toString(),
-        'https://example.invalid/base/api/v1/articles',
-      );
+      expect(seen.toString(), 'https://example.invalid/base/api/v1/articles');
     });
 
     test('a base URL with a path prefix keeps the prefix', () async {

@@ -74,45 +74,43 @@ void main() {
           query: any(named: 'query'),
         ),
       ).called(1);
-      verify(() => client.putJson('/articles/$_kSlug/like', {'liked': true}))
-          .called(1);
+      verify(
+        () => client.putJson('/articles/$_kSlug/like', {'liked': true}),
+      ).called(1);
     });
 
-    test(
-      'concurrent toggles on the same article share one exchange',
-      () async {
-        // Slow the read down so both callers would interleave without
-        // per-article serialization.
-        final release = Completer<void>();
-        var reads = 0;
-        when(
-          () => client.getJson(
-            '/articles/$_kSlug/like',
-            query: any(named: 'query'),
-          ),
-        ).thenAnswer((_) async {
-          reads++;
-          await release.future;
-          return _articleMap(likedByViewer: false);
-        });
-        when(
-          () => client.putJson('/articles/$_kSlug/like', {'liked': true}),
-        ).thenAnswer((_) async => _articleMap(likedByViewer: true));
+    test('concurrent toggles on the same article share one exchange', () async {
+      // Slow the read down so both callers would interleave without
+      // per-article serialization.
+      final release = Completer<void>();
+      var reads = 0;
+      when(
+        () => client.getJson(
+          '/articles/$_kSlug/like',
+          query: any(named: 'query'),
+        ),
+      ).thenAnswer((_) async {
+        reads++;
+        await release.future;
+        return _articleMap(likedByViewer: false);
+      });
+      when(
+        () => client.putJson('/articles/$_kSlug/like', {'liked': true}),
+      ).thenAnswer((_) async => _articleMap(likedByViewer: true));
 
-        final first = dataSource.toggleLikeBlog('u1', _kSlug);
-        final second = dataSource.toggleLikeBlog('u1', _kSlug);
-        // Let both calls reach the in-flight map before releasing.
-        await Future<void>.delayed(Duration.zero);
-        release.complete();
+      final first = dataSource.toggleLikeBlog('u1', _kSlug);
+      final second = dataSource.toggleLikeBlog('u1', _kSlug);
+      // Let both calls reach the in-flight map before releasing.
+      await Future<void>.delayed(Duration.zero);
+      release.complete();
 
-        expect(await first, isTrue);
-        expect(await second, isTrue);
-        expect(reads, 1);
-        verify(
-          () => client.putJson('/articles/$_kSlug/like', {'liked': true}),
-        ).called(1);
-      },
-    );
+      expect(await first, isTrue);
+      expect(await second, isTrue);
+      expect(reads, 1);
+      verify(
+        () => client.putJson('/articles/$_kSlug/like', {'liked': true}),
+      ).called(1);
+    });
 
     test('a later toggle runs its own exchange', () async {
       when(
@@ -141,15 +139,15 @@ void main() {
   group('tag resolution', () {
     test('concurrent publishes resolve the same tag once', () async {
       var tagPosts = 0;
-      when(() => client.postJson('/tags', {'name': '诗歌'})).thenAnswer(
-        (_) async {
-          tagPosts++;
-          // Slow the first resolution down so a second caller would fire
-          // its own request without in-flight sharing.
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-          return <String, dynamic>{'id': 't1', 'name': '诗歌', 'slug': 's'};
-        },
-      );
+      when(() => client.postJson('/tags', {'name': '诗歌'})).thenAnswer((
+        _,
+      ) async {
+        tagPosts++;
+        // Slow the first resolution down so a second caller would fire
+        // its own request without in-flight sharing.
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        return <String, dynamic>{'id': 't1', 'name': '诗歌', 'slug': 's'};
+      });
       when(() => client.postJson('/articles', any())).thenAnswer((_) async {
         return _articleMap();
       });

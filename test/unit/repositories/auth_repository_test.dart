@@ -247,12 +247,9 @@ void main() {
 
     test('a data source failure surfaces as a failure', () async {
       when(() => connection.isConnected).thenAnswer((_) async => true);
-      when(() => remote.logout()).thenThrow(
-        const ServerException(
-          '本地存储读写失败',
-          kind: FailureKind.storage,
-        ),
-      );
+      when(
+        () => remote.logout(),
+      ).thenThrow(const ServerException('本地存储读写失败', kind: FailureKind.storage));
 
       final result = await repository.logout();
 

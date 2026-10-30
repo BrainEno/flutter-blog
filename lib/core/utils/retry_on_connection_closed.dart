@@ -29,11 +29,13 @@ Future<T> retryOnConnectionClosed<T>(
       }
       retries++;
       final backoff = initialDelay * math.pow(2, retries - 1);
-      final delay = backoff + Duration(
-        milliseconds: math.Random().nextInt(
-          initialDelay.inMilliseconds + 1,
-        ),
-      );
+      final delay =
+          backoff +
+          Duration(
+            milliseconds: math.Random().nextInt(
+              initialDelay.inMilliseconds + 1,
+            ),
+          );
       AppLogger.debug(
         'connection closed before response; retrying '
         '($retries/$maxRetries) after ${delay.inMilliseconds}ms '
@@ -52,6 +54,6 @@ bool _isConnectionClosed(Object error) {
   // Fallback for platforms/wrappers that re-wrap the transport error into
   // a different type while keeping the SDK's message text.
   return error.toString().contains(
-        'Connection closed before full header was received',
-      );
+    'Connection closed before full header was received',
+  );
 }

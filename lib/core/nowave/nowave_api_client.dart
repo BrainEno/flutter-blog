@@ -312,12 +312,8 @@ class NowaveApiClient {
       // The timeout covers both phases of the exchange: sending the
       // request and draining the response body. `fromStream` otherwise
       // has no bound at all and a stalled server could hang the caller.
-      final streamed = await _httpClient
-          .send(request)
-          .timeout(budget);
-      final response = await http.Response.fromStream(streamed).timeout(
-        budget,
-      );
+      final streamed = await _httpClient.send(request).timeout(budget);
+      final response = await http.Response.fromStream(streamed).timeout(budget);
       AppLogger.debug(
         '$method ${uri.path} -> ${response.statusCode} '
         '(${stopwatch.elapsedMilliseconds}ms)',
@@ -375,7 +371,8 @@ class NowaveApiClient {
         throw NowaveApiException(
           statusCode: response.statusCode,
           code: 'HTTP_${response.statusCode}',
-          message: 'Unexpected error response shape from $method $uri: '
+          message:
+              'Unexpected error response shape from $method $uri: '
               '${body.keys.join(',')}',
         );
       }
