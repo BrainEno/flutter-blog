@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AboutPage extends StatefulWidget {
@@ -210,7 +211,7 @@ class _AboutPageState extends State<AboutPage> {
                   const SizedBox(height: 12),
                   const Text(
                     '以上内容仅保存在本机内存中，不会自动发送给任何人；'
-                    '复制与否由你决定。',
+                    '复制或分享与否由你决定。',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
@@ -225,6 +226,31 @@ class _AboutPageState extends State<AboutPage> {
                   );
                 },
                 child: const Text('清空'),
+              ),
+              // Same user-controlled exit as copy, one tap fewer: the
+              // system share sheet receives exactly the text reviewed
+              // above - the header plus the buffer, nothing else.
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(dialogContext).pop();
+                  try {
+                    await SharePlus.instance.share(
+                      ShareParams(title: 'Belog 诊断信息', text: report),
+                    );
+                  } catch (e, stackTrace) {
+                    // Not every surface has a share target (desktop, or
+                    // the test binding); copying must remain possible.
+                    AppLogger.error(
+                      'sharing the diagnostics failed',
+                      error: e,
+                      stackTrace: stackTrace,
+                    );
+                    if (context.mounted) {
+                      showSnackBar(context, '分享失败，请尝试复制');
+                    }
+                  }
+                },
+                child: const Text('分享'),
               ),
               TextButton(
                 onPressed: () {

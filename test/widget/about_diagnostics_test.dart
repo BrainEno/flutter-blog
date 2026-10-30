@@ -101,6 +101,26 @@ void main() {
     expect(AppLogger.diagnosticsReport(), isEmpty);
   });
 
+  testWidgets('sharing hands the reviewed text to the share sheet', (
+    tester,
+  ) async {
+    await pumpAbout(tester);
+    AppLogger.request('GET', '/api/v1/articles', 500, 42);
+
+    await tester.longPress(find.text('应用版本: 9.9+42'));
+    await tester.pumpAndSettle();
+    expect(find.text('分享'), findsOneWidget);
+
+    // Tapping closes the dialog and must not crash on surfaces without a
+    // share target - copying stays available as the fallback.
+    await tester.tap(find.text('分享'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('诊断信息'), findsNothing);
+    expect(AppLogger.diagnosticsReport(), isNotEmpty);
+  });
+
   testWidgets('closing the dialog keeps the buffer intact', (tester) async {
     await pumpAbout(tester);
     AppLogger.request('GET', '/api/v1/articles', 500, 42);
