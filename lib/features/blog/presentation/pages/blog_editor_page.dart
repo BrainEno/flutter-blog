@@ -602,7 +602,6 @@ class _BlogEditorState extends State<BlogEditorPage> {
                         expands: true,
                         contentType: BlogEditorContentType.body,
                       ),
-                    ),
                     const SizedBox(height: 40),
                   ],
                 ),

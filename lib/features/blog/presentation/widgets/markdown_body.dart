@@ -121,14 +121,19 @@ class MarkdownBody extends StatelessWidget {
 
   Widget _heading(BuildContext context, md.Element element) {
     final level = int.tryParse(element.tag.substring(1)) ?? 3;
-    final size = switch (level) { 1 => 26.0, 2 => 22.0, 3 => 19.0, _ => 17.0 };
+    final size = switch (level) {
+      1 => 26.0,
+      2 => 22.0,
+      3 => 19.0,
+      _ => 17.0,
+    };
     return Text.rich(
       TextSpan(
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              fontSize: size,
-              fontWeight: FontWeight.bold,
-              height: 1.3,
-            ),
+          fontSize: size,
+          fontWeight: FontWeight.bold,
+          height: 1.3,
+        ),
         children: _inline(context, element.children ?? const []),
       ),
     );
@@ -139,9 +144,7 @@ class MarkdownBody extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text.rich(
         TextSpan(
-          style: Theme.of(
-            context,
-          ).textTheme.bodyLarge?.copyWith(height: 1.6),
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.6),
           children: _inline(context, nodes),
         ),
       ),
@@ -171,8 +174,8 @@ class MarkdownBody extends StatelessWidget {
                     child: Text(
                       ordered ? '${i + 1}.' : '•',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   Expanded(
@@ -198,9 +201,7 @@ class MarkdownBody extends StatelessWidget {
   }
 
   List<InlineSpan> _inline(BuildContext context, List<md.Node> nodes) {
-    return [
-      for (final node in nodes) _inlineNode(context, node),
-    ];
+    return [for (final node in nodes) _inlineNode(context, node)];
   }
 
   InlineSpan _inlineNode(BuildContext context, md.Node node) {
@@ -227,9 +228,7 @@ class MarkdownBody extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
             decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.surfaceContainerHighest,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -247,8 +246,7 @@ class MarkdownBody extends StatelessWidget {
           ),
           recognizer: _httpUrl(href) == null
               ? null
-              : (TapGestureRecognizer()
-                ..onTap = () => _launch(context, href)),
+              : (TapGestureRecognizer()..onTap = () => _launch(context, href)),
           children: _inline(context, node.children ?? const []),
         );
       case 'img':
@@ -268,8 +266,7 @@ class MarkdownBody extends StatelessWidget {
                 child: CachedNetworkImage(
                   imageUrl: uri.toString(),
                   fit: BoxFit.contain,
-                  errorWidget: (context, error, stackTrace) =>
-                      const SizedBox(
+                  errorWidget: (context, error, stackTrace) => const SizedBox(
                     height: 40,
                     child: Center(child: Text('[图片加载失败]')),
                   ),

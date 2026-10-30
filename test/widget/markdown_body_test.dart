@@ -23,9 +23,7 @@ void main() {
     expect(find.text('第二段。'), findsOneWidget);
   });
 
-  testWidgets('headings, lists, quotes and code blocks render', (
-    tester,
-  ) async {
+  testWidgets('headings, lists, quotes and code blocks render', (tester) async {
     await pumpMarkdown(tester, '''
 # 标题一
 
@@ -66,10 +64,7 @@ print('hi');
 
     // The parser escapes inline HTML into text: it is visible as
     // characters, and no widget interprets it.
-    expect(
-      find.textContaining('script'),
-      findsWidgets,
-    );
+    expect(find.textContaining('script'), findsWidgets);
   });
 
   testWidgets('javascript: links are inert (no tap recognizer)', (

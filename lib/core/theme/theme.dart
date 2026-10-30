@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   // --- Shared Border Styling ---
-  static _border(
-          {Color color = AppPalette.greyColorLight,
-          double width = 1.5,
-          double radius = 8.0}) =>
-      OutlineInputBorder(
-        borderSide: BorderSide(color: color, width: width),
-        borderRadius: BorderRadius.circular(radius),
-      );
+  static _border({
+    Color color = AppPalette.greyColorLight,
+    double width = 1.5,
+    double radius = 8.0,
+  }) => OutlineInputBorder(
+    borderSide: BorderSide(color: color, width: width),
+    borderRadius: BorderRadius.circular(radius),
+  );
 
   // --- Dark Theme ---
   static final darkThemeMode = ThemeData.dark().copyWith(
@@ -34,8 +34,9 @@ class AppTheme {
         fontSize: 20,
         fontWeight: FontWeight.bold,
       ),
-      iconTheme:
-          IconThemeData(color: AppPalette.whiteColor), // White icons in AppBar
+      iconTheme: IconThemeData(
+        color: AppPalette.whiteColor,
+      ), // White icons in AppBar
     ),
     textTheme: const TextTheme(
       // Define text theme for dark mode
@@ -43,11 +44,16 @@ class AppTheme {
       bodyLarge: TextStyle(color: AppPalette.whiteColor),
       bodySmall: TextStyle(color: AppPalette.greyColor), // Less prominent text
       titleLarge: TextStyle(
-          color: AppPalette.whiteColor, fontWeight: FontWeight.bold), // Titles
-      titleMedium:
-          TextStyle(color: AppPalette.whiteColor, fontWeight: FontWeight.w500),
+        color: AppPalette.whiteColor,
+        fontWeight: FontWeight.bold,
+      ), // Titles
+      titleMedium: TextStyle(
+        color: AppPalette.whiteColor,
+        fontWeight: FontWeight.w500,
+      ),
       titleSmall: TextStyle(
-          color: AppPalette.greyColorLight), // Subtitles or smaller titles
+        color: AppPalette.greyColorLight,
+      ), // Subtitles or smaller titles
       labelLarge: TextStyle(color: AppPalette.whiteColor), // Button text
     ),
     chipTheme: const ChipThemeData(
@@ -56,22 +62,29 @@ class AppTheme {
       secondaryLabelStyle: TextStyle(color: AppPalette.whiteColor),
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8))),
+        borderRadius: BorderRadius.all(Radius.circular(8)),
+      ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppPalette.greyColorDark, // Dark input field background
-      contentPadding:
-          const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+      contentPadding: const EdgeInsets.symmetric(
+        vertical: 16.0,
+        horizontal: 20.0,
+      ),
       border: _border(color: AppPalette.greyColorLight), // Grey border
       enabledBorder: _border(color: AppPalette.greyColorLight),
       focusedBorder: _border(
-          color: AppPalette.greenColor, width: 2.0), // Green focused border
+        color: AppPalette.greenColor,
+        width: 2.0,
+      ), // Green focused border
       errorBorder: _border(color: AppPalette.errorColor),
-      hintStyle:
-          const TextStyle(color: AppPalette.greyColorLight), // Grey hint text
-      labelStyle:
-          const TextStyle(color: AppPalette.whiteColor), // White label text
+      hintStyle: const TextStyle(
+        color: AppPalette.greyColorLight,
+      ), // Grey hint text
+      labelStyle: const TextStyle(
+        color: AppPalette.whiteColor,
+      ), // White label text
       errorStyle: const TextStyle(color: AppPalette.errorColor),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -92,9 +105,11 @@ class AppTheme {
       ),
     ),
     iconTheme: const IconThemeData(
-        color: AppPalette.whiteColor), // Default icon color - white
+      color: AppPalette.whiteColor,
+    ), // Default icon color - white
     primaryIconTheme: const IconThemeData(
-        color: AppPalette.whiteColor), // Primary icon color - white
+      color: AppPalette.whiteColor,
+    ), // Primary icon color - white
   );
 
   // --- Light Theme ---
@@ -119,23 +134,30 @@ class AppTheme {
         fontSize: 20,
         fontWeight: FontWeight.bold,
       ),
-      iconTheme:
-          IconThemeData(color: AppPalette.lightBlack), // Dark icons in AppBar
+      iconTheme: IconThemeData(
+        color: AppPalette.lightBlack,
+      ), // Dark icons in AppBar
     ),
     textTheme: const TextTheme(
       // Define text theme for light mode
-      bodyMedium:
-          TextStyle(color: AppPalette.lightBlack), // Default body text - dark
+      bodyMedium: TextStyle(
+        color: AppPalette.lightBlack,
+      ), // Default body text - dark
       bodyLarge: TextStyle(color: AppPalette.lightBlack),
       bodySmall: TextStyle(
-          color: AppPalette.lightGreyText), // Less prominent text - grey
+        color: AppPalette.lightGreyText,
+      ), // Less prominent text - grey
       titleLarge: TextStyle(
-          color: AppPalette.lightBlack,
-          fontWeight: FontWeight.bold), // Titles - dark
-      titleMedium:
-          TextStyle(color: AppPalette.lightBlack, fontWeight: FontWeight.w500),
-      titleSmall:
-          TextStyle(color: AppPalette.lightGreyText), // Subtitles - grey
+        color: AppPalette.lightBlack,
+        fontWeight: FontWeight.bold,
+      ), // Titles - dark
+      titleMedium: TextStyle(
+        color: AppPalette.lightBlack,
+        fontWeight: FontWeight.w500,
+      ),
+      titleSmall: TextStyle(
+        color: AppPalette.lightGreyText,
+      ), // Subtitles - grey
       labelLarge: TextStyle(color: AppPalette.lightBlack), // Button text - dark
     ),
     chipTheme: const ChipThemeData(
@@ -144,22 +166,29 @@ class AppTheme {
       secondaryLabelStyle: TextStyle(color: AppPalette.lightBlack),
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8))),
+        borderRadius: BorderRadius.all(Radius.circular(8)),
+      ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppPalette.lightBackground, // Light input field background
-      contentPadding:
-          const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+      contentPadding: const EdgeInsets.symmetric(
+        vertical: 16.0,
+        horizontal: 20.0,
+      ),
       border: _border(color: AppPalette.lightBorder), // Light grey border
       enabledBorder: _border(color: AppPalette.lightBorder),
       focusedBorder: _border(
-          color: AppPalette.gradient1, width: 2.0), // Gradient focused border
+        color: AppPalette.gradient1,
+        width: 2.0,
+      ), // Gradient focused border
       errorBorder: _border(color: AppPalette.errorColor),
       hintStyle: const TextStyle(
-          color: AppPalette.lightGreyText), // Light grey hint text
-      labelStyle:
-          const TextStyle(color: AppPalette.lightBlack), // Dark label text
+        color: AppPalette.lightGreyText,
+      ), // Light grey hint text
+      labelStyle: const TextStyle(
+        color: AppPalette.lightBlack,
+      ), // Dark label text
       errorStyle: const TextStyle(color: AppPalette.errorColor),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -178,8 +207,10 @@ class AppTheme {
       ),
     ),
     iconTheme: const IconThemeData(
-        color: AppPalette.lightBlack), // Default icon color - dark
+      color: AppPalette.lightBlack,
+    ), // Default icon color - dark
     primaryIconTheme: const IconThemeData(
-        color: AppPalette.lightBlack), // Primary icon color - dark
+      color: AppPalette.lightBlack,
+    ), // Primary icon color - dark
   );
 }

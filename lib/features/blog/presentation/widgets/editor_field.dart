@@ -39,10 +39,7 @@ class EditorField extends StatelessWidget {
     final hintFontWeight = _getHintFontWeight(contentType);
 
     return Container(
-      constraints: BoxConstraints(
-        minHeight: 80,
-        maxHeight: 300,
-      ),
+      constraints: BoxConstraints(minHeight: 80, maxHeight: 300),
       padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 8.0),
       child: TextFormField(
         controller: controller,
@@ -55,7 +52,8 @@ class EditorField extends StatelessWidget {
         },
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: hintStyle ??
+          hintStyle:
+              hintStyle ??
               TextStyle(
                 fontSize: hintFontSize, // Dynamic hint font size
                 fontWeight: hintFontWeight, // Dynamic hint font weight
@@ -71,7 +69,8 @@ class EditorField extends StatelessWidget {
           disabledBorder: InputBorder.none,
           contentPadding: contentPadding, // Dynamic content padding
         ),
-        style: textStyle ??
+        style:
+            textStyle ??
             TextStyle(
               fontSize: fontSize, // Dynamic font size
               height: 1.6,
@@ -90,13 +89,15 @@ class EditorField extends StatelessWidget {
     switch (contentType) {
       case BlogEditorContentType.title:
         return const EdgeInsets.symmetric(
-            vertical: 20.0,
-            horizontal: 12.0); // More vertical padding for title
+          vertical: 20.0,
+          horizontal: 12.0,
+        ); // More vertical padding for title
       case BlogEditorContentType.body:
       default:
         return const EdgeInsets.symmetric(
-            vertical: 16.0,
-            horizontal: 12.0); // Standard vertical padding for body
+          vertical: 16.0,
+          horizontal: 12.0,
+        ); // Standard vertical padding for body
       // Adjust padding for other content types as needed
     }
   }

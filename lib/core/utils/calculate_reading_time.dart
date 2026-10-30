@@ -10,8 +10,9 @@ String calculateReadingTime(String articleText) {
 
   // Regular expressions to count words/characters
   final englishWordRegex = RegExp(r'\b\w+\b'); // Matches whole words in English
-  final chineseWordRegex =
-      RegExp(r'[\u4e00-\u9fa5]'); // Matches Chinese characters
+  final chineseWordRegex = RegExp(
+    r'[\u4e00-\u9fa5]',
+  ); // Matches Chinese characters
 
   // Calculate English word count
   int englishWordCount = 0;

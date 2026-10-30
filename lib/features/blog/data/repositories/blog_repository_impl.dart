@@ -25,7 +25,7 @@ class BlogRepositoryImpl implements BlogRepository {
 
   @override
   Future<Either<Failure, Blog>> uploadBlog({
-    required File image,
+    File? image,
     required String title,
     required String content,
     required String posterId,

@@ -64,7 +64,8 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
     if (_historyRecordedFor == '${userId}_${blog.id}') return;
     _historyRecordedFor = '${userId}_${blog.id}';
     try {
-      final store = widget.historyStore ?? GetIt.instance<ReadingHistoryStore>();
+      final store =
+          widget.historyStore ?? GetIt.instance<ReadingHistoryStore>();
       await store.record(userId: userId, blog: blog);
     } catch (e, stackTrace) {
       AppLogger.error(
@@ -198,10 +199,8 @@ class _ViewerScaffold extends StatelessWidget {
                 IconButton(
                   tooltip: '分享文章',
                   icon: const Icon(Icons.share, color: Colors.white),
-                  onPressed: () => shareArticle(
-                    title: blog.title,
-                    slug: blog.id,
-                  ),
+                  onPressed: () =>
+                      shareArticle(title: blog.title, slug: blog.id),
                 ),
               BlocConsumer<BlogLikedBloc, BlogLikedState>(
                 listener: (context, state) {

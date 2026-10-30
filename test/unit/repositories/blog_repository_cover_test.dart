@@ -85,8 +85,7 @@ void main() {
       expect(created.title, '标题');
     });
 
-    test('a coverless publish skips the media upload entirely (#17)',
-        () async {
+    test('a coverless publish skips the media upload entirely (#17)', () async {
       when(() => remote.uploadBlog(any())).thenAnswer(
         (invocation) async => invocation.positionalArguments[0] as BlogModel,
       );
@@ -106,9 +105,9 @@ void main() {
           mimeType: any(named: 'mimeType'),
         ),
       );
-      final created = verify(() => remote.uploadBlog(captureAny()))
-          .captured
-          .single as BlogModel;
+      final created =
+          verify(() => remote.uploadBlog(captureAny())).captured.single
+              as BlogModel;
       expect(created.imageUrl, '');
     });
 

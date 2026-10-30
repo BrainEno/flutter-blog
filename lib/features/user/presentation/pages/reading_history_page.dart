@@ -134,11 +134,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.history,
-                    size: 64,
-                    color: Colors.grey.shade400,
-                  ),
+                  Icon(Icons.history, size: 64, color: Colors.grey.shade400),
                   const SizedBox(height: 12),
                   Text(
                     '还没有阅读记录',
@@ -150,10 +146,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                   const SizedBox(height: 4),
                   Text(
                     '阅读过的文章会记录在这台设备上，仅自己可见',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade500,
-                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
                   ),
                 ],
               ),
@@ -196,10 +189,10 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                                 height: 56,
                                 errorWidget: (context, error, stackTrace) =>
                                     Icon(
-                                  Icons.broken_image,
-                                  size: 32,
-                                  color: Colors.grey.shade400,
-                                ),
+                                      Icons.broken_image,
+                                      size: 32,
+                                      color: Colors.grey.shade400,
+                                    ),
                               ),
                       ),
                     ),

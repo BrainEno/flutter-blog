@@ -202,8 +202,7 @@ GoRouter createAppRouter({
                   ),
                   GoRoute(
                     path: 'history',
-                    builder: (context, state) =>
-                        const ReadingHistoryPage(),
+                    builder: (context, state) => const ReadingHistoryPage(),
                   ),
                 ],
               ),

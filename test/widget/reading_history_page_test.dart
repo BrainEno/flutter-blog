@@ -49,10 +49,7 @@ void main() {
   setUp(() => cubit = AppUserCubit()..updateUser(user));
   tearDown(() => cubit.close());
 
-  Future<void> pumpPage(
-    WidgetTester tester,
-    ReadingHistoryStore store,
-  ) async {
+  Future<void> pumpPage(WidgetTester tester, ReadingHistoryStore store) async {
     await tester.pumpWidget(
       BlocProvider<AppUserCubit>.value(
         value: cubit,

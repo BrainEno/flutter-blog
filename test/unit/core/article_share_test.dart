@@ -17,17 +17,13 @@ void main() {
       );
     });
 
-    test('no origin configured means no share URL (never a guessed link)',
-        () {
+    test('no origin configured means no share URL (never a guessed link)', () {
       expect(articleWebUrl('my-slug', webBaseUrl: null), isNull);
       expect(articleWebUrl('my-slug', webBaseUrl: '  '), isNull);
     });
 
     test('an empty slug has no public page', () {
-      expect(
-        articleWebUrl('', webBaseUrl: 'https://bot-thk.example'),
-        isNull,
-      );
+      expect(articleWebUrl('', webBaseUrl: 'https://bot-thk.example'), isNull);
     });
 
     test('without the dart-define the default is null in tests', () {
