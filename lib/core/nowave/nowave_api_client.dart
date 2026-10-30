@@ -102,7 +102,7 @@ class NowaveApiClient {
       // every request hit `/api/v1/api/v1/...` - a silent, total outage.
       // Fail fast with an actionable message instead.
       throw ArgumentError(
-        'API_BASE_URL must not end with \"$_kApiPrefix\"; the client adds '
+        'API_BASE_URL must not end with "$_kApiPrefix"; the client adds '
         'it itself. Got: $_baseUrl',
       );
     }
