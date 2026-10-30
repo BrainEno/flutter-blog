@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/utils/app_logger.dart';
@@ -128,15 +129,25 @@ abstract class NowaveSessionStore {
 /// The refresh token rotates on every use and reusing a rotated token
 /// revokes the whole session family server-side, so [refresh] is strictly
 /// single-flight.
-class NowaveSessionManager implements NowaveAuthenticator {
+class NowaveSessionManager implements NowaveProactiveAuthenticator {
   NowaveSessionManager({
     required NowaveApiClient client,
     required NowaveSessionStore store,
+    this.refreshLeadTime = const Duration(seconds: 30),
+    DateTime Function() now = DateTime.now,
   }) : _client = client,
-       _store = store;
+       _store = store,
+       _now = now;
 
   final NowaveApiClient _client;
   final NowaveSessionStore _store;
+
+  /// How far before its expiry the access token is rotated proactively
+  /// by [ensureFreshAccess].
+  final Duration refreshLeadTime;
+
+  /// Injectable clock so expiry decisions are testable.
+  final DateTime Function() _now;
 
   final StreamController<NowaveAuthStatus> _status =
       StreamController<NowaveAuthStatus>.broadcast();
@@ -214,6 +225,32 @@ class NowaveSessionManager implements NowaveAuthenticator {
     });
   }
 
+  /// Proactively rotates the access token when it is about to expire,
+  /// so requests do not pay a 401 round-trip on every expiry.
+  ///
+  /// Failure policy differs from [refresh] on purpose: a transport or
+  /// server error leaves the session alone (the still-valid access token
+  /// is used and the 401 path stays the authority for unrecoverable
+  /// sessions). A refresh token that has already expired ends the session
+  /// locally without any network call.
+  Future<bool> ensureFreshAccess() async {
+    final session = _session;
+    if (session == null) return false;
+    final currentTime = _now();
+    if (session.accessToken.isNotEmpty &&
+        session.accessExpiresAt.isAfter(currentTime.add(refreshLeadTime))) {
+      return false;
+    }
+    if (!session.refreshExpiresAt.isAfter(currentTime)) {
+      AppLogger.debug(
+        'refresh token already expired; ending the session locally',
+      );
+      await clear();
+      return false;
+    }
+    return refresh();
+  }
+
   Future<bool> _refreshLocked() async {
     final session = _session;
     if (session == null) return false;
@@ -233,14 +270,35 @@ class NowaveSessionManager implements NowaveAuthenticator {
       await _persist();
       return true;
     } catch (e, stackTrace) {
-      AppLogger.error(
-        'refreshing the session failed; signing out locally',
-        error: e,
-        stackTrace: stackTrace,
-      );
-      await clear();
+      if (_isAuthRejection(e)) {
+        // The backend rejected the rotated refresh token: the session
+        // family is revoked server-side, the app must stop acting
+        // signed in.
+        AppLogger.error(
+          'refreshing the session was rejected; signing out locally',
+          error: e,
+          stackTrace: stackTrace,
+        );
+        await clear();
+      } else {
+        // Transport or server error: keep the session and let callers
+        // retry with the current access token.
+        AppLogger.error(
+          'refreshing the session failed; keeping the session',
+          error: e,
+          stackTrace: stackTrace,
+        );
+      }
       return false;
     }
+  }
+
+  /// Whether [error] is the backend rejecting the refresh token (revoked
+  /// session family) rather than a transport or server error.
+  bool _isAuthRejection(Object error) {
+    if (error is! NowaveApiException) return false;
+    return error.statusCode == HttpStatus.unauthorized ||
+        error.code == 'UNAUTHENTICATED';
   }
 
   /// Drops the local session and broadcasts a sign-out.

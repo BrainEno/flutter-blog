@@ -68,6 +68,18 @@ abstract class NowaveAuthenticator {
   Future<bool> refresh();
 }
 
+/// Optional capability of an [NowaveAuthenticator]: rotate the access
+/// token ahead of expiry instead of waiting for a 401.
+///
+/// The client awaits [ensureFreshAccess] before every authenticated
+/// request; implementations must make the not-needed case a cheap,
+/// throw-free time comparison.
+abstract interface class NowaveProactiveAuthenticator
+    implements NowaveAuthenticator {
+  /// Returns true when a fresh access token is (still) available.
+  Future<bool> ensureFreshAccess();
+}
+
 /// Thin HTTP client for the no-wave `apps/api` REST surface (`/api/v1`).
 ///
 /// Responsibilities:
@@ -234,6 +246,13 @@ class NowaveApiClient {
         timeout: timeout,
       );
     } else {
+      final authenticator = _authenticator!;
+      if (authenticator is NowaveProactiveAuthenticator) {
+        // Cheap time check inside; rotates only when expiry is close. A
+        // failure here never blocks the request - the 401 path below is
+        // the authority for unrecoverable sessions.
+        await authenticator.ensureFreshAccess();
+      }
       // Attach the bearer token; a 401 rotates the access token exactly
       // once (a failed refresh - revoked session family - leaves the 401
       // for the caller to map).
@@ -244,16 +263,16 @@ class NowaveApiClient {
           body: body,
           rawBody: rawBody,
           contentType: contentType,
-          token: _authenticator.accessToken,
+          token: authenticator.accessToken,
         ),
         rawBody ?? (body == null ? null : jsonEncode(body)),
         timeout: timeout,
       );
       if (response.statusCode == HttpStatus.unauthorized &&
           allowRefresh &&
-          _authenticator.accessToken != null) {
+          authenticator.accessToken != null) {
         AppLogger.debug('401 from $method ${uri.path}; refreshing session');
-        final refreshed = await _authenticator.refresh();
+        final refreshed = await authenticator.refresh();
         if (refreshed) {
           response = await _send(
             method,
@@ -262,7 +281,7 @@ class NowaveApiClient {
               body: body,
               rawBody: rawBody,
               contentType: contentType,
-              token: _authenticator.accessToken,
+              token: authenticator.accessToken,
             ),
             rawBody ?? (body == null ? null : jsonEncode(body)),
             timeout: timeout,
