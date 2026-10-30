@@ -248,14 +248,15 @@ class NowaveApiClient {
 
     http.Response response;
     if (!authenticate || _authenticator == null) {
+      final headers = _headers(
+        body: body,
+        rawBody: rawBody,
+        contentType: contentType,
+      )..addAll(extraHeaders ?? const {});
       response = await _send(
         method,
         uri,
-        _headers(
-          body: body,
-          rawBody: rawBody,
-          contentType: contentType,
-        ).merge(extraHeaders),
+        headers,
         rawBody ?? (body == null ? null : jsonEncode(body)),
         timeout: timeout,
       );
@@ -270,15 +271,16 @@ class NowaveApiClient {
       // Attach the bearer token; a 401 rotates the access token exactly
       // once (a failed refresh - revoked session family - leaves the 401
       // for the caller to map).
+      final headers = _headers(
+        body: body,
+        rawBody: rawBody,
+        contentType: contentType,
+        token: authenticator.accessToken,
+      )..addAll(extraHeaders ?? const {});
       response = await _send(
         method,
         uri,
-        _headers(
-          body: body,
-          rawBody: rawBody,
-          contentType: contentType,
-          token: authenticator.accessToken,
-        ).merge(extraHeaders),
+        headers,
         rawBody ?? (body == null ? null : jsonEncode(body)),
         timeout: timeout,
       );
@@ -288,15 +290,16 @@ class NowaveApiClient {
         AppLogger.debug('401 from $method ${uri.path}; refreshing session');
         final refreshed = await authenticator.refresh();
         if (refreshed) {
+          final headers = _headers(
+            body: body,
+            rawBody: rawBody,
+            contentType: contentType,
+            token: authenticator.accessToken,
+          )..addAll(extraHeaders ?? const {});
           response = await _send(
             method,
             uri,
-            _headers(
-              body: body,
-              rawBody: rawBody,
-              contentType: contentType,
-              token: authenticator.accessToken,
-            ).merge(extraHeaders),
+            headers,
             rawBody ?? (body == null ? null : jsonEncode(body)),
             timeout: timeout,
           );

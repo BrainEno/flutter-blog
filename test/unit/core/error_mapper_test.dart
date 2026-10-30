@@ -53,7 +53,9 @@ void main() {
       expect(exception.kind, FailureKind.validation);
     });
 
-    test('NowaveApiException IDEMPOTENCY_CONFLICT becomes a validation error', () {
+    test(
+      'NowaveApiException IDEMPOTENCY_CONFLICT becomes a validation error',
+      () {
       final exception = mapToServerException(
         NowaveApiException(
           statusCode: 409,

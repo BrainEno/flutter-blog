@@ -126,7 +126,9 @@ void main() {
       },
     );
 
-    test('extra headers ride along on a POST (Idempotency-Key, issue #19)', () async {
+    test(
+      'extra headers ride along on a POST (Idempotency-Key, issue #19)',
+      () async {
       String? idempotencyKey;
       final client = clientFor(
         MockClient((request) async {
