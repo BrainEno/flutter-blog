@@ -62,11 +62,7 @@ class AppLogger {
 
   /// Records an HTTP exchange that failed before any response arrived
   /// (socket/transport errors). [errorType] is the error's runtime type.
-  static void requestUnreachable(
-    String method,
-    String path,
-    String errorType,
-  ) {
+  static void requestUnreachable(String method, String path, String errorType) {
     diagnostics.recordUnreachable(method, path, errorType);
   }
 

@@ -33,10 +33,10 @@ class _AboutPageState extends State<AboutPage> {
   /// identifiers or user data.
   String _diagnosticsHeader(PackageInfo? info, BuildContext context) {
     return buildDiagnosticsHeader(
-      appName: (info != null && info.appName.isNotEmpty) ? info.appName : 'belog',
-      version: info == null
-          ? 'unknown'
-          : '${info.version}+${info.buildNumber}',
+      appName: (info != null && info.appName.isNotEmpty)
+          ? info.appName
+          : 'belog',
+      version: info == null ? 'unknown' : '${info.version}+${info.buildNumber}',
       buildMode: kReleaseMode
           ? 'release'
           : (kProfileMode ? 'profile' : 'debug'),
@@ -177,6 +177,7 @@ class _AboutPageState extends State<AboutPage> {
   Future<void> _showDiagnostics(BuildContext context) async {
     // Resolved before the dialog opens: the builder below is synchronous.
     final info = await _packageInfo;
+    if (!context.mounted) return;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -221,9 +222,7 @@ class _AboutPageState extends State<AboutPage> {
               TextButton(
                 onPressed: () {
                   AppLogger.clearDiagnostics();
-                  setState(
-                    () => report = _composeReport(info, dialogContext),
-                  );
+                  setState(() => report = _composeReport(info, dialogContext));
                 },
                 child: const Text('清空'),
               ),
