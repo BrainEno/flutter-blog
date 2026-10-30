@@ -13,11 +13,16 @@ import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/auth/presentation/pages/login_page.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
+import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/data/models/comment_model.dart';
 import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart';
+import 'package:belog/features/blog/data/repositories/comment_repository_impl.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
+import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
+import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
 import 'package:belog/features/blog/domain/usecase/get_user_liked_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/is_blog_liked.dart';
@@ -53,6 +58,8 @@ class MockConnection extends Mock implements ConnectionChecker {}
 
 class MockAuthRepository extends Mock implements AuthRepository {}
 
+class MockCommentRemote extends Mock implements CommentRemoteDataSource {}
+
 class MemoryThemeStore implements ThemePreferenceStore {
   ThemeMode mode = ThemeMode.system;
 
@@ -84,6 +91,7 @@ User sampleUser() => User(
 /// like [initDependencies] would register them in production.
 class Harness {
   final MockBlogRemote remote = MockBlogRemote();
+  final MockCommentRemote commentRemote = MockCommentRemote();
   final MockBlogLocal local = MockBlogLocal();
   final MockConnection connection = MockConnection();
   final MockAuthRepository authRepository = MockAuthRepository();
@@ -103,6 +111,12 @@ class Harness {
     when(
       () => remote.getUserLikedBlogs(any()),
     ).thenAnswer((_) async => <BlogModel>[]);
+    when(
+      () => remote.getRelatedArticles(any()),
+    ).thenAnswer((_) async => <BlogModel>[]);
+    when(
+      () => commentRemote.getComments(any()),
+    ).thenAnswer((_) async => <CommentModel>[]);
     when(
       () => local.uploadLocalBlogs(blogs: any(named: 'blogs')),
     ).thenAnswer((_) async {});
@@ -128,6 +142,7 @@ class Harness {
       ..registerFactory(() => UpdateBlog(repository))
       ..registerFactory(() => DeleteBlog(repository))
       ..registerFactory(() => GetBlogsByPoster(repository))
+      ..registerFactory(() => GetRelatedArticles(repository))
       ..registerFactory(() => BlogBloc(getAllBlogs: sl<GetAllBlogs>()))
       ..registerFactory(() => BlogSearchBloc(searchBlogs: sl<SearchBlogs>()))
       ..registerFactory(
@@ -147,6 +162,15 @@ class Harness {
       ..registerFactory(
         () => BlogByBloc(getBlogsByPoster: sl<GetBlogsByPoster>()),
       );
+
+    final commentRepository = CommentRepositoryImpl(
+      commentRemoteDataSource: commentRemote,
+      connectionChecker: connection,
+    );
+    sl
+      ..registerFactory(() => GetComments(commentRepository))
+      ..registerFactory(() => CreateComment(commentRepository))
+      ..registerFactory(() => DeleteComment(commentRepository));
 
     themeBloc = ThemeBloc(MemoryThemeStore());
     appUserCubit = AppUserCubit();

@@ -4,12 +4,14 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/features/auth/presentation/pages/login_page.dart';
 import 'package:belog/features/auth/presentation/pages/signup_page.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:belog/features/blog/presentation/blocs/blog/blog_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_viewer/blog_viewer_cubit.dart';
+import 'package:belog/features/blog/presentation/blocs/comment/comment_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/blog_editor_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_page.dart';
@@ -232,6 +234,16 @@ GoRoute viewerRoute() {
               getBlogById: serviceLocator<GetBlogById>(),
               blogId: blogId,
               initialBlog: extra is Blog ? extra : null,
+            ),
+          ),
+          // The slug doubles as the comments key (issue #19); the bloc is
+          // page-scoped and disposed with the viewer.
+          BlocProvider(
+            create: (_) => CommentBloc(
+              getComments: serviceLocator<GetComments>(),
+              createComment: serviceLocator<CreateComment>(),
+              deleteComment: serviceLocator<DeleteComment>(),
+              slug: blogId,
             ),
           ),
         ],
