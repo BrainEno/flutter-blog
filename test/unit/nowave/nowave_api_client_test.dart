@@ -348,26 +348,27 @@ void main() {
   group('diagnostics buffer (issue #49)', () {
     setUp(AppLogger.clearDiagnostics);
 
-    test('a failing status is recorded with path, status and duration',
-        () async {
-      final client = clientFor(
-        MockClient(
-          (request) async =>
-              http.Response(jsonEncode({'data': null}), 503),
-        ),
-      );
+    test(
+      'a failing status is recorded with path, status and duration',
+      () async {
+        final client = clientFor(
+          MockClient(
+            (request) async => http.Response(jsonEncode({'data': null}), 503),
+          ),
+        );
 
-      await expectLater(
-        client.getJson('/articles', query: {'limit': '10'}),
-        throwsA(isA<NowaveApiException>()),
-      );
+        await expectLater(
+          client.getJson('/articles', query: {'limit': '10'}),
+          throwsA(isA<NowaveApiException>()),
+        );
 
-      final report = AppLogger.diagnosticsReport();
-      expect(report, contains('GET /api/v1/articles -> 503'));
-      expect(report, contains('ms)'));
-      // The query string must never reach the buffer.
-      expect(report.contains('limit'), isFalse);
-    });
+        final report = AppLogger.diagnosticsReport();
+        expect(report, contains('GET /api/v1/articles -> 503'));
+        expect(report, contains('ms)'));
+        // The query string must never reach the buffer.
+        expect(report.contains('limit'), isFalse);
+      },
+    );
 
     test('a successful request is not recorded', () async {
       final client = clientFor(

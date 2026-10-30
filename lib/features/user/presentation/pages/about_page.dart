@@ -145,8 +145,8 @@ class AboutPage extends StatelessWidget {
                       child: SelectableText(
                         report.isEmpty
                             ? '诊断缓冲为空。\n\n'
-                                '应用失败时会在这里记录脱敏摘要（错误类别、接口路径、'
-                                '状态码与耗时），不包含任何账号信息。'
+                                  '应用失败时会在这里记录脱敏摘要（错误类别、接口路径、'
+                                  '状态码与耗时），不包含任何账号信息。'
                             : report,
                         style: const TextStyle(
                           fontSize: 13,

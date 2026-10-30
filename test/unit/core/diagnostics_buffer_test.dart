@@ -14,8 +14,7 @@ void main() {
   setUp(AppLogger.clearDiagnostics);
 
   group('DiagnosticsBuffer', () {
-    test('records the error message and type, never the error text',
-        () {
+    test('records the error message and type, never the error text', () {
       final buffer = DiagnosticsBuffer();
 
       buffer.recordError(
@@ -57,10 +56,7 @@ void main() {
         500,
         10,
       );
-      buffer.recordError(
-        'failed#user@example.invalid',
-        null,
-      );
+      buffer.recordError('failed#user@example.invalid', null);
 
       final report = buffer.export();
       expect(report, contains('GET /api/v1/articles -> 500'));
