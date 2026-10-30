@@ -331,7 +331,7 @@ void main() {
       final client = NowaveApiClient(
         baseUrl: Uri.parse('https://api.example.invalid'),
         timeout: const Duration(milliseconds: 25),
-        httpClient: MockClient.streaming((request) async {
+        httpClient: MockClient.streaming((request, body) async {
           // Headers arrive, the body never does.
           return http.StreamedResponse(
             Completer<List<int>>().future.asStream().cast<List<int>>(),
