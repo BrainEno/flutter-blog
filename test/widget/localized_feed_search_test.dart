@@ -264,6 +264,41 @@ void main() {
     expect(find.text('Oct 30, 2026'), findsOneWidget);
   });
 
+  testWidgets('refresh errors and repeated retries preserve the feed', (
+    tester,
+  ) async {
+    var calls = 0;
+    final bloc = BlogBloc(
+      getAllBlogs: _GetArticles((_) async {
+        calls++;
+        return calls == 1 ? right([_article()]) : left(Failure.networkOffline());
+      }),
+    );
+    final user = AppUserCubit();
+    addTearDown(bloc.close);
+    addTearDown(user.close);
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<BlogBloc>.value(value: bloc),
+          BlocProvider<AppUserCubit>.value(value: user),
+        ],
+        child: _app(locale: const Locale('en'), child: const BlogPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Sample'), findsOneWidget);
+    bloc.add(const BlogFetchFirstPage());
+    await tester.pumpAndSettle();
+    expect(find.text('Sample'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sample'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+    expect(calls, 3);
+  });
+
   testWidgets('large text and keyboard access work on an article card', (
     tester,
   ) async {
