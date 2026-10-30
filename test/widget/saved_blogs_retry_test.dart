@@ -1,3 +1,4 @@
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/network/connection_checker.dart';
@@ -54,7 +55,11 @@ void main() {
           BlocProvider<BlogLikedBloc>.value(value: likes),
           BlocProvider<AppUserCubit>.value(value: user),
         ],
-        child: const MaterialApp(home: SavedBlogsPage()),
+        child: const MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+home: SavedBlogsPage()),
       ),
     );
     await tester.pumpAndSettle();

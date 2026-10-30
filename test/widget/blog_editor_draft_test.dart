@@ -1,3 +1,4 @@
+import 'package:belog/l10n/app_localizations.dart';
 import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
@@ -98,6 +99,10 @@ Future<void> openEditor(
   ).thenAnswer((_) => const Stream<BlogUploadState>.empty());
   await tester.pumpWidget(
     MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+
       home: BlocProvider<BlogUploadBloc>.value(
         value: bloc,
         child: BlogEditorPage(blog: blog, draftStore: store),
@@ -125,6 +130,10 @@ Future<RecordingUploadBloc> openEditorLive(
   addTearDown(appUser.close);
   await tester.pumpWidget(
     MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+
       home: MultiBlocProvider(
         providers: [
           BlocProvider<BlogUploadBloc>.value(value: bloc),

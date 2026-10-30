@@ -4,6 +4,9 @@ import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:fpdart/fpdart.dart';
 
+/// Maximum results requested for one search; the backend may have more.
+const int kMaxSearchResults = 50;
+
 class SearchBlogs implements UseCase<List<Blog>, SearchBlogsParams> {
   final BlogRepository blogRepository;
   const SearchBlogs(this.blogRepository);

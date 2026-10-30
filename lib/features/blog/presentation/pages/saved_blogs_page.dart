@@ -1,4 +1,6 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/l10n/failure_l10n.dart';
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -71,13 +73,16 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: const Text('我的收藏'),
+        title: Text(context.l10n.savedTitle),
         elevation: 1.0,
       ),
       body: BlocConsumer<BlogLikedBloc, BlogLikedState>(
         listener: (context, state) {
           if (state is UserLikedBlogsFailure) {
-            showSnackBar(context, state.error);
+            showSnackBar(
+              context,
+              localizedFailure(context.l10n, state.failure),
+            );
           }
         },
         builder: (context, state) {
@@ -92,10 +97,10 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
                 ? state.blogs
                 : _lastBlogs;
             if (blogsToShow.isEmpty) {
-              return const Center(
+              return Center(
                 child: Text(
-                  '你还没有收藏文章',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                  context.l10n.savedEmpty,
+                  style: const TextStyle(fontSize: 18, color: Colors.grey),
                 ),
               );
             }
@@ -109,12 +114,7 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
                 );
               },
               child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16.0,
-                  mainAxisSpacing: 16.0,
-                  childAspectRatio: 0.75,
-                ),
+                gridDelegate: blogGridDelegate(context),
                 itemCount: blogsToShow.length,
                 itemBuilder: (context, index) {
                   final blog = blogsToShow[index];
@@ -128,15 +128,20 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
               ),
             );
           } else if (state is UserLikedBlogsFailure) {
+            final l10n = context.l10n;
             return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('加载错误: ${state.error}'),
+                  Text(
+                    l10n.loadErrorPrefix(
+                      localizedFailure(l10n, state.failure),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   TextButton(
                     onPressed: _fetchSavedBlogs,
-                    child: const Text('重试'),
+                    child: Text(l10n.actionRetry),
                   ),
                 ],
               ),
@@ -154,13 +159,7 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
                     );
                   },
                   child: GridView.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 16.0,
-                          mainAxisSpacing: 16.0,
-                          childAspectRatio: 0.75,
-                        ),
+                    gridDelegate: blogGridDelegate(context),
                     itemCount: _lastBlogs.length,
                     itemBuilder: (context, index) {
                       final blog = _lastBlogs[index];

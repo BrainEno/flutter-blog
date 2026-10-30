@@ -1,3 +1,4 @@
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
 import 'package:belog/features/blog/presentation/blocs/related_articles/related_articles_cubit.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
@@ -35,9 +36,12 @@ class RelatedArticlesSection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Divider(height: 32),
-              const Text(
-                '相关阅读',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                context.l10n.relatedReading,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 4),
               ...state.blogs.map((blog) => BlogCard(blog: blog)),

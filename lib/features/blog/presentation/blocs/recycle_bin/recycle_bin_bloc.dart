@@ -1,3 +1,4 @@
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/usecase/usecase.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_deleted_blogs.dart';
@@ -31,7 +32,7 @@ class RecycleBinBloc extends Bloc<RecycleBinEvent, RecycleBinState> {
     emit(RecycleBinLoading());
     final res = await _getDeletedBlogs(NoParams());
     res.fold(
-      (failure) => emit(RecycleBinFailure(failure.message)),
+      (failure) => emit(RecycleBinFailure(failure.forPresentation())),
       (blogs) => emit(RecycleBinSuccess(blogs)),
     );
   }
@@ -50,7 +51,7 @@ class RecycleBinBloc extends Bloc<RecycleBinEvent, RecycleBinState> {
     res.fold(
       (failure) => emit(
         RecycleBinRestoreFailure(
-          message: failure.message,
+          failure: failure.forPresentation(),
           blogs: current.blogs,
         ),
       ),

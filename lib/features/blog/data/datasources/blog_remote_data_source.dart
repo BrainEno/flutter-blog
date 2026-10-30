@@ -11,6 +11,8 @@ import 'package:belog/features/blog/data/models/deleted_blog_model.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart'
     show kBlogPageSize;
+import 'package:belog/features/blog/domain/usecase/search_blogs.dart'
+    show kMaxSearchResults;
 
 /// Remote data source against the no-wave `apps/api` REST backend.
 ///
@@ -64,9 +66,6 @@ abstract interface class BlogRemoteDataSource {
   Future<bool> toggleLikeBlog(String userId, String blogId);
   Future<bool> isBlogLikedByUser(String userId, String blogId);
 }
-
-/// Upper bound for search results (the API accepts up to 100).
-const int kMaxSearchResults = 50;
 
 /// Upper bound for author/tag/liked listings (the API caps `limit` at 100).
 const int _kListLimit = 100;
@@ -236,6 +235,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         throw const ServerException(
           '该文章缺少服务端编号，无法更新，请尝试重新打开后再编辑',
           kind: FailureKind.validation,
+          code: 'article.idUpdate',
         );
       }
       final tagIds = await _resolveTagIds(blog.tags);
@@ -264,6 +264,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         throw const ServerException(
           '该文章缺少服务端编号，无法删除',
           kind: FailureKind.validation,
+          code: 'article.idDelete',
         );
       }
       // 200 with `{id, deletedAt}` means tombstoned; every other outcome
@@ -293,6 +294,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       throw ServerException(
         '服务器返回了无法解析的数据',
         kind: FailureKind.server,
+        code: 'server.parse',
         cause: data,
       );
     } catch (e) {
@@ -307,6 +309,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         throw const ServerException(
           '该文章缺少服务端编号，无法恢复',
           kind: FailureKind.validation,
+          code: 'article.idRestore',
         );
       }
       // The restore route reads the locale from the query string.
@@ -452,6 +455,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     throw ServerException(
       '服务器返回了无法解析的数据',
       kind: FailureKind.server,
+      code: 'server.parse',
       cause: data,
     );
   }
@@ -466,6 +470,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     throw ServerException(
       '服务器返回了无法解析的数据',
       kind: FailureKind.server,
+      code: 'server.parse',
       cause: data,
     );
   }

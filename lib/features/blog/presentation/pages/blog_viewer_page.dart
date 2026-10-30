@@ -1,4 +1,7 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/l10n/failure_l10n.dart';
+import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/l10n/tag_l10n.dart';
 import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/calculate_reading_time.dart';
@@ -97,7 +100,10 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
     return BlocConsumer<BlogViewerCubit, BlogViewerState>(
       listener: (context, state) {
         if (state is BlogViewerFailure) {
-          showSnackBar(context, state.error);
+          showSnackBar(
+            context,
+            localizedFailure(context.l10n, state.failure),
+          );
         } else if (state is BlogViewerLoaded) {
           final appUserState = context.read<AppUserCubit>().state;
           if (appUserState is AppUserLoggedIn) {
@@ -128,12 +134,12 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(state.error),
+                  Text(localizedFailure(context.l10n, state.failure)),
                   const SizedBox(height: 12),
                   TextButton(
                     onPressed: () =>
                         context.read<BlogViewerCubit>().load(widget.blogId),
-                    child: const Text('重试'),
+                    child: Text(context.l10n.actionRetry),
                   ),
                 ],
               ),
@@ -188,11 +194,14 @@ class _ViewerScaffold extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  CachedNetworkImage(
-                    // Versioned, cache-busting URL shared with the feed
-                    // card and editor (see cover_url.dart).
-                    imageUrl: coverUrlOf(blog),
-                    fit: BoxFit.cover,
+                  Semantics(
+                    image: true,
+                    label: context.l10n.coverOf(blog.title),
+                    child: CachedNetworkImage(
+                      // Versioned URL shared with the feed and editor.
+                      imageUrl: coverUrlOf(blog),
+                      fit: BoxFit.cover,
+                    ),
                   ),
                   Container(
                     decoration: BoxDecoration(
@@ -216,7 +225,7 @@ class _ViewerScaffold extends StatelessWidget {
               // payload is title + canonical web URL only.
               if (articleWebUrl(blog.id) != null)
                 IconButton(
-                  tooltip: '分享文章',
+                  tooltip: context.l10n.shareArticleTooltip,
                   icon: const Icon(Icons.share, color: Colors.white),
                   onPressed: () =>
                       shareArticle(title: blog.title, slug: blog.id),
@@ -224,14 +233,19 @@ class _ViewerScaffold extends StatelessWidget {
               BlocConsumer<BlogLikedBloc, BlogLikedState>(
                 listener: (context, state) {
                   if (state is ToggleBlogLikeFailure) {
-                    showSnackBar(context, state.error);
+                    showSnackBar(
+                      context,
+                      localizedFailure(context.l10n, state.failure),
+                    );
                   }
                 },
                 builder: (context, state) {
                   // Use likedBlogs map to determine if the blog is saved
                   final isSaved = state.likedBlogs[blog.id] ?? false;
                   return IconButton(
-                    tooltip: isSaved ? '取消收藏' : '收藏',
+                    tooltip: isSaved
+                        ? context.l10n.unsaveTooltip
+                        : context.l10n.saveTooltip,
                     icon: Icon(
                       isSaved ? Icons.bookmark : Icons.bookmark_border,
                       color: Colors.white,
@@ -246,7 +260,7 @@ class _ViewerScaffold extends StatelessWidget {
                           ),
                         );
                       } else {
-                        showSnackBar(context, '请先登录账户');
+                        showSnackBar(context, context.l10n.signInRequired);
                         onRequestLogin?.call();
                       }
                     },
@@ -264,68 +278,68 @@ class _ViewerScaffold extends StatelessWidget {
                   // The author row opens the public author page
                   // (issue #20); posterId is the stable user id the
                   // follow endpoints address.
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => context.push('/author/${blog.posterId}'),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundImage: blog.posterAvatar != null
-                              ? CachedNetworkImageProvider(blog.posterAvatar!)
-                              : null,
-                          child: blog.posterAvatar == null
-                              ? const Icon(Icons.person, size: 20)
-                              : null,
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  Semantics(
+                    button: true,
+                    label: context.l10n.authorPageSemantic(
+                      blog.posterName?.trim().isNotEmpty == true
+                          ? blog.posterName!
+                          : context.l10n.anonymousAuthor,
+                    ),
+                    child: InkWell(
+                      onTap: () => context.push('/author/${blog.posterId}'),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
                           children: [
-                            Text(
-                              blog.posterName?.isNotEmpty == true
-                                  ? blog.posterName!
-                                  : '匿名作者',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                            Semantics(
+                              image: true,
+                              label: context.l10n.avatarOf(
+                                blog.posterName?.trim().isNotEmpty == true
+                                    ? blog.posterName!
+                                    : context.l10n.anonymousAuthor,
+                              ),
+                              child: CircleAvatar(
+                                radius: 20,
+                                backgroundImage: blog.posterAvatar?.isNotEmpty == true
+                                    ? CachedNetworkImageProvider(blog.posterAvatar!)
+                                    : null,
+                                child: blog.posterAvatar?.isNotEmpty == true
+                                    ? null
+                                    : const Icon(Icons.person, size: 20),
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.calendar_today,
-                                  size: 14,
-                                  color: Colors.grey,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  formatDate(blog.updatedAt),
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 14,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    blog.posterName?.trim().isNotEmpty == true
+                                        ? blog.posterName!
+                                        : context.l10n.anonymousAuthor,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                const Icon(
-                                  Icons.access_time,
-                                  size: 14,
-                                  color: Colors.grey,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  calculateReadingTime(blog.content),
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 14,
+                                  const SizedBox(height: 4),
+                                  Wrap(
+                                    spacing: 4,
+                                    runSpacing: 4,
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    children: [
+                                      const Icon(Icons.calendar_today, size: 14),
+                                      Text(formatDate(context.l10n, blog.updatedAt)),
+                                      const SizedBox(width: 4),
+                                      const Icon(Icons.access_time, size: 14),
+                                      Text(calculateReadingTime(context.l10n, blog.content)),
+                                    ],
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -341,10 +355,12 @@ class _ViewerScaffold extends StatelessWidget {
                         .map(
                           (tag) => Chip(
                             label: Text(
-                              tag,
-                              style: const TextStyle(
+                              localizedTag(context.l10n, tag),
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: AppPalette.gradient1,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? AppPalette.greenColor
+                                    : AppPalette.accessibleGreen,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 1.5,
                               ),

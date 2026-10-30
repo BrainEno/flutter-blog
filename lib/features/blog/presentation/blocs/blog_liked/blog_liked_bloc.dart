@@ -1,3 +1,4 @@
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_user_liked_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/is_blog_liked.dart';
@@ -89,7 +90,7 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
           _emitLiked(emit, event.blogId, serverLiked);
           emit(
             ToggleBlogLikeFailure(
-              error: failure.message,
+              failure: failure.forPresentation(),
               likedBlogs: state.likedBlogs,
             ),
           );
@@ -130,7 +131,7 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
     res.fold(
       (failure) => emit(
         GetBlogIsLikedFailure(
-          error: failure.message,
+          failure: failure.forPresentation(),
           likedBlogs: state.likedBlogs,
         ),
       ),
@@ -159,7 +160,7 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
     res.fold(
       (failure) => emit(
         UserLikedBlogsFailure(
-          error: failure.message,
+          failure: failure.forPresentation(),
           likedBlogs: state.likedBlogs,
         ),
       ),

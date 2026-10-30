@@ -66,7 +66,10 @@ class UserDataExporter {
 
   /// Fetches the user's articles and shares the export file.
   /// [Failure] messages are user-facing (see [error_mapper]).
-  Future<Either<Failure, void>> exportAndShare({required User user}) async {
+  Future<Either<Failure, void>> exportAndShare({
+    required User user,
+    String shareTitle = '我的 Belog 数据',
+  }) async {
     final articlesRes = await getBlogsByPoster(
       GetBlogsByPosterParams(userId: user.id),
     );
@@ -91,7 +94,7 @@ class UserDataExporter {
       const JsonEncoder.withIndent('  ').convert(document),
     );
     await SharePlus.instance.share(
-      ShareParams(title: '我的 Belog 数据', files: [XFile(file.path)]),
+      ShareParams(title: shareTitle, files: [XFile(file.path)]),
     );
     return right(null);
   }

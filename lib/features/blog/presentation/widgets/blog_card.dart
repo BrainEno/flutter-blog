@@ -1,14 +1,15 @@
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart';
-import 'package:belog/core/theme/app_palette.dart';
+import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/l10n/tag_l10n.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/utils/cover_url.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class BlogCard extends StatefulWidget {
-  final Blog blog;
   const BlogCard({super.key, required this.blog});
+  final Blog blog;
 
   @override
   State<BlogCard> createState() => _BlogCardState();
@@ -16,21 +17,14 @@ class BlogCard extends StatefulWidget {
 
 class _BlogCardState extends State<BlogCard>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 150),
-      vsync: this,
-    );
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.95,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
+  late final AnimationController _controller = AnimationController(
+    duration: const Duration(milliseconds: 150),
+    vsync: this,
+  );
+  late final Animation<double> _scale = Tween<double>(
+    begin: 1,
+    end: 0.95,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
   @override
   void dispose() {
@@ -38,166 +32,118 @@ class _BlogCardState extends State<BlogCard>
     super.dispose();
   }
 
-  Color _getTagColor(String tag) {
-    // You can expand this logic based on your tag types or categories
-    switch (tag.toLowerCase()) {
-      case '诗歌':
-        return const Color.fromRGBO(255, 59, 48, 100);
-      case '小说':
-        return Color.fromRGBO(0, 113, 164, 100);
-      case '原创':
-        return Color.fromRGBO(175, 82, 222, 100);
-      default:
-        return const Color.fromRGBO(255, 179, 64, 100);
-    }
-  }
+  Color _tagColor(String tag) => switch (tag) {
+    '诗歌' => const Color(0xFFB42318),
+    '小说' => const Color(0xFF005B85),
+    '原创' => const Color(0xFF6931A8),
+    _ => const Color(0xFF805000),
+  };
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        context.push('/view/${widget.blog.id}', extra: widget.blog);
-      },
-      onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) => _controller.reverse(),
-      onTapCancel: () => _controller.reverse(),
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: Container(
-              height: 210,
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    final blog = widget.blog;
+    final l10n = context.l10n;
+    final name = blog.posterName?.trim().isNotEmpty == true
+        ? blog.posterName!
+        : l10n.anonymousAuthor;
+    return Semantics(
+      image: true,
+      label: l10n.coverOf(blog.title),
+      child: InkWell(
+        onTap: () => context.push('/view/${blog.id}', extra: blog),
+        onTapDown: (_) => _controller.forward(),
+        onTapUp: (_) => _controller.reverse(),
+        onTapCancel: () => _controller.reverse(),
+        child: AnimatedBuilder(
+          animation: _scale,
+          builder: (context, child) => Transform.scale(
+            scale: _scale.value,
+            child: child,
+          ),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 210),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade900,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 8,
+                  offset: Offset(0, 6),
+                ),
+              ],
+              image: blog.imageUrl.isEmpty
+                  ? null
+                  : DecorationImage(
+                      image: CachedNetworkImageProvider(coverUrlOf(blog)),
+                      fit: BoxFit.cover,
+                    ),
+            ),
+            // The gradient is painted *over* the cover and behind the text.
+            // A sufficiently dark overlay keeps white text legible even on
+            // a white cover; the card grows with the system text scale.
+            child: DecoratedBox(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(25),
-                    blurRadius: 8,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-                image: DecorationImage(
-                  // Versioned, cache-busting URL shared with the viewer
-                  // page and editor (see cover_url.dart).
-                  image: CachedNetworkImageProvider(coverUrlOf(widget.blog)),
-                  fit: BoxFit.cover,
-                ),
-                gradient: LinearGradient(
+                gradient: const LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withAlpha(50),
-                    Colors.black87,
-                  ],
-                  stops: [0.3, 0.7, 1.0],
+                  colors: [Colors.black54, Colors.black87],
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Tags Section
-                    if (widget.blog.tags.isNotEmpty)
+                    if (blog.tags.isNotEmpty)
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
-                          children: widget.blog.tags
-                              .map(
-                                (tag) => Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 4,
-                                    horizontal: 8,
+                          children: [
+                            for (final tag in blog.tags)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: Chip(
+                                  label: Text(
+                                    localizedTag(l10n, tag),
+                                    style: const TextStyle(color: Colors.white),
                                   ),
-                                  child: Chip(
-                                    label: Text(
-                                      tag,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.white,
-                                        letterSpacing: 1.5,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    backgroundColor: _getTagColor(
-                                      tag,
-                                    ).withAlpha(220),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                    ),
-                                    materialTapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(5),
-                                      side: BorderSide(
-                                        color: Colors.transparent,
-                                      ),
-                                    ),
-                                  ),
+                                  backgroundColor: _tagColor(tag),
                                 ),
-                              )
-                              .toList(),
+                              ),
+                          ],
                         ),
                       ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.blog.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppPalette.whiteColor,
-                              fontSize: 26, // Larger title for emphasis
-                              fontWeight: FontWeight.bold,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black87,
-                                  offset: Offset(1, 1),
-                                  blurRadius: 6,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          if (widget.blog.posterName != null)
-                            Text(
-                              widget.blog.posterName!,
-                              style: const TextStyle(
-                                color: Color.fromRGBO(255, 255, 255, 0.95),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                        ],
+                    const SizedBox(height: 8),
+                    Text(
+                      blog.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Text(name, style: const TextStyle(color: Colors.white)),
                     const SizedBox(height: 8),
-                    // Metadata Section
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(
-                          formatDate(widget.blog.updatedAt),
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        formatDate(l10n, blog.updatedAt),
+                        style: const TextStyle(color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }

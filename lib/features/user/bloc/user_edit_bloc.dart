@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/user/domain/usecases/edit_user_usecase.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -26,7 +27,15 @@ class UserEditBloc extends Bloc<UserEditEvent, UserEditState> {
   ) async {
     emit(UserEditLoading());
     if (appUserCubit.state is! AppUserLoggedIn) {
-      emit(UserEditFailure(message: "用户未登录"));
+      emit(
+        UserEditFailure(
+          failure: Failure(
+            '用户未登录',
+            kind: FailureKind.auth,
+            code: 'auth.notSignedIn',
+          ),
+        ),
+      );
       return;
     }
 
@@ -41,7 +50,7 @@ class UserEditBloc extends Bloc<UserEditEvent, UserEditState> {
     final result = await _editUserUseCase(params);
     result.fold(
       (failure) {
-        emit(UserEditFailure(message: "编辑用户资料失败,${failure.message}"));
+        emit(UserEditFailure(failure: failure.forPresentation()));
       },
       (user) {
         appUserCubit.updateUser(user);

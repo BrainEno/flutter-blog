@@ -1,4 +1,6 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/l10n/failure_l10n.dart';
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
@@ -60,25 +62,26 @@ class _CommentsSectionState extends State<CommentsSection> {
 
   String get _replyTargetName {
     final name = _replyTo?.authorName ?? '';
-    return name.isNotEmpty ? name : '匿名读者';
+    return name.isNotEmpty ? name : context.l10n.anonymousReader;
   }
 
   Future<bool> _confirmDelete(BuildContext context) async {
+    final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('删除评论'),
-        content: const Text('删除后不可恢复，这条评论下的回复也会一并删除。'),
+        title: Text(l10n.commentDeleteTitle),
+        content: Text(l10n.commentDeleteBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(
-              '删除',
-              style: TextStyle(color: AppPalette.errorColor),
+            child: Text(
+              l10n.actionDelete,
+              style: const TextStyle(color: AppPalette.errorColor),
             ),
           ),
         ],
@@ -110,7 +113,10 @@ class _CommentsSectionState extends State<CommentsSection> {
           // Load failures render inline next to their retry button;
           // submit/delete failures surface as a snackbar instead.
           if (state.status != CommentListStatus.failure) {
-            showSnackBar(context, state.error);
+            showSnackBar(
+              context,
+              localizedFailureOr(context.l10n, state.failure, state.error),
+            );
           }
           return;
         }
@@ -128,13 +134,16 @@ class _CommentsSectionState extends State<CommentsSection> {
             const Divider(height: 32),
             Row(
               children: [
-                const Text(
-                  '评论',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  context.l10n.commentsTitle,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  '${state.totalCount}',
+                  formatNumber(context.l10n, state.totalCount),
                   style: const TextStyle(color: Colors.grey, fontSize: 16),
                 ),
               ],
@@ -159,11 +168,14 @@ class _CommentsSectionState extends State<CommentsSection> {
       ),
       child: Column(
         children: [
-          const Text('登录后即可参与评论', style: TextStyle(color: Colors.grey)),
+          Text(
+            context.l10n.loginToComment,
+            style: const TextStyle(color: Colors.grey),
+          ),
           const SizedBox(height: 12),
           FilledButton.tonal(
             onPressed: widget.onRequestLogin,
-            child: const Text('去登录'),
+            child: Text(context.l10n.goSignIn),
           ),
         ],
       ),
@@ -189,11 +201,11 @@ class _CommentsSectionState extends State<CommentsSection> {
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.close, size: 18),
                   onPressed: _cancelReply,
-                  tooltip: '取消回复',
+                  tooltip: context.l10n.cancelReplyTooltip,
                 ),
               ),
               child: Text(
-                '回复 @$_replyTargetName',
+                context.l10n.replyToLabel(_replyTargetName),
                 style: const TextStyle(color: Colors.grey, fontSize: 13),
               ),
             ),
@@ -206,9 +218,9 @@ class _CommentsSectionState extends State<CommentsSection> {
           minLines: 1,
           textInputAction: TextInputAction.newline,
           maxLength: CommentBloc.maxContentLength,
-          decoration: const InputDecoration(
-            hintText: '说点什么…',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: context.l10n.commentComposerHint,
+            border: const OutlineInputBorder(),
             isDense: true,
           ),
         ),
@@ -224,7 +236,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.send, size: 16),
-            label: const Text('发送'),
+            label: Text(context.l10n.actionSend),
           ),
         ),
       ],
@@ -235,10 +247,12 @@ class _CommentsSectionState extends State<CommentsSection> {
     switch (state.status) {
       case CommentListStatus.initial:
       case CommentListStatus.loading:
-        return const Center(
+        return Center(
           child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: CircularProgressIndicator(),
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: CircularProgressIndicator(
+              semanticsLabel: context.l10n.loading,
+            ),
           ),
         );
       case CommentListStatus.failure:
@@ -247,24 +261,33 @@ class _CommentsSectionState extends State<CommentsSection> {
           child: Column(
             children: [
               Text(
-                state.error.isNotEmpty ? state.error : '评论加载失败',
+                state.error.isNotEmpty
+                    ? localizedFailureOr(
+                        context.l10n,
+                        state.failure,
+                        state.error,
+                      )
+                    : context.l10n.commentsLoadFailed,
                 style: const TextStyle(color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
               TextButton(
                 onPressed: () =>
                     context.read<CommentBloc>().add(const CommentsRequested()),
-                child: const Text('重试'),
+                child: Text(context.l10n.actionRetry),
               ),
             ],
           ),
         );
       case CommentListStatus.loaded:
         if (state.comments.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
             child: Center(
-              child: Text('还没有评论，来说第一句吧', style: TextStyle(color: Colors.grey)),
+              child: Text(
+                context.l10n.commentsEmpty,
+                style: const TextStyle(color: Colors.grey),
+              ),
             ),
           );
         }
@@ -304,6 +327,9 @@ class _CommentTile extends StatelessWidget {
         ? appUserState.user.id
         : null;
     final isOwn = viewerId != null && viewerId == comment.authorId;
+    final authorName = comment.authorName.trim().isNotEmpty
+        ? comment.authorName
+        : context.l10n.anonymousReader;
     final deleting = context.select<CommentBloc, bool>(
       (bloc) => bloc.state.deletingIds.contains(comment.id),
     );
@@ -316,19 +342,31 @@ class _CommentTile extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // The avatar and name open the author's public page
-              // (issue #20).
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => context.push('/author/${comment.authorId}'),
-                child: CircleAvatar(
-                  radius: depth == 0 ? 16 : 13,
-                  backgroundImage: comment.authorAvatarUrl.isNotEmpty
-                      ? CachedNetworkImageProvider(comment.authorAvatarUrl)
-                      : null,
-                  child: comment.authorAvatarUrl.isEmpty
-                      ? Icon(Icons.person, size: depth == 0 ? 16 : 13)
-                      : null,
+              // Both avatar and name open the author's public profile.
+              Semantics(
+                label: context.l10n.authorPageSemantic(authorName),
+                button: true,
+                child: InkWell(
+                  onTap: () => context.push('/author/${comment.authorId}'),
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Center(
+                      child: Semantics(
+                        image: true,
+                        label: context.l10n.avatarOf(authorName),
+                        child: CircleAvatar(
+                          radius: depth == 0 ? 16 : 13,
+                          backgroundImage: comment.authorAvatarUrl.isNotEmpty
+                              ? CachedNetworkImageProvider(comment.authorAvatarUrl)
+                              : null,
+                          child: comment.authorAvatarUrl.isEmpty
+                              ? Icon(Icons.person, size: depth == 0 ? 16 : 13)
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -336,34 +374,17 @@ class _CommentTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () =>
-                                context.push('/author/${comment.authorId}'),
-                            child: Text(
-                              comment.authorName.isNotEmpty
-                                  ? comment.authorName
-                                  : '匿名读者',
-                              style: TextStyle(
-                                fontSize: depth == 0 ? 14 : 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
+                    InkWell(
+                      onTap: () => context.push('/author/${comment.authorId}'),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          authorName,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text(
-                          formatDate(comment.createdAt),
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
+                    Text(formatDate(context.l10n, comment.createdAt)),
                     const SizedBox(height: 4),
                     // Plain-text rendering (content version 0): no markup
                     // is interpreted, the body renders exactly as stored.
@@ -378,13 +399,15 @@ class _CommentTile extends StatelessWidget {
                     Row(
                       children: [
                         _ActionText(
-                          label: '回复',
+                          label: context.l10n.actionReply,
                           onPressed: () => onReply(comment),
                         ),
                         if (isOwn) ...[
                           const SizedBox(width: 16),
                           _ActionText(
-                            label: deleting ? '删除中…' : '删除',
+                            label: deleting
+                                ? context.l10n.commentDeleting
+                                : context.l10n.actionDelete,
                             onPressed: deleting
                                 ? null
                                 : () async {
@@ -435,14 +458,9 @@ class _ActionText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = onPressed == null ? Colors.grey : AppPalette.gradient1;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onPressed,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Text(label, style: TextStyle(color: color, fontSize: 13)),
-      ),
+    return TextButton(
+      onPressed: onPressed,
+      child: Text(label),
     );
   }
 }

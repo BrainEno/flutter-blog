@@ -34,6 +34,9 @@ class AppPalette {
   ); // Medium grey for less important text in light mode
   static const Color lightBorder = Color(0xFFE0E0E0); // Light border color
 
+  // Darker green retains the brand hue while meeting text contrast on white.
+  static const Color accessibleGreen = Color(0xFF006C35);
+
   // ** General App Colors (Can be used in both themes) **
   static const Color gradient1 = Color.fromRGBO(
     29,

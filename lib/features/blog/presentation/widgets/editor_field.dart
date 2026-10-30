@@ -1,3 +1,4 @@
+import 'package:belog/core/l10n/l10n.dart'; // Shorthand for AppLocalizations
 import 'package:belog/core/theme/app_palette.dart'; // Import your color palette
 import 'package:flutter/material.dart';
 
@@ -46,12 +47,13 @@ class EditorField extends StatelessWidget {
         autofocus: false,
         validator: (value) {
           if (value!.isEmpty) {
-            return '请输入$hintText';
+            return context.l10n.editorFieldRequiredPrompt(hintText);
           }
           return null;
         },
         decoration: InputDecoration(
-          hintText: hintText,
+          labelText: hintText,
+        hintText: hintText,
           hintStyle:
               hintStyle ??
               TextStyle(
@@ -59,8 +61,8 @@ class EditorField extends StatelessWidget {
                 fontWeight: hintFontWeight, // Dynamic hint font weight
                 fontFamily: 'Roboto',
                 color: isDarkMode
-                    ? AppPalette.greyColorLight.withAlpha((0.5 * 255).toInt())
-                    : AppPalette.lightGreyText.withAlpha((0.5 * 255).toInt()),
+                    ? AppPalette.greyColorLight
+                    : AppPalette.lightGreyText,
               ),
           border: InputBorder.none,
           focusedBorder: InputBorder.none,

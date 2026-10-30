@@ -1,4 +1,5 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/usecase/usecase.dart';
 import 'package:belog/features/auth/domain/usecases/current_user.dart';
 import 'package:belog/features/auth/domain/usecases/user_login.dart';
@@ -52,7 +53,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
 
     res.fold(
-      (failure) => emit(AuthFailure(failure.message)),
+      (failure) => emit(AuthFailure(failure.forPresentation())),
       // The backend signs the user in immediately: there is no e-mail
       // confirmation step anymore.
       (user) => _emitAuthSuccess(user, emit),
@@ -70,7 +71,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
 
     res.fold(
-      (failure) => emit(AuthFailure(failure.message)),
+      (failure) => emit(AuthFailure(failure.forPresentation())),
       (user) => _emitAuthSuccess(user, emit),
     );
   }
@@ -81,7 +82,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     final res = await _currentUser(NoParams());
 
-    res.fold((failure) => emit(AuthFailure(failure.message)), (user) {
+    res.fold((failure) => emit(AuthFailure(failure.forPresentation())), (user) {
       _emitAuthSuccess(user, emit);
     });
   }
@@ -92,7 +93,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     _appUserCubit.updateUser(null);
 
     res.fold(
-      (failure) => emit(AuthLogoutFailure(failure.message)),
+      (failure) => emit(AuthLogoutFailure(failure.forPresentation())),
       (_) => emit(AuthLogoutSuccess()),
     );
   }

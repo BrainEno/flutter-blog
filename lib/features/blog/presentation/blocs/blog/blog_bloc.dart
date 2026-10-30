@@ -1,3 +1,4 @@
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:flutter/material.dart';
@@ -42,7 +43,7 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
     if (generation != _generation) return;
     res.fold(
       (failure) =>
-          emit(BlogListFailure(error: failure.message, previousState: state)),
+          emit(BlogListFailure(failure: failure.forPresentation(), previousState: state)),
       (blogs) => emit(
         BlogLoaded(
           blogs: blogs,
@@ -73,7 +74,7 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
     res.fold(
       (failure) => emit(
         BlogListFailure(
-          error: failure.message,
+          failure: failure.forPresentation(),
           previousState: latest.copyWith(isLoadingMore: false),
         ),
       ),

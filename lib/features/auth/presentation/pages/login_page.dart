@@ -1,6 +1,7 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/l10n/failure_l10n.dart';
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/common/widgets/loader.dart';
-import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/auth/presentation/widgets/auth_field.dart';
@@ -72,7 +73,10 @@ class _LoginPageState extends State<LoginPage> {
               listener: (context, state) {
                 if (state is AuthFailure) {
                   if (attemptedLogin) {
-                    showSnackBar(context, state.message);
+                    showSnackBar(
+                      context,
+                      localizedFailure(context.l10n, state.failure),
+                    );
                   }
                 }
               },
@@ -88,7 +92,7 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       const SizedBox(height: 60),
                       Text(
-                        '登录',
+                        context.l10n.loginTitle,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 32,
@@ -97,20 +101,20 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 40),
                       AuthField(
-                        hintText: "邮箱",
+                        hintText: context.l10n.fieldEmail,
                         controller: emailController,
                         prefixIcon: Icons.email_outlined,
                       ),
                       const SizedBox(height: 20),
                       AuthField(
-                        hintText: "密码",
+                        hintText: context.l10n.fieldPassword,
                         controller: passwordController,
                         isObscureText: true,
                         prefixIcon: Icons.lock_outline,
                       ),
                       const SizedBox(height: 30),
                       AuthGradientButton(
-                        buttonText: "登录",
+                        buttonText: context.l10n.loginTitle,
                         onPressed: () {
                           if (formKey.currentState!.validate()) {
                             attemptedLogin = true;
@@ -129,33 +133,18 @@ class _LoginPageState extends State<LoginPage> {
                       // docs/supabase-to-nowave-migration.md).
                       const SizedBox(height: 18),
                       Center(
-                        child: GestureDetector(
-                          onTap: _openSignUp,
-                          child: RichText(
+                        child: TextButton(
+                          onPressed: _openSignUp,
+                          child: Text(
+                            '${context.l10n.noAccountPrompt}${context.l10n.signUpLink}',
                             textAlign: TextAlign.center,
-                            text: TextSpan(
-                              text: "没有账号？",
-                              style: Theme.of(context).textTheme.titleMedium,
-                              children: [
-                                TextSpan(
-                                  text: '注册',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium!
-                                      .copyWith(
-                                        color: AppPalette.gradient2,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                ),
-                              ],
-                            ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 12),
                       TextButton(
                         onPressed: () => context.go('/'),
-                        child: const Text('暂不登录，先去逛逛'),
+                        child: Text(context.l10n.browseWithoutSignIn),
                       ),
                       const SizedBox(height: 60),
                     ],

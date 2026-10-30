@@ -1,12 +1,12 @@
 import 'dart:io' show Platform;
 
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/diagnostics_header.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
@@ -29,13 +29,9 @@ class _AboutPageState extends State<AboutPage> {
   late final Future<PackageInfo> _packageInfo = widget.packageInfoLoader();
 
   /// Coarse, sanitized context for the diagnostics preamble (issue #49):
-  /// app identity, build flavor, OS family and UI locale. Never device
-  /// identifiers or user data.
-  ///
-  /// The locale is the device's preferred locale, NOT
-  /// `Localizations.maybeLocaleOf`: the app ships no zh localization
-  /// delegates yet, so Material resolves a Chinese device down to en_US -
-  /// which would mislabel the very thing support cares about.
+  /// app identity, build flavor, OS family and device locale. Never device
+  /// identifiers or user data. This continues to report the preferred device
+  /// locale, even when the app falls back to a different supported language.
   String _diagnosticsHeader(PackageInfo? info) {
     return buildDiagnosticsHeader(
       appName: (info != null && info.appName.isNotEmpty)
@@ -51,116 +47,68 @@ class _AboutPageState extends State<AboutPage> {
     );
   }
 
+  Future<void> _openLink(BuildContext context, Uri uri) async {
+    try {
+      if (await canLaunchUrl(uri) && await launchUrl(uri)) return;
+    } catch (error, stackTrace) {
+      AppLogger.error('opening a contact link failed', error: error, stackTrace: stackTrace);
+    }
+    if (context.mounted) showSnackBar(context, context.l10n.cannotOpenLink);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Theme(
       data: AppTheme.darkThemeMode,
       child: Scaffold(
-        appBar: AppBar(title: const Text('About Us')),
-        body: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 25),
+        appBar: AppBar(title: Text(l10n.aboutTitle)),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 25),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                '关于Bottom Think',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
+              Text(l10n.aboutHeading, style: AppTheme.darkThemeMode.textTheme.headlineSmall),
               const SizedBox(height: 16),
-              const Text(
-                'Bottom Think是一个文学类博客平台，旨在为用户提供一个自由表达思想和分享创作的平台。我们鼓励用户分享他们的故事、观点和创意，促进思想的碰撞与交流。',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
+              Text(l10n.aboutBody),
               const SizedBox(height: 20),
-              const Text(
-                '联系作者',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
+              Text(l10n.contactHeading, style: AppTheme.darkThemeMode.textTheme.headlineSmall),
               const SizedBox(height: 16),
-              RichText(
-                text: TextSpan(
-                  style: TextStyle(fontSize: 16, color: Colors.white),
-                  children: [
-                    TextSpan(
-                      text: '邮箱:  ',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    TextSpan(
-                      text: 'nodeman24@outlook.com',
-                      style: TextStyle(decoration: TextDecoration.underline),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () async {
-                          final Uri emailUri = Uri.parse(
-                            'mailto:nodeman24@outlook.com',
-                          );
-                          if (await canLaunchUrl(emailUri)) {
-                            await launchUrl(emailUri);
-                          } else {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Could not launch $emailUri'),
-                                ),
-                              );
-                            }
-                          }
-                        },
-                    ),
-                  ],
+              Text(l10n.emailLabel),
+              TextButton(
+                onPressed: () => _openLink(
+                  context,
+                  Uri.parse('mailto:nodeman24@outlook.com'),
                 ),
+                child: const Text('nodeman24@outlook.com'),
               ),
               const SizedBox(height: 10),
-              RichText(
-                text: TextSpan(
-                  style: TextStyle(fontSize: 16, color: Colors.white),
-                  children: [
-                    TextSpan(
-                      text: 'Github:  ',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    TextSpan(
-                      text: 'https://github.com/BrainEno',
-                      style: TextStyle(decoration: TextDecoration.underline),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () async {
-                          final Uri githubUri = Uri.parse(
-                            'https://github.com/BrainEno',
-                          );
-                          if (await canLaunchUrl(githubUri)) {
-                            await launchUrl(githubUri);
-                          } else {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Could not launch $githubUri'),
-                                ),
-                              );
-                            }
-                          }
-                        },
-                    ),
-                  ],
+              Text(l10n.githubLabel),
+              TextButton(
+                onPressed: () => _openLink(
+                  context,
+                  Uri.parse('https://github.com/BrainEno'),
                 ),
+                child: const Text('https://github.com/BrainEno'),
               ),
               const SizedBox(height: 20),
-              const Text(
-                '版本信息',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
+              Text(l10n.versionHeading, style: AppTheme.darkThemeMode.textTheme.headlineSmall),
               const SizedBox(height: 16),
-              GestureDetector(
-                // Hidden support entry (issue #49): long-press the version
-                // to review - and optionally copy or share - the sanitized
-                // local diagnostics buffer.
+              // Long-press remains the user-controlled support entry: the
+              // report is still never sent automatically (issue #49).
+              InkWell(
                 onLongPress: () => _showDiagnostics(context),
-                child: FutureBuilder<PackageInfo>(
-                  future: _packageInfo,
-                  builder: (context, snapshot) => Text(
-                    // The real manifest version - a hardcoded string here
-                    // went stale once already.
-                    '应用版本: ${snapshot.data == null ? '…' : '${snapshot.data!.version}+${snapshot.data!.buildNumber}'}',
-                    style: const TextStyle(fontSize: 16, color: Colors.grey),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: FutureBuilder<PackageInfo>(
+                    future: _packageInfo,
+                    builder: (context, snapshot) {
+                      final info = snapshot.data;
+                      final version = info == null
+                          ? '…'
+                          : '${info.version}+${info.buildNumber}';
+                      return Text(l10n.appVersionLabel(version));
+                    },
                   ),
                 ),
               ),
@@ -171,8 +119,8 @@ class _AboutPageState extends State<AboutPage> {
     );
   }
 
-  /// Full report as the user sees (and copies) it: the sanitized context
-  /// header first, then the buffer's entries newest-first.
+  /// The report reviewed and optionally copied/shared by the user: sanitized
+  /// context first, followed by the local buffer's entries newest-first.
   String _composeReport(PackageInfo? info) {
     final header = _diagnosticsHeader(info);
     final body = AppLogger.diagnosticsReport();
@@ -180,18 +128,16 @@ class _AboutPageState extends State<AboutPage> {
   }
 
   Future<void> _showDiagnostics(BuildContext context) async {
-    // Resolved before the dialog opens: the builder below is synchronous.
     final info = await _packageInfo;
     if (!context.mounted) return;
+    final l10n = context.l10n;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
-        // The buffer is process-local and mutable; the dialog reflects it
-        // live so "clear" visibly empties what would be copied.
         var report = _composeReport(info);
         return StatefulBuilder(
           builder: (dialogContext, setState) => AlertDialog(
-            title: const Text('诊断信息'),
+            title: Text(l10n.diagnosticsTitle),
             content: SizedBox(
               width: double.maxFinite,
               child: Column(
@@ -202,10 +148,8 @@ class _AboutPageState extends State<AboutPage> {
                     child: SingleChildScrollView(
                       child: SelectableText(
                         AppLogger.diagnosticsReport().isEmpty
-                            ? '$report\n\n'
-                                  '诊断缓冲为空。\n\n'
-                                  '应用失败时会在这里记录脱敏摘要（错误类别、接口路径、'
-                                  '状态码与耗时），不包含任何账号信息。'
+                            ? '$report\n\n${l10n.diagnosticsEmptyBuffer}\n\n'
+                                  '${l10n.diagnosticsEmptyHint}'
                             : report,
                         style: const TextStyle(
                           fontSize: 13,
@@ -215,11 +159,7 @@ class _AboutPageState extends State<AboutPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    '以上内容仅保存在本机内存中，不会自动发送给任何人；'
-                    '复制或分享与否由你决定。',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
+                  Text(l10n.diagnosticsPrivacyNote),
                 ],
               ),
             ),
@@ -229,46 +169,39 @@ class _AboutPageState extends State<AboutPage> {
                   AppLogger.clearDiagnostics();
                   setState(() => report = _composeReport(info));
                 },
-                child: const Text('清空'),
+                child: Text(l10n.actionClear),
               ),
-              // Same user-controlled exit as copy, one tap fewer: the
-              // system share sheet receives exactly the text reviewed
-              // above - the header plus the buffer, nothing else.
               TextButton(
                 onPressed: () async {
                   Navigator.of(dialogContext).pop();
                   try {
                     await SharePlus.instance.share(
-                      ShareParams(title: 'Belog 诊断信息', text: report),
+                      ShareParams(title: l10n.diagnosticsShareTitle, text: report),
                     );
                   } catch (e, stackTrace) {
-                    // Not every surface has a share target (desktop, or
-                    // the test binding); copying must remain possible.
                     AppLogger.error(
                       'sharing the diagnostics failed',
                       error: e,
                       stackTrace: stackTrace,
                     );
                     if (context.mounted) {
-                      showSnackBar(context, '分享失败，请尝试复制');
+                      showSnackBar(context, l10n.diagnosticsShareFailed);
                     }
                   }
                 },
-                child: const Text('分享'),
+                child: Text(l10n.actionShare),
               ),
               TextButton(
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: report));
-                  // Pop before the snackbar, and use the page context:
-                  // the dialog context is deactivated by the pop.
                   Navigator.of(dialogContext).pop();
-                  showSnackBar(context, '诊断信息已复制');
+                  showSnackBar(context, l10n.diagnosticsCopied);
                 },
-                child: const Text('复制'),
+                child: Text(l10n.actionCopy),
               ),
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('关闭'),
+                child: Text(l10n.actionClose),
               ),
             ],
           ),

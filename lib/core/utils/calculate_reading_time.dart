@@ -1,6 +1,27 @@
-String calculateReadingTime(String articleText) {
+import 'package:belog/l10n/app_localizations.dart';
+
+/// Reading-time label for an article, localized (issue #24).
+///
+/// The estimate stays locale-independent - Chinese characters and English
+/// words are counted at their own reading speeds - while the label itself
+/// comes from the ARB catalogs, including English plural forms. An empty
+/// or sub-minute text reads as "约 1 分钟" / "About 1 minute".
+String calculateReadingTime(AppLocalizations l10n, String articleText) {
+  // Round once before splitting hours/minutes: 59.6 minutes is 1 hour,
+  // never "60 minutes" or "1 hour 60 minutes". Keep the existing minimum
+  // estimate of one minute for an empty or very short article.
+  final rounded = _estimateReadingMinutes(articleText).round();
+  final minutes = rounded < 1 ? 1 : rounded;
+  if (minutes < 60) return l10n.readingTimeMinutes(minutes);
+  final hours = minutes ~/ 60;
+  final remainder = minutes % 60;
+  if (remainder == 0) return l10n.readingTimeHours(hours);
+  return l10n.readingTimeHoursAndMinutes(hours, remainder);
+}
+
+double _estimateReadingMinutes(String articleText) {
   if (articleText.isEmpty) {
-    return '约 1 分钟';
+    return 0;
   }
 
   // Define reading speed for English and Chinese (words/characters per minute)
@@ -26,25 +47,8 @@ String calculateReadingTime(String articleText) {
   bool isChineseArticle =
       chineseWordCount > englishWordCount && chineseWordCount > 10;
 
-  double readingTimeInMinutes;
   if (isChineseArticle) {
-    readingTimeInMinutes = chineseWordCount / chineseReadingSpeed;
-  } else {
-    readingTimeInMinutes = englishWordCount / englishReadingSpeed;
+    return chineseWordCount / chineseReadingSpeed;
   }
-
-  // Localized reading-time labels (issue #24: no English fallbacks).
-  if (readingTimeInMinutes < 1) {
-    return '约 1 分钟';
-  } else if (readingTimeInMinutes < 60) {
-    return '约 ${readingTimeInMinutes.round()} 分钟';
-  } else {
-    int hours = readingTimeInMinutes ~/ 60;
-    int minutes = (readingTimeInMinutes % 60).round();
-    if (minutes == 0) {
-      return '约 $hours 小时';
-    } else {
-      return '约 $hours 小时 $minutes 分钟';
-    }
-  }
+  return englishWordCount / englishReadingSpeed;
 }

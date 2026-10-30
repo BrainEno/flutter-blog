@@ -25,12 +25,18 @@ class Failure {
   final FailureKind kind;
   final String message;
   final String? code;
+
+  /// Optional presentation key when one machine code needs a more specific
+  /// localized message (for example, an offline follow versus a failed send).
+  /// It does not replace [code], which remains stable for callers.
+  final String? l10nKey;
   final Object? cause;
 
   const Failure(
     this.message, {
     this.kind = FailureKind.unknown,
     this.code,
+    this.l10nKey,
     this.cause,
   });
 
@@ -96,6 +102,14 @@ class Failure {
     kind: FailureKind.unknown,
     code: 'unknown',
     cause: cause,
+  );
+
+  /// Drops the diagnostic-only cause before a failure is stored in UI state.
+  Failure forPresentation() => Failure(
+    message,
+    kind: kind,
+    code: code,
+    l10nKey: l10nKey,
   );
 
   @override

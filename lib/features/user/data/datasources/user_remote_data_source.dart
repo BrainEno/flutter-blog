@@ -81,6 +81,7 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
     if (data is Map<String, dynamic>) return data;
     throw ServerException(
       '服务器返回了无法解析的数据',
+      code: 'server.parse',
       kind: FailureKind.server,
       cause: data,
     );

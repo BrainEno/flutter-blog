@@ -1,3 +1,4 @@
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/storage/reading_history_store.dart';
@@ -53,7 +54,11 @@ void main() {
     await tester.pumpWidget(
       BlocProvider<AppUserCubit>.value(
         value: cubit,
-        child: MaterialApp(home: ReadingHistoryPage(store: store)),
+        child: MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+home: ReadingHistoryPage(store: store)),
       ),
     );
     await tester.pumpAndSettle();

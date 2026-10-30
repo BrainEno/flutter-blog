@@ -16,15 +16,23 @@ final class AuthSuccess extends AuthState {
 }
 
 final class AuthFailure extends AuthState {
-  final String message;
+  final Failure failure;
 
-  const AuthFailure(this.message);
+  const AuthFailure(this.failure);
+
+  /// Display-safe Chinese fallback; the UI localizes via
+  /// `localizedFailure` (issue #24).
+  String get message => failure.message;
 }
 
 final class AuthLogoutSuccess extends AuthState {}
 
 final class AuthLogoutFailure extends AuthState {
-  final String message;
+  final Failure failure;
 
-  const AuthLogoutFailure(this.message);
+  const AuthLogoutFailure(this.failure);
+
+  /// Display-safe Chinese fallback; the UI localizes via
+  /// `localizedFailure` (issue #24).
+  String get message => failure.message;
 }

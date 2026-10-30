@@ -1,3 +1,4 @@
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:flutter/material.dart';
 
 enum DraftRecoveryChoice { restore, discard, keepCurrent }
@@ -10,25 +11,25 @@ Future<DraftRecoveryChoice?> showDraftRecoveryDialog(
   return showDialog<DraftRecoveryChoice>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('发现草稿'),
+      title: Text(context.l10n.draftFoundTitle),
       content: Text(
         isOlderThanPublished
-            ? '此草稿比已发布文章旧。恢复草稿会替换当前编辑内容。'
-            : '恢复草稿会替换当前编辑内容。请选择如何处理。',
+            ? context.l10n.draftOlderBody
+            : context.l10n.draftReplaceBody,
       ),
       actions: [
         TextButton(
           onPressed: () =>
               Navigator.pop(context, DraftRecoveryChoice.keepCurrent),
-          child: const Text('继续当前内容'),
+          child: Text(context.l10n.draftKeepCurrent),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, DraftRecoveryChoice.discard),
-          child: const Text('丢弃草稿'),
+          child: Text(context.l10n.draftDiscardAction),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, DraftRecoveryChoice.restore),
-          child: const Text('恢复草稿'),
+          child: Text(context.l10n.draftRestoreAction),
         ),
       ],
     ),

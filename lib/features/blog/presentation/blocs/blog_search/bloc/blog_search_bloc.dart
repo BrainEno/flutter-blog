@@ -1,3 +1,4 @@
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -45,7 +46,7 @@ class BlogSearchBloc extends Bloc<BlogSearchEvent, BlogSearchState> {
     // A newer search (or a clear) superseded this one.
     if (generation != _generation) return;
     res.fold(
-      (failure) => emit(BlogSearchFailure(error: failure.message)),
+      (failure) => emit(BlogSearchFailure(failure: failure.forPresentation())),
       (blogs) => emit(BlogSearchSuccess(blogs: blogs)),
     );
   }

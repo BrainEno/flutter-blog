@@ -1,0 +1,383 @@
+{
+  "@@locale": "en",
+  "actionRetry": "Retry",
+  "actionCancel": "Cancel",
+  "actionDelete": "Delete",
+  "actionShare": "Share",
+  "actionCopy": "Copy",
+  "actionClear": "Clear",
+  "actionClose": "Close",
+  "actionSend": "Send",
+  "actionReply": "Reply",
+  "actionRestore": "Restore",
+  "actionSaveChanges": "Save changes",
+  "actionPublish": "Publish",
+  "tabHome": "Home",
+  "tabSearch": "Search",
+  "tabSaved": "Saved",
+  "tabProfile": "Profile",
+  "feedEmpty": "No articles yet — pull to refresh",
+  "feedNoMore": "No more articles",
+  "newPostTooltip": "Write a post",
+  "readingTimeMinutes": "{count, plural, =1{About 1 minute} other{About {count} minutes}}",
+  "@readingTimeMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "readingTimeHours": "{count, plural, =1{About 1 hour} other{About {count} hours}}",
+  "@readingTimeHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "readingTimeHoursAndMinutes": "About {hours, plural, =1{1 hour} other{{hours} hours}} {minutes, plural, =1{1 minute} other{{minutes} minutes}}",
+  "@readingTimeHoursAndMinutes": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "anonymousAuthor": "Anonymous author",
+  "anonymousReader": "Anonymous reader",
+  "shareArticleTooltip": "Share article",
+  "saveTooltip": "Save",
+  "unsaveTooltip": "Remove from saved",
+  "signInRequired": "Please sign in first",
+  "relatedReading": "Related reading",
+  "authorPageSemantic": "Open {name}'s profile",
+  "@authorPageSemantic": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "markdownImageAlt": "[Image]",
+  "markdownImageFailed": "[Image failed to load]",
+  "commentsTitle": "Comments",
+  "commentDeleteTitle": "Delete comment",
+  "commentDeleteBody": "Deleting is permanent. Replies under this comment will be deleted too.",
+  "loginToComment": "Sign in to join the conversation",
+  "goSignIn": "Sign in",
+  "cancelReplyTooltip": "Cancel reply",
+  "replyToLabel": "Reply to {name}",
+  "@replyToLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "commentComposerHint": "Say something…",
+  "commentsLoadFailed": "Failed to load comments",
+  "commentsEmpty": "No comments yet — be the first to speak",
+  "commentDeleting": "Deleting…",
+  "editorNewTitle": "Write a new article",
+  "editorEditTitle": "Edit article",
+  "saveAndPublish": "Save and publish",
+  "saveDraft": "Save draft",
+  "uploadSuccess": "Published successfully",
+  "updateSuccess": "Updated successfully",
+  "draftRestored": "Draft restored",
+  "draftDiscarded": "Draft discarded",
+  "draftChanged": "The draft changed — please reopen the editor",
+  "draftReadFailed": "Could not read the draft, please try again",
+  "imagePickFailed": "Could not pick an image, please try again",
+  "editorRequiredFields": "Please fill in the title and the body",
+  "draftSaved": "Draft saved",
+  "draftSaveFailed": "Could not save the draft, please try again",
+  "uploadCoverHint": "Tap to upload a cover (optional)",
+  "fieldTitleHint": "Title",
+  "editorSegmentEdit": "Edit",
+  "editorSegmentPreview": "Preview",
+  "previewEmptyBody": "The body is empty — the preview appears once you start typing",
+  "fieldBodyHint": "Body (Markdown supported)",
+  "autoSaveSaving": "Auto-saving draft…",
+  "autoSaveSaved": "Draft auto-saved",
+  "autoSaveFailed": "Auto-save failed — save the draft manually",
+  "draftFoundTitle": "Draft found",
+  "draftOlderBody": "This draft is older than the published article. Restoring it replaces the current editor content.",
+  "draftReplaceBody": "Restoring the draft replaces the current editor content. Choose what to do.",
+  "draftKeepCurrent": "Keep current content",
+  "draftDiscardAction": "Discard draft",
+  "draftRestoreAction": "Restore draft",
+  "searchHint": "Search titles…",
+  "searchFailed": "Search failed: {error}",
+  "@searchFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "searchInitial": "Type a keyword to find articles you like",
+  "searchNoResults": "No matching articles yet",
+  "posterLabel": "By {name}",
+  "@posterLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "savedTitle": "Saved articles",
+  "savedEmpty": "No saved articles yet",
+  "loadErrorPrefix": "Failed to load: {error}",
+  "@loadErrorPrefix": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "recycleBinTitle": "Recycle bin",
+  "recycleBinTooltip": "Recycle bin",
+  "purgeAfterRetention": "Permanently deleted once the retention period ends",
+  "purgeSoon": "About to be permanently deleted",
+  "purgeInDays": "{days, plural, =1{Permanently deleted in 1 day} other{Permanently deleted in {formattedDays} days}}",
+  "@purgeInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "formattedDays": {
+        "type": "String"
+      }
+    }
+  },
+  "restoredAsDraft": "“{title}” was restored as a draft — find it in My articles",
+  "@restoredAsDraft": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "recycleBinEmpty": "The recycle bin is empty",
+  "deletedOn": "Deleted {date}",
+  "@deletedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "myArticlesTitle": "My articles",
+  "deleteArticleTitle": "Delete article",
+  "deleteArticleBody": "Delete “{title}”? You can restore it from the recycle bin.",
+  "@deleteArticleBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "articleDeletedNotice": "Deleted — you can restore it from the recycle bin",
+  "noArticlesYet": "No articles published yet",
+  "myArticlesLoadFailed": "Could not load articles",
+  "historyTitle": "Reading history",
+  "clearHistoryTitle": "Clear reading history",
+  "clearHistoryBody": "This deletes every reading record on this device and cannot be undone. Continue?",
+  "historyEmpty": "No reading history yet",
+  "historyEmptyHint": "Articles you read stay on this device, visible only to you",
+  "removeHistoryEntry": "Remove this entry",
+  "loginTitle": "Sign in",
+  "fieldEmail": "E-mail",
+  "fieldPassword": "Password",
+  "fieldPasswordWithMin": "Password (at least 12 characters)",
+  "noAccountPrompt": "No account yet? ",
+  "signUpLink": "Sign up",
+  "browseWithoutSignIn": "Browse without signing in",
+  "signUpTitle": "Sign up",
+  "fieldName": "Username",
+  "submit": "Submit",
+  "hasAccountPrompt": "Already have an account? ",
+  "signInLink": "Sign in",
+  "browseWithoutSignUp": "Browse without signing up",
+  "passwordRequired": "Please enter a password!",
+  "passwordMinLength": "The password needs at least 12 characters",
+  "fieldRequiredPrompt": "Please enter {field}!",
+  "@fieldRequiredPrompt": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
+  "editorFieldRequiredPrompt": "Please enter {field}",
+  "@editorFieldRequiredPrompt": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
+  "profileTitle": "Profile",
+  "menuEditProfile": "Edit profile",
+  "menuMyArticles": "My articles",
+  "menuReadingHistory": "Reading history",
+  "menuAbout": "About",
+  "exportMyData": "Export my data",
+  "exportMyDataHint": "Export your profile and all your articles as a JSON file",
+  "logout": "Sign out",
+  "notSignedIn": "You are not signed in",
+  "signIn": "Sign in",
+  "exportFailed": "Could not export, please try again",
+  "exportDone": "Export file ready",
+  "exportShareTitle": "My Belog data",
+  "editProfileTitle": "Edit profile",
+  "profileUpdated": "Profile updated!",
+  "labelName": "Name",
+  "labelBio": "Bio",
+  "labelEmail": "E-mail",
+  "emailReadOnly": "E-mail cannot be changed yet",
+  "notSet": "Not set",
+  "changeAvatarTooltip": "Change avatar",
+  "authorTitle": "Author",
+  "invalidLink": "Invalid link",
+  "cannotOpenLink": "Could not open the link",
+  "authorMissing": "This author does not exist",
+  "authorArticlesTitle": "Their articles",
+  "authorArticlesLoadFailed": "Failed to load articles",
+  "authorNoArticles": "No articles yet",
+  "thisIsYou": "This is you",
+  "followingButton": "Following",
+  "followButton": "Follow",
+  "followerStats": "{followers, plural, =1{{formattedFollowers} follower} other{{formattedFollowers} followers}} · {following} following",
+  "@followerStats": {
+    "placeholders": {
+      "followers": {
+        "type": "int"
+      },
+      "formattedFollowers": {
+        "type": "String"
+      },
+      "following": {
+        "type": "String"
+      }
+    }
+  },
+  "aboutTitle": "About",
+  "aboutHeading": "About Bottom Think",
+  "aboutBody": "Bottom Think is a literary blogging platform built for free expression and creative sharing. We encourage everyone to publish their stories, views and ideas, and to keep thoughts colliding and circulating.",
+  "contactHeading": "Contact",
+  "emailLabel": "E-mail: ",
+  "githubLabel": "Github: ",
+  "versionHeading": "Version",
+  "appVersionLabel": "App version: {version}",
+  "@appVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "diagnosticsTitle": "Diagnostics",
+  "diagnosticsEmptyBuffer": "The diagnostics buffer is empty.",
+  "diagnosticsEmptyHint": "When the app fails, a sanitized summary is recorded here (error category, endpoint path, status code and duration) - never any account data.",
+  "diagnosticsPrivacyNote": "This stays in this device's memory and is never sent anywhere; copying or sharing is up to you.",
+  "diagnosticsShareTitle": "Belog diagnostics",
+  "diagnosticsShareFailed": "Could not share — try copying instead",
+  "diagnosticsCopied": "Diagnostics copied",
+  "avatarOf": "Avatar of {name}",
+  "@avatarOf": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "coverOf": "Cover of {title}",
+  "@coverOf": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "imageLabel": "Image",
+  "loading": "Loading…",
+  "loadingArticles": "Loading articles…",
+  "loadingMoreArticles": "Loading more articles…",
+  "searching": "Searching…",
+  "clearSearch": "Clear search",
+  "switchToLight": "Switch to light theme",
+  "switchToDark": "Switch to dark theme",
+  "tagPoetry": "Poetry",
+  "tagFiction": "Fiction",
+  "tagOriginal": "Original",
+  "tagOther": "Other",
+  "errorNetworkOffline": "No network connection — check your settings",
+  "errorNetworkUnavailable": "Network unavailable — check your connection",
+  "errorTimeout": "The request timed out, please try again",
+  "errorAuthExpired": "Your session expired — please sign in again",
+  "errorNotSignedIn": "You are not signed in",
+  "errorPermission": "You do not have permission to do this",
+  "errorNotFound": "That content no longer exists",
+  "errorConflict": "That already exists — no need to repeat it",
+  "errorIdempotencyConflict": "The repeated submit differs — refresh and try again",
+  "errorBadInput": "The submitted content is invalid — check it and try again",
+  "errorRateLimited": "Too many requests — try again shortly",
+  "errorServiceUnavailable": "The server is temporarily unavailable",
+  "errorServer": "The server hit a snag — please try again later",
+  "errorStorage": "Local storage could not be read or written",
+  "errorDataFormat": "The data format is invalid — update the app and try again",
+  "errorUnknown": "Something went wrong — please try again later",
+  "errorInvalidCredentials": "Incorrect e-mail or password",
+  "errorEmailPasswordFormat": "Invalid e-mail or password format",
+  "errorEmailTaken": "That e-mail is already registered — sign in instead",
+  "errorSignupBadInput": "The sign-up details are invalid — check the e-mail and the password (at least 12 characters)",
+  "errorAuthRequired": "Please sign in",
+  "errorAuthSessionExpired": "Your session has expired — please sign in again",
+  "errorAuthRateLimited": "Too many attempts — try again later",
+  "errorSignupRateLimited": "Too many sign-ups — try again later",
+  "errorProfileSave": "Failed to save your profile: {reason}",
+  "@errorProfileSave": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "errorCommentsLoad": "Failed to load comments — try again later",
+  "errorCommentsSend": "Failed to post the comment — try again later",
+  "errorCommentsSendOffline": "Offline — the comment was not sent",
+  "errorCommentsDelete": "Failed to delete the comment — try again later",
+  "errorCommentsDeleteOffline": "Offline — the delete was not synced",
+  "errorCommentTooLong": "The comment is too long (2000 characters max)",
+  "errorLikesSync": "Offline — the save was not synced",
+  "errorLikesToggle": "The save failed — try again later",
+  "errorLikesStatus": "Could not check the saved state — try again later",
+  "errorLikesList": "Could not load saved articles — try again later",
+  "errorRelatedLoad": "Could not load related articles",
+  "errorAuthorLoad": "Could not load the author — try again later",
+  "errorFollowSync": "Offline — the follow was not synced",
+  "errorUnfollowSync": "Offline — the unfollow was not synced",
+  "errorFollowToggle": "The follow failed — try again later",
+  "errorServerParse": "The server sent data the app could not parse",
+  "errorArticleIdUpdate": "This article lost its server id — reopen it and try editing again",
+  "errorArticleIdDelete": "This article has no server id and cannot be deleted",
+  "errorArticleIdRestore": "This article has no server id and cannot be restored",
+  "errorLoginParse": "Malformed sign-in response",
+  "errorLoginMissingUser": "The sign-in response is missing the user",
+  "errorProfileParse": "Malformed profile response",
+  "errorEmptyBody": "The body cannot be empty",
+  "searchNoMore": "No more search results",
+  "searchLimitReached": "Showing the first {count} results — refine your search",
+  "@searchLimitReached": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  }
+}

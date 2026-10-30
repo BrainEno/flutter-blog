@@ -50,8 +50,12 @@ final class BlogLoaded extends BlogState {
 /// A request failed. [previousState] preserves the last list so the feed can
 /// keep showing cached content with an error hint instead of a dead spinner.
 final class BlogListFailure extends BlogState {
-  final String error;
+  final Failure failure;
   final BlogState? previousState;
 
-  const BlogListFailure({required this.error, this.previousState});
+  const BlogListFailure({required this.failure, this.previousState});
+
+  /// Display-safe Chinese fallback; the UI localizes via
+  /// `localizedFailure` (issue #24).
+  String get error => failure.message;
 }

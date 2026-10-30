@@ -1,3 +1,5 @@
+import 'package:belog/core/l10n/l10n.dart'; // Shorthand for AppLocalizations
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/theme/app_palette.dart'; // Import your color palette
 import 'package:flutter/material.dart';
 
@@ -45,6 +47,7 @@ class AuthField extends StatelessWidget {
                 : AppPalette.lightBlack, // Black text in light mode
           ),
       decoration: InputDecoration(
+        labelText: hintText,
         hintText: hintText,
         hintStyle:
             hintStyle ??
@@ -92,17 +95,19 @@ class AuthField extends StatelessWidget {
           context,
         ), // Focused error border remains red
       ),
-      validator: _effectiveValidator,
+      validator: (value) => _effectiveValidator(context.l10n, value),
     );
   }
 
   /// The custom [validator] when provided, otherwise a plain non-empty
-  /// check.
-  String? _effectiveValidator(String? value) {
+  /// check with a localized message (issue #24).
+  String? _effectiveValidator(AppLocalizations l10n, String? value) {
     if (validator != null) {
       return validator!(value);
     }
-    return value == null || value.isEmpty ? "请输入$hintText!" : null;
+    return value == null || value.isEmpty
+        ? l10n.fieldRequiredPrompt(hintText)
+        : null;
   }
 
   // Theme-aware border for the auth field

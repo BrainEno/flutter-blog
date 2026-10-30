@@ -1,3 +1,4 @@
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 Future<void> pumpMarkdown(WidgetTester tester, String source) async {
   await tester.pumpWidget(
     MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+
       theme: ThemeData.dark(useMaterial3: true),
       home: Scaffold(
         body: SingleChildScrollView(child: MarkdownBody(markdown: source)),
@@ -114,6 +119,10 @@ print('hi');
   ) async {
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+
         theme: ThemeData.light(useMaterial3: true),
         home: Scaffold(
           body: SingleChildScrollView(

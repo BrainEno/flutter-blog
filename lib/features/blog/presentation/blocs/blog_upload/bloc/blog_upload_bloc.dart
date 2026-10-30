@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/update_blog.dart';
 import 'package:belog/features/blog/domain/usecase/upload_blog.dart';
@@ -43,7 +44,7 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
     );
 
     res.fold(
-      (failure) => emit(BlogUploadFailure(failure.message)),
+      (failure) => emit(BlogUploadFailure(failure.forPresentation())),
       (blog) => emit(BlogUploadSuccess()),
     );
   }
@@ -64,7 +65,7 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
       ),
     );
     res.fold(
-      (failure) => emit(BlogUploadFailure(failure.message)),
+      (failure) => emit(BlogUploadFailure(failure.forPresentation())),
       (_) => emit(BlogUploadSuccess()),
     );
   }
@@ -76,7 +77,7 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
     emit(BlogDeleteLoading());
     final res = await _deleteBlog(DeleteBlogParams(blogId: event.blogId));
     res.fold(
-      (failure) => emit(BlogUploadFailure(failure.message)),
+      (failure) => emit(BlogUploadFailure(failure.forPresentation())),
       (_) => emit(BlogDeleteSuccess()),
     );
   }

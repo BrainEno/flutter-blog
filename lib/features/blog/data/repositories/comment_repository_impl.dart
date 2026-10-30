@@ -29,7 +29,7 @@ class CommentRepositoryImpl implements CommentRepository {
       return left(e.toFailure());
     } catch (e, stackTrace) {
       AppLogger.error('getComments failed', error: e, stackTrace: stackTrace);
-      return left(Failure('评论加载失败，请稍后重试'));
+      return left(Failure('评论加载失败，请稍后重试', code: 'comments.load'));
     }
   }
 
@@ -47,6 +47,7 @@ class CommentRepositoryImpl implements CommentRepository {
             '无法连接到网络，评论未发送',
             kind: FailureKind.network,
             code: 'network.offline',
+            l10nKey: 'comments.sendOffline',
           ),
         );
       }
@@ -62,7 +63,7 @@ class CommentRepositoryImpl implements CommentRepository {
       return left(e.toFailure());
     } catch (e, stackTrace) {
       AppLogger.error('createComment failed', error: e, stackTrace: stackTrace);
-      return left(Failure('评论发送失败，请稍后重试'));
+      return left(Failure('评论发送失败，请稍后重试', code: 'comments.send'));
     }
   }
 
@@ -75,6 +76,7 @@ class CommentRepositoryImpl implements CommentRepository {
             '无法连接到网络，删除未同步',
             kind: FailureKind.network,
             code: 'network.offline',
+            l10nKey: 'comments.deleteOffline',
           ),
         );
       }
@@ -87,7 +89,7 @@ class CommentRepositoryImpl implements CommentRepository {
       return left(e.toFailure());
     } catch (e, stackTrace) {
       AppLogger.error('deleteComment failed', error: e, stackTrace: stackTrace);
-      return left(Failure('评论删除失败，请稍后重试'));
+      return left(Failure('评论删除失败，请稍后重试', code: 'comments.delete'));
     }
   }
 }

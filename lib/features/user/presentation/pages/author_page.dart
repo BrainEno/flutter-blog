@@ -1,5 +1,7 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
-import 'package:belog/core/theme/app_palette.dart';
+import 'package:belog/core/l10n/failure_l10n.dart';
+import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
@@ -43,19 +45,19 @@ class _AuthorPageState extends State<AuthorPage> {
   Future<void> _openWebsite(String url) async {
     final uri = Uri.tryParse(url);
     if (uri == null || !uri.hasScheme) {
-      if (mounted) showSnackBar(context, '链接无效');
+      if (mounted) showSnackBar(context, context.l10n.invalidLink);
       return;
     }
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!opened && mounted) {
-      showSnackBar(context, '无法打开链接');
+      showSnackBar(context, context.l10n.cannotOpenLink);
     }
   }
 
   void _onFollowTap(AuthorLoaded state) {
     final appUserState = context.read<AppUserCubit>().state;
     if (appUserState is! AppUserLoggedIn) {
-      showSnackBar(context, '请先登录账户');
+      showSnackBar(context, context.l10n.signInRequired);
       _requestLogin();
       return;
     }
@@ -70,7 +72,7 @@ class _AuthorPageState extends State<AuthorPage> {
         : null;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('作者')),
+      appBar: AppBar(title: Text(context.l10n.authorTitle)),
       body: BlocConsumer<AuthorCubit, AuthorState>(
         listenWhen: (previous, current) =>
             current is AuthorLoaded &&
@@ -78,11 +80,18 @@ class _AuthorPageState extends State<AuthorPage> {
             current.followError != previous.followError &&
             current.followError.isNotEmpty,
         listener: (context, state) {
-          showSnackBar(context, (state as AuthorLoaded).followError);
+          showSnackBar(
+            context,
+            localizedFailure(context.l10n, (state as AuthorLoaded).followFailure!),
+          );
         },
         builder: (context, state) {
           if (state is AuthorLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(
+                semanticsLabel: context.l10n.loading,
+              ),
+            );
           }
           if (state is AuthorFailure) {
             return Center(
@@ -90,14 +99,16 @@ class _AuthorPageState extends State<AuthorPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    state.error.isNotEmpty ? state.error : '作者不存在或已注销',
+                    state.error.isNotEmpty
+                        ? localizedFailure(context.l10n, state.failure)
+                        : context.l10n.authorMissing,
                     style: const TextStyle(color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   TextButton(
                     onPressed: () => context.read<AuthorCubit>().load(),
-                    child: const Text('重试'),
+                    child: Text(context.l10n.actionRetry),
                   ),
                 ],
               ),
@@ -120,11 +131,14 @@ class _AuthorPageState extends State<AuthorPage> {
               const SizedBox(height: 16),
               const Divider(height: 1),
               const SizedBox(height: 16),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  'TA 的文章',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  context.l10n.authorArticlesTitle,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -132,17 +146,33 @@ class _AuthorPageState extends State<AuthorPage> {
                 builder: (context, articleState) {
                   if (articleState is GetBlogsByUserLoading ||
                       articleState is BlogByInitial) {
-                    return const Center(child: CircularProgressIndicator());
+                    return Center(
+                      child: CircularProgressIndicator(
+                        semanticsLabel: context.l10n.loadingArticles,
+                      ),
+                    );
                   }
                   if (articleState is GetBlogsByUserFailure) {
                     return Padding(
                       padding: const EdgeInsets.all(16),
-                      child: Text(
-                        articleState.error.isNotEmpty
-                            ? articleState.error
-                            : '文章加载失败',
-                        style: const TextStyle(color: Colors.grey),
-                        textAlign: TextAlign.center,
+                      child: Column(
+                        children: [
+                          Text(
+                            articleState.error.isNotEmpty
+                                ? localizedFailure(
+                                    context.l10n,
+                                    articleState.failure,
+                                  )
+                                : context.l10n.authorArticlesLoadFailed,
+                            textAlign: TextAlign.center,
+                          ),
+                          TextButton(
+                            onPressed: () => context.read<BlogByBloc>().add(
+                              GetBlogByPosterEvent(userId: widget.userId),
+                            ),
+                            child: Text(context.l10n.actionRetry),
+                          ),
+                        ],
                       ),
                     );
                   }
@@ -150,14 +180,9 @@ class _AuthorPageState extends State<AuthorPage> {
                       ? articleState.blogs
                       : const [];
                   if (blogs.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(
-                        child: Text(
-                          '还没有发布文章',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ),
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Center(child: Text(context.l10n.authorNoArticles)),
                     );
                   }
                   return Column(
@@ -183,6 +208,10 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final name = profile.displayName.trim().isNotEmpty
+        ? profile.displayName
+        : l10n.anonymousAuthor;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -190,14 +219,18 @@ class _ProfileHeader extends StatelessWidget {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 32,
-                backgroundImage: profile.avatarUrl.isNotEmpty
-                    ? CachedNetworkImageProvider(profile.avatarUrl)
-                    : null,
-                child: profile.avatarUrl.isEmpty
-                    ? const Icon(Icons.person, size: 32)
-                    : null,
+              Semantics(
+                image: true,
+                label: l10n.avatarOf(name),
+                child: CircleAvatar(
+                  radius: 32,
+                  backgroundImage: profile.avatarUrl.isNotEmpty
+                      ? CachedNetworkImageProvider(profile.avatarUrl)
+                      : null,
+                  child: profile.avatarUrl.isEmpty
+                      ? const Icon(Icons.person, size: 32)
+                      : null,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -205,9 +238,7 @@ class _ProfileHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      profile.displayName.isNotEmpty
-                          ? profile.displayName
-                          : '匿名作者',
+                      name,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -215,8 +246,11 @@ class _ProfileHeader extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '粉丝 ${profile.followerCount}'
-                      ' · 关注 ${profile.followingCount}',
+                      l10n.followerStats(
+                        profile.followerCount,
+                        formatNumber(l10n, profile.followerCount),
+                        formatNumber(l10n, profile.followingCount),
+                      ),
                       style: const TextStyle(color: Colors.grey, fontSize: 13),
                     ),
                   ],
@@ -230,16 +264,9 @@ class _ProfileHeader extends StatelessWidget {
           ],
           if (profile.websiteUrl.isNotEmpty) ...[
             const SizedBox(height: 8),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => onOpenWebsite(profile.websiteUrl),
-              child: Text(
-                profile.websiteUrl,
-                style: const TextStyle(
-                  color: AppPalette.gradient1,
-                  fontSize: 13,
-                ),
-              ),
+            TextButton(
+              onPressed: () => onOpenWebsite(profile.websiteUrl),
+              child: Text(profile.websiteUrl),
             ),
           ],
         ],
@@ -262,11 +289,11 @@ class _FollowButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isSelf) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Chip(label: Text('这是你'), visualDensity: VisualDensity.compact),
+          child: Chip(label: Text(context.l10n.thisIsYou)),
         ),
       );
     }
@@ -288,7 +315,7 @@ class _FollowButton extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.check, size: 16),
-                label: const Text('已关注'),
+                label: Text(context.l10n.followingButton),
               )
             : FilledButton.icon(
                 onPressed: inFlight ? null : onTap,
@@ -299,7 +326,7 @@ class _FollowButton extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.person_add_alt_1, size: 16),
-                label: const Text('关注'),
+                label: Text(context.l10n.followButton),
               ),
       ),
     );

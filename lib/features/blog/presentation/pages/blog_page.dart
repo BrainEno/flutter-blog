@@ -1,4 +1,6 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/l10n/failure_l10n.dart';
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -79,7 +81,10 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ImageIcon(AssetImage('assets/images/icon.png'), size: 30),
+            ImageIcon(
+              AssetImage('assets/images/icon.png'),
+              size: 30,
+            ),
             SizedBox(width: 7),
             const Text('Bottom Think'),
           ],
@@ -88,7 +93,10 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
       body: BlocConsumer<BlogBloc, BlogState>(
         listener: (context, state) {
           if (state is BlogListFailure) {
-            showSnackBar(context, state.error);
+            showSnackBar(
+              context,
+              localizedFailure(context.l10n, state.failure),
+            );
           }
         },
         builder: (context, state) {
@@ -104,6 +112,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
           return isLoggedIn
               ? FloatingActionButton(
                   onPressed: _openEditor,
+                  tooltip: context.l10n.newPostTooltip,
                   child: const Icon(CupertinoIcons.add),
                 )
               : const SizedBox();
@@ -113,12 +122,13 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
   }
 
   Widget _buildBody(BlogState state) {
+    final l10n = context.l10n;
     final blogs = _visibleBlogs(state);
 
     // Initial load with nothing to show yet.
     if (blogs.isEmpty &&
         (state is BlogInitial || state is BlogFirstPageLoading)) {
-      return const Loader();
+      return Loader(semanticLabel: l10n.loadingArticles);
     }
 
     // Actionable failure without any list to fall back to.
@@ -131,7 +141,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Text(
-                state.error,
+                localizedFailure(l10n, state.failure),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 16),
               ),
@@ -141,7 +151,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
           Center(
             child: TextButton(
               onPressed: _fetchFirstPage,
-              child: const Text('重试'),
+              child: Text(l10n.actionRetry),
             ),
           ),
         ],
@@ -152,9 +162,9 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     if (blogs.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        children: const [
-          SizedBox(height: 160),
-          Center(child: Text('还没有文章，下拉刷新试试')),
+        children: [
+          const SizedBox(height: 160),
+          Center(child: Text(l10n.feedEmpty)),
         ],
       );
     }
@@ -162,23 +172,39 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     final loadingMore =
         state is BlogLoaded && state.isLoadingMore && !state.hasReachedMax;
     final reachedMax = state is BlogLoaded && state.hasReachedMax;
+    final failed = state is BlogListFailure;
     return ListView.builder(
       controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(top: 8, bottom: 30),
-      itemCount: blogs.length + (loadingMore || reachedMax ? 1 : 0),
+      itemCount: blogs.length + (loadingMore || reachedMax || failed ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == blogs.length) {
-          if (loadingMore) {
-            return const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Center(child: CircularProgressIndicator()),
+          if (failed) {
+            return Center(
+              child: TextButton(
+                onPressed: _fetchFirstPage,
+                child: Text(l10n.actionRetry),
+              ),
             );
           }
-          return const Padding(
-            padding: EdgeInsets.all(16.0),
+          if (loadingMore) {
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Center(
+                child: CircularProgressIndicator(
+                  semanticsLabel: l10n.loadingMoreArticles,
+                ),
+              ),
+            );
+          }
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
             child: Center(
-              child: Text('没有更多了', style: TextStyle(color: Colors.grey)),
+              child: Text(
+                l10n.feedNoMore,
+                style: const TextStyle(color: Colors.grey),
+              ),
             ),
           );
         }
@@ -190,8 +216,8 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
   List<Blog> _visibleBlogs(BlogState state) {
     if (state is BlogLoaded) return state.blogs;
     if (state is BlogFirstPageLoading) return state.previousBlogs;
-    if (state is BlogListFailure && state.previousState is BlogLoaded) {
-      return (state.previousState as BlogLoaded).blogs;
+    if (state is BlogListFailure && state.previousState != null) {
+      return _visibleBlogs(state.previousState!);
     }
     return const [];
   }

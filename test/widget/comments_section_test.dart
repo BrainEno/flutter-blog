@@ -1,3 +1,4 @@
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
@@ -55,6 +56,10 @@ Future<void> _pumpSection(
         BlocProvider<CommentBloc>.value(value: commentBloc),
       ],
       child: const MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+
         home: Scaffold(body: CommentsSection(slug: 'my-slug')),
       ),
     ),
@@ -159,6 +164,10 @@ void main() {
           BlocProvider<CommentBloc>.value(value: bloc),
         ],
         child: MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+
           home: Scaffold(
             body: CommentsSection(
               slug: 'my-slug',

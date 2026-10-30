@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/l10n/failure_l10n.dart';
+import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/l10n/tag_l10n.dart';
 import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/pick_image.dart';
@@ -162,15 +165,20 @@ class _BlogEditorState extends State<BlogEditorPage> {
           contentController.text = draft.content;
           selectedTags = List.from(draft.tags);
         });
-        showSnackBar(context, '已恢复草稿');
+        if (mounted) showSnackBar(context, context.l10n.draftRestored);
       } else if (choice == DraftRecoveryChoice.discard) {
         final deleted = await _draftStore.discardIfUnchanged(draft);
         if (mounted) {
-          showSnackBar(context, deleted ? '草稿已丢弃' : '草稿已更改，请重新打开编辑器');
+          showSnackBar(
+            context,
+            deleted
+                ? context.l10n.draftDiscarded
+                : context.l10n.draftChanged,
+          );
         }
       }
     } catch (_) {
-      if (mounted) showSnackBar(context, '无法读取或处理草稿，请重试');
+      if (mounted) showSnackBar(context, context.l10n.draftReadFailed);
     } finally {
       _draftsReady = true;
     }
@@ -191,7 +199,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
       // Picking failed (as opposed to being cancelled): surface it
       // instead of silently keeping the old cover.
       if (mounted) {
-        showSnackBar(context, '选择图片失败，请重试');
+        showSnackBar(context, context.l10n.imagePickFailed);
       }
     }
   }
@@ -230,7 +238,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
         );
       }
     } else {
-      showSnackBar(context, '请填写标题与正文');
+      showSnackBar(context, context.l10n.editorRequiredFields);
     }
   }
 
@@ -249,9 +257,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
       await _draftStore.save(draft);
       // A pending auto-save timer means newer edits are waiting; let it run.
       _hasUnsavedEdits = _autoSaveTimer?.isActive ?? false;
-      if (mounted) showSnackBar(context, '草稿已保存');
+      if (mounted) showSnackBar(context, context.l10n.draftSaved);
     } catch (_) {
-      if (mounted) showSnackBar(context, '草稿保存失败，请重试');
+      if (mounted) showSnackBar(context, context.l10n.draftSaveFailed);
     }
   }
 
@@ -280,7 +288,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
           color: isDarkMode ? AppPalette.whiteColor : AppPalette.lightBlack,
         ),
         title: Text(
-          widget.blog == null ? '撰写新文章' : '编辑文章',
+          widget.blog == null
+              ? context.l10n.editorNewTitle
+              : context.l10n.editorEditTitle,
           style: TextStyle(
             color: isDarkMode ? AppPalette.whiteColor : AppPalette.lightBlack,
             fontWeight: FontWeight.bold,
@@ -311,7 +321,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
               ),
               elevation: 0,
             ),
-            child: Text('发布'),
+            child: Text(context.l10n.actionPublish),
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
@@ -336,26 +346,26 @@ class _BlogEditorState extends State<BlogEditorPage> {
                 return [
                   PopupMenuItem<String>(
                     value: 'save',
-                    child: Center(child: Text('保存并发布')),
+                    child: Center(child: Text(context.l10n.saveAndPublish)),
                   ),
                   PopupMenuItem<String>(
                     value: 'save_draft',
-                    child: Center(child: Text('保存草稿')),
+                    child: Center(child: Text(context.l10n.saveDraft)),
                   ),
                 ];
               } else {
                 return [
                   PopupMenuItem<String>(
                     value: 'save',
-                    child: Center(child: Text('保存更改')),
+                    child: Center(child: Text(context.l10n.actionSaveChanges)),
                   ),
                   PopupMenuItem<String>(
                     value: 'save_draft',
-                    child: Center(child: Text('保存草稿')),
+                    child: Center(child: Text(context.l10n.saveDraft)),
                   ),
                   PopupMenuItem<String>(
                     value: 'cancel',
-                    child: Center(child: Text('取消')),
+                    child: Center(child: Text(context.l10n.actionCancel)),
                   ),
                 ];
               }
@@ -366,13 +376,21 @@ class _BlogEditorState extends State<BlogEditorPage> {
       body: BlocConsumer<BlogUploadBloc, BlogUploadState>(
         listener: (context, state) {
           if (state is BlogUploadFailure) {
-            showSnackBar(context, state.error);
+            showSnackBar(
+              context,
+              localizedFailure(context.l10n, state.failure),
+            );
           } else if (state is BlogUploadSuccess) {
             // No manual imageCache eviction needed: covers are immutable
             // media URLs that change whenever a new cover is uploaded, so
             // the refreshed list/editor automatically fetches the new
             // asset.
-            showSnackBar(context, widget.blog == null ? '上传成功' : '更新成功');
+            showSnackBar(
+              context,
+              widget.blog == null
+                  ? context.l10n.uploadSuccess
+                  : context.l10n.updateSuccess,
+            );
             // Drop the drafts that were published; keep anything typed
             // during the upload (see _clearPublishedDrafts).
             _hasUnsavedEdits = _editedDuringPublish;
@@ -400,7 +418,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
                       height: 20,
                     ), // Space between buttons and image
                     // Existing image container
-                    GestureDetector(
+                    Tooltip(
+                      message: context.l10n.uploadCoverHint,
+                      child: InkWell(
                       onTap: selectImage,
                       child: image != null && isNewImageSelected
                           ? SizedBox(
@@ -464,7 +484,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                       ),
                                       const SizedBox(height: 12),
                                       Text(
-                                        '点击上传封面（可选）',
+                                        context.l10n.uploadCoverHint,
                                         style: TextStyle(
                                           fontSize: 17,
                                           fontWeight: FontWeight.w500,
@@ -478,6 +498,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                 ),
                               ),
                             ),
+                      ),
                     ),
                     const SizedBox(height: 36),
                     Wrap(
@@ -487,12 +508,12 @@ class _BlogEditorState extends State<BlogEditorPage> {
                           .map(
                             (e) => InputChip(
                               label: Text(
-                                e,
+                                localizedTag(context.l10n, e),
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
                                   color: selectedTags.contains(e)
-                                      ? AppPalette.whiteColor
+                                      ? AppPalette.blackColor
                                       : isDarkMode
                                       ? AppPalette.whiteColor
                                       : AppPalette.lightBlack,
@@ -550,21 +571,21 @@ class _BlogEditorState extends State<BlogEditorPage> {
                     const SizedBox(height: 40),
                     EditorField(
                       controller: titleController,
-                      hintText: '标题',
+                      hintText: context.l10n.fieldTitleHint,
                       contentType: BlogEditorContentType.title,
                     ),
                     const SizedBox(height: 30),
                     SegmentedButton<bool>(
-                      segments: const [
+                      segments: [
                         ButtonSegment(
                           value: false,
-                          icon: Icon(Icons.edit_outlined),
-                          label: Text('编辑'),
+                          icon: const Icon(Icons.edit_outlined),
+                          label: Text(context.l10n.editorSegmentEdit),
                         ),
                         ButtonSegment(
                           value: true,
-                          icon: Icon(Icons.visibility_outlined),
-                          label: Text('预览'),
+                          icon: const Icon(Icons.visibility_outlined),
+                          label: Text(context.l10n.editorSegmentPreview),
                         ),
                       ],
                       selected: {_previewMode},
@@ -585,16 +606,16 @@ class _BlogEditorState extends State<BlogEditorPage> {
                           ),
                         ),
                         child: contentController.text.trim().isEmpty
-                            ? const Text(
-                                '正文为空，开始输入后这里会显示预览',
-                                style: TextStyle(color: Colors.grey),
+                            ? Text(
+                                context.l10n.previewEmptyBody,
+                                style: const TextStyle(color: Colors.grey),
                               )
                             : MarkdownBody(markdown: contentController.text),
                       )
                     else
                       EditorField(
                         controller: contentController,
-                        hintText: '正文（支持 Markdown）',
+                        hintText: context.l10n.fieldBodyHint,
                         maxLines: null,
                         expands: true,
                         contentType: BlogEditorContentType.body,
@@ -623,22 +644,22 @@ class _AutoSaveBanner extends StatelessWidget {
       case _AutoSaveStatus.idle:
         return const SizedBox.shrink();
       case _AutoSaveStatus.saving:
-        return const Text(
-          '草稿自动保存中…',
+        return Text(
+          context.l10n.autoSaveSaving,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: Colors.grey),
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
         );
       case _AutoSaveStatus.saved:
-        return const Text(
-          '草稿已自动保存',
+        return Text(
+          context.l10n.autoSaveSaved,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: Colors.grey),
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
         );
       case _AutoSaveStatus.failed:
-        return const Text(
-          '自动保存失败，请手动保存草稿',
+        return Text(
+          context.l10n.autoSaveFailed,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: Colors.red),
+          style: const TextStyle(fontSize: 12, color: Colors.red),
         );
     }
   }

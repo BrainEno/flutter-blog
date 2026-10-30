@@ -1,3 +1,4 @@
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
@@ -228,7 +229,11 @@ class Harness {
           BlocProvider<AuthBloc>.value(value: authBloc),
           BlocProvider<AppUserCubit>.value(value: appUserCubit),
         ],
-        child: MaterialApp.router(routerConfig: currentRouter),
+        child: MaterialApp.router(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+routerConfig: currentRouter),
       ),
     );
   }

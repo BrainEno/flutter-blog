@@ -14,7 +14,11 @@ final class GetBlogsByUserSuccess extends BlogByState {
 final class GetBlogsByUserLoading extends BlogByState {}
 
 final class GetBlogsByUserFailure extends BlogByState {
-  final String error;
+  final Failure failure;
 
-  GetBlogsByUserFailure({required this.error});
+  GetBlogsByUserFailure({required this.failure});
+
+  /// Display-safe Chinese fallback; the UI localizes via
+  /// `localizedFailure` (issue #24).
+  String get error => failure.message;
 }

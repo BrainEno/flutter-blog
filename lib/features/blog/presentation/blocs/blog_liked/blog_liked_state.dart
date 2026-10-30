@@ -18,8 +18,12 @@ final class UserLikedBlogsSuccess extends BlogLikedState {
 }
 
 final class UserLikedBlogsFailure extends BlogLikedState {
-  final String error;
-  const UserLikedBlogsFailure({required this.error, super.likedBlogs});
+  final Failure failure;
+  const UserLikedBlogsFailure({required this.failure, super.likedBlogs});
+
+  /// Display-safe Chinese fallback; the UI localizes via
+  /// `localizedFailure` (issue #24).
+  String get error => failure.message;
 }
 
 final class ToggleBlogLikeSuccess extends BlogLikedState {
@@ -30,8 +34,12 @@ final class ToggleBlogLikeSuccess extends BlogLikedState {
 }
 
 final class ToggleBlogLikeFailure extends BlogLikedState {
-  final String error;
-  const ToggleBlogLikeFailure({required this.error, super.likedBlogs});
+  final Failure failure;
+  const ToggleBlogLikeFailure({required this.failure, super.likedBlogs});
+
+  /// Display-safe Chinese fallback; the UI localizes via
+  /// `localizedFailure` (issue #24).
+  String get error => failure.message;
 }
 
 final class GetBlogIsLikedSuccess extends BlogLikedState {
@@ -42,6 +50,10 @@ final class GetBlogIsLikedSuccess extends BlogLikedState {
 }
 
 final class GetBlogIsLikedFailure extends BlogLikedState {
-  final String error;
-  const GetBlogIsLikedFailure({required this.error, super.likedBlogs});
+  final Failure failure;
+  const GetBlogIsLikedFailure({required this.failure, super.likedBlogs});
+
+  /// Display-safe Chinese fallback; the UI localizes via
+  /// `localizedFailure` (issue #24).
+  String get error => failure.message;
 }

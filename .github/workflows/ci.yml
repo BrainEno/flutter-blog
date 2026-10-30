@@ -197,6 +197,14 @@ jobs:
           EOF
       - name: Resolve dependencies
         run: flutter pub get
+      - name: Capture generated localization and dependency lock for review
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: resolved-localization-and-lock
+          path: |
+            pubspec.lock
+            lib/l10n/app_localizations*.dart
+          retention-days: 14
       - name: Run analyzer and preserve diagnostics
         shell: bash
         run: |

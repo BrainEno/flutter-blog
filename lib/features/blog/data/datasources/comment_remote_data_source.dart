@@ -56,7 +56,7 @@ class CommentRemoteDataSourceImpl implements CommentRemoteDataSource {
         extraHeaders: {'Idempotency-Key': idempotencyKey},
       );
       if (data is! Map<String, dynamic>) {
-        throw const ServerException('服务器返回了无法解析的数据');
+        throw const ServerException('服务器返回了无法解析的数据', code: 'server.parse');
       }
       return CommentModel.fromMap(data);
     } catch (e) {
@@ -69,7 +69,7 @@ class CommentRemoteDataSourceImpl implements CommentRemoteDataSource {
     try {
       final data = await client.deleteJson('/comments/$commentId');
       if (data is! Map<String, dynamic>) {
-        throw const ServerException('服务器返回了无法解析的数据');
+        throw const ServerException('服务器返回了无法解析的数据', code: 'server.parse');
       }
       return data['deleted'] == true;
     } catch (e) {
@@ -79,7 +79,7 @@ class CommentRemoteDataSourceImpl implements CommentRemoteDataSource {
 
   List<CommentModel> _commentList(dynamic data) {
     if (data is! List) {
-      throw const ServerException('服务器返回了无法解析的数据');
+      throw const ServerException('服务器返回了无法解析的数据', code: 'server.parse');
     }
     return data
         .whereType<Map<String, dynamic>>()
