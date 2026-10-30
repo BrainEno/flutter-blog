@@ -31,7 +31,12 @@ class _AboutPageState extends State<AboutPage> {
   /// Coarse, sanitized context for the diagnostics preamble (issue #49):
   /// app identity, build flavor, OS family and UI locale. Never device
   /// identifiers or user data.
-  String _diagnosticsHeader(PackageInfo? info, BuildContext context) {
+  ///
+  /// The locale is the device's preferred locale, NOT
+  /// `Localizations.maybeLocaleOf`: the app ships no zh localization
+  /// delegates yet, so Material resolves a Chinese device down to en_US -
+  /// which would mislabel the very thing support cares about.
+  String _diagnosticsHeader(PackageInfo? info) {
     return buildDiagnosticsHeader(
       appName: (info != null && info.appName.isNotEmpty)
           ? info.appName
@@ -42,7 +47,7 @@ class _AboutPageState extends State<AboutPage> {
           : (kProfileMode ? 'profile' : 'debug'),
       operatingSystem: defaultTargetPlatform.name,
       osVersion: kIsWeb ? null : Platform.operatingSystemVersion,
-      locale: Localizations.maybeLocaleOf(context)?.toString() ?? 'unknown',
+      locale: WidgetsBinding.instance.platformDispatcher.locale.toString(),
     );
   }
 
@@ -168,8 +173,8 @@ class _AboutPageState extends State<AboutPage> {
 
   /// Full report as the user sees (and copies) it: the sanitized context
   /// header first, then the buffer's entries newest-first.
-  String _composeReport(PackageInfo? info, BuildContext context) {
-    final header = _diagnosticsHeader(info, context);
+  String _composeReport(PackageInfo? info) {
+    final header = _diagnosticsHeader(info);
     final body = AppLogger.diagnosticsReport();
     return body.isEmpty ? header : '$header\n$body';
   }
@@ -183,7 +188,7 @@ class _AboutPageState extends State<AboutPage> {
       builder: (dialogContext) {
         // The buffer is process-local and mutable; the dialog reflects it
         // live so "clear" visibly empties what would be copied.
-        var report = _composeReport(info, dialogContext);
+        var report = _composeReport(info);
         return StatefulBuilder(
           builder: (dialogContext, setState) => AlertDialog(
             title: const Text('诊断信息'),
@@ -222,7 +227,7 @@ class _AboutPageState extends State<AboutPage> {
               TextButton(
                 onPressed: () {
                   AppLogger.clearDiagnostics();
-                  setState(() => report = _composeReport(info, dialogContext));
+                  setState(() => report = _composeReport(info));
                 },
                 child: const Text('清空'),
               ),

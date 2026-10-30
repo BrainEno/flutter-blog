@@ -23,11 +23,12 @@ void main() {
   setUp(AppLogger.clearDiagnostics);
 
   Future<void> pumpAbout(WidgetTester tester) async {
+    // The header reports the device's preferred locale (the app has no
+    // localization delegates yet, so Localizations would misreport it).
+    tester.platformDispatcher.localeTestValue = const Locale('zh');
+    addTearDown(tester.platformDispatcher.clearLocaleTestValue);
     await tester.pumpWidget(
-      MaterialApp(
-        locale: const Locale('zh'),
-        home: AboutPage(packageInfoLoader: _fakePackageInfo),
-      ),
+      MaterialApp(home: AboutPage(packageInfoLoader: _fakePackageInfo)),
     );
     await tester.pumpAndSettle();
   }
