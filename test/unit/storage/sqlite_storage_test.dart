@@ -43,7 +43,7 @@ void main() {
   );
 
   test('the profile cache round-trips and clears (issue #50)', () async {
-    final cache = const SqliteProfileCache(db);
+    final cache = SqliteProfileCache(db);
     expect(await cache.read(), isNull);
 
     await cache.write(

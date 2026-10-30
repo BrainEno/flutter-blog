@@ -25,14 +25,14 @@ DeletedBlog _tombstone(String articleId, {String title = '被删的文章'}) =>
     );
 
 Blog _restoredBlog() => Blog(
-      id: 'my-slug',
-      title: '被删的文章',
-      content: '正文',
-      posterId: 'u1',
-      imageUrl: '',
-      tags: const [],
-      updatedAt: DateTime.utc(2026),
-    );
+  id: 'my-slug',
+  title: '被删的文章',
+  content: '正文',
+  posterId: 'u1',
+  imageUrl: '',
+  tags: const [],
+  updatedAt: DateTime.utc(2026),
+);
 
 void main() {
   late MockGetDeletedBlogs getDeletedBlogs;
@@ -56,9 +56,7 @@ void main() {
 
   /// Loads the bin with [blogs] and returns the resulting success state.
   Future<RecycleBinSuccess> load(List<DeletedBlog> blogs) async {
-    when(
-      () => getDeletedBlogs(any()),
-    ).thenAnswer((_) async => right(blogs));
+    when(() => getDeletedBlogs(any())).thenAnswer((_) async => right(blogs));
     final states = <RecycleBinState>[];
     final sub = bloc.stream.listen(states.add);
     bloc.add(RecycleBinRequested());
@@ -81,8 +79,9 @@ void main() {
     ).thenAnswer((_) async => left(Failure('加载失败')));
 
     bloc.add(RecycleBinRequested());
-    final state = await bloc.stream
-        .firstWhere((state) => state is RecycleBinFailure);
+    final state = await bloc.stream.firstWhere(
+      (state) => state is RecycleBinFailure,
+    );
 
     expect((state as RecycleBinFailure).error, '加载失败');
   });
@@ -113,8 +112,9 @@ void main() {
     ).thenAnswer((_) async => left(Failure('没有权限执行此操作')));
 
     bloc.add(RecycleBinRestoreRequested(articleId: 'a1'));
-    final state = await bloc.stream
-        .firstWhere((state) => state is RecycleBinRestoreFailure);
+    final state = await bloc.stream.firstWhere(
+      (state) => state is RecycleBinRestoreFailure,
+    );
 
     final failure = state as RecycleBinRestoreFailure;
     expect(failure.message, '没有权限执行此操作');

@@ -169,7 +169,9 @@ GoRouter createAppRouter({
                     path: 'my-articles',
                     builder: (context, state) => MultiBlocProvider(
                       providers: [
-                        BlocProvider(create: (_) => serviceLocator<BlogByBloc>()),
+                        BlocProvider(
+                          create: (_) => serviceLocator<BlogByBloc>(),
+                        ),
                         BlocProvider(
                           create: (_) => serviceLocator<BlogUploadBloc>(),
                         ),

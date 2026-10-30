@@ -28,12 +28,12 @@ BlogModel _blog({String id = 'my-slug', String articleId = 'server-uuid-1'}) =>
     );
 
 DeletedBlog _tombstone() => DeletedBlog(
-      articleId: 'server-uuid-1',
-      title: '被删的文章',
-      imageUrl: '',
-      deletedAt: DateTime.utc(2026, 10, 1),
-      purgesAt: DateTime.utc(2026, 10, 31),
-    );
+  articleId: 'server-uuid-1',
+  title: '被删的文章',
+  imageUrl: '',
+  deletedAt: DateTime.utc(2026, 10, 1),
+  purgesAt: DateTime.utc(2026, 10, 31),
+);
 
 void main() {
   late MockRemote remote;
@@ -50,31 +50,35 @@ void main() {
   });
 
   group('deleteBlog', () {
-    test('resolves the UUID from the cache and never fetches remotely',
-        () async {
-      when(() => local.loadBlogById('my-slug'))
-          .thenAnswer((_) async => _blog());
-      when(() => remote.deleteArticle('server-uuid-1'))
-          .thenAnswer((_) async => true);
-      when(() => local.deleteCachedBlog('my-slug'))
-          .thenAnswer((_) async {});
+    test(
+      'resolves the UUID from the cache and never fetches remotely',
+      () async {
+        when(
+          () => local.loadBlogById('my-slug'),
+        ).thenAnswer((_) async => _blog());
+        when(
+          () => remote.deleteArticle('server-uuid-1'),
+        ).thenAnswer((_) async => true);
+        when(() => local.deleteCachedBlog('my-slug')).thenAnswer((_) async {});
 
-      final result = await repository.deleteBlog('my-slug');
+        final result = await repository.deleteBlog('my-slug');
 
-      expect(result.isRight(), isTrue);
-      verify(() => remote.deleteArticle('server-uuid-1')).called(1);
-      verifyNever(() => remote.getBlogById(any()));
-      verify(() => local.deleteCachedBlog('my-slug')).called(1);
-    });
+        expect(result.isRight(), isTrue);
+        verify(() => remote.deleteArticle('server-uuid-1')).called(1);
+        verifyNever(() => remote.getBlogById(any()));
+        verify(() => local.deleteCachedBlog('my-slug')).called(1);
+      },
+    );
 
     test('falls back to a remote fetch when the cache misses', () async {
       when(() => local.loadBlogById('my-slug')).thenAnswer((_) async => null);
-      when(() => remote.getBlogById('my-slug'))
-          .thenAnswer((_) async => _blog());
-      when(() => remote.deleteArticle('server-uuid-1'))
-          .thenAnswer((_) async => true);
-      when(() => local.deleteCachedBlog('my-slug'))
-          .thenAnswer((_) async {});
+      when(
+        () => remote.getBlogById('my-slug'),
+      ).thenAnswer((_) async => _blog());
+      when(
+        () => remote.deleteArticle('server-uuid-1'),
+      ).thenAnswer((_) async => true);
+      when(() => local.deleteCachedBlog('my-slug')).thenAnswer((_) async {});
 
       final result = await repository.deleteBlog('my-slug');
 
@@ -84,13 +88,11 @@ void main() {
     });
 
     test('a failed delete keeps the cached row', () async {
-      when(() => local.loadBlogById('my-slug'))
-          .thenAnswer((_) async => _blog());
+      when(
+        () => local.loadBlogById('my-slug'),
+      ).thenAnswer((_) async => _blog());
       when(() => remote.deleteArticle('server-uuid-1')).thenThrow(
-        const ServerException(
-          '相关数据不存在或已被删除',
-          kind: FailureKind.validation,
-        ),
+        const ServerException('相关数据不存在或已被删除', kind: FailureKind.validation),
       );
 
       final result = await repository.deleteBlog('my-slug');
@@ -99,14 +101,16 @@ void main() {
       verifyNever(() => local.deleteCachedBlog(any()));
     });
 
-    test('an offline device fails fast without touching the sources',
-        () async {
+    test('an offline device fails fast without touching the sources', () async {
       when(() => connection.isConnected).thenAnswer((_) async => false);
 
       final result = await repository.deleteBlog('my-slug');
 
       expect(
-        result.fold((failure) => failure.kind == FailureKind.network, (_) => false),
+        result.fold(
+          (failure) => failure.kind == FailureKind.network,
+          (_) => false,
+        ),
         isTrue,
       );
       verifyNever(() => remote.deleteArticle(any()));
@@ -115,9 +119,9 @@ void main() {
 
   group('getDeletedBlogs', () {
     test('passes the tombstones through', () async {
-      when(() => remote.getDeletedBlogs()).thenAnswer(
-        (_) async => [_tombstone()],
-      );
+      when(
+        () => remote.getDeletedBlogs(),
+      ).thenAnswer((_) async => [_tombstone()]);
 
       final result = await repository.getDeletedBlogs();
 
@@ -136,8 +140,9 @@ void main() {
 
   group('restoreDeletedBlog', () {
     test('returns the restored draft', () async {
-      when(() => remote.restoreArticle('server-uuid-1'))
-          .thenAnswer((_) async => _blog());
+      when(
+        () => remote.restoreArticle('server-uuid-1'),
+      ).thenAnswer((_) async => _blog());
 
       final result = await repository.restoreDeletedBlog('server-uuid-1');
 
@@ -146,10 +151,7 @@ void main() {
 
     test('a rejected restore surfaces the failure', () async {
       when(() => remote.restoreArticle('server-uuid-1')).thenThrow(
-        const ServerException(
-          '没有权限执行此操作',
-          kind: FailureKind.permission,
-        ),
+        const ServerException('没有权限执行此操作', kind: FailureKind.permission),
       );
 
       final result = await repository.restoreDeletedBlog('server-uuid-1');

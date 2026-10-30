@@ -144,7 +144,7 @@ void _initAuth(NowaveSessionManager sessionManager, NowaveApiClient apiClient) {
       () => AuthRepositoryImpl(
         serviceLocator(),
         serviceLocator(),
-        SqliteProfileCache(database),
+        SqliteProfileCache(serviceLocator<AppDatabase>()),
       ),
     )
     // Usecases

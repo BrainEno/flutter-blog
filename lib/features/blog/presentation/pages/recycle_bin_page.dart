@@ -47,10 +47,7 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
           } else if (state is RecycleBinSuccess) {
             final title = state.lastRestoredTitle;
             if (title != null) {
-              showSnackBar(
-                context,
-                '「$title」已恢复为草稿，可在我的文章中查看',
-              );
+              showSnackBar(context, '「$title」已恢复为草稿，可在我的文章中查看');
             }
           }
         },
@@ -66,9 +63,9 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                   Text(state.error),
                   const SizedBox(height: 12),
                   FilledButton.tonal(
-                    onPressed: () => context
-                        .read<RecycleBinBloc>()
-                        .add(RecycleBinRequested()),
+                    onPressed: () => context.read<RecycleBinBloc>().add(
+                      RecycleBinRequested(),
+                    ),
                     child: const Text('重试'),
                   ),
                 ],

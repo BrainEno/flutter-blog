@@ -147,8 +147,7 @@ class BlogRepositoryImpl implements BlogRepository {
       var articleId =
           (await blogLocalDataSource.loadBlogById(blogId))?.articleId ?? '';
       if (articleId.isEmpty) {
-        articleId =
-            (await blogRemoteDataSource.getBlogById(blogId)).articleId;
+        articleId = (await blogRemoteDataSource.getBlogById(blogId)).articleId;
       }
       final res = await blogRemoteDataSource.deleteArticle(articleId);
       if (res) {

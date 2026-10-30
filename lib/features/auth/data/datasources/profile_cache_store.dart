@@ -69,10 +69,8 @@ class SqliteProfileCache implements ProfileCacheStore {
   }
 
   @override
-  Future<void> write(CachedProfile profile) => database.writeMetadata(
-    _kKey,
-    jsonEncode(profile.toJson()),
-  );
+  Future<void> write(CachedProfile profile) =>
+      database.writeMetadata(_kKey, jsonEncode(profile.toJson()));
 
   @override
   Future<void> clear() => database.deleteMetadata(_kKey);

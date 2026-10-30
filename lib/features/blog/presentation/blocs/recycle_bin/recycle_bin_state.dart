@@ -1,7 +1,9 @@
 part of 'recycle_bin_bloc.dart';
 
 @immutable
-sealed class RecycleBinState {}
+sealed class RecycleBinState {
+  const RecycleBinState();
+}
 
 final class RecycleBinInitial extends RecycleBinState {}
 

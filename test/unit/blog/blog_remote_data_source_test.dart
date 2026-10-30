@@ -4,7 +4,6 @@ import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
-import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -166,12 +165,12 @@ void main() {
 
   group('deleteArticle', () {
     test('DELETEs the article by its server UUID', () async {
-      when(
-        () => client.deleteJson('/articles/server-uuid-1'),
-      ).thenAnswer((_) async => <String, dynamic>{
-        'id': 'server-uuid-1',
-        'deletedAt': '2026-10-30T00:00:00.000Z',
-      });
+      when(() => client.deleteJson('/articles/server-uuid-1')).thenAnswer(
+        (_) async => <String, dynamic>{
+          'id': 'server-uuid-1',
+          'deletedAt': '2026-10-30T00:00:00.000Z',
+        },
+      );
 
       expect(await dataSource.deleteArticle('server-uuid-1'), isTrue);
       verify(() => client.deleteJson('/articles/server-uuid-1')).called(1);
@@ -202,29 +201,26 @@ void main() {
   });
 
   group('getDeletedBlogs', () {
-    Map<String, dynamic> tombstone({String? purgesAt}) =>
+    Map<String, dynamic> tombstone({String? purgesAt}) => <String, dynamic>{
+      'id': 'server-uuid-1',
+      'slug': 'gone-deleted-abcdef12',
+      'title': '被删的文章',
+      'contentBlocks': <Map<String, dynamic>>[
         <String, dynamic>{
-          'id': 'server-uuid-1',
-          'slug': 'gone-deleted-abcdef12',
-          'title': '被删的文章',
-          'contentBlocks': <Map<String, dynamic>>[
-            <String, dynamic>{
-              'id': 'b0',
-              'type': 'image',
-              'src': 'https://api.example.invalid/cover.webp',
-            },
-            <String, dynamic>{'id': 'b1', 'type': 'paragraph', 'text': '正文'},
-          ],
-          'deletedAt': '2026-10-01T00:00:00.000Z',
-          if (purgesAt != null) 'purgesAt': purgesAt,
-        };
+          'id': 'b0',
+          'type': 'image',
+          'src': 'https://api.example.invalid/cover.webp',
+        },
+        <String, dynamic>{'id': 'b1', 'type': 'paragraph', 'text': '正文'},
+      ],
+      'deletedAt': '2026-10-01T00:00:00.000Z',
+      if (purgesAt != null) 'purgesAt': purgesAt,
+    };
 
     test('lists tombstones with the server-computed purge deadline', () async {
       when(
-        () => client.getJson(
-          '/me/articles/deleted',
-          query: any(named: 'query'),
-        ),
+        () =>
+            client.getJson('/me/articles/deleted', query: any(named: 'query')),
       ).thenAnswer(
         (_) async => [tombstone(purgesAt: '2026-10-31T00:00:00.000Z')],
       );
@@ -242,10 +238,8 @@ void main() {
 
     test('a tombstone without purgesAt carries no expiry promise', () async {
       when(
-        () => client.getJson(
-          '/me/articles/deleted',
-          query: any(named: 'query'),
-        ),
+        () =>
+            client.getJson('/me/articles/deleted', query: any(named: 'query')),
       ).thenAnswer((_) async => [tombstone()]);
 
       expect((await dataSource.getDeletedBlogs()).single.purgesAt, isNull);
@@ -253,10 +247,8 @@ void main() {
 
     test('a non-list payload is a server failure', () async {
       when(
-        () => client.getJson(
-          '/me/articles/deleted',
-          query: any(named: 'query'),
-        ),
+        () =>
+            client.getJson('/me/articles/deleted', query: any(named: 'query')),
       ).thenAnswer((_) async => <String, dynamic>{'unexpected': true});
 
       await expectLater(

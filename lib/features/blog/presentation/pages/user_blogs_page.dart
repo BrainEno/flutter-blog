@@ -76,9 +76,7 @@ class _UserBlogsPageState extends State<UserBlogsPage>
       ),
     );
     if (confirmed != true || !mounted) return;
-    context.read<BlogUploadBloc>().add(
-          DeleteBlogEvent(blogId: blog.id),
-        );
+    context.read<BlogUploadBloc>().add(DeleteBlogEvent(blogId: blog.id));
   }
 
   @override
@@ -117,44 +115,44 @@ class _UserBlogsPageState extends State<UserBlogsPage>
         ],
         child: BlocBuilder<BlogByBloc, BlogByState>(
           builder: (context, state) {
-          if (state is GetBlogsByUserLoading) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is GetBlogsByUserSuccess) {
-            final blogs = state.blogs;
-            if (blogs.isEmpty) {
-              return const Center(child: Text('您还没有发布任何文章'));
-            }
-            return RefreshIndicator(
-              onRefresh: () async {
-                _fetchUserBlogs();
-                await context.read<BlogByBloc>().stream.firstWhere(
-                  (newState) =>
-                      newState is GetBlogsByUserSuccess ||
-                      newState is GetBlogsByUserFailure,
-                );
-              },
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16.0,
-                  mainAxisSpacing: 16.0,
-                  childAspectRatio: 0.75,
-                ),
-                itemCount: blogs.length,
-                itemBuilder: (context, index) {
-                  final blog = blogs[index];
-                  return BlogGridItem(
-                    blog: blog,
-                    onTap: () => _editBlog(blog),
-                    onLongPress: () => _confirmDelete(blog),
+            if (state is GetBlogsByUserLoading) {
+              return const Center(child: CircularProgressIndicator());
+            } else if (state is GetBlogsByUserSuccess) {
+              final blogs = state.blogs;
+              if (blogs.isEmpty) {
+                return const Center(child: Text('您还没有发布任何文章'));
+              }
+              return RefreshIndicator(
+                onRefresh: () async {
+                  _fetchUserBlogs();
+                  await context.read<BlogByBloc>().stream.firstWhere(
+                    (newState) =>
+                        newState is GetBlogsByUserSuccess ||
+                        newState is GetBlogsByUserFailure,
                   );
                 },
-              ),
-            );
-          }
-          return const Center(child: Text('无法加载文章'));
-        },
-      ),
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16.0,
+                    mainAxisSpacing: 16.0,
+                    childAspectRatio: 0.75,
+                  ),
+                  itemCount: blogs.length,
+                  itemBuilder: (context, index) {
+                    final blog = blogs[index];
+                    return BlogGridItem(
+                      blog: blog,
+                      onTap: () => _editBlog(blog),
+                      onLongPress: () => _confirmDelete(blog),
+                    );
+                  },
+                ),
+              );
+            }
+            return const Center(child: Text('无法加载文章'));
+          },
+        ),
       ),
     );
   }
