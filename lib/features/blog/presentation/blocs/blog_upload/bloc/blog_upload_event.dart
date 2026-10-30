@@ -5,7 +5,8 @@ abstract class BlogUploadEvent extends Equatable {
 }
 
 class UploadBlogEvent extends BlogUploadEvent {
-  final File image;
+  /// Picked cover; null publishes a text-only article (issue #17).
+  final File? image;
   final String title;
   final String content;
   final String posterId;

@@ -85,6 +85,33 @@ void main() {
       expect(created.title, '标题');
     });
 
+    test('a coverless publish skips the media upload entirely (#17)',
+        () async {
+      when(() => remote.uploadBlog(any())).thenAnswer(
+        (invocation) async => invocation.positionalArguments[0] as BlogModel,
+      );
+
+      final result = await repository.uploadBlog(
+        image: null,
+        title: '标题',
+        content: '正文',
+        posterId: 'u1',
+        tags: const [],
+      );
+
+      expect(result.isRight(), isTrue);
+      verifyNever(
+        () => remote.uploadBlogImage(
+          image: any(named: 'image'),
+          mimeType: any(named: 'mimeType'),
+        ),
+      );
+      final created = verify(() => remote.uploadBlog(captureAny()))
+          .captured
+          .single as BlogModel;
+      expect(created.imageUrl, '');
+    });
+
     test('a failed article create surfaces the failure (media is '
         'server-managed, nothing to roll back client-side)', () async {
       when(

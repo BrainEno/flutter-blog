@@ -6,8 +6,9 @@ import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:fpdart/fpdart.dart';
 
 abstract interface class BlogRepository {
+  /// [image] is the picked cover; null publishes a text-only article.
   Future<Either<Failure, Blog>> uploadBlog({
-    required File image,
+    required File? image,
     required String title,
     required String content,
     required String posterId,

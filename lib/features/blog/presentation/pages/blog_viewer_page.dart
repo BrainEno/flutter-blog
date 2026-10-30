@@ -8,6 +8,7 @@ import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_viewer/blog_viewer_cubit.dart';
 import 'package:belog/features/blog/presentation/utils/cover_url.dart';
+import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -259,15 +260,10 @@ class _ViewerScaffold extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  Text(
-                    blog.content,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      height: 1.5,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+                  // Markdown rendering (issue #17): plain-text articles
+                  // render as paragraphs, so existing content stays
+                  // readable. Links and images are http(s)-only.
+                  MarkdownBody(markdown: blog.content),
                   const SizedBox(height: 30),
                   Wrap(
                     spacing: 8,

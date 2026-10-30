@@ -36,6 +36,10 @@ dependencies:
   cupertino_icons: ^1.0.8
   fpdart: ^1.1.1
   http: ^1.6.0
+  # Markdown parser (Dart-team maintained). Rendering to widgets is our
+  # own (lib/features/blog/presentation/widgets/markdown_body.dart), so no
+  # HTML is ever built or executed (issue #17).
+  markdown: ^7.2.1
   flutter_secure_storage: ^10.3.4
   flutter_bloc: ^9.0.0
   get_it: ^8.0.3

@@ -12,6 +12,7 @@ import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/utils/cover_url.dart';
 import 'package:belog/features/blog/presentation/widgets/editor_field.dart';
+import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
 import 'package:belog/features/blog/presentation/widgets/draft_recovery_dialog.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
@@ -45,6 +46,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
   List<String> selectedTags = [];
   File? image;
   bool isNewImageSelected = false;
+
+  /// Markdown preview toggle for the body field (issue #17).
+  bool _previewMode = false;
 
   /// MIME type of [image] when a new cover was picked; uploaded as the
   /// object's contentType.
@@ -194,15 +198,18 @@ class _BlogEditorState extends State<BlogEditorPage> {
 
   void saveBlog() {
     _draftRequestVersion++;
-    if (formKey.currentState!.validate() && selectedTags.isNotEmpty) {
+    // Cover and tags are optional (issue #17): title and body are the
+    // only required fields, and the backend already publishes text-only
+    // articles as plain content blocks.
+    if (formKey.currentState!.validate()) {
       _publishStartedAt = DateTime.now();
       _editedDuringPublish = false;
       final posterId =
           (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
-      if (widget.blog == null && image != null) {
+      if (widget.blog == null) {
         context.read<BlogUploadBloc>().add(
           UploadBlogEvent(
-            image: image!,
+            image: image,
             title: titleController.text.trim(),
             content: contentController.text.trim(),
             posterId: posterId,
@@ -221,13 +228,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
             imageMimeType: isNewImageSelected ? imageMimeType : null,
           ),
         );
-      } else {
-        // New articles still need a cover at this point (the editor's
-        // upload flow always pairs a cover with the first publish).
-        showSnackBar(context, '请填写所有必填字段并上传封面图片');
       }
     } else {
-      showSnackBar(context, '请填写所有必填字段并上传封面图片');
+      showSnackBar(context, '请填写标题与正文');
     }
   }
 
@@ -461,7 +464,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                       ),
                                       const SizedBox(height: 12),
                                       Text(
-                                        '点击上传封面',
+                                        '点击上传封面（可选）',
                                         style: TextStyle(
                                           fontSize: 17,
                                           fontWeight: FontWeight.w500,
@@ -477,7 +480,6 @@ class _BlogEditorState extends State<BlogEditorPage> {
                             ),
                     ),
                     const SizedBox(height: 36),
-                    // ... rest of the existing Column children (tags, title, content) ...
                     Wrap(
                       spacing: 10.0,
                       runSpacing: 10.0,
@@ -552,12 +554,54 @@ class _BlogEditorState extends State<BlogEditorPage> {
                       contentType: BlogEditorContentType.title,
                     ),
                     const SizedBox(height: 30),
-                    EditorField(
-                      controller: contentController,
-                      hintText: '正文',
-                      maxLines: null,
-                      expands: true,
-                      contentType: BlogEditorContentType.body,
+                    SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment(
+                          value: false,
+                          icon: Icon(Icons.edit_outlined),
+                          label: Text('编辑'),
+                        ),
+                        ButtonSegment(
+                          value: true,
+                          icon: Icon(Icons.visibility_outlined),
+                          label: Text('预览'),
+                        ),
+                      ],
+                      selected: {_previewMode},
+                      onSelectionChanged: (selection) => setState(
+                        () => _previewMode = selection.first,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (_previewMode)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isDarkMode
+                                ? AppPalette.greyColorLight
+                                : AppPalette.lightBorder,
+                          ),
+                        ),
+                        child: contentController.text.trim().isEmpty
+                            ? const Text(
+                                '正文为空，开始输入后这里会显示预览',
+                                style: TextStyle(color: Colors.grey),
+                              )
+                            : MarkdownBody(
+                                markdown: contentController.text,
+                              ),
+                      )
+                    else
+                      EditorField(
+                        controller: contentController,
+                        hintText: '正文（支持 Markdown）',
+                        maxLines: null,
+                        expands: true,
+                        contentType: BlogEditorContentType.body,
+                      ),
                     ),
                     const SizedBox(height: 40),
                   ],
