@@ -10,7 +10,7 @@ import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_viewer/blog_viewer_cubit.dart';
-import 'package:belog/features/blog/presentation/blocs/bog_upload/bloc/blog_upload_bloc.dart';
+import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/blog_editor_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
@@ -23,6 +23,7 @@ import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/presentation/pages/about_page.dart';
 import 'package:belog/features/user/presentation/pages/edit_user_info_page.dart';
 import 'package:belog/features/user/presentation/pages/profile_page.dart';
+import 'package:belog/features/user/presentation/pages/reading_history_page.dart';
 
 import 'package:belog/init_dependencies.dart';
 import 'package:belog/router/home_shell.dart';
@@ -198,6 +199,10 @@ GoRouter createAppRouter({
                   GoRoute(
                     path: 'about',
                     builder: (context, state) => const AboutPage(),
+                  ),
+                  GoRoute(
+                    path: 'history',
+                    builder: (context, state) => const ReadingHistoryPage(),
                   ),
                 ],
               ),

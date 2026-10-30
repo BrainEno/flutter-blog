@@ -1,15 +1,21 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/loader.dart';
-import 'package:belog/core/theme/app_pallete.dart';
+import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/calculate_reading_time.dart';
+import 'package:belog/core/utils/article_share.dart';
+import 'package:belog/core/utils/app_logger.dart';
+import 'package:belog/core/utils/format_date.dart';
+import 'package:belog/core/storage/reading_history_store.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_viewer/blog_viewer_cubit.dart';
 import 'package:belog/features/blog/presentation/utils/cover_url.dart';
+import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 
 /// Shows a single article.
@@ -20,13 +26,21 @@ import 'package:go_router/go_router.dart';
 /// page-scoped [BlogLikedBloc] created with this route.
 class BlogViewerPage extends StatefulWidget {
   final String blogId;
-  const BlogViewerPage({super.key, required this.blogId});
+
+  /// Device-local reading history sink (issue #22); injectable for tests,
+  /// resolved from the service locator when absent.
+  final ReadingHistoryStore? historyStore;
+  const BlogViewerPage({super.key, required this.blogId, this.historyStore});
 
   @override
   State<BlogViewerPage> createState() => _BlogViewerPageState();
 }
 
 class _BlogViewerPageState extends State<BlogViewerPage> {
+  /// Guards the history write so retries and like refreshes do not spam
+  /// the store (the upsert would deduplicate anyway, but skip for free).
+  String? _historyRecordedFor;
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +53,25 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
     if (appUserState is AppUserLoggedIn) {
       context.read<BlogLikedBloc>().add(
         GetIsBlogLiked(userId: appUserState.user.id, blogId: widget.blogId),
+      );
+    }
+  }
+
+  /// Reading history is device-local and per account (issue #22): only
+  /// signed-in users are recorded, failures are swallowed (the reader must
+  /// never break because a bookkeeping write failed).
+  Future<void> _recordReadingHistory(String userId, Blog blog) async {
+    if (_historyRecordedFor == '${userId}_${blog.id}') return;
+    _historyRecordedFor = '${userId}_${blog.id}';
+    try {
+      final store =
+          widget.historyStore ?? GetIt.instance<ReadingHistoryStore>();
+      await store.record(userId: userId, blog: blog);
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'recording the reading history failed',
+        error: e,
+        stackTrace: stackTrace,
       );
     }
   }
@@ -63,6 +96,7 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
                 blogId: state.blog.id,
               ),
             );
+            _recordReadingHistory(appUserState.user.id, state.blog);
           }
         }
       },
@@ -157,6 +191,17 @@ class _ViewerScaffold extends StatelessWidget {
               ),
             ),
             actions: [
+              // Share (issue #21): visible only when WEB_BASE_URL is
+              // configured - a link that cannot open must never be
+              // shared. Blog.id is the article's public slug. The
+              // payload is title + canonical web URL only.
+              if (articleWebUrl(blog.id) != null)
+                IconButton(
+                  tooltip: '分享文章',
+                  icon: const Icon(Icons.share, color: Colors.white),
+                  onPressed: () =>
+                      shareArticle(title: blog.title, slug: blog.id),
+                ),
               BlocConsumer<BlogLikedBloc, BlogLikedState>(
                 listener: (context, state) {
                   if (state is ToggleBlogLikeFailure) {
@@ -167,6 +212,7 @@ class _ViewerScaffold extends StatelessWidget {
                   // Use likedBlogs map to determine if the blog is saved
                   final isSaved = state.likedBlogs[blog.id] ?? false;
                   return IconButton(
+                    tooltip: isSaved ? '取消收藏' : '收藏',
                     icon: Icon(
                       isSaved ? Icons.bookmark : Icons.bookmark_border,
                       color: Colors.white,
@@ -212,7 +258,9 @@ class _ViewerScaffold extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            blog.posterName ?? 'Unknown Author',
+                            blog.posterName?.isNotEmpty == true
+                                ? blog.posterName!
+                                : '匿名作者',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -228,7 +276,7 @@ class _ViewerScaffold extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                blog.updatedAt.toString().substring(0, 10),
+                                formatDate(blog.updatedAt),
                                 style: const TextStyle(
                                   color: Colors.grey,
                                   fontSize: 14,
@@ -255,15 +303,10 @@ class _ViewerScaffold extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  Text(
-                    blog.content,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      height: 1.5,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+                  // Markdown rendering (issue #17): plain-text articles
+                  // render as paragraphs, so existing content stays
+                  // readable. Links and images are http(s)-only.
+                  MarkdownBody(markdown: blog.content),
                   const SizedBox(height: 30),
                   Wrap(
                     spacing: 8,
@@ -275,7 +318,7 @@ class _ViewerScaffold extends StatelessWidget {
                               tag,
                               style: const TextStyle(
                                 fontSize: 12,
-                                color: AppPallete.gradient1,
+                                color: AppPalette.gradient1,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 1.5,
                               ),

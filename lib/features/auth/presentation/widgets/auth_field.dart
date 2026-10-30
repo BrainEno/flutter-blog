@@ -1,4 +1,4 @@
-import 'package:belog/core/theme/app_pallete.dart'; // Import your color palette
+import 'package:belog/core/theme/app_palette.dart'; // Import your color palette
 import 'package:flutter/material.dart';
 
 class AuthField extends StatelessWidget {
@@ -40,9 +40,9 @@ class AuthField extends StatelessWidget {
           TextStyle(
             fontSize: 16,
             color: isDarkMode
-                ? AppPallete
+                ? AppPalette
                       .whiteColor // White text in dark mode
-                : AppPallete.lightBlack, // Black text in light mode
+                : AppPalette.lightBlack, // Black text in light mode
           ),
       decoration: InputDecoration(
         hintText: hintText,
@@ -51,24 +51,24 @@ class AuthField extends StatelessWidget {
             TextStyle(
               fontSize: 16,
               color: isDarkMode
-                  ? AppPallete
+                  ? AppPalette
                         .greyColor // Medium grey hint in dark mode
-                  : AppPallete.lightGreyText, // Light grey hint in light mode
+                  : AppPalette.lightGreyText, // Light grey hint in light mode
             ),
         prefixIcon: prefixIcon != null
             ? Icon(
                 prefixIcon,
                 color: isDarkMode
-                    ? AppPallete
+                    ? AppPalette
                           .greyColor // Medium grey icon in dark mode
-                    : AppPallete.lightGreyText, // Light grey icon in light mode
+                    : AppPalette.lightGreyText, // Light grey icon in light mode
               )
             : null,
         filled: true,
         fillColor: isDarkMode
-            ? AppPallete
+            ? AppPalette
                   .greyColorDark // Dark grey background in dark mode
-            : AppPallete.lightBackground, // White background in light mode
+            : AppPalette.lightBackground, // White background in light mode
         contentPadding: const EdgeInsets.symmetric(
           vertical: 16.0,
           horizontal: 20.0,
@@ -117,9 +117,9 @@ class AuthField extends StatelessWidget {
         color:
             borderColor ??
             (isDarkMode
-                ? AppPallete
+                ? AppPalette
                       .greyColorLight // Light grey border in dark mode
-                : AppPallete.lightBorder), // Light border in light mode
+                : AppPalette.lightBorder), // Light border in light mode
       ),
     );
   }
@@ -131,7 +131,7 @@ class AuthField extends StatelessWidget {
   ) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: focusedBorderColor ?? AppPallete.gradient2),
+      borderSide: BorderSide(color: focusedBorderColor ?? AppPalette.gradient2),
     );
   }
 

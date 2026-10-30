@@ -24,7 +24,8 @@ class UploadBlog implements UseCase<Blog, UploadBlogParams> {
 }
 
 class UploadBlogParams {
-  final File image;
+  /// Picked cover; null publishes a text-only article (issue #17).
+  final File? image;
   final String title;
   final String content;
   final String posterId;

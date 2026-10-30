@@ -1,6 +1,7 @@
 import 'package:belog/core/utils/extract_description.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 
 class BlogGridItem extends StatelessWidget {
@@ -88,7 +89,7 @@ class BlogGridItem extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          blog.updatedAt.toString().substring(0, 10),
+                          formatDate(blog.updatedAt),
                           style: const TextStyle(
                             fontSize: 10.0,
                             color: Colors.white70,

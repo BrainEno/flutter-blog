@@ -25,7 +25,7 @@ class BlogRepositoryImpl implements BlogRepository {
 
   @override
   Future<Either<Failure, Blog>> uploadBlog({
-    required File image,
+    File? image,
     required String title,
     required String content,
     required String posterId,
@@ -40,11 +40,13 @@ class BlogRepositoryImpl implements BlogRepository {
       // cover is uploaded first and the article row is created with it.
       // A failure between the two only leaves an unreferenced asset (the
       // backend has no delete endpoint; its lifecycle is managed
-      // server-side).
-      final imageUrl = await blogRemoteDataSource.uploadBlogImage(
-        image: image,
-        mimeType: imageMimeType,
-      );
+      // server-side). A coverless publish (issue #17) skips the upload.
+      final imageUrl = image == null
+          ? ''
+          : await blogRemoteDataSource.uploadBlogImage(
+              image: image,
+              mimeType: imageMimeType,
+            );
       final blogModel = BlogModel(
         id: '',
         title: title,

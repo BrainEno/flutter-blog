@@ -3,15 +3,16 @@ import 'dart:io';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/loader.dart';
-import 'package:belog/core/theme/app_pallete.dart';
+import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/pick_image.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/data/datasources/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
-import 'package:belog/features/blog/presentation/blocs/bog_upload/bloc/blog_upload_bloc.dart';
+import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/utils/cover_url.dart';
 import 'package:belog/features/blog/presentation/widgets/editor_field.dart';
+import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
 import 'package:belog/features/blog/presentation/widgets/draft_recovery_dialog.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
@@ -45,6 +46,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
   List<String> selectedTags = [];
   File? image;
   bool isNewImageSelected = false;
+
+  /// Markdown preview toggle for the body field (issue #17).
+  bool _previewMode = false;
 
   /// MIME type of [image] when a new cover was picked; uploaded as the
   /// object's contentType.
@@ -194,15 +198,18 @@ class _BlogEditorState extends State<BlogEditorPage> {
 
   void saveBlog() {
     _draftRequestVersion++;
-    if (formKey.currentState!.validate() && selectedTags.isNotEmpty) {
+    // Cover and tags are optional (issue #17): title and body are the
+    // only required fields, and the backend already publishes text-only
+    // articles as plain content blocks.
+    if (formKey.currentState!.validate()) {
       _publishStartedAt = DateTime.now();
       _editedDuringPublish = false;
       final posterId =
           (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
-      if (widget.blog == null && image != null) {
+      if (widget.blog == null) {
         context.read<BlogUploadBloc>().add(
           UploadBlogEvent(
-            image: image!,
+            image: image,
             title: titleController.text.trim(),
             content: contentController.text.trim(),
             posterId: posterId,
@@ -221,13 +228,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
             imageMimeType: isNewImageSelected ? imageMimeType : null,
           ),
         );
-      } else {
-        // New articles still need a cover at this point (the editor's
-        // upload flow always pairs a cover with the first publish).
-        showSnackBar(context, '请填写所有必填字段并上传封面图片');
       }
     } else {
-      showSnackBar(context, '请填写所有必填字段并上传封面图片');
+      showSnackBar(context, '请填写标题与正文');
     }
   }
 
@@ -266,20 +269,20 @@ class _BlogEditorState extends State<BlogEditorPage> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: isDarkMode
-          ? AppPallete.blackColor
-          : AppPallete.lightBackground,
+          ? AppPalette.blackColor
+          : AppPalette.lightBackground,
       appBar: AppBar(
         backgroundColor: isDarkMode
-            ? AppPallete.blackColor
-            : AppPallete.lightBackground,
+            ? AppPalette.blackColor
+            : AppPalette.lightBackground,
         elevation: 0,
         iconTheme: IconThemeData(
-          color: isDarkMode ? AppPallete.whiteColor : AppPallete.lightBlack,
+          color: isDarkMode ? AppPalette.whiteColor : AppPalette.lightBlack,
         ),
         title: Text(
           widget.blog == null ? '撰写新文章' : '编辑文章',
           style: TextStyle(
-            color: isDarkMode ? AppPallete.whiteColor : AppPallete.lightBlack,
+            color: isDarkMode ? AppPalette.whiteColor : AppPalette.lightBlack,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -326,9 +329,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
               }
             },
             itemBuilder: (BuildContext context) {
-              // No delete entry: the backend has no article deletion
-              // endpoint yet (gap G1, see
-              // docs/supabase-to-nowave-migration.md).
+              // No delete entry here on purpose: deletion lives in "my
+              // articles" (long-press) where the recycle bin entry sits
+              // next to it.
               if (widget.blog == null) {
                 return [
                   PopupMenuItem<String>(
@@ -425,10 +428,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
                             )
                           : DottedBorder(
                               color: isDarkMode
-                                  ? AppPallete.greyColorLight.withAlpha(
+                                  ? AppPalette.greyColorLight.withAlpha(
                                       (0.6 * 255).toInt(),
                                     )
-                                  : AppPallete.lightBorder.withAlpha(
+                                  : AppPalette.lightBorder.withAlpha(
                                       (0.8 * 255).toInt(),
                                     ),
                               radius: const Radius.circular(12),
@@ -441,10 +444,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(12),
                                   color: isDarkMode
-                                      ? AppPallete.blackColorLight.withAlpha(
+                                      ? AppPalette.blackColorLight.withAlpha(
                                           (0.3 * 255).toInt(),
                                         )
-                                      : AppPallete.lightGrey.withAlpha(
+                                      : AppPalette.lightGrey.withAlpha(
                                           (0.15 * 255).toInt(),
                                         ),
                                 ),
@@ -456,18 +459,18 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                         Icons.image_outlined,
                                         size: 55,
                                         color: isDarkMode
-                                            ? AppPallete.greyColor
-                                            : AppPallete.lightGreyText,
+                                            ? AppPalette.greyColor
+                                            : AppPalette.lightGreyText,
                                       ),
                                       const SizedBox(height: 12),
                                       Text(
-                                        '点击上传封面',
+                                        '点击上传封面（可选）',
                                         style: TextStyle(
                                           fontSize: 17,
                                           fontWeight: FontWeight.w500,
                                           color: isDarkMode
-                                              ? AppPallete.greyColor
-                                              : AppPallete.lightGreyText,
+                                              ? AppPalette.greyColor
+                                              : AppPalette.lightGreyText,
                                         ),
                                       ),
                                     ],
@@ -477,7 +480,6 @@ class _BlogEditorState extends State<BlogEditorPage> {
                             ),
                     ),
                     const SizedBox(height: 36),
-                    // ... rest of the existing Column children (tags, title, content) ...
                     Wrap(
                       spacing: 10.0,
                       runSpacing: 10.0,
@@ -490,10 +492,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
                                   color: selectedTags.contains(e)
-                                      ? AppPallete.whiteColor
+                                      ? AppPalette.whiteColor
                                       : isDarkMode
-                                      ? AppPallete.whiteColor
-                                      : AppPallete.lightBlack,
+                                      ? AppPalette.whiteColor
+                                      : AppPalette.lightBlack,
                                 ),
                               ),
                               selected: selectedTags.contains(e),
@@ -507,28 +509,28 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                 borderRadius: BorderRadius.circular(25),
                                 side: BorderSide(
                                   color: isDarkMode
-                                      ? AppPallete.greyColorLight.withAlpha(
+                                      ? AppPalette.greyColorLight.withAlpha(
                                           (0.7 * 255).toInt(),
                                         )
-                                      : AppPallete.lightBorder.withAlpha(
+                                      : AppPalette.lightBorder.withAlpha(
                                           (0.7 * 255).toInt(),
                                         ),
                                 ),
                               ),
                               backgroundColor: isDarkMode
-                                  ? AppPallete.blackColorLight.withAlpha(
+                                  ? AppPalette.blackColorLight.withAlpha(
                                       (0.6 * 255).toInt(),
                                     )
-                                  : AppPallete.lightGrey.withAlpha(
+                                  : AppPalette.lightGrey.withAlpha(
                                       (0.4 * 255).toInt(),
                                     ),
-                              selectedColor: AppPallete.gradient1.withAlpha(
+                              selectedColor: AppPalette.gradient1.withAlpha(
                                 (0.9 * 255).toInt(),
                               ),
                               labelStyle: TextStyle(
                                 fontWeight: FontWeight.w500,
                                 color: selectedTags.contains(e)
-                                    ? AppPallete.blackColor
+                                    ? AppPalette.blackColor
                                     : null,
                               ),
                               onSelected: (bool selected) {
@@ -552,13 +554,51 @@ class _BlogEditorState extends State<BlogEditorPage> {
                       contentType: BlogEditorContentType.title,
                     ),
                     const SizedBox(height: 30),
-                    EditorField(
-                      controller: contentController,
-                      hintText: '正文',
-                      maxLines: null,
-                      expands: true,
-                      contentType: BlogEditorContentType.body,
+                    SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment(
+                          value: false,
+                          icon: Icon(Icons.edit_outlined),
+                          label: Text('编辑'),
+                        ),
+                        ButtonSegment(
+                          value: true,
+                          icon: Icon(Icons.visibility_outlined),
+                          label: Text('预览'),
+                        ),
+                      ],
+                      selected: {_previewMode},
+                      onSelectionChanged: (selection) =>
+                          setState(() => _previewMode = selection.first),
                     ),
+                    const SizedBox(height: 12),
+                    if (_previewMode)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isDarkMode
+                                ? AppPalette.greyColorLight
+                                : AppPalette.lightBorder,
+                          ),
+                        ),
+                        child: contentController.text.trim().isEmpty
+                            ? const Text(
+                                '正文为空，开始输入后这里会显示预览',
+                                style: TextStyle(color: Colors.grey),
+                              )
+                            : MarkdownBody(markdown: contentController.text),
+                      )
+                    else
+                      EditorField(
+                        controller: contentController,
+                        hintText: '正文（支持 Markdown）',
+                        maxLines: null,
+                        expands: true,
+                        contentType: BlogEditorContentType.body,
+                      ),
                     const SizedBox(height: 40),
                   ],
                 ),

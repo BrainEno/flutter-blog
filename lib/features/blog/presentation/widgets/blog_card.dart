@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:belog/core/theme/app_pallete.dart';
+import 'package:belog/core/theme/app_palette.dart';
+import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/utils/cover_url.dart';
 import 'package:go_router/go_router.dart';
@@ -152,7 +153,7 @@ class _BlogCardState extends State<BlogCard>
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              color: AppPallete.whiteColor,
+                              color: AppPalette.whiteColor,
                               fontSize: 26, // Larger title for emphasis
                               fontWeight: FontWeight.bold,
                               shadows: [
@@ -183,7 +184,7 @@ class _BlogCardState extends State<BlogCard>
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Text(
-                          widget.blog.updatedAt.toString().substring(0, 10),
+                          formatDate(widget.blog.updatedAt),
                           style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 14,

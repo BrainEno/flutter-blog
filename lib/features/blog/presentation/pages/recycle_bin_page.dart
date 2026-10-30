@@ -1,3 +1,4 @@
+import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
@@ -115,7 +116,7 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   subtitle: Text(
-                    '删除于 ${blog.deletedAt.toLocal().toString().substring(0, 10)}'
+                    '删除于 ${formatDate(blog.deletedAt)}'
                     ' · ${_purgeDeadlineText(blog)}',
                   ),
                   trailing: restoring

@@ -1,4 +1,4 @@
-import 'package:belog/core/theme/app_pallete.dart';
+import 'package:belog/core/theme/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -27,8 +27,8 @@ class _HomeShellState extends State<HomeShell> {
 
   List<NavigationDestination> _destinations(BuildContext context) {
     final iconColor = Theme.of(context).brightness == Brightness.light
-        ? AppPallete.greyColorDark
-        : AppPallete.whiteColor;
+        ? AppPalette.greyColorDark
+        : AppPalette.whiteColor;
     return [
       for (final (label, icon) in _tabs)
         NavigationDestination(
