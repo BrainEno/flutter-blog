@@ -42,26 +42,25 @@ void main() {
     test(
       'maps the profile row with the viewer-resolved follow state',
       () async {
-      when(
-        () => client.getJson(any(), query: any(named: 'query')),
-      ).thenAnswer((_) async => _profileMap(isFollowing: true));
+        when(
+          () => client.getJson(any(), query: any(named: 'query')),
+        ).thenAnswer((_) async => _profileMap(isFollowing: true));
 
-      final profile = await dataSource.getAuthorProfile(_kUserId);
+        final profile = await dataSource.getAuthorProfile(_kUserId);
 
-      expect(profile.userId, _kUserId);
-      expect(profile.displayName, '作者甲');
-      expect(profile.bio, '写点东西');
-      expect(profile.websiteUrl, 'https://example.invalid');
-      expect(profile.followerCount, 12);
-      expect(profile.followingCount, 3);
-      expect(profile.isFollowing, isTrue);
-      verify(
-        () => client.getJson(
-          '/authors/$_kUserId',
-          query: {'locale': 'zh-CN'},
-        ),
-      ).called(1);
-    });
+        expect(profile.userId, _kUserId);
+        expect(profile.displayName, '作者甲');
+        expect(profile.bio, '写点东西');
+        expect(profile.websiteUrl, 'https://example.invalid');
+        expect(profile.followerCount, 12);
+        expect(profile.followingCount, 3);
+        expect(profile.isFollowing, isTrue);
+        verify(
+          () =>
+              client.getJson('/authors/$_kUserId', query: {'locale': 'zh-CN'}),
+        ).called(1);
+      },
+    );
 
     test('an API error surfaces as a ServerException', () async {
       when(() => client.getJson(any(), query: any(named: 'query'))).thenThrow(

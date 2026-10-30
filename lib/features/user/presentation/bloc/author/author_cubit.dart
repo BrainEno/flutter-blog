@@ -101,9 +101,7 @@ class AuthorCubit extends Cubit<AuthorState> {
       ),
       // The server sends the fresh profile back: the new follow state and
       // counts are its answer, not a local simulation.
-      (profile) => emit(
-        AuthorLoaded(profile: profile, followInFlight: false),
-      ),
+      (profile) => emit(AuthorLoaded(profile: profile, followInFlight: false)),
     );
   }
 }

@@ -134,7 +134,7 @@ class Harness {
       ),
     );
     when(
-      () => remote.getBlogsByUser('author'),
+      () => remote.getBlogsByPosterId('author'),
     ).thenAnswer((_) async => <BlogModel>[]);
     when(
       () => local.uploadLocalBlogs(blogs: any(named: 'blogs')),

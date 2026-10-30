@@ -45,11 +45,9 @@ void main() {
 
   group('load', () {
     test('resolves the profile with the viewer follow state', () async {
-      when(
-        () => getAuthorProfile('author-1'),
-      ).thenAnswer((_) async => right<Failure, AuthorProfile>(
-        _profile(isFollowing: true),
-      ));
+      when(() => getAuthorProfile('author-1')).thenAnswer(
+        (_) async => right<Failure, AuthorProfile>(_profile(isFollowing: true)),
+      );
 
       await cubit.load();
 
@@ -59,9 +57,9 @@ void main() {
     });
 
     test('a failure lands in the failure state with the message', () async {
-      when(() => getAuthorProfile('author-1')).thenAnswer(
-        (_) async => left<Failure, AuthorProfile>(Failure('作者不存在')),
-      );
+      when(
+        () => getAuthorProfile('author-1'),
+      ).thenAnswer((_) async => left<Failure, AuthorProfile>(Failure('作者不存在')));
 
       await cubit.load();
 
@@ -93,54 +91,55 @@ void main() {
       expect(state.followError, isEmpty);
     });
 
-    test('unfollowing calls the unfollow usecase and takes its answer',
-        () async {
-      when(
-        () => getAuthorProfile('author-1'),
-      ).thenAnswer(
-        (_) async => right<Failure, AuthorProfile>(_profile(isFollowing: true)),
-      );
-      await cubit.load();
+    test(
+      'unfollowing calls the unfollow usecase and takes its answer',
+      () async {
+        when(() => getAuthorProfile('author-1')).thenAnswer(
+          (_) async =>
+              right<Failure, AuthorProfile>(_profile(isFollowing: true)),
+        );
+        await cubit.load();
 
-      when(() => unfollowAuthor('author-1')).thenAnswer(
-        (_) async => right<Failure, AuthorProfile>(
-          _profile(isFollowing: false, followers: 11),
-        ),
-      );
+        when(() => unfollowAuthor('author-1')).thenAnswer(
+          (_) async => right<Failure, AuthorProfile>(
+            _profile(isFollowing: false, followers: 11),
+          ),
+        );
 
-      await cubit.toggleFollow();
+        await cubit.toggleFollow();
 
-      final state = cubit.state as AuthorLoaded;
-      expect(state.profile.isFollowing, isFalse);
-      expect(state.profile.followerCount, 11);
-      verify(() => unfollowAuthor('author-1')).called(1);
-      verifyNever(() => followAuthor(any()));
-    });
+        final state = cubit.state as AuthorLoaded;
+        expect(state.profile.isFollowing, isFalse);
+        expect(state.profile.followerCount, 11);
+        verify(() => unfollowAuthor('author-1')).called(1);
+        verifyNever(() => followAuthor(any()));
+      },
+    );
 
-    test('a failed toggle keeps the previous server state and reports it',
-        () async {
-      when(
-        () => getAuthorProfile('author-1'),
-      ).thenAnswer(
-        (_) async => right<Failure, AuthorProfile>(_profile(isFollowing: true)),
-      );
-      await cubit.load();
+    test(
+      'a failed toggle keeps the previous server state and reports it',
+      () async {
+        when(() => getAuthorProfile('author-1')).thenAnswer(
+          (_) async =>
+              right<Failure, AuthorProfile>(_profile(isFollowing: true)),
+        );
+        await cubit.load();
 
-      when(() => unfollowAuthor('author-1')).thenAnswer(
-        (_) async => left<Failure, AuthorProfile>(Failure('网络超时')),
-      );
+        when(() => unfollowAuthor('author-1')).thenAnswer(
+          (_) async => left<Failure, AuthorProfile>(Failure('网络超时')),
+        );
 
-      await cubit.toggleFollow();
+        await cubit.toggleFollow();
 
-      final state = cubit.state as AuthorLoaded;
-      // The server-resolved state is untouched on failure.
-      expect(state.profile.isFollowing, isTrue);
-      expect(state.followInFlight, isFalse);
-      expect(state.followError, '网络超时');
-    });
+        final state = cubit.state as AuthorLoaded;
+        // The server-resolved state is untouched on failure.
+        expect(state.profile.isFollowing, isTrue);
+        expect(state.followInFlight, isFalse);
+        expect(state.followError, '网络超时');
+      },
+    );
 
-    test('a rapid second tap is ignored while a toggle is in flight',
-        () async {
+    test('a rapid second tap is ignored while a toggle is in flight', () async {
       when(() => getAuthorProfile('author-1')).thenAnswer(
         (_) async =>
             right<Failure, AuthorProfile>(_profile(isFollowing: false)),

@@ -100,9 +100,9 @@ void main() {
     blogRepository = MockBlogRepository();
     appUserCubit = AppUserCubit();
 
-    when(() => getAuthorProfile('author-1')).thenAnswer(
-      (_) async => right<Failure, AuthorProfile>(_profile()),
-    );
+    when(
+      () => getAuthorProfile('author-1'),
+    ).thenAnswer((_) async => right<Failure, AuthorProfile>(_profile()));
     when(
       () => blogRepository.getBlogsByUser('author-1'),
     ).thenAnswer((_) async => right<Failure, List<Blog>>([_blog()]));
@@ -177,9 +177,9 @@ void main() {
     tester,
   ) async {
     appUserCubit.updateUser(_user());
-    when(() => followAuthor('author-1')).thenAnswer(
-      (_) async => left<Failure, AuthorProfile>(Failure('网络超时')),
-    );
+    when(
+      () => followAuthor('author-1'),
+    ).thenAnswer((_) async => left<Failure, AuthorProfile>(Failure('网络超时')));
     final authorCubit = buildAuthorCubit();
     addTearDown(authorCubit.close);
     final blogByBloc = buildBlogByBloc();

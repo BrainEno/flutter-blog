@@ -53,12 +53,12 @@ void main() {
       () async {
         when(() => connection.isConnected).thenAnswer((_) async => false);
 
-      final result = await repository.getAuthorProfile('author-1');
+        final result = await repository.getAuthorProfile('author-1');
 
-      result.fold(
-        (failure) => expect(failure.code, 'network.offline'),
-        (_) => fail('offline load must not succeed'),
-      );
+        result.fold(
+          (failure) => expect(failure.code, 'network.offline'),
+          (_) => fail('offline load must not succeed'),
+        );
         verifyNever(() => remote.getAuthorProfile(any()));
       },
     );
@@ -90,13 +90,10 @@ void main() {
 
       final result = await repository.followAuthor('author-1');
 
-      result.fold(
-        (failure) => fail('expected success'),
-        (profile) {
-          expect(profile.isFollowing, isTrue);
-          expect(profile.followerCount, 12);
-        },
-      );
+      result.fold((failure) => fail('expected success'), (profile) {
+        expect(profile.isFollowing, isTrue);
+        expect(profile.followerCount, 12);
+      });
     });
 
     test('offline keeps a follow-specific message', () async {

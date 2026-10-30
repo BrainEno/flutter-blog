@@ -296,9 +296,7 @@ void _initAuthors(NowaveApiClient apiClient) {
       () => GetAuthorProfile(serviceLocator<AuthorRepository>()),
     )
     ..registerFactory(() => FollowAuthor(serviceLocator<AuthorRepository>()))
-    ..registerFactory(
-      () => UnfollowAuthor(serviceLocator<AuthorRepository>()),
-    );
+    ..registerFactory(() => UnfollowAuthor(serviceLocator<AuthorRepository>()));
 }
 
 void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {

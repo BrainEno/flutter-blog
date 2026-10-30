@@ -2,8 +2,6 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
-import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_event.dart';
-import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_state.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:belog/features/user/domain/entities/author_profile.dart';
 import 'package:belog/features/user/presentation/bloc/author/author_cubit.dart';
@@ -34,9 +32,7 @@ class _AuthorPageState extends State<AuthorPage> {
   @override
   void initState() {
     super.initState();
-    context.read<BlogByBloc>().add(
-      GetBlogByPosterEvent(userId: widget.userId),
-    );
+    context.read<BlogByBloc>().add(GetBlogByPosterEvent(userId: widget.userId));
   }
 
   void _requestLogin() {
@@ -69,8 +65,9 @@ class _AuthorPageState extends State<AuthorPage> {
   @override
   Widget build(BuildContext context) {
     final appUserState = context.watch<AppUserCubit>().state;
-    final viewerId =
-        appUserState is AppUserLoggedIn ? appUserState.user.id : null;
+    final viewerId = appUserState is AppUserLoggedIn
+        ? appUserState.user.id
+        : null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('作者')),
@@ -81,7 +78,7 @@ class _AuthorPageState extends State<AuthorPage> {
             current.followError != previous.followError &&
             current.followError.isNotEmpty,
         listener: (context, state) {
-          showSnackBar(context, state.followError);
+          showSnackBar(context, (state as AuthorLoaded).followError);
         },
         builder: (context, state) {
           if (state is AuthorLoading) {
