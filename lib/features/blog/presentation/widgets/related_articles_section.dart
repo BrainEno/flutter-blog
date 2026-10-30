@@ -22,11 +22,10 @@ class RelatedArticlesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create:
-          (_) => RelatedArticlesCubit(
-            getRelatedArticles: getRelatedArticles,
-            slug: slug,
-          ),
+      create: (_) => RelatedArticlesCubit(
+        getRelatedArticles: getRelatedArticles,
+        slug: slug,
+      ),
       child: BlocBuilder<RelatedArticlesCubit, RelatedArticlesState>(
         builder: (context, state) {
           if (state is! RelatedArticlesLoaded || state.blogs.isEmpty) {

@@ -31,11 +31,10 @@ class CommentModel extends Comment {
       createdAt:
           DateTime.tryParse(map['createdAt'] as String? ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
-      replies:
-          (map['replies'] as List<dynamic>? ?? const [])
-              .whereType<Map<String, dynamic>>()
-              .map(CommentModel.fromMap)
-              .toList(),
+      replies: (map['replies'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(CommentModel.fromMap)
+          .toList(),
     );
   }
 }

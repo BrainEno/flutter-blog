@@ -66,22 +66,22 @@ class _CommentsSectionState extends State<CommentsSection> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-            title: const Text('删除评论'),
-            content: const Text('删除后不可恢复，这条评论下的回复也会一并删除。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text(
-                  '删除',
-                  style: TextStyle(color: AppPalette.errorColor),
-                ),
-              ),
-            ],
+        title: const Text('删除评论'),
+        content: const Text('删除后不可恢复，这条评论下的回复也会一并删除。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
           ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text(
+              '删除',
+              style: TextStyle(color: AppPalette.errorColor),
+            ),
+          ),
+        ],
+      ),
     );
     return confirmed ?? false;
   }
@@ -247,9 +247,8 @@ class _CommentsSectionState extends State<CommentsSection> {
                 textAlign: TextAlign.center,
               ),
               TextButton(
-                onPressed: () => context.read<CommentBloc>().add(
-                  const CommentsRequested(),
-                ),
+                onPressed: () =>
+                    context.read<CommentBloc>().add(const CommentsRequested()),
                 child: const Text('重试'),
               ),
             ],
@@ -296,8 +295,9 @@ class _CommentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appUserState = context.watch<AppUserCubit>().state;
-    final viewerId =
-        appUserState is AppUserLoggedIn ? appUserState.user.id : null;
+    final viewerId = appUserState is AppUserLoggedIn
+        ? appUserState.user.id
+        : null;
     final isOwn = viewerId != null && viewerId == comment.authorId;
     final deleting = context.select<CommentBloc, bool>(
       (bloc) => bloc.state.deletingIds.contains(comment.id),
@@ -390,7 +390,7 @@ class _CommentTile extends StatelessWidget {
           ),
           if (comment.replies.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(left: depth == 0 ? 42 : 36),
+              padding: EdgeInsets.only(left: depth == 0 ? 42 : 36),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: comment.replies

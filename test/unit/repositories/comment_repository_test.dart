@@ -50,23 +50,25 @@ void main() {
       );
     });
 
-    test('offline returns a network failure without calling the server',
-        () async {
-      when(() => connection.isConnected).thenAnswer((_) async => false);
+    test(
+      'offline returns a network failure without calling the server',
+      () async {
+        when(() => connection.isConnected).thenAnswer((_) async => false);
 
-      final result = await repository.getComments('my-slug');
+        final result = await repository.getComments('my-slug');
 
-      result.fold(
-        (failure) => expect(failure.code, 'network.offline'),
-        (_) => fail('offline load must not succeed'),
-      );
-      verifyNever(() => remote.getComments(any()));
-    });
+        result.fold(
+          (failure) => expect(failure.code, 'network.offline'),
+          (_) => fail('offline load must not succeed'),
+        );
+        verifyNever(() => remote.getComments(any()));
+      },
+    );
 
     test('server exceptions are returned rather than thrown', () async {
-      when(() => remote.getComments('my-slug')).thenThrow(
-        const ServerException('评论加载失败'),
-      );
+      when(
+        () => remote.getComments('my-slug'),
+      ).thenThrow(const ServerException('评论加载失败'));
 
       final result = await repository.getComments('my-slug');
 

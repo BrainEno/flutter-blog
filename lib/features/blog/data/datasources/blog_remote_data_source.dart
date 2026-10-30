@@ -177,6 +177,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     }
   }
 
+  @override
   Future<List<BlogModel>> getBlogsByPosterId(String posterId) async {
     try {
       final data = await client.getJson(

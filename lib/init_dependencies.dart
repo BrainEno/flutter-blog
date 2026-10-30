@@ -268,8 +268,8 @@ void _initComments(NowaveApiClient apiClient) {
     ..registerFactory(() => GetComments(serviceLocator<CommentRepository>()))
     ..registerFactory(() => CreateComment(serviceLocator<CommentRepository>()))
     ..registerFactory(() => DeleteComment(serviceLocator<CommentRepository>()));
-    // CommentBloc is page-scoped and built by the viewer route with the
-    // article's slug, like BlogViewerCubit.
+  // CommentBloc is page-scoped and built by the viewer route with the
+  // article's slug, like BlogViewerCubit.
 }
 
 void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {

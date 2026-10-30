@@ -28,11 +28,7 @@ class CommentRepositoryImpl implements CommentRepository {
     } on ServerException catch (e) {
       return left(e.toFailure());
     } catch (e, stackTrace) {
-      AppLogger.error(
-        'getComments failed',
-        error: e,
-        stackTrace: stackTrace,
-      );
+      AppLogger.error('getComments failed', error: e, stackTrace: stackTrace);
       return left(Failure('评论加载失败，请稍后重试'));
     }
   }
@@ -65,11 +61,7 @@ class CommentRepositoryImpl implements CommentRepository {
     } on ServerException catch (e) {
       return left(e.toFailure());
     } catch (e, stackTrace) {
-      AppLogger.error(
-        'createComment failed',
-        error: e,
-        stackTrace: stackTrace,
-      );
+      AppLogger.error('createComment failed', error: e, stackTrace: stackTrace);
       return left(Failure('评论发送失败，请稍后重试'));
     }
   }
@@ -94,11 +86,7 @@ class CommentRepositoryImpl implements CommentRepository {
     } on ServerException catch (e) {
       return left(e.toFailure());
     } catch (e, stackTrace) {
-      AppLogger.error(
-        'deleteComment failed',
-        error: e,
-        stackTrace: stackTrace,
-      );
+      AppLogger.error('deleteComment failed', error: e, stackTrace: stackTrace);
       return left(Failure('评论删除失败，请稍后重试'));
     }
   }

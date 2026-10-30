@@ -54,39 +54,42 @@ void main() {
     test(
       'maps the thread tree with nested replies and author fields',
       () async {
-      when(() => client.getJson(any(), query: any(named: 'query'))).thenAnswer(
-        (_) async => [
-          _commentMap(
-            id: 'c1',
-            replies: [
-              _commentMap(
-                id: 'c2',
-                parentId: 'c1',
-                authorId: 'u2',
-                content: '同感',
-              ),
-            ],
+        when(
+          () => client.getJson(any(), query: any(named: 'query')),
+        ).thenAnswer(
+          (_) async => [
+            _commentMap(
+              id: 'c1',
+              replies: [
+                _commentMap(
+                  id: 'c2',
+                  parentId: 'c1',
+                  authorId: 'u2',
+                  content: '同感',
+                ),
+              ],
+            ),
+            _commentMap(id: 'c3', authorId: 'u3'),
+          ],
+        );
+
+        final comments = await dataSource.getComments(_kSlug);
+
+        expect(comments, hasLength(2));
+        expect(comments.first.id, 'c1');
+        expect(comments.first.authorName, '评论者-u1');
+        expect(comments.first.authorAvatarUrl, contains('u1'));
+        expect(comments.first.replies, hasLength(1));
+        expect(comments.first.replies.first.parentCommentId, 'c1');
+        expect(comments.first.replies.first.content, '同感');
+        verify(
+          () => client.getJson(
+            '/articles/$_kSlug/comments',
+            query: {'locale': 'zh-CN', 'limit': '50'},
           ),
-          _commentMap(id: 'c3', authorId: 'u3'),
-        ],
-      );
-
-      final comments = await dataSource.getComments(_kSlug);
-
-      expect(comments, hasLength(2));
-      expect(comments.first.id, 'c1');
-      expect(comments.first.authorName, '评论者-u1');
-      expect(comments.first.authorAvatarUrl, contains('u1'));
-      expect(comments.first.replies, hasLength(1));
-      expect(comments.first.replies.first.parentCommentId, 'c1');
-      expect(comments.first.replies.first.content, '同感');
-      verify(
-        () => client.getJson(
-          '/articles/$_kSlug/comments',
-          query: {'locale': 'zh-CN', 'limit': '50'},
-        ),
-      ).called(1);
-    });
+        ).called(1);
+      },
+    );
 
     test('an API error surfaces as a ServerException', () async {
       when(() => client.getJson(any(), query: any(named: 'query'))).thenThrow(
@@ -160,9 +163,9 @@ void main() {
 
   group('deleteComment', () {
     test('returns true when the server reports the delete', () async {
-      when(() => client.deleteJson(any())).thenAnswer(
-        (_) async => {'deleted': true},
-      );
+      when(
+        () => client.deleteJson(any()),
+      ).thenAnswer((_) async => {'deleted': true});
 
       expect(await dataSource.deleteComment('c1'), isTrue);
       verify(() => client.deleteJson('/comments/c1')).called(1);

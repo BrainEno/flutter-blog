@@ -20,7 +20,8 @@ class MockDeleteComment extends Mock implements DeleteComment {}
 
 class FakeUuid extends Fake implements Uuid {
   @override
-  String v4() => 'key-0';
+  String v4({V4Options? config, Map<String, dynamic>? options}) =>
+      'key-0';
 }
 
 Comment _comment(
@@ -135,9 +136,7 @@ void main() {
     expect(find.text('还没有评论，来说第一句吧'), findsOneWidget);
   });
 
-  testWidgets('the login prompt routes through onRequestLogin', (
-    tester,
-  ) async {
+  testWidgets('the login prompt routes through onRequestLogin', (tester) async {
     when(
       () => getComments('my-slug'),
     ).thenAnswer((_) async => right<Failure, List<Comment>>(const []));
@@ -170,9 +169,7 @@ void main() {
     when(
       () => getComments('my-slug'),
     ).thenAnswer((_) async => right<Failure, List<Comment>>(const []));
-    when(
-      () => createComment(any(that: isA<CreateCommentParams>())),
-    ).thenAnswer(
+    when(() => createComment(any(that: isA<CreateCommentParams>()))).thenAnswer(
       (_) async => right<Failure, Comment>(
         _comment('c9', authorId: 'viewer-1', content: '我来抢沙发'),
       ),
@@ -198,12 +195,10 @@ void main() {
     tester,
   ) async {
     appUserCubit.updateUser(_user());
-    when(() => getComments('my-slug')).thenAnswer(
-      (_) async => right<Failure, List<Comment>>([_comment('c1')]),
-    );
     when(
-      () => createComment(any(that: isA<CreateCommentParams>())),
-    ).thenAnswer(
+      () => getComments('my-slug'),
+    ).thenAnswer((_) async => right<Failure, List<Comment>>([_comment('c1')]));
+    when(() => createComment(any(that: isA<CreateCommentParams>()))).thenAnswer(
       (_) async => right<Failure, Comment>(
         _comment('c2', authorId: 'viewer-1', content: '回复内容', parentId: 'c1'),
       ),
@@ -220,9 +215,11 @@ void main() {
     await tester.tap(find.text('发送'));
     await tester.pumpAndSettle();
 
-    final captured = verify(
-      () => createComment(captureAny(that: isA<CreateCommentParams>())),
-    ).captured.single as CreateCommentParams;
+    final captured =
+        verify(
+              () => createComment(captureAny(that: isA<CreateCommentParams>())),
+            ).captured.single
+            as CreateCommentParams;
     expect(captured.parentCommentId, 'c1');
     expect(find.textContaining('回复 @'), findsNothing);
   });
@@ -232,9 +229,9 @@ void main() {
   ) async {
     appUserCubit.updateUser(_user());
     when(() => getComments('my-slug')).thenAnswer(
-      (_) async => right<Failure, List<Comment>>(
-        [_comment('c1', authorId: 'viewer-1', content: '我自己说的')],
-      ),
+      (_) async => right<Failure, List<Comment>>([
+        _comment('c1', authorId: 'viewer-1', content: '我自己说的'),
+      ]),
     );
     when(
       () => deleteComment('c1'),

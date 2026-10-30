@@ -17,8 +17,10 @@ class MockDeleteComment extends Mock implements DeleteComment {}
 
 class FakeUuid extends Fake implements Uuid {
   int _counter = 0;
+
   @override
-  String v4() => 'key-${_counter++}';
+  String v4({V4Options? config, Map<String, dynamic>? options}) =>
+      'key-${_counter++}';
 }
 
 Comment _comment(String id, {String? parentId}) => Comment(
@@ -61,9 +63,7 @@ void main() {
 
   group('CommentsRequested', () {
     test('loads the thread into the loaded state', () async {
-      when(
-        () => getComments('my-slug'),
-      ).thenAnswer(
+      when(() => getComments('my-slug')).thenAnswer(
         (_) async => right<Failure, List<Comment>>([_comment('c1')]),
       );
 
@@ -90,9 +90,7 @@ void main() {
 
   group('CommentSubmitted', () {
     test('appends a root comment and clears the submitting flag', () async {
-      when(
-        () => getComments('my-slug'),
-      ).thenAnswer(
+      when(() => getComments('my-slug')).thenAnswer(
         (_) async => right<Failure, List<Comment>>([_comment('c1')]),
       );
       bloc.add(const CommentsRequested());
@@ -100,9 +98,7 @@ void main() {
 
       when(
         () => createComment(any(that: isA<CreateCommentParams>())),
-      ).thenAnswer(
-        (_) async => right<Failure, Comment>(_comment('c2')),
-      );
+      ).thenAnswer((_) async => right<Failure, Comment>(_comment('c2')));
 
       bloc.add(const CommentSubmitted(content: '新评论'));
       await Future<void>.delayed(Duration.zero);
@@ -112,9 +108,7 @@ void main() {
     });
 
     test('nests a reply under its direct parent', () async {
-      when(
-        () => getComments('my-slug'),
-      ).thenAnswer(
+      when(() => getComments('my-slug')).thenAnswer(
         (_) async => right<Failure, List<Comment>>([_comment('c1')]),
       );
       bloc.add(const CommentsRequested());
@@ -138,8 +132,8 @@ void main() {
       when(
         () => createComment(any(that: isA<CreateCommentParams>())),
       ).thenAnswer((invocation) async {
-        final params = invocation.positionalArguments.single
-            as CreateCommentParams;
+        final params =
+            invocation.positionalArguments.single as CreateCommentParams;
         keys.add(params.idempotencyKey);
         // First attempt fails, retry succeeds.
         if (keys.length == 1) {
@@ -166,8 +160,8 @@ void main() {
       when(
         () => createComment(any(that: isA<CreateCommentParams>())),
       ).thenAnswer((invocation) async {
-        final params = invocation.positionalArguments.single
-            as CreateCommentParams;
+        final params =
+            invocation.positionalArguments.single as CreateCommentParams;
         keys.add(params.idempotencyKey);
         return left<Failure, Comment>(Failure('网络超时'));
       });
@@ -187,9 +181,7 @@ void main() {
       );
       await Future<void>.delayed(Duration.zero);
 
-      verifyNever(
-        () => createComment(any(that: isA<CreateCommentParams>())),
-      );
+      verifyNever(() => createComment(any(that: isA<CreateCommentParams>())));
     });
   });
 
@@ -224,9 +216,7 @@ void main() {
     });
 
     test('a failed delete keeps the comment and reports the error', () async {
-      when(
-        () => getComments('my-slug'),
-      ).thenAnswer(
+      when(() => getComments('my-slug')).thenAnswer(
         (_) async => right<Failure, List<Comment>>([_comment('c1')]),
       );
       bloc.add(const CommentsRequested());

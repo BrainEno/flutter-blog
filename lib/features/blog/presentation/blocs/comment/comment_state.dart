@@ -1,5 +1,4 @@
 import 'package:belog/features/blog/domain/entities/comment.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 enum CommentListStatus { initial, loading, loaded, failure }
 
@@ -27,8 +26,7 @@ class CommentState {
   });
 
   /// Total comment count including nested replies.
-  int get totalCount =>
-      comments.fold(0, (sum, c) => sum + c.totalCount);
+  int get totalCount => comments.fold(0, (sum, c) => sum + c.totalCount);
 
   CommentState copyWith({
     CommentListStatus? status,
