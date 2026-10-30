@@ -53,10 +53,14 @@ import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_sea
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
+import 'package:belog/features/user/data/datasources/author_remote_data_source.dart';
 import 'package:belog/features/user/data/datasources/user_remote_data_source.dart';
+import 'package:belog/features/user/data/repositories/author_repository_impl.dart';
 import 'package:belog/features/user/data/repositories/user_repository_impl.dart';
+import 'package:belog/features/user/domain/repositories/author_repository.dart';
 import 'package:belog/features/user/domain/repositories/user_repository.dart';
 import 'package:belog/features/user/data/user_data_export.dart';
+import 'package:belog/features/user/domain/usecases/author.dart';
 import 'package:belog/features/user/domain/usecases/edit_user_usecase.dart';
 import 'package:get_it/get_it.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
@@ -118,6 +122,7 @@ Future<void> initDependencies() async {
   _initAuth(sessionManager, apiClient);
   await _initBlog(apiClient);
   _initComments(apiClient);
+  _initAuthors(apiClient);
   _initUser(apiClient, sessionManager);
 
   serviceLocator.registerLazySingleton(() => database);
@@ -270,6 +275,30 @@ void _initComments(NowaveApiClient apiClient) {
     ..registerFactory(() => DeleteComment(serviceLocator<CommentRepository>()));
   // CommentBloc is page-scoped and built by the viewer route with the
   // article's slug, like BlogViewerCubit.
+}
+
+void _initAuthors(NowaveApiClient apiClient) {
+  serviceLocator
+    // Datasource
+    ..registerFactory<AuthorRemoteDataSource>(
+      () => AuthorRemoteDataSourceImpl(apiClient),
+    )
+    // Repository
+    ..registerFactory<AuthorRepository>(
+      () => AuthorRepositoryImpl(
+        authorRemoteDataSource: serviceLocator<AuthorRemoteDataSource>(),
+        connectionChecker: serviceLocator<ConnectionChecker>(),
+      ),
+    )
+    // Usecases. AuthorCubit is page-scoped and built by the author route
+    // with the profile's user id, like BlogViewerCubit.
+    ..registerFactory(
+      () => GetAuthorProfile(serviceLocator<AuthorRepository>()),
+    )
+    ..registerFactory(() => FollowAuthor(serviceLocator<AuthorRepository>()))
+    ..registerFactory(
+      () => UnfollowAuthor(serviceLocator<AuthorRepository>()),
+    );
 }
 
 void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {
