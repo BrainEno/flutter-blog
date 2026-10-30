@@ -23,14 +23,16 @@ class MockLocal extends Mock implements BlogLocalDataSource {}
 class MockConnection extends Mock implements ConnectionChecker {}
 
 void main() {
-  testWidgets('offline list failure can be retried after reconnecting',
-      (tester) async {
+  testWidgets('offline list failure can be retried after reconnecting', (
+    tester,
+  ) async {
     var connected = false;
     final connection = MockConnection();
     final remote = MockRemote();
     when(() => connection.isConnected).thenAnswer((_) async => connected);
-    when(() => remote.getUserLikedBlogs('user'))
-        .thenAnswer((_) async => <BlogModel>[]);
+    when(
+      () => remote.getUserLikedBlogs('user'),
+    ).thenAnswer((_) async => <BlogModel>[]);
     final repo = BlogRepositoryImpl(remote, MockLocal(), connection);
     final likes = BlogLikedBloc(
       toggleBlogLike: ToggleLikeBlog(repo),
@@ -38,12 +40,14 @@ void main() {
       getUserLikedBlogs: GetUserLikedBlogs(repo),
     );
     final user = AppUserCubit()
-      ..updateUser(User(
-        id: 'user',
-        email: 'test@example.invalid',
-        name: 'Test',
-        updatedAt: DateTime.utc(2024),
-      ));
+      ..updateUser(
+        User(
+          id: 'user',
+          email: 'test@example.invalid',
+          name: 'Test',
+          updatedAt: DateTime.utc(2024),
+        ),
+      );
     addTearDown(() async {
       await likes.close();
       await user.close();
@@ -56,10 +60,11 @@ void main() {
           BlocProvider<AppUserCubit>.value(value: user),
         ],
         child: const MaterialApp(
-        locale: Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-home: SavedBlogsPage()),
+          locale: Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SavedBlogsPage(),
+        ),
       ),
     );
     await tester.pumpAndSettle();

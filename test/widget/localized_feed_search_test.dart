@@ -70,51 +70,51 @@ void main() {
     ) async {
       final semantics = tester.ensureSemantics();
       try {
-      final first = Completer<Either<Failure, List<Blog>>>();
-      var calls = 0;
-      final bloc = BlogBloc(
-        getAllBlogs: _GetArticles((_) {
-          calls++;
-          if (calls == 1) return first.future;
-          if (calls == 2) return Future.value(right(const []));
-          return Future.value(right([_article()]));
-        }),
-      );
-      final user = AppUserCubit();
-      addTearDown(bloc.close);
-      addTearDown(user.close);
-      await tester.pumpWidget(
-        MultiBlocProvider(
-          providers: [
-            BlocProvider<BlogBloc>.value(value: bloc),
-            BlocProvider<AppUserCubit>.value(value: user),
-          ],
-          child: _app(locale: locale, child: const BlogPage()),
-        ),
-      );
-      await tester.pump();
-      expect(find.bySemanticsLabel(l10n.loadingArticles), findsOneWidget);
+        final first = Completer<Either<Failure, List<Blog>>>();
+        var calls = 0;
+        final bloc = BlogBloc(
+          getAllBlogs: _GetArticles((_) {
+            calls++;
+            if (calls == 1) return first.future;
+            if (calls == 2) return Future.value(right(const []));
+            return Future.value(right([_article()]));
+          }),
+        );
+        final user = AppUserCubit();
+        addTearDown(bloc.close);
+        addTearDown(user.close);
+        await tester.pumpWidget(
+          MultiBlocProvider(
+            providers: [
+              BlocProvider<BlogBloc>.value(value: bloc),
+              BlocProvider<AppUserCubit>.value(value: user),
+            ],
+            child: _app(locale: locale, child: const BlogPage()),
+          ),
+        );
+        await tester.pump();
+        expect(find.bySemanticsLabel(l10n.loadingArticles), findsOneWidget);
 
-      first.complete(left(Failure.networkOffline()));
-      await tester.pumpAndSettle();
-      expect(find.text(l10n.errorNetworkOffline), findsWidgets);
-      expect(find.text(l10n.actionRetry), findsOneWidget);
-      expect(find.text(l10n.feedEmpty), findsNothing);
+        first.complete(left(Failure.networkOffline()));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.errorNetworkOffline), findsWidgets);
+        expect(find.text(l10n.actionRetry), findsOneWidget);
+        expect(find.text(l10n.feedEmpty), findsNothing);
 
-      await tester.tap(find.text(l10n.actionRetry));
-      await tester.pumpAndSettle();
-      expect(find.text(l10n.feedEmpty), findsOneWidget);
-      expect(find.text(l10n.feedNoMore), findsNothing);
+        await tester.tap(find.text(l10n.actionRetry));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.feedEmpty), findsOneWidget);
+        expect(find.text(l10n.feedNoMore), findsNothing);
 
-      bloc.add(const BlogFetchFirstPage());
-      await tester.pumpAndSettle();
-      expect(find.text(l10n.feedNoMore), findsOneWidget);
-      expect(find.text(l10n.anonymousAuthor), findsOneWidget);
-      expect(
-        find.bySemanticsLabel(RegExp(l10n.coverOf('Sample'))),
-        findsWidgets,
-      );
-      expect(tester.takeException(), isNull);
+        bloc.add(const BlogFetchFirstPage());
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.feedNoMore), findsOneWidget);
+        expect(find.text(l10n.anonymousAuthor), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(RegExp(l10n.coverOf('Sample'))),
+          findsWidgets,
+        );
+        expect(tester.takeException(), isNull);
       } finally {
         semantics.dispose();
       }
@@ -125,54 +125,84 @@ void main() {
       (tester) async {
         final semantics = tester.ensureSemantics();
         try {
-        final first = Completer<Either<Failure, List<Blog>>>();
-        var calls = 0;
-        final bloc = BlogSearchBloc(
-          searchBlogs: _SearchArticles((_) {
-            calls++;
-            if (calls == 1) return first.future;
-            if (calls == 2) return Future.value(right(const []));
-            return Future.value(right([_article()]));
-          }),
-        );
-        addTearDown(bloc.close);
-        await tester.pumpWidget(
-          BlocProvider<BlogSearchBloc>.value(
-            value: bloc,
-            child: _app(locale: locale, child: const SearchBlogPage()),
-          ),
-        );
-        expect(find.text(l10n.searchInitial), findsOneWidget);
-        await tester.enterText(find.byType(TextField), 'search term');
-        await tester.pump(const Duration(milliseconds: 350));
-        await tester.pump();
-        expect(find.bySemanticsLabel(l10n.searching), findsOneWidget);
+          final first = Completer<Either<Failure, List<Blog>>>();
+          var calls = 0;
+          final bloc = BlogSearchBloc(
+            searchBlogs: _SearchArticles((_) {
+              calls++;
+              if (calls == 1) return first.future;
+              if (calls == 2) return Future.value(right(const []));
+              return Future.value(right([_article()]));
+            }),
+          );
+          addTearDown(bloc.close);
+          await tester.pumpWidget(
+            BlocProvider<BlogSearchBloc>.value(
+              value: bloc,
+              child: _app(locale: locale, child: const SearchBlogPage()),
+            ),
+          );
+          expect(find.text(l10n.searchInitial), findsOneWidget);
+          await tester.enterText(find.byType(TextField), 'search term');
+          await tester.pump(const Duration(milliseconds: 350));
+          await tester.pump();
+          expect(find.bySemanticsLabel(l10n.searching), findsOneWidget);
 
-        first.complete(left(Failure.networkOffline()));
-        await tester.pumpAndSettle();
-        expect(
-          find.text(l10n.searchFailed(l10n.errorNetworkOffline)),
-          findsWidgets,
-        );
-        expect(find.text(l10n.actionRetry), findsOneWidget);
-        await tester.tap(find.text(l10n.actionRetry));
-        await tester.pumpAndSettle();
-        expect(find.text(l10n.searchNoResults), findsOneWidget);
-        expect(find.text(l10n.actionRetry), findsNothing);
-        expect(find.byTooltip(l10n.clearSearch), findsOneWidget);
-        bloc.add(const SearchBlogsEvent(query: 'another query'));
-        await tester.pumpAndSettle();
-        expect(find.text(l10n.searchNoMore), findsOneWidget);
-        expect(
-          find.text(l10n.posterLabel(l10n.anonymousAuthor)),
-          findsOneWidget,
-        );
-        expect(tester.takeException(), isNull);
+          first.complete(left(Failure.networkOffline()));
+          await tester.pumpAndSettle();
+          expect(
+            find.text(l10n.searchFailed(l10n.errorNetworkOffline)),
+            findsWidgets,
+          );
+          expect(find.text(l10n.actionRetry), findsOneWidget);
+          await tester.tap(find.text(l10n.actionRetry));
+          await tester.pumpAndSettle();
+          expect(find.text(l10n.searchNoResults), findsOneWidget);
+          expect(find.text(l10n.actionRetry), findsNothing);
+          expect(find.byTooltip(l10n.clearSearch), findsOneWidget);
+          bloc.add(const SearchBlogsEvent(query: 'another query'));
+          await tester.pumpAndSettle();
+          expect(find.text(l10n.searchNoMore), findsOneWidget);
+          expect(
+            find.text(l10n.posterLabel(l10n.anonymousAuthor)),
+            findsOneWidget,
+          );
+          expect(tester.takeException(), isNull);
         } finally {
           semantics.dispose();
         }
       },
     );
+
+    testWidgets('$language search explains the 50-result cap', (tester) async {
+      final bloc = BlogSearchBloc(
+        searchBlogs: _SearchArticles(
+          (_) async => right(List.generate(50, (_) => _article())),
+        ),
+      );
+      addTearDown(bloc.close);
+      await tester.pumpWidget(
+        BlocProvider<BlogSearchBloc>.value(
+          value: bloc,
+          child: _app(locale: locale, child: const SearchBlogPage()),
+        ),
+      );
+      await tester.enterText(find.byType(TextField), 'search');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      final resultsScroll = find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      );
+      await tester.scrollUntilVisible(
+        find.text(l10n.searchLimitReached('50')),
+        400,
+        scrollable: resultsScroll,
+      );
+      expect(find.text(l10n.searchLimitReached('50')), findsOneWidget);
+      expect(find.text(l10n.searchNoMore), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
   }
 
   testWidgets(
@@ -218,46 +248,46 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     final semantics = tester.ensureSemantics();
     try {
-    final router = GoRouter(
-      routes: [
-        GoRoute(
-          path: '/',
-          builder: (context, state) => Scaffold(
-            body: ListView(children: [BlogCard(blog: _article())]),
+      final router = GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) => Scaffold(
+              body: ListView(children: [BlogCard(blog: _article())]),
+            ),
+          ),
+          GoRoute(
+            path: '/view/:id',
+            builder: (context, state) => const Scaffold(body: Text('Opened')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        MaterialApp.router(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: const [Locale('zh'), Locale('en')],
+          routerConfig: router,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
           ),
         ),
-        GoRoute(
-          path: '/view/:id',
-          builder: (context, state) => const Scaffold(body: Text('Opened')),
-        ),
-      ],
-    );
-    addTearDown(router.dispose);
-    await tester.pumpWidget(
-      MaterialApp.router(
-        locale: const Locale('en'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: const [Locale('zh'), Locale('en')],
-        routerConfig: router,
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: const TextScaler.linear(2)),
-          child: child!,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.bySemanticsLabel(RegExp('Cover of Sample')), findsWidgets);
-    expect(find.text('Anonymous author'), findsOneWidget);
-    expect(tester.takeException(), isNull);
+      );
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel(RegExp('Cover of Sample')), findsWidgets);
+      expect(find.text('Anonymous author'), findsOneWidget);
+      expect(tester.takeException(), isNull);
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    await tester.pumpAndSettle();
-    expect(find.text('Opened'), findsOneWidget);
-    expect(tester.takeException(), isNull);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.text('Opened'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     } finally {
       semantics.dispose();
     }

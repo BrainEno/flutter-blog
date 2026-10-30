@@ -381,5 +381,7 @@
     }
   },
   "pageNotFound": "Page not found",
-  "backToHome": "Back to home"
+  "backToHome": "Back to home",
+  "avatarImage": "Profile photo",
+  "coverImage": "Cover image"
 }

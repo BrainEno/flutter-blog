@@ -418,7 +418,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
                     // Existing image container
                     Tooltip(
                       message: context.l10n.uploadCoverHint,
-                      child: InkWell(
+                      child: Semantics(
+                        image: true,
+                        label: context.l10n.coverImage,
+                        child: InkWell(
                         onTap: selectImage,
                         child: image != null && isNewImageSelected
                             ? SizedBox(
@@ -497,6 +500,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                   ),
                                 ),
                               ),
+                      ),
                       ),
                     ),
                     const SizedBox(height: 36),

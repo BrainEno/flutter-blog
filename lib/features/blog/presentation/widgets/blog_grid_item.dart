@@ -40,6 +40,7 @@ class BlogGridItem extends StatelessWidget {
     // the semantic label (issue #24).
     return Semantics(
       button: true,
+      image: true,
       label: context.l10n.coverOf(blog.title),
       child: InkWell(
         onTap: onTap,

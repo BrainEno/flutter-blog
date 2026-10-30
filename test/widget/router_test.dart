@@ -219,7 +219,11 @@ class Harness {
     );
   }
 
-  Future<void> pump(WidgetTester tester, {Locale locale = const Locale('zh')}) async {
+  Future<void> pump(
+    WidgetTester tester, {
+    Locale locale = const Locale('zh'),
+    double textScale = 1,
+  }) async {
     final currentRouter = router;
     assert(currentRouter != null, 'call buildRouter before pump');
     await tester.pumpWidget(
@@ -234,6 +238,12 @@ class Harness {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           routerConfig: currentRouter,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(textScale),
+            ),
+            child: child!,
+          ),
         ),
       ),
     );
@@ -322,6 +332,35 @@ void main() {
     expect(find.text('深链文章'), findsOneWidget);
     verify(() => harness.remote.getBlogById('abc')).called(1);
   });
+
+  for (final locale in [const Locale('zh'), const Locale('en')]) {
+    testWidgets('viewer metadata and images are accessible at 2x: $locale', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final semantics = tester.ensureSemantics();
+      try {
+        final harness = Harness()..buildRouter(initialLocation: '/view/abc');
+        addTearDown(harness.dispose);
+        await harness.pump(tester, locale: locale, textScale: 2);
+        await tester.pumpAndSettle();
+        final l10n = lookupAppLocalizations(locale);
+        expect(find.text(l10n.anonymousAuthor), findsOneWidget);
+        expect(find.text(l10n.readingTimeMinutes(1)), findsOneWidget);
+        expect(find.byTooltip(l10n.saveTooltip), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(RegExp(l10n.coverOf('深链文章'))),
+          findsWidgets,
+        );
+        expect(tester.takeException(), isNull);
+      } finally {
+        semantics.dispose();
+      }
+    });
+  }
 
   testWidgets('deep link /author/:userId loads the author page', (
     tester,

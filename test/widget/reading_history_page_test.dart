@@ -55,10 +55,11 @@ void main() {
       BlocProvider<AppUserCubit>.value(
         value: cubit,
         child: MaterialApp(
-        locale: const Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-home: ReadingHistoryPage(store: store)),
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ReadingHistoryPage(store: store),
+        ),
       ),
     );
     await tester.pumpAndSettle();

@@ -60,7 +60,9 @@ Future<void> _pumpSection(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
 
-        home: Scaffold(body: SingleChildScrollView(child: CommentsSection(slug: 'my-slug'))),
+        home: Scaffold(
+          body: SingleChildScrollView(child: CommentsSection(slug: 'my-slug')),
+        ),
       ),
     ),
   );

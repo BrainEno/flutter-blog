@@ -130,7 +130,9 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(semanticsLabel: context.l10n.loading),
+            )
           : _entries.isEmpty
           ? Center(
               child: Column(

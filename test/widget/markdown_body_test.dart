@@ -6,9 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 Future<void> pumpMarkdown(WidgetTester tester, String source) async {
   await tester.pumpWidget(
     MaterialApp(
-        locale: const Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('zh'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
 
       theme: ThemeData.dark(useMaterial3: true),
       home: Scaffold(

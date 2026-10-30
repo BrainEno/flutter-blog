@@ -68,7 +68,7 @@ class UserDataExporter {
   /// [Failure] messages are user-facing (see [error_mapper]).
   Future<Either<Failure, void>> exportAndShare({
     required User user,
-    String shareTitle = '我的 Belog 数据',
+    required String shareTitle,
   }) async {
     final articlesRes = await getBlogsByPoster(
       GetBlogsByPosterParams(userId: user.id),

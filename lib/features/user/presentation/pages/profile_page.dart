@@ -134,9 +134,11 @@ class ProfilePage extends StatelessWidget {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => const PopScope(
+      builder: (dialogContext) => PopScope(
         canPop: false,
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(
+          child: CircularProgressIndicator(semanticsLabel: l10n.loading),
+        ),
       ),
     );
     Either<Failure, void> result;

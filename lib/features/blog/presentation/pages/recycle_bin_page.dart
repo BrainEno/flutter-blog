@@ -63,7 +63,9 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
         },
         builder: (context, state) {
           if (state is RecycleBinLoading || state is RecycleBinInitial) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(semanticsLabel: context.l10n.loading),
+            );
           }
           if (state is RecycleBinFailure) {
             return Center(
@@ -118,6 +120,7 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                           child: Image.network(
                             blog.imageUrl,
                             fit: BoxFit.cover,
+                            semanticLabel: context.l10n.coverOf(blog.title),
                             errorBuilder: (context, error, stackTrace) =>
                                 const SizedBox(),
                           ),
@@ -132,10 +135,13 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                     ' · ${_purgeDeadlineText(context.l10n, blog)}',
                   ),
                   trailing: restoring
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            semanticsLabel: context.l10n.loading,
+                          ),
                         )
                       : TextButton(
                           onPressed: () => context.read<RecycleBinBloc>().add(

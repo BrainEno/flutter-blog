@@ -312,10 +312,13 @@ class _FollowButton extends StatelessWidget {
             ? OutlinedButton.icon(
                 onPressed: inFlight ? null : onTap,
                 icon: inFlight
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 14,
                         height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          semanticsLabel: context.l10n.loading,
+                        ),
                       )
                     : const Icon(Icons.check, size: 16),
                 label: Text(context.l10n.followingButton),
@@ -323,10 +326,13 @@ class _FollowButton extends StatelessWidget {
             : FilledButton.icon(
                 onPressed: inFlight ? null : onTap,
                 icon: inFlight
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 14,
                         height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          semanticsLabel: context.l10n.loading,
+                        ),
                       )
                     : const Icon(Icons.person_add_alt_1, size: 16),
                 label: Text(context.l10n.followButton),

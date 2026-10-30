@@ -230,10 +230,13 @@ class _CommentsSectionState extends State<CommentsSection> {
           child: FilledButton.icon(
             onPressed: state.submitting ? null : _submit,
             icon: state.submitting
-                ? const SizedBox(
+                ? SizedBox(
                     width: 14,
                     height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      semanticsLabel: context.l10n.loading,
+                    ),
                   )
                 : const Icon(Icons.send, size: 16),
             label: Text(context.l10n.actionSend),

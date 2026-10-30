@@ -125,7 +125,11 @@ class _UserBlogsPageState extends State<UserBlogsPage>
         child: BlocBuilder<BlogByBloc, BlogByState>(
           builder: (context, state) {
             if (state is GetBlogsByUserLoading) {
-              return const Center(child: CircularProgressIndicator());
+              return Center(
+                child: CircularProgressIndicator(
+                  semanticsLabel: context.l10n.loadingArticles,
+                ),
+              );
             } else if (state is GetBlogsByUserSuccess) {
               final blogs = state.blogs;
               if (blogs.isEmpty) {

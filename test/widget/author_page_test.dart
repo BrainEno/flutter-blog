@@ -170,57 +170,57 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     final semantics = tester.ensureSemantics();
     try {
-    appUserCubit.updateUser(_user());
-    when(() => getAuthorProfile('author-1')).thenAnswer(
-      (_) async => right<Failure, AuthorProfile>(
-        AuthorProfile(
-          userId: 'author-1',
-          displayName: '',
-          followerCount: 1234,
-          followingCount: 5,
-          updatedAt: DateTime.utc(2025),
+      appUserCubit.updateUser(_user());
+      when(() => getAuthorProfile('author-1')).thenAnswer(
+        (_) async => right<Failure, AuthorProfile>(
+          AuthorProfile(
+            userId: 'author-1',
+            displayName: '',
+            followerCount: 1234,
+            followingCount: 5,
+            updatedAt: DateTime.utc(2025),
+          ),
         ),
-      ),
-    );
-    when(
-      () => blogRepository.getBlogsByUser('author-1'),
-    ).thenAnswer((_) async => right<Failure, List<Blog>>(const []));
-    when(() => followAuthor('author-1')).thenAnswer(
-      (_) async => left<Failure, AuthorProfile>(Failure.networkOffline()),
-    );
-    final authorCubit = buildAuthorCubit();
-    final blogByBloc = buildBlogByBloc();
-    addTearDown(authorCubit.close);
-    addTearDown(blogByBloc.close);
+      );
+      when(
+        () => blogRepository.getBlogsByUser('author-1'),
+      ).thenAnswer((_) async => right<Failure, List<Blog>>(const []));
+      when(() => followAuthor('author-1')).thenAnswer(
+        (_) async => left<Failure, AuthorProfile>(Failure.networkOffline()),
+      );
+      final authorCubit = buildAuthorCubit();
+      final blogByBloc = buildBlogByBloc();
+      addTearDown(authorCubit.close);
+      addTearDown(blogByBloc.close);
 
-    await _pumpPage(
-      tester,
-      appUserCubit: appUserCubit,
-      authorCubit: authorCubit,
-      blogByBloc: blogByBloc,
-      locale: const Locale('en'),
-      textScale: 2,
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Anonymous author'), findsOneWidget);
-    expect(find.text('1,234 followers · 5 following'), findsOneWidget);
-    expect(
-      find.bySemanticsLabel(RegExp('Avatar of Anonymous author')),
-      findsWidgets,
-    );
-    expect(tester.takeException(), isNull);
-    await tester.scrollUntilVisible(find.text('No articles yet'), 140);
-    expect(find.text('No articles yet'), findsOneWidget);
+      await _pumpPage(
+        tester,
+        appUserCubit: appUserCubit,
+        authorCubit: authorCubit,
+        blogByBloc: blogByBloc,
+        locale: const Locale('en'),
+        textScale: 2,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Anonymous author'), findsOneWidget);
+      expect(find.text('1,234 followers · 5 following'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(RegExp('Avatar of Anonymous author')),
+        findsWidgets,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.scrollUntilVisible(find.text('No articles yet'), 140);
+      expect(find.text('No articles yet'), findsOneWidget);
 
-    await tester.scrollUntilVisible(find.text('Follow'), -140);
-    await tester.tap(find.text('Follow'));
-    await tester.pumpAndSettle();
-    expect(
-      find.text('No network connection — check your settings'),
-      findsOneWidget,
-    );
-    expect(find.text('Follow'), findsOneWidget);
-    expect(tester.takeException(), isNull);
+      await tester.scrollUntilVisible(find.text('Follow'), -140);
+      await tester.tap(find.text('Follow'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('No network connection — check your settings'),
+        findsOneWidget,
+      );
+      expect(find.text('Follow'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     } finally {
       semantics.dispose();
     }

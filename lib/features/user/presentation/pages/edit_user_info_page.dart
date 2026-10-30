@@ -134,7 +134,10 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                     child: Stack(
                       alignment: Alignment.bottomRight,
                       children: [
-                        CircleAvatar(
+                        Semantics(
+                          image: true,
+                          label: context.l10n.avatarImage,
+                          child: CircleAvatar(
                           radius: 60,
                           backgroundColor: Theme.of(
                             context,
@@ -156,6 +159,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                                   size: 60,
                                   color: Colors.grey,
                                 ),
+                          ),
                         ),
                         Container(
                           padding: const EdgeInsets.all(8),
@@ -216,7 +220,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                 const SizedBox(height: 32),
                 // Save Button or Loading Indicator
                 if (state is UserEditLoading)
-                  const CircularProgressIndicator()
+                  CircularProgressIndicator(semanticsLabel: context.l10n.loading)
                 else
                   SizedBox(
                     width: double.infinity,

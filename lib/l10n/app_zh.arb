@@ -229,5 +229,7 @@
   "searchNoMore": "没有更多搜索结果",
   "searchLimitReached": "仅显示前 {count} 条结果，请缩小搜索范围",
   "pageNotFound": "页面不存在",
-  "backToHome": "返回首页"
+  "backToHome": "返回首页",
+  "avatarImage": "个人头像",
+  "coverImage": "封面图片"
 }
