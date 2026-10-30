@@ -99,7 +99,9 @@ class MarkdownBody extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              node.textContent,
+              // Fenced blocks carry a trailing newline in the AST; trim it
+              // so the rendered block does not end with a blank line.
+              node.textContent.trim(),
               style: const TextStyle(
                 fontFamily: 'monospace',
                 fontSize: 13,

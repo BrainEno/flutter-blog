@@ -9,7 +9,6 @@ import 'package:fpdart/fpdart.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-
 /// Builds the export document (issue #22): the user's profile and every
 /// article they posted, as plain JSON.
 ///
