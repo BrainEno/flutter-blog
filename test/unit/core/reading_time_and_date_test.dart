@@ -12,6 +12,7 @@ void main() {
   setUpAll(() async {
     await initializeDateFormatting('zh');
     await initializeDateFormatting('en');
+    await initializeDateFormatting('en_GB');
   });
 
   group('reading time', () {
@@ -48,13 +49,15 @@ void main() {
   group('dates and numbers', () {
     test('uses locale-aware calendar formatting on a local instant', () {
       final date = DateTime(2026, 10, 30, 12);
-      expect(formatDate(zh, date), '2026年10月30日');
-      expect(formatDate(en, date), 'Oct 30, 2026');
+      expect(formatDate(const Locale('zh'), date), '2026年10月30日');
+      expect(formatDate(const Locale('en'), date), 'Oct 30, 2026');
+      expect(formatDate(const Locale('en', 'GB'), date), '30 Oct 2026');
     });
 
     test('formats grouped counts in both locales', () {
-      expect(formatNumber(zh, 1234), '1,234');
-      expect(formatNumber(en, 1234), '1,234');
+      expect(formatNumber(const Locale('zh'), 1234), '1,234');
+      expect(formatNumber(const Locale('en'), 1234), '1,234');
+      expect(formatNumber(const Locale('en', 'IN'), 1234567), '12,34,567');
     });
   });
 }

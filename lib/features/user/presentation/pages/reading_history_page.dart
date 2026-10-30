@@ -131,7 +131,9 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
       ),
       body: _loading
           ? Center(
-              child: CircularProgressIndicator(semanticsLabel: context.l10n.loading),
+              child: CircularProgressIndicator(
+                semanticsLabel: context.l10n.loading,
+              ),
             )
           : _entries.isEmpty
           ? Center(
@@ -160,7 +162,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
               separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final entry = _entries[index];
-                final readAtLabel = formatDate(context.l10n, entry.readAt);
+                final readAtLabel = formatDate(Localizations.localeOf(context), entry.readAt);
                 return Dismissible(
                   key: ValueKey(entry.blogId),
                   direction: DismissDirection.endToStart,

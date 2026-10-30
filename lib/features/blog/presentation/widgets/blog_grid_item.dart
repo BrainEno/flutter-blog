@@ -114,7 +114,7 @@ class BlogGridItem extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            formatDate(context.l10n, blog.updatedAt),
+                            formatDate(Localizations.localeOf(context), blog.updatedAt),
                             style: const TextStyle(
                               fontSize: 10,
                               color: Colors.white,

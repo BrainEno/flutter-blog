@@ -39,8 +39,13 @@ class EditorField extends StatelessWidget {
     final hintFontSize = _getHintFontSize(contentType);
     final hintFontWeight = _getHintFontWeight(contentType);
 
+    final scale = MediaQuery.textScalerOf(context).scale(16) / 16;
+    final heightScale = scale < 1 ? 1.0 : scale;
     return Container(
-      constraints: BoxConstraints(minHeight: 80, maxHeight: 300),
+      constraints: BoxConstraints(
+        minHeight: 80 * heightScale,
+        maxHeight: 300 * heightScale,
+      ),
       padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 8.0),
       child: TextFormField(
         controller: controller,

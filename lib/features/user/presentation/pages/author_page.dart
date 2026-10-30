@@ -251,8 +251,8 @@ class _ProfileHeader extends StatelessWidget {
                     Text(
                       l10n.followerStats(
                         profile.followerCount,
-                        formatNumber(l10n, profile.followerCount),
-                        formatNumber(l10n, profile.followingCount),
+                        formatNumber(Localizations.localeOf(context), profile.followerCount),
+                        formatNumber(Localizations.localeOf(context), profile.followingCount),
                       ),
                       style: const TextStyle(color: Colors.grey, fontSize: 13),
                     ),

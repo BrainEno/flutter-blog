@@ -174,7 +174,7 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                           child: Text(
                             blogs.length >= kMaxSearchResults
                                 ? l10n.searchLimitReached(
-                                    formatNumber(l10n, kMaxSearchResults),
+                                    formatNumber(Localizations.localeOf(context), kMaxSearchResults),
                                   )
                                 : l10n.searchNoMore,
                           ),

@@ -37,7 +37,7 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
     if (days <= 0) {
       return l10n.purgeSoon;
     }
-    return l10n.purgeInDays(days, formatNumber(l10n, days));
+    return l10n.purgeInDays(days, formatNumber(Localizations.localeOf(context), days));
   }
 
   @override
@@ -64,7 +64,9 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
         builder: (context, state) {
           if (state is RecycleBinLoading || state is RecycleBinInitial) {
             return Center(
-              child: CircularProgressIndicator(semanticsLabel: context.l10n.loading),
+              child: CircularProgressIndicator(
+                semanticsLabel: context.l10n.loading,
+              ),
             );
           }
           if (state is RecycleBinFailure) {
@@ -109,7 +111,7 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                 final blog = blogs[index];
                 final restoring = restoringArticleId == blog.articleId;
                 final deletedLabel = context.l10n.deletedOn(
-                  formatDate(context.l10n, blog.deletedAt),
+                  formatDate(Localizations.localeOf(context), blog.deletedAt),
                 );
                 return ListTile(
                   leading: blog.imageUrl.isEmpty

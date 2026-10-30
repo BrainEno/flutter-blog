@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart';
@@ -219,6 +221,7 @@ void main() {
           value: bloc,
           child: MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localeListResolutionCallback: resolveAppLocale,
             supportedLocales: const [Locale('zh'), Locale('en')],
             home: const SearchBlogPage(),
           ),
@@ -238,6 +241,28 @@ void main() {
       expect(find.text('输入关键词，搜索你感兴趣的文章'), findsOneWidget);
     },
   );
+
+  testWidgets('system English region controls date formatting', (tester) async {
+    tester.platformDispatcher.localesTestValue = const [Locale('en', 'GB')];
+    addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localeListResolutionCallback: resolveAppLocale,
+        supportedLocales: const [Locale('zh'), Locale('en')],
+        home: Builder(
+          builder: (context) => Text(
+            formatDate(Localizations.localeOf(context), DateTime(2026, 10, 30)),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('30 Oct 2026'), findsOneWidget);
+    tester.platformDispatcher.localesTestValue = const [Locale('en', 'US')];
+    await tester.pumpAndSettle();
+    expect(find.text('Oct 30, 2026'), findsOneWidget);
+  });
 
   testWidgets('large text and keyboard access work on an article card', (
     tester,

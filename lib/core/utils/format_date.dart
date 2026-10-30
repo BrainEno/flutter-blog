@@ -1,14 +1,16 @@
-import 'package:belog/l10n/app_localizations.dart';
+import 'dart:ui' show Locale;
+
 import 'package:intl/intl.dart';
 
-/// Formats an instant in the user's local time zone and UI locale.
+/// Formats an instant in local time using the resolved locale, including its
+/// region (for example en_GB versus en_US).
 ///
 /// Material's localization delegate initializes intl's date symbols before
 /// widgets are built. Unit tests outside a localized app must call
 /// `initializeDateFormatting` before using this helper.
-String formatDate(AppLocalizations l10n, DateTime date) =>
-    DateFormat.yMMMd(l10n.localeName).format(date.toLocal());
+String formatDate(Locale locale, DateTime date) =>
+    DateFormat.yMMMd(locale.toString()).format(date.toLocal());
 
-/// Formats a count according to the active UI locale, including grouping.
-String formatNumber(AppLocalizations l10n, int number) =>
-    NumberFormat.decimalPattern(l10n.localeName).format(number);
+/// Formats a count according to the resolved locale, including grouping.
+String formatNumber(Locale locale, int number) =>
+    NumberFormat.decimalPattern(locale.toString()).format(number);

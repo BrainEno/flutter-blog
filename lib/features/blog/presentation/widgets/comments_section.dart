@@ -143,7 +143,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  formatNumber(context.l10n, state.totalCount),
+                  formatNumber(Localizations.localeOf(context), state.totalCount),
                   style: const TextStyle(color: Colors.grey, fontSize: 16),
                 ),
               ],
@@ -381,15 +381,18 @@ class _CommentTile extends StatelessWidget {
                   children: [
                     InkWell(
                       onTap: () => context.push('/author/${comment.authorId}'),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(
-                          authorName,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 48),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            authorName,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ),
                     ),
-                    Text(formatDate(context.l10n, comment.createdAt)),
+                    Text(formatDate(Localizations.localeOf(context), comment.createdAt)),
                     const SizedBox(height: 4),
                     // Plain-text rendering (content version 0): no markup
                     // is interpreted, the body renders exactly as stored.

@@ -1,6 +1,7 @@
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/l10n/tag_l10n.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/theme/app_palette.dart';
@@ -60,6 +61,16 @@ void main() {
       expect(localizedFailure(en, Failure('网络错误')), en.errorUnknown);
     },
   );
+
+  test('locale resolution preserves English regions and uses Simplified Chinese', () {
+    const supported = [Locale('zh'), Locale('en')];
+    expect(resolveAppLocale([const Locale('en', 'GB')], supported),
+        const Locale('en', 'GB'));
+    expect(resolveAppLocale([const Locale('zh', 'TW')], supported),
+        const Locale('zh', 'CN'));
+    expect(resolveAppLocale([const Locale('ja')], supported),
+        const Locale('zh', 'CN'));
+  });
 
   test('built-in tags are translated without changing custom tags', () {
     expect(localizedTag(zh, '诗歌'), '诗歌');

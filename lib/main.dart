@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show PlatformDispatcher;
 
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/utils/app_logger.dart';
@@ -125,6 +126,7 @@ class _BelogAppState extends State<BelogApp> {
           theme: AppTheme.lightThemeMode,
           darkTheme: AppTheme.darkThemeMode,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localeListResolutionCallback: resolveAppLocale,
           supportedLocales: const [Locale('zh'), Locale('en')],
         );
       },

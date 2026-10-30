@@ -138,27 +138,27 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                           image: true,
                           label: context.l10n.avatarImage,
                           child: CircleAvatar(
-                          radius: 60,
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.surface,
-                          backgroundImage: isNewImageSelected
-                              ? (image != null
-                                    ? FileImage(image!)
-                                          as ImageProvider<Object>?
-                                    : null) // Added null check
-                              : avatarUrl != null && avatarUrl!.isNotEmpty
-                              ? CachedNetworkImageProvider(
-                                  '$avatarUrl?v=${updatedAt?.millisecondsSinceEpoch ?? ''}',
-                                )
-                              : null,
-                          child: isNewImageSelected || avatarUrl != null
-                              ? null
-                              : const Icon(
-                                  Icons.person,
-                                  size: 60,
-                                  color: Colors.grey,
-                                ),
+                            radius: 60,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surface,
+                            backgroundImage: isNewImageSelected
+                                ? (image != null
+                                      ? FileImage(image!)
+                                            as ImageProvider<Object>?
+                                      : null) // Added null check
+                                : avatarUrl != null && avatarUrl!.isNotEmpty
+                                ? CachedNetworkImageProvider(
+                                    '$avatarUrl?v=${updatedAt?.millisecondsSinceEpoch ?? ''}',
+                                  )
+                                : null,
+                            child: isNewImageSelected || avatarUrl != null
+                                ? null
+                                : const Icon(
+                                    Icons.person,
+                                    size: 60,
+                                    color: Colors.grey,
+                                  ),
                           ),
                         ),
                         Container(
@@ -220,7 +220,9 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                 const SizedBox(height: 32),
                 // Save Button or Loading Indicator
                 if (state is UserEditLoading)
-                  CircularProgressIndicator(semanticsLabel: context.l10n.loading)
+                  CircularProgressIndicator(
+                    semanticsLabel: context.l10n.loading,
+                  )
                 else
                   SizedBox(
                     width: double.infinity,

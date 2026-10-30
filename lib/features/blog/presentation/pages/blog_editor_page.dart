@@ -289,6 +289,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
           widget.blog == null
               ? context.l10n.editorNewTitle
               : context.l10n.editorEditTitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: isDarkMode ? AppPalette.whiteColor : AppPalette.lightBlack,
             fontWeight: FontWeight.bold,
@@ -299,7 +301,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
           ElevatedButton(
             onPressed: saveBlog,
             style: ElevatedButton.styleFrom(
-              minimumSize: Size(60, 30),
+              minimumSize: const Size(60, 48),
               backgroundColor: Theme.of(
                 context,
               ).colorScheme.primary, // Theme-based background
@@ -422,85 +424,87 @@ class _BlogEditorState extends State<BlogEditorPage> {
                         image: true,
                         label: context.l10n.coverImage,
                         child: InkWell(
-                        onTap: selectImage,
-                        child: image != null && isNewImageSelected
-                            ? SizedBox(
-                                height: 250,
-                                width: double.infinity,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.file(image!, fit: BoxFit.cover),
-                                ),
-                              )
-                            : widget.blog != null &&
-                                  widget.blog!.imageUrl.isNotEmpty
-                            ? SizedBox(
-                                height: 250,
-                                width: double.infinity,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: CachedNetworkImage(
-                                    // Versioned, cache-busting URL shared
-                                    // with the feed card and viewer page.
-                                    imageUrl: coverUrlOf(widget.blog!),
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              )
-                            : DottedBorder(
-                                color: isDarkMode
-                                    ? AppPalette.greyColorLight.withAlpha(
-                                        (0.6 * 255).toInt(),
-                                      )
-                                    : AppPalette.lightBorder.withAlpha(
-                                        (0.8 * 255).toInt(),
-                                      ),
-                                radius: const Radius.circular(12),
-                                borderType: BorderType.RRect,
-                                dashPattern: const [6, 3],
-                                strokeCap: StrokeCap.round,
-                                child: Container(
+                          onTap: selectImage,
+                          child: image != null && isNewImageSelected
+                              ? SizedBox(
                                   height: 250,
                                   width: double.infinity,
-                                  decoration: BoxDecoration(
+                                  child: ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
-                                    color: isDarkMode
-                                        ? AppPalette.blackColorLight.withAlpha(
-                                            (0.3 * 255).toInt(),
-                                          )
-                                        : AppPalette.lightGrey.withAlpha(
-                                            (0.15 * 255).toInt(),
-                                          ),
+                                    child: Image.file(
+                                      image!,
+                                      fit: BoxFit.cover,
+                                    ),
                                   ),
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.image_outlined,
-                                          size: 55,
-                                          color: isDarkMode
-                                              ? AppPalette.greyColor
-                                              : AppPalette.lightGreyText,
+                                )
+                              : widget.blog != null &&
+                                    widget.blog!.imageUrl.isNotEmpty
+                              ? SizedBox(
+                                  height: 250,
+                                  width: double.infinity,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: CachedNetworkImage(
+                                      // Versioned, cache-busting URL shared
+                                      // with the feed card and viewer page.
+                                      imageUrl: coverUrlOf(widget.blog!),
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                )
+                              : DottedBorder(
+                                  color: isDarkMode
+                                      ? AppPalette.greyColorLight.withAlpha(
+                                          (0.6 * 255).toInt(),
+                                        )
+                                      : AppPalette.lightBorder.withAlpha(
+                                          (0.8 * 255).toInt(),
                                         ),
-                                        const SizedBox(height: 12),
-                                        Text(
-                                          context.l10n.uploadCoverHint,
-                                          style: TextStyle(
-                                            fontSize: 17,
-                                            fontWeight: FontWeight.w500,
+                                  radius: const Radius.circular(12),
+                                  borderType: BorderType.RRect,
+                                  dashPattern: const [6, 3],
+                                  strokeCap: StrokeCap.round,
+                                  child: Container(
+                                    height: 250,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      color: isDarkMode
+                                          ? AppPalette.blackColorLight
+                                                .withAlpha((0.3 * 255).toInt())
+                                          : AppPalette.lightGrey.withAlpha(
+                                              (0.15 * 255).toInt(),
+                                            ),
+                                    ),
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.image_outlined,
+                                            size: 55,
                                             color: isDarkMode
                                                 ? AppPalette.greyColor
                                                 : AppPalette.lightGreyText,
                                           ),
-                                        ),
-                                      ],
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            context.l10n.uploadCoverHint,
+                                            style: TextStyle(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w500,
+                                              color: isDarkMode
+                                                  ? AppPalette.greyColor
+                                                  : AppPalette.lightGreyText,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                      ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 36),
@@ -578,22 +582,30 @@ class _BlogEditorState extends State<BlogEditorPage> {
                       contentType: BlogEditorContentType.title,
                     ),
                     const SizedBox(height: 30),
-                    SegmentedButton<bool>(
-                      segments: [
-                        ButtonSegment(
-                          value: false,
-                          icon: const Icon(Icons.edit_outlined),
-                          label: Text(context.l10n.editorSegmentEdit),
-                        ),
-                        ButtonSegment(
-                          value: true,
-                          icon: const Icon(Icons.visibility_outlined),
-                          label: Text(context.l10n.editorSegmentPreview),
-                        ),
-                      ],
-                      selected: {_previewMode},
-                      onSelectionChanged: (selection) =>
-                          setState(() => _previewMode = selection.first),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
+                        return SegmentedButton<bool>(
+                          direction: constraints.maxWidth / scale < 260
+                              ? Axis.vertical
+                              : Axis.horizontal,
+                          segments: [
+                            ButtonSegment(
+                              value: false,
+                              icon: const Icon(Icons.edit_outlined),
+                              label: Text(context.l10n.editorSegmentEdit),
+                            ),
+                            ButtonSegment(
+                              value: true,
+                              icon: const Icon(Icons.visibility_outlined),
+                              label: Text(context.l10n.editorSegmentPreview),
+                            ),
+                          ],
+                          selected: {_previewMode},
+                          onSelectionChanged: (selection) =>
+                              setState(() => _previewMode = selection.first),
+                        );
+                      },
                     ),
                     const SizedBox(height: 12),
                     if (_previewMode)

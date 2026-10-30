@@ -334,7 +334,7 @@ class _ViewerScaffold extends StatelessWidget {
                                       ),
                                       Text(
                                         formatDate(
-                                          context.l10n,
+                                          Localizations.localeOf(context),
                                           blog.updatedAt,
                                         ),
                                       ),
