@@ -88,9 +88,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onAuthLogout(AuthLogout event, Emitter<AuthState> emit) async {
+    final userAtStart = _appUserCubit.state;
     emit(AuthLoading());
     final res = await _userSignOut(NoParams());
-    _appUserCubit.updateUser(null);
+    // A slow revocation must not clear a newer sign-in's UI state.
+    if (identical(_appUserCubit.state, userAtStart)) {
+      _appUserCubit.updateUser(null);
+    }
 
     res.fold(
       (failure) => emit(AuthLogoutFailure(failure.forPresentation())),

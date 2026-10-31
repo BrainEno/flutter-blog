@@ -11,6 +11,7 @@ import 'package:belog/core/secrets/app_secrets.dart';
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/core/storage/sqlite_blog_cache.dart';
 import 'package:belog/core/storage/sqlite_draft_store.dart';
+import 'package:belog/core/storage/sqlite_publication_outbox.dart';
 import 'package:belog/core/storage/reading_history_store.dart';
 import 'package:belog/core/storage/sqlite_theme_store.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
@@ -26,6 +27,7 @@ import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/blog/data/datasources/blog_draft_store.dart';
+import 'package:belog/features/blog/data/publication_outbox.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
@@ -146,6 +148,16 @@ Future<void> initDependencies() async {
   serviceLocator.registerLazySingleton(() => AppUserCubit());
   serviceLocator.registerFactory<ConnectionChecker>(
     () => ConnectionCheckerImpl(serviceLocator()),
+  );
+  serviceLocator.registerLazySingleton(() => SqlitePublicationOutbox(database));
+  serviceLocator.registerLazySingleton(
+    () => PublicationOutbox(
+      store: serviceLocator(),
+      client: apiClient,
+      sessions: sessionManager,
+      appUser: serviceLocator(),
+      connection: serviceLocator(),
+    ),
   );
 }
 

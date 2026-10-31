@@ -9,6 +9,7 @@ import 'package:belog/core/utils/global_snackbar.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/features/auth/auth_session_sync.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:belog/features/blog/data/publication_outbox.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/init_dependencies.dart';
 import 'package:belog/router/app_router.dart';
@@ -48,6 +49,8 @@ void main() async {
   // Keep the app-wide identity cubit in sync with out-of-band session
   // events (a failed background token refresh drops the session).
   serviceLocator<AuthSessionSync>().start();
+  // Recovery runs before the foreground outbox worker can claim anything.
+  await serviceLocator<PublicationOutbox>().start();
   runApp(
     MultiBlocProvider(
       providers: [

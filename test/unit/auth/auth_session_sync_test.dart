@@ -137,6 +137,19 @@ void main() {
     },
   );
 
+  test('a delayed sign-out event does not clear a newer session', () async {
+    final sync = buildSync(FakeCurrentUser(Queue()));
+    currentSession = _session('u2');
+    appUserCubit.updateUser(_appUser('u2'));
+    sync.start();
+
+    statusEvents.add(const NowaveAuthSignedOut());
+    await Future<void>.delayed(Duration.zero);
+
+    expect((appUserCubit.state as AppUserLoggedIn).user.id, 'u2');
+    await sync.dispose();
+  });
+
   test('start() is idempotent (only one subscription)', () async {
     final fakeCurrentUser = FakeCurrentUser(
       Queue<Either<Failure, app.User>>()..add(Right(_appUser('u1'))),

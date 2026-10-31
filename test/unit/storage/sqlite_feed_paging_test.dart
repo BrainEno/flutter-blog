@@ -145,6 +145,7 @@ void main() {
     // A v3 install has the same tables but not the new index.
     final old = raw.sqlite3.open(file.path);
     old.execute('DROP INDEX blog_cache_feed_order');
+    old.execute('DROP TABLE publication_outbox');
     old.execute('PRAGMA user_version = 3');
     old.close();
 
@@ -175,7 +176,7 @@ void main() {
       (await db.customSelect('PRAGMA user_version').get()).single.read<int>(
         'user_version',
       ),
-      4,
+      5,
     );
 
     await db.close();

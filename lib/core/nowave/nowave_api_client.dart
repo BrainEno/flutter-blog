@@ -167,8 +167,19 @@ class NowaveApiClient {
   }
 
   /// GET a JSON endpoint and return its unwrapped `data` payload.
-  Future<dynamic> getJson(String path, {Map<String, String>? query}) {
-    return _request('GET', path, query: query);
+  Future<dynamic> getJson(
+    String path, {
+    Map<String, String>? query,
+    bool authenticate = true,
+    Map<String, String>? extraHeaders,
+  }) {
+    return _request(
+      'GET',
+      path,
+      query: query,
+      authenticate: authenticate,
+      extraHeaders: extraHeaders,
+    );
   }
 
   /// POST a JSON body; returns the unwrapped `data` payload.
@@ -202,7 +213,16 @@ class NowaveApiClient {
   }
 
   /// DELETE an endpoint; returns the unwrapped `data` payload when present.
-  Future<dynamic> deleteJson(String path) => _request('DELETE', path);
+  Future<dynamic> deleteJson(
+    String path, {
+    bool authenticate = true,
+    Map<String, String>? extraHeaders,
+  }) => _request(
+    'DELETE',
+    path,
+    authenticate: authenticate,
+    extraHeaders: extraHeaders,
+  );
 
   /// Uploads raw image bytes to `POST /me/media`.
   ///
@@ -211,14 +231,18 @@ class NowaveApiClient {
   /// upload gets a longer timeout budget than JSON calls.
   Future<NowaveMediaAsset> uploadMedia(
     Uint8List bytes,
-    String contentType,
-  ) async {
+    String contentType, {
+    bool authenticate = true,
+    Map<String, String>? extraHeaders,
+  }) async {
     final data = await _request(
       'POST',
       '$_kApiPrefix/me/media',
       rawBody: bytes,
       contentType: contentType,
       timeout: const Duration(seconds: 90),
+      authenticate: authenticate,
+      extraHeaders: extraHeaders,
     );
     final map = _asMap(data, 'media asset');
     return NowaveMediaAsset(

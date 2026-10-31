@@ -18,7 +18,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -39,6 +39,7 @@ class AppDatabase extends GeneratedDatabase {
       await _createBlogCache();
       await _createBlogCacheFeedIndex();
       await _createReadingHistory();
+      await _createPublicationOutbox();
     },
     onUpgrade: (m, from, to) async {
       if (from < 2) {
@@ -57,6 +58,11 @@ class AppDatabase extends GeneratedDatabase {
       if (from < 4) {
         // v4 adds only an index; cached articles and all other data stay put.
         await _createBlogCacheFeedIndex();
+      }
+      if (from < 5) {
+        // v5 adds an independent, account-scoped publication outbox. Old
+        // drafts cannot be assigned to an account safely, so leave them alone.
+        await _createPublicationOutbox();
       }
     },
   );
@@ -85,6 +91,25 @@ class AppDatabase extends GeneratedDatabase {
     );
     await customStatement(
       'CREATE INDEX reading_history_by_user ON reading_history(user_id, read_at DESC)',
+    );
+  }
+
+  /// Durable, account-scoped publish intents. Cover bytes live in SQLite so
+  /// a queued item never depends on the image picker's temporary file.
+  Future<void> _createPublicationOutbox() async {
+    await customStatement(
+      'CREATE TABLE publication_outbox ('
+      'id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, '
+      'title TEXT NOT NULL, content TEXT NOT NULL, tags TEXT NOT NULL, '
+      'cover_bytes BLOB, cover_mime TEXT, remote_cover_url TEXT, '
+      'possible_orphan INTEGER NOT NULL DEFAULT 0, '
+      'status TEXT NOT NULL, phase TEXT NOT NULL, request_json TEXT, '
+      'attempt_count INTEGER NOT NULL DEFAULT 0, next_attempt_at INTEGER, '
+      'last_error_code TEXT, published_slug TEXT, '
+      'created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
+    );
+    await customStatement(
+      'CREATE INDEX publication_outbox_owner ON publication_outbox(owner_id, created_at DESC, id ASC)',
     );
   }
 

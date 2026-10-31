@@ -10,6 +10,8 @@ import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/pick_image.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/data/datasources/blog_draft_store.dart';
+import 'package:belog/features/blog/data/publication_outbox.dart';
+import 'package:belog/core/storage/sqlite_publication_outbox.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
@@ -64,6 +66,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
   bool _draftsReady = false;
   bool _hasUnsavedEdits = false;
   bool _editedDuringPublish = false;
+  bool _queueing = false;
   DateTime? _publishStartedAt;
 
   @override
@@ -203,6 +206,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
   }
 
   void saveBlog() {
+    if (_queueing ||
+        context.read<BlogUploadBloc>().state is BlogUploadLoading) {
+      return;
+    }
     _draftRequestVersion++;
     // Cover and tags are optional (issue #17): title and body are the
     // only required fields, and the backend already publishes text-only
@@ -240,6 +247,78 @@ class _BlogEditorState extends State<BlogEditorPage> {
     }
   }
 
+  /// This is a separate, explicit publication intent. The ordinary draft
+  /// auto-save above never starts a network request.
+  Future<void> queuePublication() async {
+    if (_queueing ||
+        widget.blog != null ||
+        context.read<BlogUploadBloc>().state is BlogUploadLoading) {
+      return;
+    }
+    if (!formKey.currentState!.validate()) {
+      showSnackBar(context, context.l10n.editorRequiredFields);
+      return;
+    }
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.outboxConfirmTitle),
+        content: Text(l10n.outboxConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.actionCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(l10n.outboxConfirmAction),
+          ),
+        ],
+      ),
+    );
+    if (!mounted ||
+        confirmed != true ||
+        _queueing ||
+        context.read<BlogUploadBloc>().state is BlogUploadLoading) {
+      return;
+    }
+    final state = context.read<AppUserCubit>().state;
+    if (state is! AppUserLoggedIn) {
+      showSnackBar(context, l10n.outboxAddFailed);
+      return;
+    }
+    final ownerId = state.user.id;
+    final title = titleController.text.trim();
+    final content = contentController.text.trim();
+    final tags = List<String>.of(selectedTags);
+    final cover = image;
+    final mime = imageMimeType;
+    setState(() => _queueing = true);
+    try {
+      if (cover != null &&
+          await cover.length() > SqlitePublicationOutbox.maxCoverBytes) {
+        throw ArgumentError('Cover exceeds the upload limit.');
+      }
+      final bytes = cover == null ? null : await cover.readAsBytes();
+      await GetIt.instance<PublicationOutbox>().enqueue(
+        ownerId: ownerId,
+        title: title,
+        content: content,
+        tags: tags,
+        coverBytes: bytes,
+        coverMime: mime,
+      );
+      if (!mounted) return;
+      showSnackBar(context, l10n.outboxAdded);
+      Navigator.of(context).pop(false);
+    } catch (_) {
+      if (mounted) showSnackBar(context, l10n.outboxAddFailed);
+    } finally {
+      if (mounted) setState(() => _queueing = false);
+    }
+  }
+
   Future<void> saveDraft() async {
     _draftRequestVersion++;
     // Take a snapshot before the first await: controllers may be edited or
@@ -273,6 +352,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final busy =
+        _queueing || context.watch<BlogUploadBloc>().state is BlogUploadLoading;
     return Scaffold(
       backgroundColor: isDarkMode ? AppPalette.ink : AppPalette.paper,
       appBar: AppBar(
@@ -295,7 +376,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
         centerTitle: true,
         actions: [
           ElevatedButton(
-            onPressed: saveBlog,
+            onPressed: busy ? null : saveBlog,
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(60, 48),
               backgroundColor: Theme.of(
@@ -320,6 +401,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
             child: Text(context.l10n.actionPublish),
           ),
           PopupMenuButton<String>(
+            enabled: !busy,
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
               switch (value) {
@@ -328,6 +410,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
                   break;
                 case 'save_draft':
                   saveDraft();
+                  break;
+                case 'queue':
+                  unawaited(queuePublication());
                   break;
                 case 'cancel':
                   Navigator.of(context).pop();
@@ -347,6 +432,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
                   PopupMenuItem<String>(
                     value: 'save_draft',
                     child: Center(child: Text(context.l10n.saveDraft)),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'queue',
+                    child: Center(child: Text(context.l10n.outboxQueueLater)),
                   ),
                 ];
               } else {

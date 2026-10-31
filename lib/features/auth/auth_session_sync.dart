@@ -62,7 +62,9 @@ class AuthSessionSync {
         // Covers explicit sign-out on this device and sessions dropped
         // because a token refresh failed: without a session the user must
         // leave the logged-in UI.
-        _appUserCubit.updateUser(null);
+        // A sign-out event can be delivered after a newer login. Never
+        // clear the new account's UI state for the old account's event.
+        if (_currentSession() == null) _appUserCubit.updateUser(null);
       case NowaveAuthSignedIn():
         await _refreshUser();
     }
