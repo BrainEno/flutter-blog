@@ -22,6 +22,11 @@
   "searchHeadingCompanion": "Works",
   "feedEmpty": "No articles yet — pull to refresh",
   "feedNoMore": "No more articles",
+  "feedCachedNotice": "Showing cached articles; they may be incomplete or out of date. Pull to refresh when connected.",
+  "feedCachedEmpty": "No cached articles on this device. Connect and try again.",
+  "feedCachedNoMore": "End of cached articles. Refresh when connected for newer content.",
+  "feedSourceChanged": "The article source changed. Refresh and try again.",
+
   "newPostTooltip": "Write a post",
   "readingTimeMinutes": "{count, plural, =1{About 1 minute} other{About {count} minutes}}",
   "@readingTimeMinutes": {

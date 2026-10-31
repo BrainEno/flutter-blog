@@ -51,6 +51,12 @@ void main() {
     );
   });
 
+  test('feed source mismatch gives an actionable localized error', () {
+    const failure = Failure('文章来源已变化，请刷新后重试', code: 'feed.sourceChanged');
+    expect(localizedFailure(zh, failure), zh.feedSourceChanged);
+    expect(localizedFailure(en, failure), en.feedSourceChanged);
+  });
+
   test(
     'unknown messages do not expose backend details or foreign fallbacks',
     () {

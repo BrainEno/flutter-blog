@@ -1,5 +1,6 @@
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -38,7 +39,12 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
     final generation = ++_generation;
     // Retry/refresh after a failure must keep the last rendered articles,
     // including when that failure wrapped a previous refresh state.
-    emit(BlogFirstPageLoading(previousBlogs: _previousBlogs(state)));
+    emit(
+      BlogFirstPageLoading(
+        previousBlogs: _previousBlogs(state),
+        previousSource: _previousSource(state),
+      ),
+    );
     final res = await _getAllBlogs(const GetAllBlogsParams(page: 1));
     // A newer first-page request supersedes this one.
     if (generation != _generation) return;
@@ -49,11 +55,12 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
           previousState: state,
         ),
       ),
-      (blogs) => emit(
+      (result) => emit(
         BlogLoaded(
-          blogs: blogs,
+          blogs: result.blogs,
+          source: result.source,
           page: 1,
-          hasReachedMax: blogs.length < kBlogPageSize,
+          hasReachedMax: result.blogs.length < kBlogPageSize,
         ),
       ),
     );
@@ -68,6 +75,15 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
     return const [];
   }
 
+  BlogFeedSource? _previousSource(BlogState current) {
+    if (current is BlogLoaded) return current.source;
+    if (current is BlogFirstPageLoading) return current.previousSource;
+    if (current is BlogListFailure && current.previousState != null) {
+      return _previousSource(current.previousState!);
+    }
+    return null;
+  }
+
   Future<void> _onLoadMore(BlogLoadMore event, Emitter<BlogState> emit) async {
     final current = state;
     if (current is! BlogLoaded ||
@@ -80,7 +96,9 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
     emit(current.copyWith(isLoadingMore: true));
     final generation = _generation;
     final nextPage = current.page + 1;
-    final res = await _getAllBlogs(GetAllBlogsParams(page: nextPage));
+    final res = await _getAllBlogs(
+      GetAllBlogsParams(page: nextPage, source: current.source),
+    );
     // A refresh started while this request was in flight; the fresh first
     // page supersedes anything this response would append.
     if (generation != _generation) return;
@@ -92,7 +110,21 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
           previousState: latest.copyWith(isLoadingMore: false),
         ),
       ),
-      (blogs) {
+      (result) {
+        // Never silently combine offsets from two different data sources.
+        if (result.source != latest.source) {
+          emit(
+            BlogListFailure(
+              failure: const Failure(
+                '文章来源已变化，请刷新后重试',
+                code: 'feed.sourceChanged',
+              ),
+              previousState: latest.copyWith(isLoadingMore: false),
+            ),
+          );
+          return;
+        }
+        final blogs = result.blogs;
         if (blogs.isEmpty) {
           emit(latest.copyWith(hasReachedMax: true, isLoadingMore: false));
           return;
@@ -102,6 +134,7 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
         emit(
           BlogLoaded(
             blogs: [...latest.blogs, ...fresh],
+            source: latest.source,
             page: nextPage,
             hasReachedMax: blogs.length < kBlogPageSize,
           ),

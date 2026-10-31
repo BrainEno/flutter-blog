@@ -5,6 +5,7 @@ import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart';
 import 'package:belog/features/blog/presentation/blocs/blog/blog_bloc.dart';
@@ -26,8 +27,23 @@ class _GetArticles implements GetAllBlogs {
   final Future<Either<Failure, List<Blog>>> Function(int page) handler;
 
   @override
-  Future<Either<Failure, List<Blog>>> call(GetAllBlogsParams params) =>
-      handler(params.page);
+  Future<Either<Failure, BlogFeedPage>> call(GetAllBlogsParams params) async =>
+      (await handler(params.page)).map(
+        (blogs) => BlogFeedPage(blogs: blogs, source: BlogFeedSource.network),
+      );
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _GetFeed implements GetAllBlogs {
+  _GetFeed(this.handler);
+  final Future<Either<Failure, BlogFeedPage>> Function(GetAllBlogsParams)
+  handler;
+
+  @override
+  Future<Either<Failure, BlogFeedPage>> call(GetAllBlogsParams params) =>
+      handler(params);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -128,6 +144,110 @@ void main() {
       } finally {
         semantics.dispose();
       }
+    });
+
+    testWidgets('$language feed labels cached, empty and refreshed states', (
+      tester,
+    ) async {
+      var calls = 0;
+      final bloc = BlogBloc(
+        getAllBlogs: _GetFeed((_) async {
+          calls++;
+          if (calls == 1) {
+            return const Right(
+              BlogFeedPage(blogs: [], source: BlogFeedSource.cache),
+            );
+          }
+          return Right(
+            BlogFeedPage(
+              blogs: [_article()],
+              source: calls == 2
+                  ? BlogFeedSource.cache
+                  : BlogFeedSource.network,
+            ),
+          );
+        }),
+      );
+      final user = AppUserCubit();
+      addTearDown(bloc.close);
+      addTearDown(user.close);
+      await tester.pumpWidget(
+        MultiBlocProvider(
+          providers: [
+            BlocProvider<BlogBloc>.value(value: bloc),
+            BlocProvider<AppUserCubit>.value(value: user),
+          ],
+          child: _app(locale: locale, child: const BlogPage()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.feedCachedEmpty), findsOneWidget);
+      expect(find.text(l10n.feedEmpty), findsNothing);
+      expect(find.text(l10n.actionRetry), findsOneWidget);
+
+      await tester.tap(find.text(l10n.actionRetry));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.feedCachedNotice), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text(l10n.feedCachedNoMore),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text(l10n.feedNoMore), findsNothing);
+
+      bloc.add(const BlogFetchFirstPage());
+      await tester.pumpAndSettle();
+      expect((bloc.state as BlogLoaded).source, BlogFeedSource.network);
+      expect(find.text(l10n.feedCachedNotice), findsNothing);
+      await tester.scrollUntilVisible(
+        find.text(l10n.feedNoMore),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text(l10n.feedCachedNoMore), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('$language cache notice survives a failed refresh', (
+      tester,
+    ) async {
+      final pending = Completer<Either<Failure, BlogFeedPage>>();
+      var calls = 0;
+      final bloc = BlogBloc(
+        getAllBlogs: _GetFeed((_) {
+          calls++;
+          if (calls == 1) {
+            return Future.value(
+              Right(
+                BlogFeedPage(blogs: [_article()], source: BlogFeedSource.cache),
+              ),
+            );
+          }
+          return pending.future;
+        }),
+      );
+      final user = AppUserCubit();
+      addTearDown(bloc.close);
+      addTearDown(user.close);
+      await tester.pumpWidget(
+        MultiBlocProvider(
+          providers: [
+            BlocProvider<BlogBloc>.value(value: bloc),
+            BlocProvider<AppUserCubit>.value(value: user),
+          ],
+          child: _app(locale: locale, child: const BlogPage()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.feedCachedNotice), findsOneWidget);
+      bloc.add(const BlogFetchFirstPage());
+      await tester.pump();
+      expect(find.text(l10n.feedCachedNotice), findsOneWidget);
+      pending.complete(Left(Failure.networkOffline()));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.feedCachedNotice), findsOneWidget);
+      expect(find.text(l10n.errorNetworkOffline), findsWidgets);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets(

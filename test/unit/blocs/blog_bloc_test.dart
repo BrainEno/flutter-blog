@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:belog/features/blog/presentation/blocs/blog/blog_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,8 +17,24 @@ class _FakeGetAllBlogs implements GetAllBlogs {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
-  Future<Either<Failure, List<Blog>>> call(GetAllBlogsParams params) =>
-      _handler(params.page);
+  Future<Either<Failure, BlogFeedPage>> call(GetAllBlogsParams params) async =>
+      (await _handler(params.page)).map(
+        (blogs) => BlogFeedPage(blogs: blogs, source: BlogFeedSource.network),
+      );
+}
+
+class _FakeFeed implements GetAllBlogs {
+  _FakeFeed(this.handler);
+
+  final Future<Either<Failure, BlogFeedPage>> Function(GetAllBlogsParams)
+  handler;
+
+  @override
+  Future<Either<Failure, BlogFeedPage>> call(GetAllBlogsParams params) =>
+      handler(params);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 Blog _blog(String id) => Blog(
@@ -93,9 +110,11 @@ void main() {
 
       final loaded = states.whereType<BlogLoaded>().toList();
       expect(loaded, hasLength(1));
-      expect(loaded.single.blogs.map((b) => b.id), [
-        'new',
-      ], reason: 'stale response must be discarded');
+      expect(
+        loaded.single.blogs.map((b) => b.id),
+        ['new'],
+        reason: 'stale response must be discarded',
+      );
     });
   });
 
@@ -242,6 +261,132 @@ void main() {
         final failure = states.whereType<BlogListFailure>().single;
         final previous = failure.previousState as BlogLoaded;
         expect(previous.blogs, hasLength(10));
+        expect(previous.isLoadingMore, isFalse);
+      },
+    );
+  });
+
+  group('feed source', () {
+    test('pins cached pages until a refresh chooses a new source', () async {
+      final requests = <GetAllBlogsParams>[];
+      var firstPages = 0;
+      final bloc = BlogBloc(
+        getAllBlogs: _FakeFeed((params) async {
+          requests.add(params);
+          if (params.page == 1) {
+            firstPages++;
+            if (firstPages == 1) {
+              return Right(
+                BlogFeedPage(
+                  blogs: List.generate(10, (i) => _blog('cached$i')),
+                  source: BlogFeedSource.cache,
+                ),
+              );
+            }
+            return Right(
+              BlogFeedPage(
+                blogs: [_blog('online')],
+                source: BlogFeedSource.network,
+              ),
+            );
+          }
+          return Right(
+            BlogFeedPage(
+              blogs: [_blog('cached10')],
+              source: BlogFeedSource.cache,
+            ),
+          );
+        }),
+      );
+      final states = <BlogState>[];
+      final sub = bloc.stream.listen(states.add);
+      bloc.add(const BlogFetchFirstPage());
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(const BlogLoadMore());
+      await Future<void>.delayed(Duration.zero);
+      final cached = states.whereType<BlogLoaded>().last;
+      expect(cached.source, BlogFeedSource.cache);
+      expect(cached.blogs, hasLength(11));
+      expect(cached.hasReachedMax, isTrue);
+      bloc.add(const BlogFetchFirstPage());
+      await bloc.close();
+      await sub.cancel();
+
+      expect(requests.map((r) => r.page), [1, 2, 1]);
+      expect(requests.map((r) => r.source), [null, BlogFeedSource.cache, null]);
+      final refreshed = states.whereType<BlogLoaded>().last;
+      expect(refreshed.source, BlogFeedSource.network);
+      expect(refreshed.blogs.map((blog) => blog.id), ['online']);
+    });
+
+    test('retains the cache label while a refresh loads and fails', () async {
+      final refresh = Completer<Either<Failure, BlogFeedPage>>();
+      var calls = 0;
+      final bloc = BlogBloc(
+        getAllBlogs: _FakeFeed((_) {
+          calls++;
+          if (calls == 1) {
+            return Future.value(
+              Right(
+                BlogFeedPage(
+                  blogs: [_blog('cached')],
+                  source: BlogFeedSource.cache,
+                ),
+              ),
+            );
+          }
+          return refresh.future;
+        }),
+      );
+      final states = <BlogState>[];
+      final sub = bloc.stream.listen(states.add);
+      bloc.add(const BlogFetchFirstPage());
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(const BlogFetchFirstPage());
+      await Future<void>.delayed(Duration.zero);
+      final loading = states.whereType<BlogFirstPageLoading>().last;
+      expect(loading.previousSource, BlogFeedSource.cache);
+      expect(loading.previousBlogs.single.id, 'cached');
+      refresh.complete(Left(Failure.networkOffline()));
+      await bloc.close();
+      await sub.cancel();
+      final failure = states.whereType<BlogListFailure>().single;
+      final previous = failure.previousState as BlogFirstPageLoading;
+      expect(previous.previousSource, BlogFeedSource.cache);
+      expect(previous.previousBlogs.single.id, 'cached');
+    });
+
+    test(
+      'rejects a page from a different source without appending it',
+      () async {
+        final bloc = BlogBloc(
+          getAllBlogs: _FakeFeed(
+            (params) async => Right(
+              BlogFeedPage(
+                blogs: params.page == 1
+                    ? List.generate(10, (i) => _blog('cached$i'))
+                    : [_blog('online')],
+                source: params.page == 1
+                    ? BlogFeedSource.cache
+                    : BlogFeedSource.network,
+              ),
+            ),
+          ),
+        );
+        final states = <BlogState>[];
+        final sub = bloc.stream.listen(states.add);
+        bloc.add(const BlogFetchFirstPage());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const BlogLoadMore());
+        await bloc.close();
+        await sub.cancel();
+
+        final failure = states.whereType<BlogListFailure>().single;
+        final previous = failure.previousState as BlogLoaded;
+        expect(failure.failure.code, 'feed.sourceChanged');
+        expect(previous.blogs, hasLength(10));
+        expect(previous.blogs.any((blog) => blog.id == 'online'), isFalse);
+        expect(previous.source, BlogFeedSource.cache);
         expect(previous.isLoadingMore, isFalse);
       },
     );

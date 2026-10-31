@@ -17,22 +17,30 @@ class SqliteBlogCache implements BlogLocalDataSource {
         }
       });
 
-  Future<List<BlogModel>> _load(String? query) async {
-    // instr treats %, _ and backslashes as literal characters, not SQL wildcards.
+  @override
+  Future<List<BlogModel>> loadBlogs({int limit = 500, int offset = 0}) async {
+    RangeError.checkValueInInterval(limit, 1, 500, 'limit');
+    RangeError.checkNotNegative(offset, 'offset');
     final rows = await database
         .customSelect(
-          'SELECT * FROM blog_cache WHERE ? IS NULL OR instr(lower(title), lower(?)) > 0 ORDER BY updated_at DESC, id ASC LIMIT 500',
-          variables: [Variable<String>(query), Variable<String>(query)],
+          'SELECT * FROM blog_cache ORDER BY updated_at DESC, id ASC LIMIT ? OFFSET ?',
+          variables: [Variable<int>(limit), Variable<int>(offset)],
         )
         .get();
     return rows.map((row) => _blogFromRow(row.data)).toList();
   }
 
   @override
-  Future<List<BlogModel>> loadBlogs() => _load(null);
-
-  @override
-  Future<List<BlogModel>> searchLocalBlogs(String query) => _load(query);
+  Future<List<BlogModel>> searchLocalBlogs(String query) async {
+    // instr treats %, _ and backslashes as literal characters, not SQL wildcards.
+    final rows = await database
+        .customSelect(
+          'SELECT * FROM blog_cache WHERE instr(lower(title), lower(?)) > 0 ORDER BY updated_at DESC, id ASC LIMIT 500',
+          variables: [Variable<String>(query)],
+        )
+        .get();
+    return rows.map((row) => _blogFromRow(row.data)).toList();
+  }
 
   @override
   Future<void> deleteCachedBlog(String id) => database.deleteBlogCacheRow(id);

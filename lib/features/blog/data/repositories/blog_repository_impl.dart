@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
@@ -8,8 +9,10 @@ import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
+import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:fpdart/fpdart.dart';
 
 class BlogRepositoryImpl implements BlogRepository {
@@ -64,18 +67,56 @@ class BlogRepositoryImpl implements BlogRepository {
   }
 
   @override
-  Future<Either<Failure, List<Blog>>> getAllBlogs({required int page}) async {
-    try {
-      if (!await (connectionChecker.isConnected)) {
-        final blogs = await blogLocalDataSource.loadBlogs();
-        return right(blogs);
-      }
+  Future<Either<Failure, BlogFeedPage>> getAllBlogs({
+    required int page,
+    BlogFeedSource? source,
+  }) async {
+    if (page < 1) return left(Failure.validation('页码必须大于零'));
 
-      final blogs = await blogRemoteDataSource.getAllBlogs(page: page);
+    // Keep every page in a scrolling session on the first page's source.
+    // In particular, reconnecting must not splice a remote offset into a
+    // (potentially incomplete and differently ordered) cached list.
+    if (source == BlogFeedSource.cache) return _loadCachedFeed(page);
+
+    late final List<BlogModel> blogs;
+    try {
+      if (!await connectionChecker.isConnected) {
+        if (source == BlogFeedSource.network) {
+          return left(Failure.networkOffline());
+        }
+        return _loadCachedFeed(page);
+      }
+      blogs = await blogRemoteDataSource.getAllBlogs(page: page);
+    } catch (error) {
+      final failure = mapErrorToFailure(error);
+      // A connection probe can succeed just before a socket fails. Only a
+      // new, unpinned feed may fall back; auth/permission/server errors and
+      // later pages must not silently turn into a cached success.
+      if (source == null &&
+          (failure.kind == FailureKind.network ||
+              failure.kind == FailureKind.timeout)) {
+        return _loadCachedFeed(page);
+      }
+      return left(failure);
+    }
+
+    try {
       await blogLocalDataSource.uploadLocalBlogs(blogs: blogs);
-      return right(blogs);
-    } on ServerException catch (e) {
-      return left(e.toFailure());
+    } catch (error) {
+      return left(Failure.storage(cause: error));
+    }
+    return right(BlogFeedPage(blogs: blogs, source: BlogFeedSource.network));
+  }
+
+  Future<Either<Failure, BlogFeedPage>> _loadCachedFeed(int page) async {
+    try {
+      final blogs = await blogLocalDataSource.loadBlogs(
+        limit: kBlogPageSize,
+        offset: (page - 1) * kBlogPageSize,
+      );
+      return right(BlogFeedPage(blogs: blogs, source: BlogFeedSource.cache));
+    } catch (error) {
+      return left(Failure.storage(cause: error));
     }
   }
 

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:fpdart/fpdart.dart';
 
@@ -29,7 +30,14 @@ abstract interface class BlogRepository {
   /// back as a draft.
   Future<Either<Failure, Blog>> restoreDeletedBlog(String articleId);
 
-  Future<Either<Failure, List<Blog>>> getAllBlogs({required int page});
+  /// Fetches a 1-based feed page. With no [source], the repository chooses
+  /// the network or falls back to the local cache on a connectivity failure.
+  /// Pass the first page's source for subsequent pages to avoid mixing
+  /// different orderings or cache contents in one scrolling session.
+  Future<Either<Failure, BlogFeedPage>> getAllBlogs({
+    required int page,
+    BlogFeedSource? source,
+  });
 
   Future<Either<Failure, Blog>> getBlogById(String blogId);
 
