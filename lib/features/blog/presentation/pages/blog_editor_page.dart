@@ -274,16 +274,12 @@ class _BlogEditorState extends State<BlogEditorPage> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDarkMode
-          ? AppPalette.blackColor
-          : AppPalette.lightBackground,
+      backgroundColor: isDarkMode ? AppPalette.ink : AppPalette.paper,
       appBar: AppBar(
-        backgroundColor: isDarkMode
-            ? AppPalette.blackColor
-            : AppPalette.lightBackground,
+        backgroundColor: isDarkMode ? AppPalette.ink : AppPalette.paper,
         elevation: 0,
         iconTheme: IconThemeData(
-          color: isDarkMode ? AppPalette.whiteColor : AppPalette.lightBlack,
+          color: isDarkMode ? AppPalette.paper : AppPalette.ink,
         ),
         title: Text(
           widget.blog == null
@@ -292,7 +288,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: isDarkMode ? AppPalette.whiteColor : AppPalette.lightBlack,
+            color: isDarkMode ? AppPalette.paper : AppPalette.ink,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -445,8 +441,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
                                     child: CachedNetworkImage(
-                                      // Versioned, cache-busting URL shared
-                                      // with the feed card and viewer page.
+                                      // Cover URLs are immutable and shared with the reader.
                                       imageUrl: coverUrlOf(widget.blog!),
                                       fit: BoxFit.cover,
                                     ),
@@ -454,10 +449,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                 )
                               : DottedBorder(
                                   color: isDarkMode
-                                      ? AppPalette.greyColorLight.withAlpha(
+                                      ? AppPalette.mutedOnInk.withAlpha(
                                           (0.6 * 255).toInt(),
                                         )
-                                      : AppPalette.lightBorder.withAlpha(
+                                      : AppPalette.mutedOnPaper.withAlpha(
                                           (0.8 * 255).toInt(),
                                         ),
                                   radius: const Radius.circular(12),
@@ -472,9 +467,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(12),
                                       color: isDarkMode
-                                          ? AppPalette.blackColorLight
-                                                .withAlpha((0.3 * 255).toInt())
-                                          : AppPalette.lightGrey.withAlpha(
+                                          ? AppPalette.surfaceOnInk.withAlpha(
+                                              (0.3 * 255).toInt(),
+                                            )
+                                          : AppPalette.surfaceOnPaper.withAlpha(
                                               (0.15 * 255).toInt(),
                                             ),
                                     ),
@@ -488,8 +484,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                             Icons.image_outlined,
                                             size: 55,
                                             color: isDarkMode
-                                                ? AppPalette.greyColor
-                                                : AppPalette.lightGreyText,
+                                                ? AppPalette.mutedOnInk
+                                                : AppPalette.mutedOnPaper,
                                           ),
                                           const SizedBox(height: 12),
                                           Text(
@@ -499,8 +495,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                               fontSize: 17,
                                               fontWeight: FontWeight.w500,
                                               color: isDarkMode
-                                                  ? AppPalette.greyColor
-                                                  : AppPalette.lightGreyText,
+                                                  ? AppPalette.mutedOnInk
+                                                  : AppPalette.mutedOnPaper,
                                             ),
                                           ),
                                         ],
@@ -524,10 +520,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
                                   color: selectedTags.contains(e)
-                                      ? AppPalette.blackColor
+                                      ? AppPalette.ink
                                       : isDarkMode
-                                      ? AppPalette.whiteColor
-                                      : AppPalette.lightBlack,
+                                      ? AppPalette.paper
+                                      : AppPalette.ink,
                                 ),
                               ),
                               selected: selectedTags.contains(e),
@@ -538,31 +534,29 @@ class _BlogEditorState extends State<BlogEditorPage> {
                                 horizontal: 12.0,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(25),
+                                borderRadius: BorderRadius.zero,
                                 side: BorderSide(
                                   color: isDarkMode
-                                      ? AppPalette.greyColorLight.withAlpha(
+                                      ? AppPalette.mutedOnInk.withAlpha(
                                           (0.7 * 255).toInt(),
                                         )
-                                      : AppPalette.lightBorder.withAlpha(
+                                      : AppPalette.mutedOnPaper.withAlpha(
                                           (0.7 * 255).toInt(),
                                         ),
                                 ),
                               ),
                               backgroundColor: isDarkMode
-                                  ? AppPalette.blackColorLight.withAlpha(
+                                  ? AppPalette.surfaceOnInk.withAlpha(
                                       (0.6 * 255).toInt(),
                                     )
-                                  : AppPalette.lightGrey.withAlpha(
+                                  : AppPalette.surfaceOnPaper.withAlpha(
                                       (0.4 * 255).toInt(),
                                     ),
-                              selectedColor: AppPalette.gradient1.withAlpha(
-                                (0.9 * 255).toInt(),
-                              ),
+                              selectedColor: AppPalette.orange,
                               labelStyle: TextStyle(
                                 fontWeight: FontWeight.w500,
                                 color: selectedTags.contains(e)
-                                    ? AppPalette.blackColor
+                                    ? AppPalette.ink
                                     : null,
                               ),
                               onSelected: (bool selected) {
@@ -621,8 +615,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: isDarkMode
-                                ? AppPalette.greyColorLight
-                                : AppPalette.lightBorder,
+                                ? AppPalette.mutedOnInk
+                                : AppPalette.mutedOnPaper,
                           ),
                         ),
                         child: contentController.text.trim().isEmpty

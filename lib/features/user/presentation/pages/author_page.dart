@@ -188,10 +188,21 @@ class _AuthorPageState extends State<AuthorPage> {
                       child: Center(child: Text(context.l10n.authorNoArticles)),
                     );
                   }
-                  return Column(
-                    children: blogs
-                        .map((blog) => BlogCard(blog: blog))
-                        .toList(),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: [
+                        for (var index = 0; index < blogs.length; index++)
+                          BlogCard(
+                            blog: blogs[index],
+                            index: index + 1,
+                            onTap: () => context.push(
+                              '/view/${blogs[index].id}',
+                              extra: blogs[index],
+                            ),
+                          ),
+                      ],
+                    ),
                   );
                 },
               ),

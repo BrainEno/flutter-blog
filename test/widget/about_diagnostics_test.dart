@@ -1,4 +1,5 @@
 import 'package:belog/l10n/app_localizations.dart';
+import 'package:belog/core/theme/theme.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/user/presentation/pages/about_page.dart';
 import 'package:flutter/material.dart';
@@ -38,6 +39,36 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('about page follows the selected theme and no-wave brand', (
+    tester,
+  ) async {
+    for (final mode in [ThemeMode.light, ThemeMode.dark]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: AppTheme.lightThemeMode,
+          darkTheme: AppTheme.darkThemeMode,
+          themeMode: mode,
+          home: AboutPage(packageInfoLoader: _fakePackageInfo),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final scaffold = tester.element(
+        find.descendant(
+          of: find.byType(AboutPage),
+          matching: find.byType(Scaffold),
+        ),
+      );
+      expect(
+        Theme.of(scaffold).brightness,
+        mode == ThemeMode.light ? Brightness.light : Brightness.dark,
+      );
+      expect(find.text('About No Wave'), findsOneWidget);
+    }
+  });
 
   testWidgets('long-pressing the version shows the sanitized diagnostics', (
     tester,

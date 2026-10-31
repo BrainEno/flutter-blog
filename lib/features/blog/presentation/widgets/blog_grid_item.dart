@@ -1,30 +1,36 @@
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/extract_description.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
+import 'package:flutter/material.dart';
 
-/// Give grid cards additional vertical space when the system font grows.
+/// Size the cover and text independently so wider screens and large system
+/// fonts do not overflow a fixed-height tile.
 SliverGridDelegateWithFixedCrossAxisCount blogGridDelegate(
   BuildContext context,
 ) {
-  final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
+  final width = MediaQuery.sizeOf(context).width;
+  final columns = width >= 900
+      ? 4
+      : width >= 600
+      ? 3
+      : 2;
+  final tileWidth = (width - 16 * (columns - 1)) / columns;
+  final scaler = MediaQuery.textScalerOf(context);
+  final bodyScale = scaler.scale(14) / 14;
+  final titleScale = scaler.scale(19) / 19;
+  final scale = bodyScale > titleScale ? bodyScale : titleScale;
   return SliverGridDelegateWithFixedCrossAxisCount(
-    crossAxisCount: 2,
+    crossAxisCount: columns,
     crossAxisSpacing: 16,
     mainAxisSpacing: 16,
-    mainAxisExtent: 270 * (scale < 1 ? 1 : scale),
+    mainAxisExtent: tileWidth * 3 / 4 + 180 * (scale < 1 ? 1 : scale),
   );
 }
 
 class BlogGridItem extends StatelessWidget {
-  final Blog blog;
-  final VoidCallback onTap;
-
-  /// Long-press action (delete in "my articles"); absent by default.
-  final VoidCallback? onLongPress;
-
   const BlogGridItem({
     super.key,
     required this.blog,
@@ -32,109 +38,36 @@ class BlogGridItem extends StatelessWidget {
     this.onLongPress,
   });
 
+  final Blog blog;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
   @override
   Widget build(BuildContext context) {
+    final name = blog.posterName?.trim().isNotEmpty == true
+        ? blog.posterName!
+        : context.l10n.anonymousAuthor;
     final description = extractDescription(blog.content);
-
-    // One tappable control per card for switches; the title doubles as
-    // the semantic label (issue #24).
-    return Semantics(
-      button: true,
-      image: true,
-      label: context.l10n.coverOf(blog.title),
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
-        child: Card(
-          elevation: 4.0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12.0),
-            child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
               children: [
-                // Background image with gradient overlay
-                Positioned.fill(
-                  child: blog.imageUrl.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl:
-                              '${blog.imageUrl}?v=${blog.updatedAt.microsecondsSinceEpoch}',
-                          fit: BoxFit.cover,
-                          color: Colors.black.withAlpha((0.70 * 255).toInt()),
-                          colorBlendMode: BlendMode.darken,
-                        )
-                      : Container(color: Colors.grey[900]),
-                ),
-                // Content
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Title
-                      Text(
-                        blog.title,
-                        style: const TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      // Description
-                      Text(
-                        description,
-                        style: const TextStyle(
-                          fontSize: 14.0,
-                          color: Colors.white,
-                        ),
-                        maxLines: 7,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const Spacer(),
-                      // Poster info
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        children: [
-                          Text(
-                            blog.posterName?.trim().isNotEmpty == true
-                                ? blog.posterName!
-                                : context.l10n.anonymousAuthor,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            formatDate(
-                              Localizations.localeOf(context),
-                              blog.updatedAt,
-                            ),
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Date
-                    ],
-                  ),
+                ArticleCover(
+                  title: blog.title,
+                  imageUrl: blog.imageUrl,
+                  aspectRatio: 4 / 3,
                 ),
                 if (onLongPress != null)
                   Positioned(
                     top: 0,
                     right: 0,
-                    child: IconButton.filledTonal(
+                    child: IconButton.filled(
                       tooltip: context.l10n.deleteArticleTitle,
                       onPressed: onLongPress,
                       icon: const Icon(Icons.delete_outline),
@@ -142,7 +75,36 @@ class BlogGridItem extends StatelessWidget {
                   ),
               ],
             ),
-          ),
+            const SizedBox(height: 8),
+            Text(
+              blog.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: NoWaveTypography.title(context, size: 19),
+            ),
+            if (description.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: NoWaveTypography.meta(context),
+              ),
+            ],
+            const SizedBox(height: 6),
+            Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: NoWaveTypography.meta(context),
+            ),
+            Text(
+              formatDate(Localizations.localeOf(context), blog.updatedAt),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: NoWaveTypography.meta(context),
+            ),
+          ],
         ),
       ),
     );

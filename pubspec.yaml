@@ -112,6 +112,20 @@ flutter:
     - assets/
     - assets/images/
     - assets/icons/
+    - assets/fonts/OFL-InstrumentSerif.txt
+    - assets/fonts/OFL-InterTight.txt
+
+  # Latin display/UI faces shared with no-wave; system serif/sans fonts
+  # provide CJK glyphs without shipping a large bundled character subset.
+  fonts:
+    - family: InstrumentSerif
+      fonts:
+        - asset: assets/fonts/InstrumentSerif-Regular.ttf
+        - asset: assets/fonts/InstrumentSerif-Italic.ttf
+          style: italic
+    - family: InterTight
+      fonts:
+        - asset: assets/fonts/InterTight-Variable.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -6,7 +6,7 @@ import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/auth/presentation/widgets/auth_field.dart';
-import 'package:belog/features/auth/presentation/widgets/auth_gradient_button.dart';
+import 'package:belog/features/auth/presentation/widgets/auth_primary_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -125,7 +125,7 @@ class _SignUpPageState extends State<SignUpPage> {
                             _validatePassword(context.l10n, value),
                       ),
                       const SizedBox(height: 30),
-                      AuthGradientButton(
+                      AuthPrimaryButton(
                         buttonText: context.l10n.submit,
                         onPressed: () {
                           if (formKey.currentState!.validate()) {

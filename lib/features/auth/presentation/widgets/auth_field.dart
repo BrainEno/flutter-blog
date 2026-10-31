@@ -1,20 +1,17 @@
-import 'package:belog/core/l10n/l10n.dart'; // Shorthand for AppLocalizations
+import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/l10n/app_localizations.dart';
-import 'package:belog/core/theme/app_palette.dart'; // Import your color palette
 import 'package:flutter/material.dart';
 
+/// A validated auth field which inherits colors and shape from the app theme.
 class AuthField extends StatelessWidget {
   final String hintText;
   final bool isObscureText;
   final TextEditingController controller;
-  final IconData? prefixIcon; // New: Optional prefix icon
-  final TextStyle? style; // New: Optional text style
-  final TextStyle? hintStyle; // New: Optional hint text style
-  final Color? borderColor; // New: Optional border color
-  final Color? focusedBorderColor; // New: Optional focused border color
-
-  /// Optional extra validation. When null the field only requires
-  /// non-empty input.
+  final IconData? prefixIcon;
+  final TextStyle? style;
+  final TextStyle? hintStyle;
+  final Color? borderColor;
+  final Color? focusedBorderColor;
   final FormFieldValidator<String>? validator;
 
   const AuthField({
@@ -32,119 +29,34 @@ class AuthField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    OutlineInputBorder border(Color color, {double width = 1}) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: color, width: width),
+        );
+
     return TextFormField(
-      autofocus: false,
       controller: controller,
       obscureText: isObscureText,
-      style:
-          style ??
-          TextStyle(
-            fontSize: 16,
-            color: isDarkMode
-                ? AppPalette
-                      .whiteColor // White text in dark mode
-                : AppPalette.lightBlack, // Black text in light mode
-          ),
+      style: style,
       decoration: InputDecoration(
         labelText: hintText,
         hintText: hintText,
-        hintStyle:
-            hintStyle ??
-            TextStyle(
-              fontSize: 16,
-              color: isDarkMode
-                  ? AppPalette
-                        .greyColor // Medium grey hint in dark mode
-                  : AppPalette.lightGreyText, // Light grey hint in light mode
-            ),
-        prefixIcon: prefixIcon != null
-            ? Icon(
-                prefixIcon,
-                color: isDarkMode
-                    ? AppPalette
-                          .greyColor // Medium grey icon in dark mode
-                    : AppPalette.lightGreyText, // Light grey icon in light mode
-              )
-            : null,
-        filled: true,
-        fillColor: isDarkMode
-            ? AppPalette
-                  .greyColorDark // Dark grey background in dark mode
-            : AppPalette.lightBackground, // White background in light mode
-        contentPadding: const EdgeInsets.symmetric(
-          vertical: 16.0,
-          horizontal: 20.0,
-        ),
-        border: _authFieldBorder(
-          context,
-          isDarkMode,
-          borderColor,
-        ), // Theme aware border
-        enabledBorder: _authFieldBorder(
-          context,
-          isDarkMode,
-          borderColor,
-        ), // Theme aware enabled border
-        focusedBorder: _authFieldFocusedBorder(
-          context,
-          focusedBorderColor,
-        ), // Focused border remains gradient
-        errorBorder: _authFieldErrorBorder(context), // Error border remains red
-        focusedErrorBorder: _authFieldErrorBorder(
-          context,
-        ), // Focused error border remains red
+        hintStyle: hintStyle,
+        prefixIcon: prefixIcon == null ? null : Icon(prefixIcon),
+        enabledBorder: borderColor == null ? null : border(borderColor!),
+        focusedBorder: focusedBorderColor == null
+            ? null
+            : border(focusedBorderColor!, width: 2),
       ),
       validator: (value) => _effectiveValidator(context.l10n, value),
     );
   }
 
-  /// The custom [validator] when provided, otherwise a plain non-empty
-  /// check with a localized message (issue #24).
   String? _effectiveValidator(AppLocalizations l10n, String? value) {
-    if (validator != null) {
-      return validator!(value);
-    }
+    if (validator != null) return validator!(value);
     return value == null || value.isEmpty
         ? l10n.fieldRequiredPrompt(hintText)
         : null;
-  }
-
-  // Theme-aware border for the auth field
-  OutlineInputBorder _authFieldBorder(
-    BuildContext context,
-    bool isDarkMode,
-    Color? borderColor,
-  ) {
-    return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(
-        color:
-            borderColor ??
-            (isDarkMode
-                ? AppPalette
-                      .greyColorLight // Light grey border in dark mode
-                : AppPalette.lightBorder), // Light border in light mode
-      ),
-    );
-  }
-
-  // Focused border remains Gradient independent of theme
-  OutlineInputBorder _authFieldFocusedBorder(
-    BuildContext context,
-    Color? focusedBorderColor,
-  ) {
-    return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: focusedBorderColor ?? AppPalette.gradient2),
-    );
-  }
-
-  // Error border remains red independent of theme
-  OutlineInputBorder _authFieldErrorBorder(BuildContext context) {
-    return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: Colors.redAccent),
-    );
   }
 }
