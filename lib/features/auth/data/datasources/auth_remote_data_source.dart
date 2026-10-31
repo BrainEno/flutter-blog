@@ -116,16 +116,48 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<void> logout() async {
+    final session = sessionManager.currentSession;
+    final rotationInFlight = sessionManager.refreshInFlight;
+    // Stop local work immediately. Revoke with captured credentials only: a
+    // later sign-in must never be used to retry the old account's logout.
+    await sessionManager.clear();
+    if (session == null || session.accessToken.isEmpty) return;
+    Future<void> revoke(String token) async {
+      await client.deleteJson(
+        '/me/session',
+        authenticate: false,
+        extraHeaders: {'authorization': 'Bearer $token'},
+      );
+    }
+
     try {
-      // Revokes the whole session family (access and refresh tokens).
-      await client.deleteJson('/me/session');
+      try {
+        await revoke(session.accessToken);
+      } on NowaveApiException catch (error) {
+        if (error.statusCode != HttpStatus.unauthorized ||
+            rotationInFlight ||
+            session.refreshToken.isEmpty ||
+            !session.refreshExpiresAt.isAfter(DateTime.now())) {
+          rethrow;
+        }
+        // An expired access token can still revoke its own session family.
+        // Never race an existing rotation: reuse revokes the token family.
+        final data = await client.postJson('/auth/refresh', {
+          'refreshToken': session.refreshToken,
+        }, authenticate: false);
+        if (data is! Map) {
+          throw const FormatException('Invalid token response.');
+        }
+        final pair = NowaveTokenPair.fromDataMap(data.cast<String, dynamic>());
+        if (pair.accessToken.isEmpty) {
+          throw const FormatException('Missing access token.');
+        }
+        await revoke(pair.accessToken);
+      }
     } catch (e) {
-      // Best-effort server-side revocation: the local session is dropped
-      // regardless, so the user is signed out on this device either way
-      // and a leftover refresh token simply expires unused.
+      // Server revocation is best effort even when the device is offline.
       AppLogger.debug('session revocation failed during logout: $e');
     }
-    await sessionManager.clear();
   }
 
   Future<NowaveTokenPair> _exchangeTokens(

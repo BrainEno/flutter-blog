@@ -15,6 +15,7 @@ import 'package:belog/features/blog/presentation/blocs/blog_viewer/blog_viewer_c
 import 'package:belog/features/blog/presentation/blocs/comment/comment_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/blog_editor_page.dart';
+import 'package:belog/features/blog/presentation/pages/publication_outbox_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
 import 'package:belog/features/user/presentation/pages/author_page.dart';
@@ -228,6 +229,10 @@ GoRouter createAppRouter({
                   GoRoute(
                     path: 'history',
                     builder: (context, state) => const ReadingHistoryPage(),
+                  ),
+                  GoRoute(
+                    path: 'publication-queue',
+                    builder: (context, state) => const PublicationOutboxPage(),
                   ),
                 ],
               ),

@@ -155,11 +155,21 @@ class NowaveSessionManager implements NowaveProactiveAuthenticator {
   NowaveSessionData? _session;
   Future<bool>? _refreshInFlight;
 
+  // Async responses from an older account must never replace a newer
+  // session (or sign it out). Storage writes/clears are also serialized so
+  // an old write cannot land after a new login or logout.
+  int _sessionEpoch = 0;
+  Future<void> _storageTail = Future<void>.value();
+
   /// Broadcast stream of sign-in / sign-out transitions.
   Stream<NowaveAuthStatus> get statusStream => _status.stream;
 
   /// The currently persisted session, or null when signed out.
   NowaveSessionData? get currentSession => _session;
+
+  /// Whether an existing token rotation may already consume this session's
+  /// refresh token. Logout must not issue a concurrent rotation for it.
+  bool get refreshInFlight => _refreshInFlight != null;
 
   @override
   String? get accessToken => _session?.accessToken;
@@ -167,15 +177,20 @@ class NowaveSessionManager implements NowaveProactiveAuthenticator {
   /// Loads a previously persisted session into memory. Network-free; the
   /// access token is validated lazily by the first authenticated request.
   Future<void> restore() async {
+    final epoch = _sessionEpoch;
     try {
-      _session = await _store.read();
+      final restored = await _store.read();
+      if (_sessionEpoch == epoch) {
+        _session = restored;
+        _sessionEpoch++;
+      }
     } catch (e, stackTrace) {
       AppLogger.error(
         'restoring the persisted session failed',
         error: e,
         stackTrace: stackTrace,
       );
-      _session = null;
+      if (_sessionEpoch == epoch) _session = null;
     }
   }
 
@@ -187,6 +202,7 @@ class NowaveSessionManager implements NowaveProactiveAuthenticator {
     NowaveTokenPair tokens, {
     required String email,
   }) async {
+    _sessionEpoch++;
     _session = NowaveSessionData(
       userId: '',
       email: email,
@@ -202,6 +218,7 @@ class NowaveSessionManager implements NowaveProactiveAuthenticator {
   Future<void> updateUserId(String userId) async {
     final session = _session;
     if (session == null || session.userId == userId) return;
+    _sessionEpoch++;
     _session = session.copyWith(userId: userId);
     await _persist();
   }
@@ -254,6 +271,7 @@ class NowaveSessionManager implements NowaveProactiveAuthenticator {
 
   Future<bool> _refreshLocked() async {
     final session = _session;
+    final epoch = _sessionEpoch;
     if (session == null) return false;
     try {
       final data = await _client.postJson('/auth/refresh', {
@@ -262,15 +280,19 @@ class NowaveSessionManager implements NowaveProactiveAuthenticator {
       final pair = NowaveTokenPair.fromDataMap(
         (data as Map).cast<String, dynamic>(),
       );
+      if (_sessionEpoch != epoch) return false;
+      _sessionEpoch++;
       _session = session.copyWith(
         accessToken: pair.accessToken,
         refreshToken: pair.refreshToken,
         accessExpiresAt: pair.accessExpiresAt,
         refreshExpiresAt: pair.refreshExpiresAt,
       );
+      final refreshedEpoch = _sessionEpoch;
       await _persist();
-      return true;
+      return _sessionEpoch == refreshedEpoch;
     } catch (e, stackTrace) {
+      if (_sessionEpoch != epoch) return false;
       if (_isAuthRejection(e)) {
         // The backend rejected the rotated refresh token: the session
         // family is revoked server-side, the app must stop acting
@@ -306,18 +328,13 @@ class NowaveSessionManager implements NowaveProactiveAuthenticator {
   Future<void> clear() async {
     final hadSession = _session != null;
     _session = null;
-    try {
-      await _store.clear();
-    } catch (e, stackTrace) {
-      AppLogger.error(
-        'clearing the persisted session failed',
-        error: e,
-        stackTrace: stackTrace,
-      );
-    }
-    if (hadSession) {
-      _status.add(const NowaveAuthSignedOut());
-    }
+    _sessionEpoch++;
+    // Fence new work immediately, not after a potentially slow disk write.
+    if (hadSession) _status.add(const NowaveAuthSignedOut());
+    await _enqueueStorage(
+      _store.clear,
+      'clearing the persisted session failed',
+    );
   }
 
   /// Broadcasts a sign-in for the current session's user id.
@@ -331,19 +348,28 @@ class NowaveSessionManager implements NowaveProactiveAuthenticator {
     }
   }
 
-  Future<void> _persist() async {
-    try {
-      final session = _session;
-      if (session != null) {
-        await _store.write(session);
+  Future<void> _persist() {
+    final session = _session;
+    if (session == null) return Future<void>.value();
+    return _enqueueStorage(
+      () => _store.write(session),
+      'persisting the session failed',
+    );
+  }
+
+  Future<void> _enqueueStorage(
+    Future<void> Function() operation,
+    String failureMessage,
+  ) {
+    final next = _storageTail.then((_) async {
+      try {
+        await operation();
+      } catch (e, stackTrace) {
+        AppLogger.error(failureMessage, error: e, stackTrace: stackTrace);
       }
-    } catch (e, stackTrace) {
-      AppLogger.error(
-        'persisting the session failed',
-        error: e,
-        stackTrace: stackTrace,
-      );
-    }
+    });
+    _storageTail = next;
+    return next;
   }
 
   /// JSON encoding helper exposed for the SQLite-backed store.
