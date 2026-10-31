@@ -239,6 +239,9 @@ void main() {
     await f.sessions.adoptSession(_pair('bob'), email: 'bob@example.invalid');
     await f.sessions.updateUserId('bob');
     f.user.updateUser(_user('bob'));
+    // The broadcast cubit event is delivered after the first frame; the
+    // second frame renders the newly scoped FutureBuilder.
+    await tester.pump();
     await tester.pump();
     expect(find.text('Alice only'), findsNothing);
     await tester.pumpAndSettle();

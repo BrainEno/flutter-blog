@@ -145,11 +145,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         final data = await client.postJson('/auth/refresh', {
           'refreshToken': session.refreshToken,
         }, authenticate: false);
-        if (data is! Map)
+        if (data is! Map) {
           throw const FormatException('Invalid token response.');
+        }
         final pair = NowaveTokenPair.fromDataMap(data.cast<String, dynamic>());
-        if (pair.accessToken.isEmpty)
+        if (pair.accessToken.isEmpty) {
           throw const FormatException('Missing access token.');
+        }
         await revoke(pair.accessToken);
       }
     } catch (e) {
