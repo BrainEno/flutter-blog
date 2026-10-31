@@ -10,7 +10,7 @@ import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:belog/features/user/data/user_data_export.dart';
+import 'package:belog/features/user/domain/usecases/export_user_data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fpdart/fpdart.dart';
@@ -145,7 +145,7 @@ class ProfilePage extends StatelessWidget {
   /// Runs the export behind a non-dismissible progress dialog so a second
   /// tap cannot queue another network request or system share sheet.
   Future<void> _exportData(BuildContext context, User user) async {
-    final exporter = GetIt.instance<UserDataExporter>();
+    final exporter = GetIt.instance<ExportUserData>();
     final l10n = context.l10n;
     showDialog(
       context: context,

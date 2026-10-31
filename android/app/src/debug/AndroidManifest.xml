@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- The INTERNET permission is declared in the main manifest for release builds.
-         This file is only used for debug builds where the main manifest is merged. -->
+    <!-- Debug only: permit HTTP to a local development API. The main/profile/
+         release manifests do not opt out of Android's cleartext policy. -->
+    <application android:usesCleartextTraffic="true" />
 </manifest>

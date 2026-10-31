@@ -78,7 +78,13 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
     final res = await _deleteBlog(DeleteBlogParams(blogId: event.blogId));
     res.fold(
       (failure) => emit(BlogUploadFailure(failure.forPresentation())),
-      (_) => emit(BlogDeleteSuccess()),
+      (deleted) => deleted
+          ? emit(BlogDeleteSuccess())
+          : emit(
+              BlogUploadFailure(
+                Failure('文章未删除，请稍后重试', code: 'article.deleteFailed'),
+              ),
+            ),
     );
   }
 }

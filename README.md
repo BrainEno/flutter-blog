@@ -156,28 +156,100 @@ iOS 的系统照片权限提示也提供双语资源。文章、评论、作者�
 
 ## 本地开发
 
+本项目使用 **Flutter 3.47.8**（与 CI 一致）；Android 需要 Android Studio、
+Android SDK 的 emulator/platform-tools、已创建的 AVD 和 JDK 17（支持 17–20）。
+iOS 需要 macOS、完整 Xcode、iOS Simulator runtime、CocoaPods 以及 Xcode 命令行工具。
+脚本只检查并使用现有工具，不安装 SDK、修改 AVD、关闭模拟器或清除数据。
+
+### 初始配置（每台机器一次）
+
+从仓库根目录复制 `env.example.json` 为 `env.json`（Windows 用
+`copy env.example.json env.json`，macOS 用 `cp env.example.json env.json`），
+将 `API_BASE_URL` 改成 **设备/模拟器可访问的真实 no-wave API origin**。
+`WEB_BASE_URL` 是可选的 no-wave Web origin，未使用时保持空字符串，分享入口
+会隐藏；它与 API origin 不能互相推导。地址不要附加 `/api/v1`、路径、查询或
+凭据，客户端会添加 `/api/v1`。模板的 `example.com` 是占位符，不可直接使用。
+
+`env.json` 和根目录下的 `env.*.json` 被 Git 忽略；传给 Flutter 的所有定义会
+编译进应用，**不要放密码、API key、token、证书或其他秘密**，即使文件已忽略。
+脚本只接受上述两个公开配置字段，不会输出文件内容。也可以用 `--config`/
+`-Config` 指向其他本地 JSON（相对路径从仓库根目录解析）。
+
+### Windows：一键启动 Android 调试
+
+在仓库目录双击 `scripts\run_android.cmd`，或者在 PowerShell/命令提示符运行：
+
+```powershell
+.\scripts\run_android.cmd
+.\scripts\run_android.cmd -Avd Pixel_8_API_35 -Config env.android.json -BootTimeoutSeconds 600
+```
+
+脚本优先复用已运行的模拟器；指定 `-Avd` 时只使用该 AVD，否则在未运行时
+选择按名称排序的第一个可用 AVD。它等待 `adb` 报告开机完成，执行
+`flutter pub get` 并以指定模拟器启动 `flutter run --debug`。失败时提示而不
+自动安装、删除或杀掉任何模拟器。若没有 AVD，请先在 Android Studio 的
+Device Manager 创建；如找不到 SDK，设置 `ANDROID_SDK_ROOT` 或将 emulator 和
+platform-tools 加入 PATH。可用 `emulator -list-avds` 查看 AVD 名称。
+
+Android 模拟器中的 `localhost` 是模拟器自身，访问运行在宿主机上的本地 API
+通常应使用 `http://10.0.2.2:端口`；真机或其他模拟器必须使用它们能访问的
+地址。后端须自行启动，脚本不会启动或验证生产服务。
+
+### macOS：一键模拟器调试与 IPA
+
+双击可执行的 `scripts/run_ios.command` 启动或复用 iPhone Simulator；也可以在
+Terminal 运行：
+
+```bash
+./scripts/run_ios.sh
+./scripts/run_ios.sh --device '<simulator UDID>' --config env.ios.json --boot-timeout 600
+```
+
+默认优先复用已启动的 iPhone，否则选择最新已安装 iOS runtime 的一个 iPhone；
+用 `xcrun simctl list devices available` 查看精确 UDID。脚本等待启动完成后运行
+`flutter pub get` 和 `flutter run --debug`，不会擦除或关闭模拟器。Mac 上的 iOS
+模拟器访问宿主机本地后端通常用 `http://localhost:端口`。
+
+双击 `scripts/build_ios_ipa.command`，或运行：
+
+```bash
+./scripts/build_ios_ipa.sh --config env.release.json
+# 可选：仅在本机已配置团队、证书与 provisioning 时使用真实 Xcode 导出设置
+./scripts/build_ios_ipa.sh --mode signed --export-options /path/to/ExportOptions.plist --config env.release.json
+```
+
+默认生成 **ad-hoc 签名的 AltStore IPA**，位于 `build/ios/local-ipa/`，保留旧
+产物、不覆盖；必须由 AltStore 用用户自己的 Apple ID 重新签名，**不是**
+App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并要求本机
+提供正确 Team、证书、provisioning 和 ExportOptions，不会创建或上传凭据。
+两种模式均构建 release，要求 API（若配置 Web 也包括 Web）使用有效 HTTPS；
+自签名证书还须被设备信任。仅结构/本地签名检查不代表已在真机安装或验证
+分发资质，发布策略详见 [docs/releasing.md](docs/releasing.md)。
+
+### 调试网络与手动命令
+
+Android `debug` 和 iOS `Debug` **仅开发构建**允许明文 HTTP（包括非本地地址）；
+profile/release 不放宽平台安全策略。HTTP 会明文传输密码和会话，请仅在受信任
+的隔离开发环境使用测试账号，生产及 IPA 使用 HTTPS。脚本的 debug 构建启用
+`BELOG_DEV_BACKEND_CHECK`，探测配置的 `/api/v1/health`，使没有公网的本地后端
+仍可使用；HTTP 错误响应表示服务器可达，具体错误由真实 API 请求报告。每次
+检查多一次短请求；release/profile 不启用该探测，仍使用原有公网连接检查。
+
 ```bash
 flutter pub get
-flutter gen-l10n        # 可手动重生成本地化 Dart 文件
-flutter run            # 需要 API_BASE_URL 配置（见下）
-flutter analyze
+flutter gen-l10n
+flutter run --debug --dart-define-from-file=env.json --dart-define=BELOG_DEV_BACKEND_CHECK=true
+flutter analyze --fatal-infos
 flutter test
 dart format lib test
 ```
 
-- Flutter 版本：CI 使用 **3.47.8**（stable），本地请保持一致。
-- Android 构建需要 JDK 17–20（AGP/Gradle 兼容范围），如遇冲突执行
-  `flutter config --jdk-dir=<JDK_DIRECTORY>`。
-- 后端地址通过 `--dart-define-from-file=env.json`（模板见 `env.example.json`）
-  或 `--dart-define=API_BASE_URL=https://...` 注入，只需要一个 HTTP(S) origin，
-  无客户端密钥。
-- 可选 `WEB_BASE_URL`：no-wave `apps/web` 部署的 origin（文章公开页所在）。
-  配置后阅读页出现「分享」按钮，分享 `{WEB_BASE_URL}/articles/{slug}`；
-  未配置则自动隐藏，绝不分享打不开的链接。API 与 web 是两个 origin，
-  不可互相推导。
-- 应用图标：`flutter_launcher_icons`（配置见 `pubspec.yaml` 顶层
-  `flutter_launcher_icons:` 键），本地执行 `dart run flutter_launcher_icons`；
-  CI 的 android-release 流水线会在 `pub get` 后自动执行。
+如 Android JDK 冲突，可用 `flutter config --jdk-dir=<JDK_DIRECTORY>` 指向 JDK 17。
+应用图标仍由 `flutter_launcher_icons` 管理（`dart run flutter_launcher_icons`）。
+脚本控制流测试使用模拟工具：`python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v`；
+Windows PowerShell mock 测试为 `powershell -File scripts/tests/test_android.ps1`。
+它们不等同于真实模拟器、后端、IPA 安装或签名验收。代码审查的修复与剩余
+风险见 [docs/code-audit.md](docs/code-audit.md)。
 
 ## 测试与 CI
 
@@ -188,7 +260,12 @@ dart format lib test
 2. **analyze**：`flutter analyze --fatal-infos`，零告警门禁（`avoid_print`
    已启用，请使用 `AppLogger`）。
 3. **test**：`flutter test --coverage --concurrency=1`。
-4. **build**：Android/iOS debug 构建冒烟（iOS 构建在 macOS runner 上执行）。
+4. **android-release**：使用显式 QA debug 签名和不可路由配置构建 Android release APK，
+   不发布、不代表生产后端或正式签名已验证。
+
+`.github/workflows/local-scripts.yml` 在 Linux/macOS/Windows 上运行本地脚本的
+mock 控制流测试；`.github/workflows/dart.yml` 的 iOS 无签名编译只在手动选择
+`include_ios` 时执行。以上不等同于设备、后端或分发签名实测。
 
 单元与 widget 测试覆盖：分页/刷新竞态（BlogBloc）、搜索竞态（BlogSearchBloc）、
 点赞并发与回滚、草稿隔离与自动保存、异常映射矩阵、离线行为、API 客户端
@@ -214,9 +291,10 @@ CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 
 - **G1 删除文章**：~~待补~~ **已解决**（软删 + 回收站 + 恢复已接入，
   `purgesAt` 30 天）。
 - **G2 账号安全**：改密码 / 改邮箱 / 密码重置 / 邮箱验证（需要邮件基础设施）。
-- **#23 离线发布队列**：`POST /articles` 现已接受可选 `Idempotency-Key`
-  （no-wave #105），文章创建步已解锁；封面媒体上传仍受 #47 阻塞（带封面的
-  草稿无法安全离线入队）。
+- **#23 离线发布队列**：no-wave 源码中的 `POST /articles` 已支持可选
+  `Idempotency-Key`（no-wave #105），但实际部署版本/能力尚未确认；媒体上传
+  幂等和孤儿清理仍待解决。本分支没有持久 outbox，草稿 PR #66 是安全子集，
+  尚不能声称 #23 完成。
 - **G3 `GET /me` 返回 email**：或维持客户端本地缓存（现状）。
 - **媒体 `src` 字段缺 `/v1` 段**：上游小修（客户端已绕过）。
 

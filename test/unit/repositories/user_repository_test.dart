@@ -37,6 +37,20 @@ void main() {
   });
 
   group('editUserInfo', () {
+    test('connection probe failures return a typed failure', () async {
+      when(
+        () => connection.isConnected,
+      ).thenThrow(const SocketException('lost'));
+      final result = await repository.editUserInfo(
+        userId: 'u1',
+        name: 'n',
+        website: '',
+        avatar: null,
+      );
+      expect(result.getLeft().toNullable()?.kind, FailureKind.network);
+      verifyNever(() => remote.getUserById(any()));
+    });
+
     test(
       'unexpected errors no longer crash through - they fail safely',
       () async {

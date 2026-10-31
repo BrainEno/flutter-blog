@@ -1,0 +1,41 @@
+name: Local development script checks (mocked tools)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: local-scripts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos-control-flow:
+    name: Shell and config mocks / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Check shell syntax
+        run: bash -n scripts/lib/common.sh scripts/run_ios.sh scripts/build_ios_ipa.sh scripts/run_ios.command scripts/build_ios_ipa.command
+      - name: Test mocked simulator, packaging and configuration paths
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+
+  windows-control-flow:
+    name: PowerShell mock AVD scenarios / Windows
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Test Android script with fake tools (PowerShell 5.1)
+        shell: powershell
+        run: .\scripts\tests\test_android.ps1

@@ -116,16 +116,34 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<void> logout() async {
+    final generation = sessionManager.sessionGeneration;
+    void ensureSameSession(int expected) {
+      if (sessionManager.sessionGeneration != expected &&
+          sessionManager.currentSession != null) {
+        throw const NowaveApiException(
+          statusCode: HttpStatus.conflict,
+          code: 'SESSION_CHANGED',
+          message: 'Session changed while signing out.',
+        );
+      }
+    }
+
     try {
       // Revokes the whole session family (access and refresh tokens).
       await client.deleteJson('/me/session');
     } catch (e) {
-      // Best-effort server-side revocation: the local session is dropped
-      // regardless, so the user is signed out on this device either way
-      // and a leftover refresh token simply expires unused.
-      AppLogger.debug('session revocation failed during logout: $e');
+      ensureSameSession(generation);
+      // Best-effort server-side revocation. Never print raw error details.
+      AppLogger.debug(
+        'session revocation failed during logout (${e.runtimeType})',
+      );
     }
-    await sessionManager.clear();
+    ensureSameSession(generation);
+    final clearing = sessionManager.clear();
+    final clearedGeneration = sessionManager.sessionGeneration;
+    await clearing;
+    // A new login may have arrived while the platform store was clearing.
+    ensureSameSession(clearedGeneration);
   }
 
   Future<NowaveTokenPair> _exchangeTokens(

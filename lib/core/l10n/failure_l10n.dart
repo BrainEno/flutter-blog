@@ -20,6 +20,8 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
       return l10n.errorAuthRequired;
     case 'auth.sessionExpired':
       return l10n.errorAuthSessionExpired;
+    case 'auth.sessionChanged':
+      return l10n.errorAuthSessionChanged;
     case 'auth.notSignedIn':
       return l10n.errorNotSignedIn;
     case 'auth.invalidCredentials':
@@ -75,6 +77,10 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
       return l10n.errorArticleIdUpdate;
     case 'article.idDelete':
       return l10n.errorArticleIdDelete;
+    case 'article.deletedCacheFailed':
+      return l10n.errorArticleDeletedCacheFailed;
+    case 'article.deleteFailed':
+      return l10n.errorArticleDeleteFailed;
     case 'article.idRestore':
       return l10n.errorArticleIdRestore;
 

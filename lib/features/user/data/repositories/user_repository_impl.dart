@@ -24,10 +24,10 @@ class UserRepositoryImpl implements UserRepository {
     String? avatarMimeType,
     required String website,
   }) async {
-    if (!await (connectionChecker.isConnected)) {
-      return left(Failure.networkOffline());
-    }
     try {
+      if (!await connectionChecker.isConnected) {
+        return left(Failure.networkOffline());
+      }
       final current = await remoteDataSource.getUserById(userId);
       var userToUpdate = current;
 

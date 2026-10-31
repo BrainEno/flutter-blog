@@ -14,7 +14,7 @@ import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:belog/features/user/data/user_data_export.dart';
+import 'package:belog/features/user/domain/usecases/export_user_data.dart';
 import 'package:belog/features/user/presentation/pages/profile_page.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -27,7 +27,7 @@ import 'package:mocktail/mocktail.dart';
 
 class _MockAuthRepository extends Mock implements AuthRepository {}
 
-class _MockExporter extends Mock implements UserDataExporter {}
+class _MockExporter extends Mock implements ExportUserData {}
 
 class _ThemeStore implements ThemePreferenceStore {
   _ThemeStore(this.mode);
@@ -227,7 +227,7 @@ void main() {
         shareTitle: l10n.exportShareTitle,
       ),
     ).thenAnswer((_) => pending.future);
-    GetIt.instance.registerSingleton<UserDataExporter>(exporter);
+    GetIt.instance.registerSingleton<ExportUserData>(exporter);
     addTearDown(() async {
       await harness.dispose();
       await GetIt.instance.reset();

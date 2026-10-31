@@ -123,6 +123,8 @@ void main() {
       sync.start();
 
       statusEvents.add(const NowaveAuthSignedIn('u1'));
+      await Future<void>.delayed(Duration.zero);
+      expect(fakeCurrentUser.calls, 1);
       // The session is revoked while the refresh is still in flight.
       currentSession = null;
       statusEvents.add(const NowaveAuthSignedOut());
@@ -136,6 +138,43 @@ void main() {
       await sync.dispose();
     },
   );
+
+  test('a delayed signed-out event cannot clear the newer account', () async {
+    final sync = buildSync(FakeCurrentUser(Queue()));
+    appUserCubit.updateUser(_appUser('u2'));
+    currentSession = _session('u2');
+    sync.start();
+
+    statusEvents.add(const NowaveAuthSignedOut());
+    await Future<void>.delayed(Duration.zero);
+
+    expect((appUserCubit.state as AppUserLoggedIn).user.id, 'u2');
+    await sync.dispose();
+  });
+
+  test('a new sign-in refresh is not lost behind an older request', () async {
+    final gate = Completer<Either<Failure, app.User>>();
+    final fake = FakeCurrentUser(
+      Queue<Either<Failure, app.User>>()..add(Right(_appUser('u2'))),
+    )..gate = gate;
+    final sync = buildSync(fake);
+    currentSession = _session('u1');
+    sync.start();
+    statusEvents.add(const NowaveAuthSignedIn('u1'));
+    await Future<void>.delayed(Duration.zero);
+    expect(fake.calls, 1);
+
+    currentSession = _session('u2');
+    statusEvents.add(const NowaveAuthSignedIn('u2'));
+    await Future<void>.delayed(Duration.zero);
+    fake.gate = null;
+    gate.complete(Right(_appUser('u1')));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(fake.calls, 2);
+    expect((appUserCubit.state as AppUserLoggedIn).user.id, 'u2');
+    await sync.dispose();
+  });
 
   test('start() is idempotent (only one subscription)', () async {
     final fakeCurrentUser = FakeCurrentUser(

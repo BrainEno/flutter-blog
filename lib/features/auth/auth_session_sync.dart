@@ -32,6 +32,7 @@ class AuthSessionSync {
   StreamSubscription<NowaveAuthStatus>? _subscription;
   bool _started = false;
   bool _refreshing = false;
+  bool _refreshPending = false;
 
   /// Starts listening. Idempotent so re-starting the app (tests) is safe.
   void start() {
@@ -54,41 +55,48 @@ class AuthSessionSync {
     await _subscription?.cancel();
     _subscription = null;
     _started = false;
+    _refreshPending = false;
   }
 
   Future<void> _onStatus(NowaveAuthStatus status) async {
     switch (status) {
       case NowaveAuthSignedOut():
-        // Covers explicit sign-out on this device and sessions dropped
-        // because a token refresh failed: without a session the user must
-        // leave the logged-in UI.
-        _appUserCubit.updateUser(null);
-      case NowaveAuthSignedIn():
-        await _refreshUser();
+        // A queued sign-out event may arrive after a new login.
+        if (_currentSession() == null) {
+          _refreshPending = false;
+          _appUserCubit.updateUser(null);
+        }
+      case NowaveAuthSignedIn(:final userId):
+        if (_currentSession()?.userId == userId) await _refreshUser();
     }
   }
 
   Future<void> _refreshUser() async {
     if (_refreshing) {
+      _refreshPending = true;
       return;
     }
     _refreshing = true;
     try {
-      final res = await _currentUser(NoParams());
-      res.fold(
-        (failure) {
-          AppLogger.debug('auth event user refresh failed: ${failure.code}');
-        },
-        (user) {
-          // A refresh finishing after a sign-out must not resurrect the
-          // logged-in state: only apply the user while the same session is
-          // still current.
-          final session = _currentSession();
-          if (session != null && session.userId == user.id) {
-            _appUserCubit.updateUser(user);
-          }
-        },
-      );
+      do {
+        _refreshPending = false;
+        final res = await _currentUser(NoParams());
+        if (!_started) return;
+        res.fold(
+          (failure) {
+            AppLogger.debug('auth event user refresh failed: ${failure.code}');
+          },
+          (user) {
+            // Never apply an identity from an account that is no longer active.
+            final session = _currentSession();
+            if (session != null && session.userId == user.id) {
+              _appUserCubit.updateUser(user);
+            }
+          },
+        );
+        // Coalesce events, but do not drop the new account's refresh while
+        // an old account's profile request was still in flight.
+      } while (_refreshPending && _started && _currentSession() != null);
     } finally {
       _refreshing = false;
     }

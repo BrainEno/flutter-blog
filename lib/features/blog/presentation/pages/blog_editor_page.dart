@@ -9,7 +9,7 @@ import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/pick_image.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
-import 'package:belog/features/blog/data/datasources/blog_draft_store.dart';
+import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';

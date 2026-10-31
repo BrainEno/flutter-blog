@@ -30,6 +30,13 @@ ServerException mapToServerException(Object error) {
     // The backend's error codes are stable; its messages are English and
     // may embed validation details, so they are classified, never shown.
     switch (error.code) {
+      case 'SESSION_CHANGED':
+        return ServerException(
+          '登录账户已变更；操作可能已提交，请先确认',
+          kind: FailureKind.auth,
+          code: 'auth.sessionChanged',
+          cause: error,
+        );
       case 'UNAUTHENTICATED':
         return ServerException(
           '登录已过期，请重新登录',

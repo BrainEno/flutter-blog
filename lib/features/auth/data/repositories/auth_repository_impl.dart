@@ -81,6 +81,8 @@ class AuthRepositoryImpl implements AuthRepository {
       return right(userModel);
     } on ServerException catch (e) {
       return left(e.toFailure());
+    } catch (error) {
+      return left(mapErrorToFailure(error));
     }
   }
 
@@ -103,6 +105,8 @@ class AuthRepositoryImpl implements AuthRepository {
       return left(_loginFailure(e));
     } on ServerException catch (e) {
       return left(e.toFailure());
+    } catch (error) {
+      return left(mapErrorToFailure(error));
     }
   }
 
@@ -129,6 +133,8 @@ class AuthRepositoryImpl implements AuthRepository {
       return left(_signUpFailure(e));
     } on ServerException catch (e) {
       return left(e.toFailure());
+    } catch (error) {
+      return left(mapErrorToFailure(error));
     }
   }
 
@@ -149,6 +155,8 @@ class AuthRepositoryImpl implements AuthRepository {
       return right(null);
     } on ServerException catch (e) {
       return left(e.toFailure());
+    } catch (error) {
+      return left(mapErrorToFailure(error));
     }
   }
 

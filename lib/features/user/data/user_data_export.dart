@@ -5,6 +5,7 @@ import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
+import 'package:belog/features/user/domain/usecases/export_user_data.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -53,7 +54,7 @@ Map<String, Object?> buildUserDataExport({
 /// The file is written into the app's temporary directory - a scratch area
 /// the OS may reclaim - because the canonical copy is whatever destination
 /// the user picks in the share sheet.
-class UserDataExporter {
+class UserDataExporter implements ExportUserData {
   final GetBlogsByPoster getBlogsByPoster;
 
   /// Injectable for tests.
@@ -66,6 +67,7 @@ class UserDataExporter {
 
   /// Fetches the user's articles and shares the export file.
   /// [Failure] messages are user-facing (see [error_mapper]).
+  @override
   Future<Either<Failure, void>> exportAndShare({
     required User user,
     required String shareTitle,

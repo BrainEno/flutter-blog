@@ -90,11 +90,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onAuthLogout(AuthLogout event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     final res = await _userSignOut(NoParams());
-    _appUserCubit.updateUser(null);
 
     res.fold(
-      (failure) => emit(AuthLogoutFailure(failure.forPresentation())),
-      (_) => emit(AuthLogoutSuccess()),
+      (failure) {
+        // A newer account must not be removed by an older sign-out result.
+        if (failure.code != 'auth.sessionChanged') {
+          _appUserCubit.updateUser(null);
+        }
+        emit(AuthLogoutFailure(failure.forPresentation()));
+      },
+      (_) {
+        _appUserCubit.updateUser(null);
+        emit(AuthLogoutSuccess());
+      },
     );
   }
 
