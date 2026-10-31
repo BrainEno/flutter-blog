@@ -1,4 +1,5 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/format_date.dart';
@@ -7,10 +8,8 @@ import 'package:belog/features/blog/domain/entities/comment.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_state.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_event.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
 /// Comment thread under a viewed article (issue #19).
 ///
@@ -22,8 +21,14 @@ import 'package:go_router/go_router.dart';
 class CommentsSection extends StatefulWidget {
   final String slug;
   final VoidCallback? onRequestLogin;
+  final ValueChanged<String> onOpenAuthor;
 
-  const CommentsSection({super.key, required this.slug, this.onRequestLogin});
+  const CommentsSection({
+    super.key,
+    required this.slug,
+    required this.onOpenAuthor,
+    this.onRequestLogin,
+  });
 
   @override
   State<CommentsSection> createState() => _CommentsSectionState();
@@ -306,6 +311,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                   comment: comment,
                   depth: 0,
                   onReply: _startReply,
+                  onOpenAuthor: widget.onOpenAuthor,
                   confirmDelete: () => _confirmDelete(context),
                 ),
               )
@@ -319,12 +325,14 @@ class _CommentTile extends StatelessWidget {
   final Comment comment;
   final int depth;
   final void Function(Comment) onReply;
+  final ValueChanged<String> onOpenAuthor;
   final Future<bool> Function() confirmDelete;
 
   const _CommentTile({
     required this.comment,
     required this.depth,
     required this.onReply,
+    required this.onOpenAuthor,
     required this.confirmDelete,
   });
 
@@ -355,25 +363,15 @@ class _CommentTile extends StatelessWidget {
                 label: context.l10n.authorPageSemantic(authorName),
                 button: true,
                 child: InkWell(
-                  onTap: () => context.push('/author/${comment.authorId}'),
+                  onTap: () => onOpenAuthor(comment.authorId),
                   child: SizedBox(
                     width: 48,
                     height: 48,
                     child: Center(
-                      child: Semantics(
-                        image: true,
-                        label: context.l10n.avatarOf(authorName),
-                        child: CircleAvatar(
-                          radius: depth == 0 ? 16 : 13,
-                          backgroundImage: comment.authorAvatarUrl.isNotEmpty
-                              ? CachedNetworkImageProvider(
-                                  comment.authorAvatarUrl,
-                                )
-                              : null,
-                          child: comment.authorAvatarUrl.isEmpty
-                              ? Icon(Icons.person, size: depth == 0 ? 16 : 13)
-                              : null,
-                        ),
+                      child: NoWaveAvatar(
+                        name: authorName,
+                        imageUrl: comment.authorAvatarUrl,
+                        size: depth == 0 ? 32 : 26,
                       ),
                     ),
                   ),
@@ -385,7 +383,7 @@ class _CommentTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     InkWell(
-                      onTap: () => context.push('/author/${comment.authorId}'),
+                      onTap: () => onOpenAuthor(comment.authorId),
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(minHeight: 48),
                         child: Align(
@@ -456,6 +454,7 @@ class _CommentTile extends StatelessWidget {
                         comment: reply,
                         depth: depth + 1,
                         onReply: onReply,
+                        onOpenAuthor: onOpenAuthor,
                         confirmDelete: confirmDelete,
                       ),
                     )

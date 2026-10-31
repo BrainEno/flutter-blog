@@ -1,14 +1,16 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
+import 'package:belog/core/common/widgets/no_wave_action_row.dart';
+import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/theme_toggle_button.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/user/data/user_data_export.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fpdart/fpdart.dart';
@@ -18,24 +20,9 @@ import 'package:go_router/go_router.dart';
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
-  // Account security is hidden until the backend exposes those endpoints.
-  static const _locations = [
-    '/profile/edit',
-    '/profile/my-articles',
-    '/profile/history',
-    '/profile/about',
-  ];
-  static const _icons = [Icons.edit, Icons.article, Icons.history, Icons.info];
-
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final labels = [
-      l10n.menuEditProfile,
-      l10n.menuMyArticles,
-      l10n.menuReadingHistory,
-      l10n.menuAbout,
-    ];
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -69,54 +56,83 @@ class ProfilePage extends StatelessWidget {
             final name = user.name.trim().isEmpty
                 ? l10n.anonymousAuthor
                 : user.name;
-            // A single scrollable prevents the profile header and actions
-            // from overflowing when the system text size is enlarged.
+            // A single scrollable keeps the header and every action available
+            // at large system text sizes. Account security remains hidden until
+            // the backend exposes its endpoints.
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 Center(
-                  child: Semantics(
-                    image: true,
-                    label: l10n.avatarOf(name),
-                    child: CircleAvatar(
-                      radius: 60,
-                      backgroundImage: user.avatarUrl.isNotEmpty
-                          ? CachedNetworkImageProvider(user.avatarUrl)
-                          : null,
-                      child: user.avatarUrl.isEmpty
-                          ? const Icon(Icons.person, size: 60)
-                          : null,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 680),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            NoWaveAvatar(name: name, imageUrl: user.avatarUrl),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Semantics(
+                                    header: true,
+                                    child: Text(
+                                      name,
+                                      style: NoWaveTypography.title(
+                                        context,
+                                        size: 32,
+                                      ),
+                                    ),
+                                  ),
+                                  if (user.website.trim().isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Text(user.website.trim()),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+                        NoWaveActionRow(
+                          icon: Icons.edit_outlined,
+                          label: l10n.menuEditProfile,
+                          onTap: () => context.push('/profile/edit'),
+                        ),
+                        NoWaveActionRow(
+                          icon: Icons.article_outlined,
+                          label: l10n.menuMyArticles,
+                          onTap: () => context.push('/profile/my-articles'),
+                        ),
+                        NoWaveActionRow(
+                          icon: Icons.history,
+                          label: l10n.menuReadingHistory,
+                          onTap: () => context.push('/profile/history'),
+                        ),
+                        NoWaveActionRow(
+                          icon: Icons.info_outline,
+                          label: l10n.menuAbout,
+                          onTap: () => context.push('/profile/about'),
+                        ),
+                        NoWaveActionRow(
+                          icon: Icons.file_download_outlined,
+                          label: l10n.exportMyData,
+                          description: l10n.exportMyDataHint,
+                          onTap: () => _exportData(context, user),
+                        ),
+                        NoWaveActionRow(
+                          icon: Icons.logout,
+                          label: l10n.logout,
+                          onTap: () =>
+                              context.read<AuthBloc>().add(AuthLogout()),
+                        ),
+                        const Divider(height: 1),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  name,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                if (user.website.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(user.website, textAlign: TextAlign.center),
-                ],
-                const SizedBox(height: 24),
-                const Divider(),
-                for (var i = 0; i < _locations.length; i++)
-                  ListTile(
-                    leading: Icon(_icons[i]),
-                    title: Text(labels[i]),
-                    onTap: () => context.push(_locations[i]),
-                  ),
-                ListTile(
-                  leading: const Icon(Icons.file_download_outlined),
-                  title: Text(l10n.exportMyData),
-                  subtitle: Text(l10n.exportMyDataHint),
-                  onTap: () => _exportData(context, user),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.logout),
-                  title: Text(l10n.logout),
-                  onTap: () => context.read<AuthBloc>().add(AuthLogout()),
                 ),
               ],
             );

@@ -1,3 +1,4 @@
+import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
@@ -6,7 +7,6 @@ import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
 import 'package:belog/features/blog/presentation/widgets/article_tag_label.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 /// Article identity and author details, independent of routing and state.
@@ -60,25 +60,10 @@ class ArticleReaderHeader extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Semantics(
-                      image: true,
-                      label: l10n.avatarOf(name),
-                      child: ExcludeSemantics(
-                        child: SizedBox.square(
-                          dimension: 48,
-                          child: ColoredBox(
-                            color: scheme.surfaceContainerHighest,
-                            child: blog.posterAvatar?.trim().isNotEmpty == true
-                                ? CachedNetworkImage(
-                                    imageUrl: blog.posterAvatar!,
-                                    fit: BoxFit.cover,
-                                    errorWidget: (_, _, _) =>
-                                        const Icon(Icons.person_outline),
-                                  )
-                                : const Icon(Icons.person_outline),
-                          ),
-                        ),
-                      ),
+                    NoWaveAvatar(
+                      name: name,
+                      imageUrl: blog.posterAvatar ?? '',
+                      size: 48,
                     ),
                     const SizedBox(width: 12),
                     Expanded(

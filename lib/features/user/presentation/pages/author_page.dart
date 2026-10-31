@@ -1,13 +1,17 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/common/widgets/no_wave_avatar.dart';
+import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
+import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:belog/features/user/domain/entities/author_profile.dart';
 import 'package:belog/features/user/presentation/bloc/author/author_cubit.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:belog/router/shell_branch_location.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -54,7 +58,7 @@ class _AuthorPageState extends State<AuthorPage> {
     }
   }
 
-  void _onFollowTap(AuthorLoaded state) {
+  void _onFollowTap() {
     final appUserState = context.read<AppUserCubit>().state;
     if (appUserState is! AppUserLoggedIn) {
       showSnackBar(context, context.l10n.signInRequired);
@@ -98,22 +102,15 @@ class _AuthorPageState extends State<AuthorPage> {
           }
           if (state is AuthorFailure) {
             return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    state.error.isNotEmpty
-                        ? localizedFailure(context.l10n, state.failure)
-                        : context.l10n.authorMissing,
-                    style: Theme.of(context).textTheme.bodySmall,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () => context.read<AuthorCubit>().load(),
-                    child: Text(context.l10n.actionRetry),
-                  ),
-                ],
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: NoWaveStatus(
+                  message: state.error.isNotEmpty
+                      ? localizedFailure(context.l10n, state.failure)
+                      : context.l10n.authorMissing,
+                  actionLabel: context.l10n.actionRetry,
+                  onAction: () => context.read<AuthorCubit>().load(),
+                ),
               ),
             );
           }
@@ -122,89 +119,92 @@ class _AuthorPageState extends State<AuthorPage> {
           final isSelf = viewerId != null && viewerId == profile.userId;
 
           return ListView(
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.all(16),
             children: [
-              _ProfileHeader(profile: profile, onOpenWebsite: _openWebsite),
-              const SizedBox(height: 16),
-              _FollowButton(
-                loaded: loaded,
-                isSelf: isSelf,
-                onTap: () => _onFollowTap(loaded),
-              ),
-              const SizedBox(height: 16),
-              const Divider(height: 1),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  context.l10n.authorArticlesTitle,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 680),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ProfileHeader(
+                        profile: profile,
+                        onOpenWebsite: _openWebsite,
+                      ),
+                      const SizedBox(height: 16),
+                      _FollowButton(
+                        loaded: loaded,
+                        isSelf: isSelf,
+                        onTap: _onFollowTap,
+                      ),
+                      const SizedBox(height: 32),
+                      const Divider(height: 1),
+                      const SizedBox(height: 16),
+                      NoWaveSectionHeading(
+                        title: context.l10n.authorArticlesTitle,
+                      ),
+                      const SizedBox(height: 16),
+                      BlocBuilder<BlogByBloc, BlogByState>(
+                        builder: (context, articleState) {
+                          if (articleState is GetBlogsByUserLoading ||
+                              articleState is BlogByInitial) {
+                            return Center(
+                              child: CircularProgressIndicator(
+                                semanticsLabel: context.l10n.loadingArticles,
+                              ),
+                            );
+                          }
+                          if (articleState is GetBlogsByUserFailure) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 24),
+                              child: NoWaveStatus(
+                                message: articleState.error.isNotEmpty
+                                    ? localizedFailure(
+                                        context.l10n,
+                                        articleState.failure,
+                                      )
+                                    : context.l10n.authorArticlesLoadFailed,
+                                actionLabel: context.l10n.actionRetry,
+                                onAction: () => context.read<BlogByBloc>().add(
+                                  GetBlogByPosterEvent(userId: widget.userId),
+                                ),
+                              ),
+                            );
+                          }
+                          final blogs = articleState is GetBlogsByUserSuccess
+                              ? articleState.blogs
+                              : const [];
+                          if (blogs.isEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 24),
+                              child: Center(
+                                child: NoWaveStatus(
+                                  message: context.l10n.authorNoArticles,
+                                ),
+                              ),
+                            );
+                          }
+                          return Column(
+                            children: [
+                              for (var index = 0; index < blogs.length; index++)
+                                BlogCard(
+                                  blog: blogs[index],
+                                  index: index + 1,
+                                  onTap: () => context.push(
+                                    shellBranchLocation(
+                                      GoRouterState.of(context).uri,
+                                      '/view/${Uri.encodeComponent(blogs[index].id)}',
+                                    ),
+                                    extra: blogs[index],
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              BlocBuilder<BlogByBloc, BlogByState>(
-                builder: (context, articleState) {
-                  if (articleState is GetBlogsByUserLoading ||
-                      articleState is BlogByInitial) {
-                    return Center(
-                      child: CircularProgressIndicator(
-                        semanticsLabel: context.l10n.loadingArticles,
-                      ),
-                    );
-                  }
-                  if (articleState is GetBlogsByUserFailure) {
-                    return Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          Text(
-                            articleState.error.isNotEmpty
-                                ? localizedFailure(
-                                    context.l10n,
-                                    articleState.failure,
-                                  )
-                                : context.l10n.authorArticlesLoadFailed,
-                            textAlign: TextAlign.center,
-                          ),
-                          TextButton(
-                            onPressed: () => context.read<BlogByBloc>().add(
-                              GetBlogByPosterEvent(userId: widget.userId),
-                            ),
-                            child: Text(context.l10n.actionRetry),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  final blogs = articleState is GetBlogsByUserSuccess
-                      ? articleState.blogs
-                      : const [];
-                  if (blogs.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
-                      child: Center(child: Text(context.l10n.authorNoArticles)),
-                    );
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      children: [
-                        for (var index = 0; index < blogs.length; index++)
-                          BlogCard(
-                            blog: blogs[index],
-                            index: index + 1,
-                            onTap: () => context.push(
-                              '/view/${blogs[index].id}',
-                              extra: blogs[index],
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                },
               ),
             ],
           );
@@ -226,71 +226,57 @@ class _ProfileHeader extends StatelessWidget {
     final name = profile.displayName.trim().isNotEmpty
         ? profile.displayName
         : l10n.anonymousAuthor;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Semantics(
-                image: true,
-                label: l10n.avatarOf(name),
-                child: CircleAvatar(
-                  radius: 32,
-                  backgroundImage: profile.avatarUrl.isNotEmpty
-                      ? CachedNetworkImageProvider(profile.avatarUrl)
-                      : null,
-                  child: profile.avatarUrl.isEmpty
-                      ? const Icon(Icons.person, size: 32)
-                      : null,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            NoWaveAvatar(name: name, imageUrl: profile.avatarUrl),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Semantics(
+                    header: true,
+                    child: Text(
                       name,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: NoWaveTypography.title(context, size: 32),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      l10n.followerStats(
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    l10n.followerStats(
+                      profile.followerCount,
+                      formatNumber(
+                        Localizations.localeOf(context),
                         profile.followerCount,
-                        formatNumber(
-                          Localizations.localeOf(context),
-                          profile.followerCount,
-                        ),
-                        formatNumber(
-                          Localizations.localeOf(context),
-                          profile.followingCount,
-                        ),
                       ),
-                      style: Theme.of(context).textTheme.bodySmall,
+                      formatNumber(
+                        Localizations.localeOf(context),
+                        profile.followingCount,
+                      ),
                     ),
-                  ],
-                ),
+                    style: NoWaveTypography.meta(context),
+                  ),
+                ],
               ),
-            ],
-          ),
-          if (profile.bio.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(profile.bio, style: const TextStyle(height: 1.4)),
-          ],
-          if (profile.websiteUrl.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => onOpenWebsite(profile.websiteUrl),
-              child: Text(profile.websiteUrl),
             ),
           ],
+        ),
+        if (profile.bio.trim().isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(profile.bio, style: const TextStyle(height: 1.5)),
         ],
-      ),
+        if (profile.websiteUrl.trim().isNotEmpty) ...[
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () => onOpenWebsite(profile.websiteUrl),
+            child: Text(profile.websiteUrl),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -309,48 +295,40 @@ class _FollowButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isSelf) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: Chip(label: Text(context.l10n.thisIsYou)),
-        ),
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Chip(label: Text(context.l10n.thisIsYou)),
       );
     }
 
     final following = loaded.profile.isFollowing;
     final inFlight = loaded.followInFlight;
+    const shape = RoundedRectangleBorder(borderRadius: BorderRadius.zero);
+    final progress = SizedBox(
+      width: 14,
+      height: 14,
+      child: CircularProgressIndicator(
+        strokeWidth: 2,
+        semanticsLabel: context.l10n.loading,
+      ),
+    );
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Align(
-        alignment: Alignment.centerLeft,
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Semantics(
+        toggled: following,
         child: following
             ? OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(shape: shape),
                 onPressed: inFlight ? null : onTap,
-                icon: inFlight
-                    ? SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          semanticsLabel: context.l10n.loading,
-                        ),
-                      )
-                    : const Icon(Icons.check, size: 16),
+                icon: inFlight ? progress : const Icon(Icons.check, size: 16),
                 label: Text(context.l10n.followingButton),
               )
             : FilledButton.icon(
+                style: FilledButton.styleFrom(shape: shape),
                 onPressed: inFlight ? null : onTap,
                 icon: inFlight
-                    ? SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          semanticsLabel: context.l10n.loading,
-                        ),
-                      )
+                    ? progress
                     : const Icon(Icons.person_add_alt_1, size: 16),
                 label: Text(context.l10n.followButton),
               ),
