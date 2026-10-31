@@ -8,11 +8,10 @@ import 'package:belog/features/auth/data/models/user_model.dart';
 
 /// Authentication against the no-wave backend.
 ///
-/// There is no e-mail verification, password reset or e-mail/password
-/// change flow on the backend (see docs/supabase-to-nowave-migration.md,
-/// gap G2), so those operations do not exist here. `GET /me` returns only
-/// the user id; the e-mail shown in the UI is the one cached locally at
-/// sign-in time.
+/// The backend supports password reset and e-mail verification, but this
+/// client has not integrated those flows (see the migration document, G2).
+/// The current `GET /me` can also return an e-mail and verification status;
+/// this client reads only the id and uses the locally cached sign-in e-mail.
 abstract interface class AuthRemoteDataSource {
   /// The locally persisted session, without any network traffic.
   NowaveSessionData? get currentSession;

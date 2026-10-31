@@ -6,9 +6,9 @@ import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/utils/app_logger.dart';
 
 /// A persisted no-wave session: the rotated token pair plus the identity
-/// the app caches locally (the backend's `GET /me` returns only an id, so
-/// the e-mail address shown in the profile UI comes from what the user
-/// typed at sign-in time).
+/// the app caches locally. The current backend can return an e-mail and
+/// verification status in `GET /me`, but this client only reads the id;
+/// the UI still uses the address entered at sign-in.
 class NowaveSessionData {
   const NowaveSessionData({
     required this.userId,

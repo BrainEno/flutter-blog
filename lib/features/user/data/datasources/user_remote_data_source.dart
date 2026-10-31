@@ -11,9 +11,10 @@ import 'package:belog/features/auth/data/models/user_model.dart';
 ///
 /// The profile is read via `GET /authors/:userId` and written via
 /// `PUT /me/profile` (fields: displayName, bio, avatarUrl, websiteUrl).
-/// E-mail/password changes have no backend endpoint yet (gap G2, see
-/// docs/supabase-to-nowave-migration.md) and are therefore not offered;
-/// avatar images are immutable media assets.
+/// Direct e-mail/password changes are not offered (gap G2, see
+/// docs/supabase-to-nowave-migration.md); the backend's separate password
+/// recovery and e-mail verification flows are not integrated here either.
+/// Avatar images are immutable media assets.
 abstract interface class UserRemoteDataSource {
   Future<UserModel> getUserById(String userId);
 
