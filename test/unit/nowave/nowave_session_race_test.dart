@@ -92,6 +92,81 @@ class _BlockingStore extends _MemoryStore {
 }
 
 void main() {
+  test(
+    'a rejected refresh returns signed-out to current-user callers',
+    () async {
+      var refreshRequests = 0;
+      var profileRequests = 0;
+      http.Response rejected() => http.Response(
+        jsonEncode({
+          'error': {'code': 'UNAUTHENTICATED', 'message': 'expired'},
+        }),
+        401,
+      );
+
+      final store = _MemoryStore(_session('A'));
+      final manager = NowaveSessionManager(
+        client: _client((_) async {
+          refreshRequests++;
+          return rejected();
+        }),
+        store: store,
+        now: () => DateTime.utc(2026),
+      );
+      await manager.restore();
+      final client = NowaveApiClient(
+        baseUrl: Uri.parse('https://api.example.invalid'),
+        authenticator: manager,
+        httpClient: MockClient((_) async {
+          profileRequests++;
+          return rejected();
+        }),
+      );
+      final source = AuthRemoteDataSourceImpl(client, manager);
+
+      expect(await source.getCurrentUserData(), isNull);
+      expect(profileRequests, 1);
+      expect(refreshRequests, 1);
+      expect(manager.currentSession, isNull);
+      expect(store.stored, isNull);
+    },
+  );
+
+  test(
+    'an expired session reports signed-out before sending a request',
+    () async {
+      var requests = 0;
+      final store = _MemoryStore(
+        _session('A').copyWith(
+          accessExpiresAt: DateTime.utc(2020),
+          refreshExpiresAt: DateTime.utc(2020),
+        ),
+      );
+      final manager = NowaveSessionManager(
+        client: _client((_) async {
+          requests++;
+          return _rotated('unused');
+        }),
+        store: store,
+        now: () => DateTime.utc(2026),
+      );
+      await manager.restore();
+      final client = NowaveApiClient(
+        baseUrl: Uri.parse('https://api.example.invalid'),
+        authenticator: manager,
+        httpClient: MockClient((_) async {
+          requests++;
+          return _rotated('unused');
+        }),
+      );
+      final source = AuthRemoteDataSourceImpl(client, manager);
+
+      expect(await source.getCurrentUserData(), isNull);
+      expect(requests, 0);
+      expect(store.stored, isNull);
+    },
+  );
+
   test('a delayed logout cannot clear a newly adopted account', () async {
     final started = Completer<void>();
     final response = Completer<http.Response>();

@@ -3,9 +3,9 @@ import 'package:belog/core/storage/app_database.dart';
 
 /// [NowaveSessionStore] on the app's SQLite `metadata` table.
 ///
-/// The tokens live in the app's private database directory, the same trust
-/// domain as the offline blog cache. Swapping to a platform secure store
-/// later only requires another implementation of [NowaveSessionStore].
+/// Legacy migration source and fallback when platform secure storage is
+/// unavailable. Tokens are stored in the private SQLite database, not in
+/// the platform keychain/keystore; see the audit for migration limitations.
 class SqliteNowaveSessionStore implements NowaveSessionStore {
   static const _kMetadataKey = 'nowave_session_v1';
 

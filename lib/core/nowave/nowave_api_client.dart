@@ -275,6 +275,11 @@ class NowaveApiClient {
           : null;
       final generation = bound?.sessionGeneration;
 
+      bool sessionEnded() =>
+          bound != null &&
+          bound.sessionGeneration != generation &&
+          authenticator.accessToken == null;
+
       void ensureSameSession() {
         if (bound != null && bound.sessionGeneration != generation) {
           // A write may already have committed under the old account. Do not
@@ -304,6 +309,15 @@ class NowaveApiClient {
 
       if (authenticator is NowaveProactiveAuthenticator) {
         await authenticator.ensureFreshAccess();
+        if (sessionEnded()) {
+          // No request has been sent yet. Preserve the ordinary expired-login
+          // behavior instead of implying that a write might have committed.
+          throw const NowaveApiException(
+            statusCode: HttpStatus.unauthorized,
+            code: 'UNAUTHENTICATED',
+            message: 'Session expired before the request was sent.',
+          );
+        }
         ensureSameSession();
       }
       final sentToken = authenticator.accessToken;
@@ -328,7 +342,9 @@ class NowaveApiClient {
         if (!refreshed && authenticator.accessToken == sentToken) {
           AppLogger.debug('401 from $method ${uri.path}; refreshing session');
           refreshed = await authenticator.refresh();
-          ensureSameSession();
+          // If refresh ended the session, preserve the definitive original
+          // 401 and never retry. A replacement account still fails the fence.
+          if (!sessionEnded()) ensureSameSession();
         }
         if (refreshed && authenticator.accessToken != null) {
           final headers = _headers(

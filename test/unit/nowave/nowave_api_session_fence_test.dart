@@ -37,6 +37,26 @@ class _BoundAuth implements NowaveSessionBoundAuthenticator {
   }
 }
 
+class _RejectedRefreshAuth extends _BoundAuth {
+  @override
+  Future<bool> refresh() async {
+    refreshCalls++;
+    generation++;
+    token = null;
+    return false;
+  }
+}
+
+class _ExpiredProactiveAuth extends _BoundAuth
+    implements NowaveProactiveAuthenticator {
+  @override
+  Future<bool> ensureFreshAccess() async {
+    generation++;
+    token = null;
+    return false;
+  }
+}
+
 class _ProactiveBoundAuth extends _BoundAuth
     implements NowaveProactiveAuthenticator {
   final started = Completer<void>();
@@ -184,6 +204,85 @@ void main() {
       auth.gate.complete();
       await expectation;
       expect(requests, 0);
+    },
+  );
+
+  test(
+    'a rejected refresh returns the original 401 without retrying',
+    () async {
+      final auth = _RejectedRefreshAuth();
+      var requests = 0;
+      final client = _client(
+        auth,
+        MockClient((_) async {
+          requests++;
+          return _unauthorized();
+        }),
+      );
+      await expectLater(
+        client.getJson('/me/profile'),
+        throwsA(
+          isA<NowaveApiException>()
+              .having((e) => e.statusCode, 'status', 401)
+              .having((e) => e.code, 'code', 'UNAUTHENTICATED'),
+        ),
+      );
+      expect(requests, 1);
+      expect(auth.refreshCalls, 1);
+    },
+  );
+
+  test(
+    'an expired session before sending reports 401 without a request',
+    () async {
+      final auth = _ExpiredProactiveAuth();
+      var requests = 0;
+      final client = _client(
+        auth,
+        MockClient((_) async {
+          requests++;
+          return http.Response(jsonEncode({'data': {}}), 200);
+        }),
+      );
+      await expectLater(
+        client.postJson('/articles', {'title': 'not sent'}),
+        throwsA(
+          isA<NowaveApiException>()
+              .having((e) => e.statusCode, 'status', 401)
+              .having((e) => e.code, 'code', 'UNAUTHENTICATED'),
+        ),
+      );
+      expect(requests, 0);
+    },
+  );
+
+  test(
+    'sign-out during an already sent write remains an uncertain result',
+    () async {
+      final auth = _BoundAuth();
+      final started = Completer<void>();
+      final response = Completer<http.Response>();
+      final client = _client(
+        auth,
+        MockClient((_) {
+          started.complete();
+          return response.future;
+        }),
+      );
+      final pending = client.postJson('/articles', {'title': 'A'});
+      final expectation = expectLater(pending, throwsA(_sessionChanged));
+      await started.future;
+      auth.generation++;
+      auth.token = null;
+      response.complete(
+        http.Response(
+          jsonEncode({
+            'data': {'id': 'A'},
+          }),
+          200,
+        ),
+      );
+      await expectation;
     },
   );
 

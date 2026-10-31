@@ -111,10 +111,9 @@ final class NowaveAuthSignedOut extends NowaveAuthStatus {
   const NowaveAuthSignedOut();
 }
 
-/// Durable storage for the session. Implemented on top of the app's SQLite
-/// `metadata` table (the same trust domain as the blog cache; the tokens
-/// never leave the device). Swapping to a platform secure store later is a
-/// drop-in replacement of this interface.
+/// Durable storage for the session. The app normally uses platform secure
+/// storage; a legacy SQLite store remains a migration source and fallback
+/// when secure storage is unavailable. See the audit for failure limitations.
 abstract class NowaveSessionStore {
   Future<NowaveSessionData?> read();
   Future<void> write(NowaveSessionData session);
@@ -231,12 +230,10 @@ class NowaveSessionManager
 
   /// Rotates the refresh token via `POST /auth/refresh`.
   ///
-  /// Single-flight: the first caller performs the rotation and every
-  /// concurrent caller awaits the same future. The in-flight slot is
-  /// released on completion so a later expiry can rotate again (a stale
-  /// completed future would stop all future rotations). On failure the
-  /// local session is dropped and a sign-out is broadcast (the server has
-  /// already revoked the family - the app must not keep acting signed in).
+  /// Single-flight per active session: concurrent callers share one
+  /// rotation and the slot is released on completion. An authorization
+  /// rejection clears that same session; transient failures leave it intact.
+  /// Responses belonging to a replaced session are ignored.
   @override
   Future<bool> refresh() {
     final generation = _sessionGeneration;
