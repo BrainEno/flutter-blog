@@ -38,6 +38,8 @@ elif name == 'xcrun':
 elif name == 'codesign':
     if os.environ.get('MOCK_FAIL_CODESIGN'):
         sys.exit(3)
+    if os.environ.get('MOCK_FAIL_FRAMEWORK_SIGN') and any(a.endswith('.framework') for a in args):
+        sys.exit(4)
 elif name == 'ditto':
     if args[:2] == ['-x', '-k']:
         with zipfile.ZipFile(args[2]) as z:
@@ -149,7 +151,7 @@ class MacScriptTests(unittest.TestCase):
         self.assertIn('--dart-define-from-file=' + str(self.config), build)
 
     def test_bad_or_failed_altstore_build_cannot_report_success(self):
-        for env in ({'MOCK_FAIL_CODESIGN':'1'}, {'MOCK_MISSING_FRAMEWORK':'1'}):
+        for env in ({'MOCK_FAIL_CODESIGN':'1'}, {'MOCK_FAIL_FRAMEWORK_SIGN':'1'}, {'MOCK_MISSING_FRAMEWORK':'1'}):
             with self.subTest(env=env):
                 result = self.run_script('build_ios_ipa.sh', **env)
                 self.assertNotEqual(result.returncode, 0, result.stdout)

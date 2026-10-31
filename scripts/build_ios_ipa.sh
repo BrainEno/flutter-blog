@@ -70,7 +70,12 @@ if [[ "$mode" == altstore ]]; then
   # Sign only our temporary copy; never alter an existing user build.
   ditto "$original" "$stage/Payload/Runner.app"
   app="$stage/Payload/Runner.app"
-  find "$app/Frameworks" -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) -exec codesign --force --sign - {} \;
+  # A failed `find -exec ... \;` does not necessarily make find fail. Sign
+  # each item directly so set -e stops instead of packaging a partial result.
+  for binary in "$app/Frameworks/"*.framework "$app/Frameworks/"*.dylib; do
+    [[ -e "$binary" ]] || continue
+    codesign --force --sign - "$binary"
+  done
   codesign --force --sign - "$app"
   codesign --verify --verbose "$app"
   (cd "$stage" && zip -qry "$stage/candidate.ipa" Payload)
