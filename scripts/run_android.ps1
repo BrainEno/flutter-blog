@@ -27,6 +27,15 @@ function Invoke-Checked([string]$Executable, [string[]]$ToolArguments) {
     if ($LASTEXITCODE -ne 0) { throw "A required command failed ($LASTEXITCODE): $([IO.Path]::GetFileName($Executable))." }
 }
 
+function Invoke-QuietNative([string]$Executable, [string[]]$ToolArguments) {
+    # Windows PowerShell 5.1 can surface native stderr as a terminating error
+    # under Stop even for successful commands (e.g. adb starting its daemon).
+    # Suppress that stream locally, preserving the exit status for the caller.
+    $ErrorActionPreference = 'Continue'
+    & $Executable @ToolArguments 2>$null
+    $script:LastNativeExit = $LASTEXITCODE
+}
+
 function Validate-Origin($Value, [string]$Name) {
     if ($Value -isnot [string] -or !$Value -or $Value -match '\s') {
         throw "$Name must be a non-empty HTTP(S) origin."
@@ -42,8 +51,8 @@ function Validate-Origin($Value, [string]$Name) {
 }
 
 function Get-Emulators {
-    $lines = & $script:Adb devices
-    if ($LASTEXITCODE -ne 0) { throw 'adb devices failed. Check the Android SDK installation.' }
+    $lines = Invoke-QuietNative $script:Adb @('devices')
+    if ($script:LastNativeExit -ne 0) { throw 'adb devices failed. Check the Android SDK installation.' }
     foreach ($line in $lines) {
         if ($line -match '^(emulator-\d+)\s+(device|offline)\s*$') {
             [PSCustomObject]@{ Serial = $Matches[1]; State = $Matches[2] }
@@ -53,8 +62,8 @@ function Get-Emulators {
 
 function Get-EmulatorAvd([string]$Serial) {
     try {
-        $lines = & $script:Adb -s $Serial emu avd name 2>$null
-        if ($LASTEXITCODE -ne 0) { return '' }
+        $lines = Invoke-QuietNative $script:Adb @('-s', $Serial, 'emu', 'avd', 'name')
+        if ($script:LastNativeExit -ne 0) { return '' }
         foreach ($line in $lines) {
             $name = $line.Trim()
             if ($name -and $name -ne 'OK') { return $name }
@@ -121,8 +130,8 @@ try {
 
     $process = $null
     if (!$serial) {
-        $avds = @(& $emulator -list-avds | Where-Object { $_.Trim() } | Sort-Object)
-        if ($LASTEXITCODE -ne 0) { throw 'Could not list Android AVDs.' }
+        $avds = @(Invoke-QuietNative $emulator @('-list-avds') | Where-Object { $_.Trim() } | Sort-Object)
+        if ($script:LastNativeExit -ne 0) { throw 'Could not list Android AVDs.' }
         if ($avds.Count -eq 0) { throw 'No AVD found. Create an Android Virtual Device in Android Studio first.' }
         if (!$Avd) {
             $Avd = $avds[0].Trim()
@@ -148,8 +157,8 @@ try {
     $ready = $false
     while ([DateTime]::UtcNow -lt $deadline) {
         try {
-            $boot = & $script:Adb -s $serial shell getprop sys.boot_completed 2>$null
-            if ($LASTEXITCODE -eq 0 -and (($boot -join '').Trim() -eq '1')) { $ready = $true; break }
+            $boot = Invoke-QuietNative $script:Adb @('-s', $serial, 'shell', 'getprop', 'sys.boot_completed')
+            if ($script:LastNativeExit -eq 0 -and (($boot -join '').Trim() -eq '1')) { $ready = $true; break }
         } catch { }
         Start-Sleep -Seconds 2
     }

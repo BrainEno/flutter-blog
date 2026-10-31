@@ -38,6 +38,8 @@ exit /b 0
     @'
 @echo off
 echo adb %*>>"%BELOG_TEST_LOG%"
+if "%MOCK_NATIVE_STDERR%"=="1" echo adb daemon notice 1>&2
+if "%MOCK_FAIL_ADB%"=="1" exit /b 9
 if "%~1"=="devices" (
   echo List of devices attached
   if "%MOCK_NO_EMULATOR%"=="1" if not exist "%BELOG_TEST_STARTED%" exit /b 0
@@ -64,6 +66,8 @@ using System.Diagnostics;
 public static class FakeEmulator {
     public static void Main(string[] args) {
         if (args.Length > 0 && args[0] == "-list-avds") {
+            if (Environment.GetEnvironmentVariable("MOCK_NATIVE_STDERR") == "1") Console.Error.WriteLine("AVD list notice");
+            if (Environment.GetEnvironmentVariable("MOCK_FAIL_AVD_LIST") == "1") Environment.Exit(7);
             Console.WriteLine("Demo");
         } else if (args.Length > 1 && args[0] == "-avd") {
             File.WriteAllText(Environment.GetEnvironmentVariable("BELOG_TEST_STARTED"), args[1]);
@@ -92,12 +96,20 @@ public static class FakeEmulator {
 
     Remove-Item -LiteralPath $log -Force
     $env:MOCK_NO_EMULATOR = '1'
+    # Successful adb/emulator commands may write startup notices to stderr.
+    $env:MOCK_NATIVE_STDERR = '1'
     $new = Run-Subject @()
-    Assert-True ($new.ExitCode -eq 0) "Fresh AVD scenario failed: $($new.Output)"
+    Assert-True ($new.ExitCode -eq 0) "Fresh AVD scenario (with native stderr) failed: $($new.Output)"
     Assert-True (Test-Path $marker) 'The selected AVD was not launched.'
     Assert-True ((Get-Content $marker -Raw).Trim() -eq 'Demo') 'Started the wrong AVD.'
     Assert-True ((Get-Content $log -Raw) -match 'flutter run --debug -d emulator-5554') 'Fresh AVD was not used.'
+    Remove-Item -LiteralPath $marker -Force
+    $env:MOCK_FAIL_AVD_LIST = '1'
+    $failedList = Run-Subject @()
+    Assert-True ($failedList.ExitCode -ne 0 -and $failedList.Output -match 'Could not list Android AVDs') 'AVD listing failure was ignored.'
+    $env:MOCK_FAIL_AVD_LIST = ''
     $env:MOCK_NO_EMULATOR = ''
+    $env:MOCK_NATIVE_STDERR = ''
 
     Remove-Item -LiteralPath $log -Force
     '{"API_BASE_URL":"https://user:badsecret@api.real-site.dev"}' | Set-Content -LiteralPath $config -Encoding Ascii
@@ -112,6 +124,10 @@ public static class FakeEmulator {
     Assert-True (!$badKey.Output.Contains('badsecret')) 'The error printed a secret.'
 
     '{"API_BASE_URL":"https://api.real-site.dev"}' | Set-Content -LiteralPath $config -Encoding Ascii
+    $env:MOCK_FAIL_ADB = '1'
+    $failedAdb = Run-Subject @()
+    Assert-True ($failedAdb.ExitCode -ne 0 -and $failedAdb.Output -match 'adb devices failed') 'adb failure was ignored.'
+    $env:MOCK_FAIL_ADB = ''
     $env:MOCK_FAIL_PUB = '1'
     $failedPub = Run-Subject @()
     Assert-True ($failedPub.ExitCode -ne 0) 'flutter pub get failure was ignored.'
@@ -131,7 +147,7 @@ public static class FakeEmulator {
         $proc = Get-Process -Id $id -ErrorAction SilentlyContinue
         if ($proc -and $proc.Path -eq $emulator) { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue }
     }
-    foreach ($name in @('BELOG_TEST_LOG', 'BELOG_TEST_STARTED', 'BELOG_TEST_PID', 'MOCK_NO_EMULATOR', 'MOCK_NEVER_BOOT', 'MOCK_FAIL_PUB')) {
+    foreach ($name in @('BELOG_TEST_LOG', 'BELOG_TEST_STARTED', 'BELOG_TEST_PID', 'MOCK_NO_EMULATOR', 'MOCK_NEVER_BOOT', 'MOCK_FAIL_PUB', 'MOCK_NATIVE_STDERR', 'MOCK_FAIL_ADB', 'MOCK_FAIL_AVD_LIST')) {
         Remove-Item -LiteralPath ('Env:' + $name) -ErrorAction SilentlyContinue
     }
     if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Recurse -Force }
