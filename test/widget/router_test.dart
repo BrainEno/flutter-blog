@@ -462,10 +462,13 @@ void main() {
     await tester.tap(find.text('搜索'));
     await tester.pumpAndSettle();
     expect(find.byType(BlogViewerPage), findsOneWidget);
-    await tester.pageBack();
+    final backLabel = MaterialLocalizations.of(
+      tester.element(find.byType(BlogViewerPage)),
+    ).backButtonTooltip;
+    await tester.tap(find.byTooltip(backLabel));
     await tester.pumpAndSettle();
     expect(find.byType(AuthorPage), findsOneWidget);
-    await tester.pageBack();
+    await tester.tap(find.byTooltip(backLabel));
     await tester.pumpAndSettle();
     expect(find.byType(BlogViewerPage), findsOneWidget);
     expect(find.text('深链文章'), findsOneWidget);

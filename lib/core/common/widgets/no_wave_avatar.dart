@@ -38,6 +38,7 @@ class NoWaveAvatar extends StatelessWidget {
     );
 
     return Semantics(
+      container: true,
       image: true,
       label: context.l10n.avatarOf(name),
       child: ExcludeSemantics(

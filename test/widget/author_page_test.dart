@@ -238,7 +238,9 @@ void main() {
       await tester.scrollUntilVisible(find.text('No articles yet'), 140);
       expect(find.text('No articles yet'), findsOneWidget);
 
-      await tester.scrollUntilVisible(find.text('Follow'), -140);
+      await tester.ensureVisible(find.text('Follow'));
+      await tester.pumpAndSettle();
+      expect(find.text('Follow').hitTestable(), findsOneWidget);
       await tester.tap(find.text('Follow'));
       await tester.pumpAndSettle();
       expect(
@@ -438,7 +440,10 @@ void main() {
     await tester.tap(find.text('作者的文章'));
     await tester.pumpAndSettle();
     expect(find.text('article: post-1'), findsOneWidget);
-    await tester.pageBack();
+    final backLabel = MaterialLocalizations.of(
+      tester.element(find.text('article: post-1')),
+    ).backButtonTooltip;
+    await tester.tap(find.byTooltip(backLabel));
     await tester.pumpAndSettle();
     expect(find.byType(AuthorPage), findsOneWidget);
     expect(find.text('作者甲'), findsOneWidget);

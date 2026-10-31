@@ -9,7 +9,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 // Inspect the builders without mounting an external network image in a test.
 class InspectableAvatar extends NoWaveAvatar {
-  const InspectableAvatar({required super.name, required super.imageUrl});
+  const InspectableAvatar({
+    super.key,
+    required super.name,
+    required super.imageUrl,
+  });
 
   Widget inspect(BuildContext context) => super.build(context);
 }
