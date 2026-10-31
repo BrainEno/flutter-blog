@@ -350,7 +350,21 @@ class PublicationOutbox extends ChangeNotifier with WidgetsBindingObserver {
       content: item.content,
       coverUrl: item.hasCover ? 'https://example.invalid/cover' : null,
     );
-    if (blocks.length > 200 || jsonEncode(blocks).length > 1000000) {
+    final encodedBlocks = jsonEncode(blocks);
+    final tags = item.tags
+        .map((tag) => tag.trim())
+        .where((tag) => tag.isNotEmpty)
+        .toSet();
+    // The API also caps the full UTF-8 JSON request at 2 MiB. Reserve room
+    // for the title, slug, up to 50 UUID tag IDs and the final media URL so
+    // a predictably invalid article does not upload an orphaned cover first.
+    const requestLimit = 2 * 1024 * 1024;
+    const metadataReserve = 8192;
+    if (blocks.length > 200 ||
+        encodedBlocks.length > 1000000 ||
+        tags.length > 50 ||
+        utf8.encode(encodedBlocks).length + utf8.encode(item.title).length >
+            requestLimit - metadataReserve) {
       throw const _ValidationFailure('article.validation');
     }
   }

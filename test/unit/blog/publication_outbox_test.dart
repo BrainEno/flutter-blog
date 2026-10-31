@@ -381,6 +381,36 @@ void main() {
   );
 
   test(
+    'predictably oversized UTF-8 article is rejected before a cover upload',
+    () async {
+      final requests = <http.Request>[];
+      final f = await _fixture((request) async {
+        requests.add(request);
+        return _ok({'id': 'alice'});
+      });
+      addTearDown(f.close);
+      final item = await f.store.enqueue(
+        ownerId: 'alice',
+        title: 'Large body',
+        content: List.filled(750000, '字').join(),
+        tags: const [],
+        coverBytes: Uint8List.fromList([1, 2, 3]),
+        coverMime: 'image/png',
+      );
+      await f.outbox.processNow();
+      expect(requests, isEmpty);
+      expect(
+        (await f.store.get('alice', item.id))?.lastErrorCode,
+        'article.validation',
+      );
+      expect(
+        (await f.store.get('alice', item.id))?.phase,
+        PublicationPhase.ready,
+      );
+    },
+  );
+
+  test(
     'an ambiguous media upload is paused, including on later passes',
     () async {
       var mediaPosts = 0;
