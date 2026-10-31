@@ -1,5 +1,6 @@
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/toggle_like_blog.dart';
@@ -41,28 +42,45 @@ void main() {
         ),
       ];
 
+      final page = BlogFeedPage(blogs: blogs, source: BlogFeedSource.network);
       when(
-        () => mockRepository.getAllBlogs(page: 1),
-      ).thenAnswer((_) async => Right(blogs));
+        () => mockRepository.getAllBlogs(page: 1, source: null),
+      ).thenAnswer((_) async => Right(page));
 
-      final result = await useCase(GetAllBlogsParams(page: 1));
+      final result = await useCase(const GetAllBlogsParams(page: 1));
 
-      expect(result, Right(blogs));
-      verify(() => mockRepository.getAllBlogs(page: 1)).called(1);
+      expect(result, Right(page));
+      verify(() => mockRepository.getAllBlogs(page: 1, source: null)).called(1);
+    });
+
+    test('forwards the selected source for subsequent pages', () async {
+      const page = BlogFeedPage(blogs: [], source: BlogFeedSource.cache);
+      when(
+        () => mockRepository.getAllBlogs(page: 2, source: BlogFeedSource.cache),
+      ).thenAnswer((_) async => const Right(page));
+
+      final result = await useCase(
+        const GetAllBlogsParams(page: 2, source: BlogFeedSource.cache),
+      );
+
+      expect(result, const Right(page));
+      verify(
+        () => mockRepository.getAllBlogs(page: 2, source: BlogFeedSource.cache),
+      ).called(1);
     });
 
     test('should return Failure on repository error', () async {
       when(
-        () => mockRepository.getAllBlogs(page: 1),
+        () => mockRepository.getAllBlogs(page: 1, source: null),
       ).thenAnswer((_) async => Left(Failure('Network error')));
 
-      final result = await useCase(GetAllBlogsParams(page: 1));
+      final result = await useCase(const GetAllBlogsParams(page: 1));
 
       result.fold(
         (failure) => expect(failure.message, 'Network error'),
         (_) => fail('Expected failure'),
       );
-      verify(() => mockRepository.getAllBlogs(page: 1)).called(1);
+      verify(() => mockRepository.getAllBlogs(page: 1, source: null)).called(1);
     });
   });
 

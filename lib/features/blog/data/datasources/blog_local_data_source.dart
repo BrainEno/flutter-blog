@@ -9,7 +9,10 @@ import 'package:belog/features/blog/data/models/blog_model.dart';
 abstract interface class BlogLocalDataSource {
   Future<void> uploadLocalBlogs({required List<BlogModel> blogs});
 
-  Future<List<BlogModel>> loadBlogs();
+  /// Reads cached articles in deterministic update-time/id order. [limit]
+  /// is bounded to 500 and [offset] is zero-based; both apply in SQLite,
+  /// before article bodies are decoded.
+  Future<List<BlogModel>> loadBlogs({int limit = 500, int offset = 0});
 
   Future<List<BlogModel>> searchLocalBlogs(String query);
 

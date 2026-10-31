@@ -148,7 +148,12 @@ class Harness {
     when(
       () => local.uploadLocalBlogs(blogs: any(named: 'blogs')),
     ).thenAnswer((_) async {});
-    when(() => local.loadBlogs()).thenAnswer((_) async => <BlogModel>[]);
+    when(
+      () => local.loadBlogs(
+        limit: any(named: 'limit'),
+        offset: any(named: 'offset'),
+      ),
+    ).thenAnswer((_) async => <BlogModel>[]);
     when(() => local.loadBlogById(any())).thenAnswer((_) async => null);
     when(
       () => authRepository.currentUser(),

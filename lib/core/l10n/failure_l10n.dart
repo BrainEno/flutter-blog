@@ -79,6 +79,8 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
       return l10n.errorArticleIdRestore;
 
     // Feature-specific failures.
+    case 'feed.sourceChanged':
+      return l10n.feedSourceChanged;
     case 'comments.load':
       return l10n.errorCommentsLoad;
     case 'comments.send':

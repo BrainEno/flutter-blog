@@ -9,6 +9,7 @@ import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/presentation/blocs/blog/blog_bloc.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:flutter/cupertino.dart';
@@ -132,6 +133,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
   Widget _buildBody(BlogState state) {
     final l10n = context.l10n;
     final blogs = _visibleBlogs(state);
+    final isCached = _visibleSource(state) == BlogFeedSource.cache;
     if (blogs.isEmpty &&
         (state is BlogInitial || state is BlogFirstPageLoading)) {
       return Loader(semanticLabel: l10n.loadingArticles);
@@ -146,7 +148,15 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
       );
     }
     if (blogs.isEmpty) {
-      return _statusList(NoWaveStatus(message: l10n.feedEmpty));
+      return _statusList(
+        isCached
+            ? NoWaveStatus(
+                message: l10n.feedCachedEmpty,
+                actionLabel: l10n.actionRetry,
+                onAction: _fetchFirstPage,
+              )
+            : NoWaveStatus(message: l10n.feedEmpty),
+      );
     }
 
     final loadingMore =
@@ -169,7 +179,22 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
           return _contentWidth(
             Padding(
               padding: const EdgeInsets.only(bottom: 24),
-              child: _heading(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _heading(),
+                  if (isCached) ...[
+                    const SizedBox(height: 12),
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        l10n.feedCachedNotice,
+                        style: NoWaveTypography.meta(context),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           );
         }
@@ -197,7 +222,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
             padding: const EdgeInsets.all(16),
             child: Center(
               child: Text(
-                l10n.feedNoMore,
+                isCached ? l10n.feedCachedNoMore : l10n.feedNoMore,
                 style: NoWaveTypography.meta(context),
               ),
             ),
@@ -214,6 +239,15 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
         );
       },
     );
+  }
+
+  BlogFeedSource? _visibleSource(BlogState state) {
+    if (state is BlogLoaded) return state.source;
+    if (state is BlogFirstPageLoading) return state.previousSource;
+    if (state is BlogListFailure && state.previousState != null) {
+      return _visibleSource(state.previousState!);
+    }
+    return null;
   }
 
   List<Blog> _visibleBlogs(BlogState state) {

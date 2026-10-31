@@ -13,20 +13,26 @@ final class BlogInitial extends BlogState {
 /// pull-to-refresh and post-publish reloads do not blank the feed.
 final class BlogFirstPageLoading extends BlogState {
   final List<Blog> previousBlogs;
+  final BlogFeedSource? previousSource;
 
-  const BlogFirstPageLoading({this.previousBlogs = const []});
+  const BlogFirstPageLoading({
+    this.previousBlogs = const [],
+    this.previousSource,
+  });
 }
 
 /// The feed list. [page] is the last appended page, [hasReachedMax] stops
 /// further automatic loading and [isLoadingMore] drives the bottom spinner.
 final class BlogLoaded extends BlogState {
   final List<Blog> blogs;
+  final BlogFeedSource source;
   final int page;
   final bool hasReachedMax;
   final bool isLoadingMore;
 
   const BlogLoaded({
     required this.blogs,
+    required this.source,
     required this.page,
     required this.hasReachedMax,
     this.isLoadingMore = false,
@@ -34,12 +40,14 @@ final class BlogLoaded extends BlogState {
 
   BlogLoaded copyWith({
     List<Blog>? blogs,
+    BlogFeedSource? source,
     int? page,
     bool? hasReachedMax,
     bool? isLoadingMore,
   }) {
     return BlogLoaded(
       blogs: blogs ?? this.blogs,
+      source: source ?? this.source,
       page: page ?? this.page,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,

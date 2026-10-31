@@ -1,16 +1,16 @@
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/usecase/usecase.dart';
-import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:fpdart/fpdart.dart';
 
-class GetAllBlogs implements UseCase<List<Blog>, GetAllBlogsParams> {
+class GetAllBlogs implements UseCase<BlogFeedPage, GetAllBlogsParams> {
   final BlogRepository blogRepository;
   const GetAllBlogs(this.blogRepository);
 
   @override
-  Future<Either<Failure, List<Blog>>> call(GetAllBlogsParams params) async {
-    return await blogRepository.getAllBlogs(page: params.page);
+  Future<Either<Failure, BlogFeedPage>> call(GetAllBlogsParams params) {
+    return blogRepository.getAllBlogs(page: params.page, source: params.source);
   }
 }
 
@@ -20,6 +20,7 @@ const int kBlogPageSize = 10;
 
 class GetAllBlogsParams {
   final int page;
+  final BlogFeedSource? source;
 
-  const GetAllBlogsParams({required this.page});
+  const GetAllBlogsParams({required this.page, this.source});
 }

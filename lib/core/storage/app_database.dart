@@ -18,7 +18,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -37,6 +37,7 @@ class AppDatabase extends GeneratedDatabase {
       );
       await customStatement('CREATE INDEX drafts_blog_id ON drafts(blog_id)');
       await _createBlogCache();
+      await _createBlogCacheFeedIndex();
       await _createReadingHistory();
     },
     onUpgrade: (m, from, to) async {
@@ -53,6 +54,10 @@ class AppDatabase extends GeneratedDatabase {
         // addition: no existing table is touched.
         await _createReadingHistory();
       }
+      if (from < 4) {
+        // v4 adds only an index; cached articles and all other data stay put.
+        await _createBlogCacheFeedIndex();
+      }
     },
   );
 
@@ -62,10 +67,15 @@ class AppDatabase extends GeneratedDatabase {
     'CREATE TABLE blog_cache (id TEXT PRIMARY KEY, article_id TEXT NOT NULL DEFAULT \'\', title TEXT NOT NULL, content TEXT NOT NULL, poster_id TEXT NOT NULL, image_url TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL, poster_name TEXT, poster_avatar TEXT)',
   );
 
+  /// Supports stable feed pagination without sorting all cached article bodies.
+  Future<void> _createBlogCacheFeedIndex() => customStatement(
+    'CREATE INDEX blog_cache_feed_order ON blog_cache(updated_at DESC, id ASC)',
+  );
+
   /// Device-local reading history (issue #22), scoped per signed-in
   /// account. `blog_id` is the article's public slug; the display fields
   /// are snapshots taken at read time so the list stays presentable even
-  /// after the article drops out of the 500-row blog cache.
+  /// after the article is no longer present in the local blog cache.
   Future<void> _createReadingHistory() async {
     await customStatement(
       'CREATE TABLE reading_history ('
