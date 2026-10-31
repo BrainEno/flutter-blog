@@ -200,10 +200,14 @@ void main() {
       await tester.enterText(find.byType(TextField), 'search');
       await tester.pump(const Duration(milliseconds: 350));
       await tester.pumpAndSettle();
-      final resultsScroll = find.descendant(
-        of: find.byType(CustomScrollView),
-        matching: find.byType(Scrollable),
-      );
+      // The first descendant is the page's vertical scroll view; the text
+      // field also owns an inner scrollable for editing its input.
+      final resultsScroll = find
+          .descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          )
+          .first;
       await tester.scrollUntilVisible(
         find.text(l10n.searchLimitReached('50')),
         400,
@@ -255,10 +259,12 @@ void main() {
         await tester.scrollUntilVisible(
           find.text(l10n.searchNoResults),
           120,
-          scrollable: find.descendant(
-            of: find.byType(CustomScrollView),
-            matching: find.byType(Scrollable),
-          ),
+          scrollable: find
+              .descendant(
+                of: find.byType(CustomScrollView),
+                matching: find.byType(Scrollable),
+              )
+              .first,
         );
         expect(find.text(l10n.searchNoResults), findsOneWidget);
         expect(tester.takeException(), isNull);
@@ -354,6 +360,9 @@ void main() {
     bloc.add(const BlogFetchFirstPage());
     await tester.pumpAndSettle();
     expect(find.text('Sample'), findsOneWidget);
+    // Let the transient error snackbar finish so it cannot cover Retry.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Retry'),
       200,

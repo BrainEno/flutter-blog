@@ -21,6 +21,7 @@ class MockGetRelatedArticles extends Mock implements GetRelatedArticles {}
 // issuing a request in a widget test.
 class InspectableArticleCover extends ArticleCover {
   const InspectableArticleCover({
+    super.key,
     required super.title,
     required super.imageUrl,
   });
@@ -28,9 +29,13 @@ class InspectableArticleCover extends ArticleCover {
   Widget inspect(BuildContext context) => super.build(context);
 }
 
-Blog article({String imageUrl = ''}) => Blog(
-  id: 'an-article',
-  title: 'A long article title about a city and its changing seasons',
+Blog article({
+  String imageUrl = '',
+  String id = 'an-article',
+  String title = 'A long article title about a city and its changing seasons',
+}) => Blog(
+  id: id,
+  title: title,
   content: 'An article excerpt that can wrap over several lines.',
   posterId: 'author',
   posterName: 'A writer with a long name',
@@ -232,8 +237,9 @@ void main() {
             await tester.pumpAndSettle();
             await tester.tap(find.text(blog.title));
             await tester.tap(find.byTooltip('删除文章'));
+            await tester.longPress(find.text(blog.title));
             expect(opens, 1);
-            expect(deletes, 1);
+            expect(deletes, 2);
             expect(tester.takeException(), isNull);
 
             var authors = 0;
@@ -267,10 +273,13 @@ void main() {
   testWidgets('related article selection is delegated to the parent', (
     tester,
   ) async {
-    final blog = article();
+    final first = article();
+    final second = article(id: 'second', title: 'Another article');
     Blog? selected;
     final fetch = MockGetRelatedArticles();
-    when(() => fetch('current')).thenAnswer((_) async => Right([blog]));
+    when(
+      () => fetch('current'),
+    ).thenAnswer((_) async => Right([first, second]));
     await tester.pumpWidget(
       testApp(
         Scaffold(
@@ -285,7 +294,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text(blog.title));
-    expect(selected, same(blog));
+    await tester.tap(find.text(first.title));
+    expect(selected, same(first));
+    await tester.ensureVisible(find.text(second.title));
+    await tester.tap(find.text(second.title));
+    expect(selected, same(second));
   });
 }

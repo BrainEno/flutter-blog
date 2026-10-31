@@ -57,8 +57,9 @@ class _HomeShellState extends State<HomeShell> {
           selectedIndex: widget.shell.currentIndex,
           onDestinationSelected: (index) {
             // Re-tapping the active destination preserves its existing stack.
-            if (index != widget.shell.currentIndex)
+            if (index != widget.shell.currentIndex) {
               widget.shell.goBranch(index);
+            }
           },
           destinations: [
             for (var i = 0; i < _icons.length; i++)

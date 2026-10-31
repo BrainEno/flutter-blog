@@ -145,8 +145,9 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
         ),
       );
     }
-    if (blogs.isEmpty)
+    if (blogs.isEmpty) {
       return _statusList(NoWaveStatus(message: l10n.feedEmpty));
+    }
 
     final loadingMore =
         state is BlogLoaded && state.isLoadingMore && !state.hasReachedMax;
