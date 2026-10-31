@@ -1,4 +1,5 @@
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
 import 'package:belog/features/blog/presentation/blocs/related_articles/related_articles_cubit.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
@@ -13,11 +14,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 class RelatedArticlesSection extends StatelessWidget {
   final GetRelatedArticles getRelatedArticles;
   final String slug;
+  final ValueChanged<Blog> onOpenArticle;
 
   const RelatedArticlesSection({
     super.key,
     required this.getRelatedArticles,
     required this.slug,
+    required this.onOpenArticle,
   });
 
   @override
@@ -44,7 +47,12 @@ class RelatedArticlesSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              ...state.blogs.map((blog) => BlogCard(blog: blog)),
+              for (var index = 0; index < state.blogs.length; index++)
+                BlogCard(
+                  blog: state.blogs[index],
+                  index: index + 1,
+                  onTap: () => onOpenArticle(state.blogs[index]),
+                ),
             ],
           );
         },

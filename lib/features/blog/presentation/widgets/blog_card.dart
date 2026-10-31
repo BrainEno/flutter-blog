@@ -1,150 +1,142 @@
 import 'package:belog/core/l10n/l10n.dart';
-import 'package:belog/core/l10n/tag_l10n.dart';
+import 'package:belog/core/theme/app_palette.dart';
+import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
-import 'package:belog/features/blog/presentation/utils/cover_url.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
+import 'package:belog/features/blog/presentation/widgets/article_tag_label.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
-class BlogCard extends StatefulWidget {
-  const BlogCard({super.key, required this.blog});
+/// A presentational article item. Navigation is deliberately supplied by the
+/// caller so the same item works in feed, search, author and related lists.
+class BlogCard extends StatelessWidget {
+  const BlogCard({
+    super.key,
+    required this.blog,
+    required this.onTap,
+    this.featured = false,
+    this.index,
+    this.labelAuthor = false,
+  });
+
   final Blog blog;
-
-  @override
-  State<BlogCard> createState() => _BlogCardState();
-}
-
-class _BlogCardState extends State<BlogCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    duration: const Duration(milliseconds: 150),
-    vsync: this,
-  );
-  late final Animation<double> _scale = Tween<double>(
-    begin: 1,
-    end: 0.95,
-  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Color _tagColor(String tag) => switch (tag) {
-    '诗歌' => const Color(0xFFB42318),
-    '小说' => const Color(0xFF005B85),
-    '原创' => const Color(0xFF6931A8),
-    _ => const Color(0xFF805000),
-  };
+  final VoidCallback onTap;
+  final bool featured;
+  final int? index;
+  final bool labelAuthor;
 
   @override
   Widget build(BuildContext context) {
-    final blog = widget.blog;
     final l10n = context.l10n;
-    final name = blog.posterName?.trim().isNotEmpty == true
+    final author = blog.posterName?.trim().isNotEmpty == true
         ? blog.posterName!
         : l10n.anonymousAuthor;
-    return Semantics(
-      image: true,
-      label: l10n.coverOf(blog.title),
+    final authorLabel = labelAuthor ? l10n.posterLabel(author) : author;
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.push('/view/${blog.id}', extra: blog),
-        onTapDown: (_) => _controller.forward(),
-        onTapUp: (_) => _controller.reverse(),
-        onTapCancel: () => _controller.reverse(),
-        child: AnimatedBuilder(
-          animation: _scale,
-          builder: (context, child) =>
-              Transform.scale(scale: _scale.value, child: child),
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 210),
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade900,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 8,
-                  offset: Offset(0, 6),
-                ),
-              ],
-              image: blog.imageUrl.isEmpty
-                  ? null
-                  : DecorationImage(
-                      image: CachedNetworkImageProvider(coverUrlOf(blog)),
-                      fit: BoxFit.cover,
-                    ),
+        onTap: onTap,
+        focusColor: AppPalette.orange.withAlpha(55),
+        hoverColor: AppPalette.orange.withAlpha(25),
+        child: featured
+            ? _featured(context, authorLabel)
+            : _row(context, authorLabel),
+      ),
+    );
+  }
+
+  Widget _metadata(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        for (final tag in blog.tags) ArticleTagLabel(tag: tag),
+        Text(
+          formatDate(Localizations.localeOf(context), blog.updatedAt),
+          style: NoWaveTypography.meta(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _featured(BuildContext context, String author) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: NoWaveSpacing.section),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ArticleCover(title: blog.title, imageUrl: blog.imageUrl),
+          const SizedBox(height: NoWaveSpacing.medium),
+          _metadata(context),
+          const SizedBox(height: 10),
+          Text(
+            blog.title,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: NoWaveTypography.title(context, size: 30),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(author, style: NoWaveTypography.meta(context)),
+              ),
+              const SizedBox(width: 12),
+              const ExcludeSemantics(
+                child: Icon(Icons.arrow_forward, size: 20),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(BuildContext context, String author) {
+    final foreground = Theme.of(context).colorScheme.onSurface;
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: foreground.withAlpha(130))),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (index != null) ...[
+            SizedBox(
+              width: 36,
+              child: Text(
+                formatNumber(
+                  Localizations.localeOf(context),
+                  index!,
+                ).padLeft(2, '0'),
+                style: NoWaveTypography.meta(context),
+              ),
             ),
-            // The gradient is painted *over* the cover and behind the text.
-            // A sufficiently dark overlay keeps white text legible even on
-            // a white cover; the card grows with the system text scale.
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.black54, Colors.black87],
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _metadata(context),
+                const SizedBox(height: 8),
+                Text(
+                  blog.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: NoWaveTypography.title(context, size: 24),
                 ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    if (blog.tags.isNotEmpty)
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            for (final tag in blog.tags)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: Chip(
-                                  label: Text(
-                                    localizedTag(l10n, tag),
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                                  backgroundColor: _tagColor(tag),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    const SizedBox(height: 8),
-                    Text(
-                      blog.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(name, style: const TextStyle(color: Colors.white)),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        formatDate(
-                          Localizations.localeOf(context),
-                          blog.updatedAt,
-                        ),
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                const SizedBox(height: 6),
+                Text(author, style: NoWaveTypography.meta(context)),
+              ],
             ),
           ),
-        ),
+          const SizedBox(width: 12),
+          const ExcludeSemantics(child: Icon(Icons.arrow_forward, size: 20)),
+        ],
       ),
     );
   }

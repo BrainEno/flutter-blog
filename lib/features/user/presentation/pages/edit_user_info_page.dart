@@ -154,10 +154,12 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                                 : null,
                             child: isNewImageSelected || avatarUrl != null
                                 ? null
-                                : const Icon(
+                                : Icon(
                                     Icons.person,
                                     size: 60,
-                                    color: Colors.grey,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                                   ),
                           ),
                         ),
@@ -167,10 +169,10 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                             color: Theme.of(context).colorScheme.primary,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.edit,
                             size: 20,
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onPrimary,
                           ),
                         ),
                       ],

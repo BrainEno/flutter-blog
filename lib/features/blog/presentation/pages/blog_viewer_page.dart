@@ -1,24 +1,21 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
-import 'package:belog/core/l10n/tag_l10n.dart';
 import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/theme/app_palette.dart';
-import 'package:belog/core/utils/calculate_reading_time.dart';
+import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/article_share.dart';
 import 'package:belog/core/utils/app_logger.dart';
-import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/storage/reading_history_store.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_viewer/blog_viewer_cubit.dart';
-import 'package:belog/features/blog/presentation/utils/cover_url.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
+import 'package:belog/features/blog/presentation/widgets/article_reader_header.dart';
 import 'package:belog/features/blog/presentation/widgets/comments_section.dart';
 import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
 import 'package:belog/features/blog/presentation/widgets/related_articles_section.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -152,258 +149,106 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
 class _ViewerScaffold extends StatelessWidget {
   const _ViewerScaffold({
     required this.blog,
-    this.onRequestLogin,
-    this.getRelatedArticles,
+    required this.onRequestLogin,
+    required this.getRelatedArticles,
   });
 
   final Blog blog;
-  final VoidCallback? onRequestLogin;
-  final GetRelatedArticles? getRelatedArticles;
+  final VoidCallback onRequestLogin;
+  final GetRelatedArticles getRelatedArticles;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 300,
-            floating: false,
-            pinned: true,
-            centerTitle: true,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.all(16),
-              centerTitle: true,
-              title: Text(
-                blog.title,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black87,
-                      offset: Offset(1, 1),
-                      blurRadius: 4,
-                    ),
-                  ],
-                ),
-              ),
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Semantics(
-                    image: true,
-                    label: context.l10n.coverOf(blog.title),
-                    child: CachedNetworkImage(
-                      // Versioned URL shared with the feed and editor.
-                      imageUrl: coverUrlOf(blog),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withAlpha((0.3 * 255).toInt()),
-                          Colors.black.withAlpha((0.7 * 255).toInt()),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+      appBar: AppBar(
+        actions: [
+          // Only share a canonical URL when WEB_BASE_URL is configured.
+          if (articleWebUrl(blog.id) != null)
+            IconButton(
+              tooltip: context.l10n.shareArticleTooltip,
+              icon: const Icon(Icons.share_outlined),
+              onPressed: () => shareArticle(title: blog.title, slug: blog.id),
             ),
-            actions: [
-              // Share (issue #21): visible only when WEB_BASE_URL is
-              // configured - a link that cannot open must never be
-              // shared. Blog.id is the article's public slug. The
-              // payload is title + canonical web URL only.
-              if (articleWebUrl(blog.id) != null)
-                IconButton(
-                  tooltip: context.l10n.shareArticleTooltip,
-                  icon: const Icon(Icons.share, color: Colors.white),
-                  onPressed: () =>
-                      shareArticle(title: blog.title, slug: blog.id),
-                ),
-              BlocConsumer<BlogLikedBloc, BlogLikedState>(
-                listener: (context, state) {
-                  if (state is ToggleBlogLikeFailure) {
-                    showSnackBar(
-                      context,
-                      localizedFailure(context.l10n, state.failure),
+          BlocConsumer<BlogLikedBloc, BlogLikedState>(
+            listener: (context, state) {
+              if (state is ToggleBlogLikeFailure) {
+                showSnackBar(
+                  context,
+                  localizedFailure(context.l10n, state.failure),
+                );
+              }
+            },
+            builder: (context, state) {
+              final isSaved = state.likedBlogs[blog.id] ?? false;
+              return IconButton(
+                tooltip: isSaved
+                    ? context.l10n.unsaveTooltip
+                    : context.l10n.saveTooltip,
+                icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border),
+                onPressed: () {
+                  final userState = context.read<AppUserCubit>().state;
+                  if (userState is AppUserLoggedIn) {
+                    context.read<BlogLikedBloc>().add(
+                      ToggleBlogLike(
+                        userId: userState.user.id,
+                        blogId: blog.id,
+                      ),
                     );
+                  } else {
+                    showSnackBar(context, context.l10n.signInRequired);
+                    onRequestLogin();
                   }
                 },
-                builder: (context, state) {
-                  // Use likedBlogs map to determine if the blog is saved
-                  final isSaved = state.likedBlogs[blog.id] ?? false;
-                  return IconButton(
-                    tooltip: isSaved
-                        ? context.l10n.unsaveTooltip
-                        : context.l10n.saveTooltip,
-                    icon: Icon(
-                      isSaved ? Icons.bookmark : Icons.bookmark_border,
-                      color: Colors.white,
-                    ),
-                    onPressed: () {
-                      final appUserState = context.read<AppUserCubit>().state;
-                      if (appUserState is AppUserLoggedIn) {
-                        context.read<BlogLikedBloc>().add(
-                          ToggleBlogLike(
-                            userId: appUserState.user.id,
-                            blogId: blog.id,
-                          ),
-                        );
-                      } else {
-                        showSnackBar(context, context.l10n.signInRequired);
-                        onRequestLogin?.call();
-                      }
-                    },
-                  );
-                },
-              ),
-            ],
+              );
+            },
           ),
+        ],
+      ),
+      body: CustomScrollView(
+        slivers: [
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // The author row opens the public author page
-                  // (issue #20); posterId is the stable user id the
-                  // follow endpoints address.
-                  Semantics(
-                    button: true,
-                    label: context.l10n.authorPageSemantic(
-                      blog.posterName?.trim().isNotEmpty == true
-                          ? blog.posterName!
-                          : context.l10n.anonymousAuthor,
-                    ),
-                    child: InkWell(
-                      onTap: () => context.push('/author/${blog.posterId}'),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            Semantics(
-                              image: true,
-                              label: context.l10n.avatarOf(
-                                blog.posterName?.trim().isNotEmpty == true
-                                    ? blog.posterName!
-                                    : context.l10n.anonymousAuthor,
-                              ),
-                              child: CircleAvatar(
-                                radius: 20,
-                                backgroundImage:
-                                    blog.posterAvatar?.isNotEmpty == true
-                                    ? CachedNetworkImageProvider(
-                                        blog.posterAvatar!,
-                                      )
-                                    : null,
-                                child: blog.posterAvatar?.isNotEmpty == true
-                                    ? null
-                                    : const Icon(Icons.person, size: 20),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    blog.posterName?.trim().isNotEmpty == true
-                                        ? blog.posterName!
-                                        : context.l10n.anonymousAuthor,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Wrap(
-                                    spacing: 4,
-                                    runSpacing: 4,
-                                    crossAxisAlignment:
-                                        WrapCrossAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.calendar_today,
-                                        size: 14,
-                                      ),
-                                      Text(
-                                        formatDate(
-                                          Localizations.localeOf(context),
-                                          blog.updatedAt,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      const Icon(Icons.access_time, size: 14),
-                                      Text(
-                                        calculateReadingTime(
-                                          context.l10n,
-                                          blog.content,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 680),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    NoWaveSpacing.page,
+                    16,
+                    NoWaveSpacing.page,
+                    40,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ArticleReaderHeader(
+                        blog: blog,
+                        onAuthorTap: () =>
+                            context.push('/author/${blog.posterId}'),
                       ),
-                    ),
+                      const SizedBox(height: 32),
+                      MarkdownBody(
+                        markdown: blog.content,
+                        bodyStyle: NoWaveTypography.title(
+                          context,
+                          size: 18,
+                        ).copyWith(fontWeight: FontWeight.w400, height: 1.9),
+                        headingStyle: NoWaveTypography.title(context),
+                      ),
+                      const SizedBox(height: 30),
+                      RelatedArticlesSection(
+                        getRelatedArticles: getRelatedArticles,
+                        slug: blog.id,
+                        onOpenArticle: (related) =>
+                            context.push('/view/${related.id}', extra: related),
+                      ),
+                      CommentsSection(
+                        slug: blog.id,
+                        onRequestLogin: onRequestLogin,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                  // Markdown rendering (issue #17): plain-text articles
-                  // render as paragraphs, so existing content stays
-                  // readable. Links and images are http(s)-only.
-                  MarkdownBody(markdown: blog.content),
-                  const SizedBox(height: 30),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: blog.tags
-                        .map(
-                          (tag) => Chip(
-                            label: Text(
-                              localizedTag(context.l10n, tag),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color:
-                                    Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? AppPalette.greenColor
-                                    : AppPalette.accessibleGreen,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1.5,
-                              ),
-                            ),
-                            backgroundColor: Colors.grey.withAlpha(
-                              (0.1 * 255).toInt(),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  // Related-articles rider and the comment thread
-                  // (issue #19). Comments live in the page-scoped
-                  // CommentBloc created by the viewer route.
-                  RelatedArticlesSection(
-                    getRelatedArticles: getRelatedArticles!,
-                    slug: blog.id,
-                  ),
-                  CommentsSection(
-                    slug: blog.id,
-                    onRequestLogin: onRequestLogin,
-                  ),
-                  const SizedBox(height: 40),
-                ],
+                ),
               ),
             ),
           ),

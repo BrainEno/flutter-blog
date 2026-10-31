@@ -40,6 +40,7 @@ import 'package:belog/features/blog/presentation/pages/blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
 import 'package:belog/features/blog/presentation/pages/saved_blogs_page.dart';
 import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
+import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:belog/features/user/data/datasources/author_remote_data_source.dart';
 import 'package:belog/features/user/data/models/author_profile_model.dart';
@@ -223,6 +224,7 @@ class Harness {
     WidgetTester tester, {
     Locale locale = const Locale('zh'),
     double textScale = 1,
+    bool disableAnimations = false,
   }) async {
     final currentRouter = router;
     assert(currentRouter != null, 'call buildRouter before pump');
@@ -239,9 +241,10 @@ class Harness {
           supportedLocales: AppLocalizations.supportedLocales,
           routerConfig: currentRouter,
           builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: TextScaler.linear(textScale)),
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(textScale),
+              disableAnimations: disableAnimations,
+            ),
             child: child!,
           ),
         ),
@@ -299,6 +302,22 @@ void main() {
     await tester.tap(find.byTooltip(backLabel));
     await tester.pumpAndSettle();
     expect(find.byType(BlogPage), findsOneWidget);
+  });
+
+  testWidgets('reduced motion removes the tab-switch fade', (tester) async {
+    final harness = Harness()..buildRouter();
+    addTearDown(harness.dispose);
+    await harness.pump(tester, disableAnimations: true);
+    await tester.pumpAndSettle();
+    final tabFade = find.byWidgetPredicate(
+      (widget) =>
+          widget is FadeTransition && widget.child is StatefulNavigationShell,
+    );
+    expect(tabFade, findsNothing);
+    await tester.tap(find.text('搜索'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SearchBlogPage), findsOneWidget);
+    expect(tabFade, findsNothing);
   });
 
   testWidgets('protected tab redirects to login and returns after sign-in', (
@@ -362,6 +381,17 @@ void main() {
           ),
           findsOneWidget,
         );
+        // The editorial header places the cover below the title and author;
+        // at large text sizes it can start outside the viewport.
+        await tester.ensureVisible(
+          find
+              .descendant(
+                of: find.byType(BlogViewerPage),
+                matching: find.byType(ArticleCover),
+              )
+              .first,
+        );
+        await tester.pumpAndSettle();
         expect(
           find.bySemanticsLabel(RegExp(l10n.coverOf('深链文章'))),
           findsWidgets,

@@ -109,13 +109,21 @@ void main() {
         contrast(theme.colorScheme.primary, theme.colorScheme.onPrimary),
         greaterThanOrEqualTo(4.5),
       );
+      expect(
+        contrast(theme.colorScheme.onSurfaceVariant, theme.colorScheme.surface),
+        greaterThanOrEqualTo(4.5),
+      );
+      expect(
+        contrast(theme.colorScheme.error, theme.colorScheme.surface),
+        greaterThanOrEqualTo(4.5),
+      );
     }
     expect(
-      contrast(AppPalette.accessibleGreen, Colors.white),
+      contrast(AppPalette.oxblood, AppPalette.paper),
       greaterThanOrEqualTo(4.5),
     );
     expect(
-      contrast(AppPalette.greenColor, AppPalette.blackColor),
+      contrast(AppPalette.orange, AppPalette.ink),
       greaterThanOrEqualTo(4.5),
     );
   });

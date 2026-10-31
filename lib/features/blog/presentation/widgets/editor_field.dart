@@ -1,5 +1,5 @@
 import 'package:belog/core/l10n/l10n.dart'; // Shorthand for AppLocalizations
-import 'package:belog/core/theme/app_palette.dart'; // Import your color palette
+import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:flutter/material.dart';
 
 enum BlogEditorContentType {
@@ -32,7 +32,7 @@ class EditorField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
     final contentPadding = _getContentPadding(contentType);
     final fontSize = _getFontSize(contentType);
     final fontWeight = _getFontWeight(contentType);
@@ -64,10 +64,13 @@ class EditorField extends StatelessWidget {
               TextStyle(
                 fontSize: hintFontSize, // Dynamic hint font size
                 fontWeight: hintFontWeight, // Dynamic hint font weight
-                fontFamily: 'Roboto',
-                color: isDarkMode
-                    ? AppPalette.greyColorLight
-                    : AppPalette.lightGreyText,
+                fontFamily: contentType == BlogEditorContentType.title
+                    ? 'InstrumentSerif'
+                    : 'InterTight',
+                fontFamilyFallback: contentType == BlogEditorContentType.title
+                    ? NoWaveTypography.serifFallback
+                    : null,
+                color: scheme.onSurfaceVariant,
               ),
           border: InputBorder.none,
           focusedBorder: InputBorder.none,
@@ -82,12 +85,17 @@ class EditorField extends StatelessWidget {
               fontSize: fontSize, // Dynamic font size
               height: 1.6,
               fontWeight: fontWeight, // Dynamic font weight
-              fontFamily: 'Roboto',
-              color: isDarkMode ? AppPalette.whiteColor : AppPalette.lightBlack,
+              fontFamily: contentType == BlogEditorContentType.title
+                  ? 'InstrumentSerif'
+                  : 'InterTight',
+              fontFamilyFallback: contentType == BlogEditorContentType.title
+                  ? NoWaveTypography.serifFallback
+                  : null,
+              color: scheme.onSurface,
             ),
         maxLines: maxLines,
         expands: expands,
-        cursorColor: isDarkMode ? AppPalette.whiteColor : AppPalette.lightBlack,
+        cursorColor: scheme.onSurface,
       ),
     );
   }
@@ -145,7 +153,7 @@ class EditorField extends StatelessWidget {
   FontWeight _getHintFontWeight(BlogEditorContentType contentType) {
     switch (contentType) {
       case BlogEditorContentType.title:
-        return FontWeight.w300; // Lighter hint for title
+        return FontWeight.w500; // Legible hint for title
       case BlogEditorContentType.body:
       default:
         return FontWeight.w300; // Standard hint font weight

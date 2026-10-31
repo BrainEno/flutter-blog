@@ -16,7 +16,17 @@ import 'package:url_launcher/url_launcher.dart';
 class MarkdownBody extends StatelessWidget {
   final String markdown;
 
-  const MarkdownBody({super.key, required this.markdown});
+  /// Optional reader-specific typography; the editor preview keeps the
+  /// default theme text styles when these are not supplied.
+  final TextStyle? bodyStyle;
+  final TextStyle? headingStyle;
+
+  const MarkdownBody({
+    super.key,
+    required this.markdown,
+    this.bodyStyle,
+    this.headingStyle,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -132,11 +142,12 @@ class MarkdownBody extends StatelessWidget {
     };
     return Text.rich(
       TextSpan(
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-          fontSize: size,
-          fontWeight: FontWeight.bold,
-          height: 1.3,
-        ),
+        style: (headingStyle ?? Theme.of(context).textTheme.bodyLarge)
+            ?.copyWith(
+              fontSize: size,
+              fontWeight: FontWeight.bold,
+              height: 1.3,
+            ),
         children: _inline(context, element.children ?? const []),
       ),
     );
@@ -147,7 +158,9 @@ class MarkdownBody extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text.rich(
         TextSpan(
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.6),
+          style:
+              bodyStyle ??
+              Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.6),
           children: _inline(context, nodes),
         ),
       ),
@@ -176,9 +189,9 @@ class MarkdownBody extends StatelessWidget {
                     width: 26,
                     child: Text(
                       ordered ? '${i + 1}.' : '•',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style:
+                          (bodyStyle ?? Theme.of(context).textTheme.bodyLarge)
+                              ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ),
                   Expanded(

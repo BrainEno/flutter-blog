@@ -1,7 +1,6 @@
 import 'dart:io' show Platform;
 
 import 'package:belog/core/l10n/l10n.dart';
-import 'package:belog/core/theme/theme.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/diagnostics_header.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
@@ -63,70 +62,63 @@ class _AboutPageState extends State<AboutPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Theme(
-      data: AppTheme.darkThemeMode,
-      child: Scaffold(
-        appBar: AppBar(title: Text(l10n.aboutTitle)),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 25),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.aboutHeading,
-                style: AppTheme.darkThemeMode.textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 16),
-              Text(l10n.aboutBody),
-              const SizedBox(height: 20),
-              Text(
-                l10n.contactHeading,
-                style: AppTheme.darkThemeMode.textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 16),
-              Text(l10n.emailLabel),
-              TextButton(
-                onPressed: () => _openLink(
-                  context,
-                  Uri.parse('mailto:nodeman24@outlook.com'),
-                ),
-                child: const Text('nodeman24@outlook.com'),
-              ),
-              const SizedBox(height: 10),
-              Text(l10n.githubLabel),
-              TextButton(
-                onPressed: () => _openLink(
-                  context,
-                  Uri.parse('https://github.com/BrainEno'),
-                ),
-                child: const Text('https://github.com/BrainEno'),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                l10n.versionHeading,
-                style: AppTheme.darkThemeMode.textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 16),
-              // Long-press remains the user-controlled support entry: the
-              // report is still never sent automatically (issue #49).
-              InkWell(
-                onLongPress: () => _showDiagnostics(context),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: FutureBuilder<PackageInfo>(
-                    future: _packageInfo,
-                    builder: (context, snapshot) {
-                      final info = snapshot.data;
-                      final version = info == null
-                          ? '…'
-                          : '${info.version}+${info.buildNumber}';
-                      return Text(l10n.appVersionLabel(version));
-                    },
-                  ),
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.aboutTitle)),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 25),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.aboutHeading,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 16),
+            Text(l10n.aboutBody),
+            const SizedBox(height: 20),
+            Text(
+              l10n.contactHeading,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 16),
+            Text(l10n.emailLabel),
+            TextButton(
+              onPressed: () =>
+                  _openLink(context, Uri.parse('mailto:nodeman24@outlook.com')),
+              child: const Text('nodeman24@outlook.com'),
+            ),
+            const SizedBox(height: 10),
+            Text(l10n.githubLabel),
+            TextButton(
+              onPressed: () =>
+                  _openLink(context, Uri.parse('https://github.com/BrainEno')),
+              child: const Text('https://github.com/BrainEno'),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              l10n.versionHeading,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 16),
+            // Long-press remains the user-controlled support entry: the
+            // report is still never sent automatically (issue #49).
+            InkWell(
+              onLongPress: () => _showDiagnostics(context),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: FutureBuilder<PackageInfo>(
+                  future: _packageInfo,
+                  builder: (context, snapshot) {
+                    final info = snapshot.data;
+                    final version = info == null
+                        ? '…'
+                        : '${info.version}+${info.buildNumber}';
+                    return Text(l10n.appVersionLabel(version));
+                  },
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

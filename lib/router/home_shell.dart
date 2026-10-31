@@ -1,18 +1,12 @@
 import 'package:belog/core/l10n/l10n.dart';
-import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-/// Root scaffold hosting the four-tab [StatefulNavigationShell].
-///
-/// Each branch owns its navigator, so switching tabs preserves the stack the
-/// user built in every tab. The tab-switch fade is driven from
-/// [_TabFadeTransitionState.didUpdateWidget] — a lifecycle callback — instead
-/// of from [build], which stays free of animation side effects.
+/// Root scaffold hosting four independent navigator stacks. The native tab
+/// bar keeps the app's existing navigation while using the no-wave palette.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key, required this.shell});
-
   final StatefulNavigationShell shell;
 
   @override
@@ -20,7 +14,13 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  static const List<IconData> _tabIcons = [
+  static const _icons = [
+    Icons.home_outlined,
+    Icons.search_outlined,
+    Icons.bookmark_border,
+    Icons.person_outline,
+  ];
+  static const _selectedIcons = [
     Icons.home,
     Icons.search,
     Icons.bookmark,
@@ -34,23 +34,9 @@ class _HomeShellState extends State<HomeShell> {
     l10n.tabProfile,
   ];
 
-  List<NavigationDestination> _destinations(BuildContext context) {
-    final l10n = context.l10n;
-    final labels = _tabLabels(l10n);
-    final iconColor = Theme.of(context).brightness == Brightness.light
-        ? AppPalette.greyColorDark
-        : AppPalette.whiteColor;
-    return [
-      for (var i = 0; i < _tabIcons.length; i++)
-        NavigationDestination(
-          icon: Icon(_tabIcons[i], color: iconColor),
-          label: labels[i],
-        ),
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
+    final labels = _tabLabels(context.l10n);
     return Scaffold(
       body: SafeArea(
         top: false,
@@ -59,27 +45,37 @@ class _HomeShellState extends State<HomeShell> {
           child: widget.shell,
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: widget.shell.currentIndex,
-        onDestinationSelected: (index) {
-          // Re-tapping the selected tab keeps its current stack, matching the
-          // previous behaviour.
-          if (index != widget.shell.currentIndex) {
-            widget.shell.goBranch(index);
-          }
-        },
-        destinations: _destinations(context),
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              color: Theme.of(context).colorScheme.onSurface.withAlpha(100),
+            ),
+          ),
+        ),
+        child: NavigationBar(
+          selectedIndex: widget.shell.currentIndex,
+          onDestinationSelected: (index) {
+            // Re-tapping the active destination preserves its existing stack.
+            if (index != widget.shell.currentIndex)
+              widget.shell.goBranch(index);
+          },
+          destinations: [
+            for (var i = 0; i < _icons.length; i++)
+              NavigationDestination(
+                icon: Icon(_icons[i]),
+                selectedIcon: Icon(_selectedIcons[i]),
+                label: labels[i],
+              ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Fades the newly selected tab in with the same 300ms fastOutSlowIn curve
-/// the previous shell used. Controllers are only touched from lifecycle
-/// callbacks, never from [build].
 class _TabFadeTransition extends StatefulWidget {
   const _TabFadeTransition({required this.index, required this.child});
-
   final int index;
   final Widget child;
 
@@ -98,9 +94,7 @@ class _TabFadeTransitionState extends State<_TabFadeTransition>
   @override
   void didUpdateWidget(covariant _TabFadeTransition oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.index != oldWidget.index) {
-      _controller.forward(from: 0);
-    }
+    if (widget.index != oldWidget.index) _controller.forward(from: 0);
   }
 
   @override
@@ -111,6 +105,7 @@ class _TabFadeTransitionState extends State<_TabFadeTransition>
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) return widget.child;
     return FadeTransition(
       opacity: CurvedAnimation(
         parent: _controller,

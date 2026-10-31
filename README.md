@@ -1,6 +1,6 @@
 # belog
 
-Flutter 编写的移动博客客户端（应用内品牌：Bottom Think），后端使用自托管
+Flutter 编写的移动博客客户端，正逐步向 no-wave 移动端体验靠拢；后端使用自托管
 [no-wave](https://github.com/BrainEno/no-wave) `apps/api`（Node + TypeScript，
 REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、点赞收藏、
 按标签浏览与全文搜索、Markdown 正文、阅读历史与数据导出。
@@ -12,6 +12,15 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
 后端迁移背景与逐接口核对结论见
 [docs/supabase-to-nowave-migration.md](docs/supabase-to-nowave-migration.md)
 （从 Supabase 迁移而来）。
+
+## 移动端视觉与组件
+
+客户端正逐步向 [no-wave 移动网页设计](https://github.com/BrainEno/no-wave/blob/98c14ddee8a3eb31497ba7fe47454c8834cf185c/apps/web/docs/UI_DESIGN_SYSTEM.md) 靠拢：纸色与墨色、橙红强调、衬线标题、细线分隔和留白，并保留原生四标签导航及各自的页面栈。首页、搜索和阅读页采用一致的编辑式布局；收藏和个人作品继续使用可操作的网格。这是设计基础与核心阅读流的迭代，其他页面仍会逐步统一，并非与网页逐像素相同；应用包名和启动图标尚未变更。
+
+- 颜色与文字样式集中在 `lib/core/theme/`；品牌、标题、作品行和封面为可复用展示组件。作品行通过回调交给页面处理导航，不依赖路由或业务状态。
+- 作品封面优先展示原有 HTTP(S) 图片 URL；缺失、无效、加载中或加载失败时使用随包附带的原创抽象兜底图（由 AI 生成），并提供本地化图片语义。兜底图不代表文章内容。
+- Latin 字体使用 [Instrument Serif](https://github.com/google/fonts/tree/main/ofl/instrumentserif) 和 [Inter Tight](https://github.com/google/fonts/tree/main/ofl/intertight)，各自的 SIL Open Font License 随 `assets/fonts/` 打包；中文使用系统衬线/无衬线字体回退。实际字形与行高会因设备而异。
+- 继续支持浅色、深色、系统主题、系统字体缩放与中英文界面；系统要求减少动画时关闭标签切换淡入。视觉组件不翻译作品、作者或评论；内容请求仍为 `zh-CN`（见下文“本地化与无障碍”）。
 
 ## 功能
 

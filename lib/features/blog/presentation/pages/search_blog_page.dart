@@ -1,11 +1,17 @@
 import 'dart:async';
 
+import 'package:belog/core/common/widgets/no_wave_masthead.dart';
+import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
+import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/theme/app_palette.dart';
+import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart'
     show kMaxSearchResults;
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
+import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -62,117 +68,135 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
     context.read<BlogSearchBloc>().add(SearchBlogsEvent(query: trimmed));
   }
 
+  Widget _contentWidth(Widget child) => Align(
+    alignment: Alignment.topCenter,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 680),
+      child: child,
+    ),
+  );
+
+  Widget _state(Widget child) => SliverFillRemaining(
+    hasScrollBody: false,
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(NoWaveSpacing.page),
+        child: _contentWidth(child),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final foreground = Theme.of(context).colorScheme.onSurface;
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ImageIcon(AssetImage('assets/images/icon.png'), size: 30),
-            SizedBox(width: 7),
-            Flexible(
-              child: Text(
-                'Bottom Think',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+      appBar: AppBar(title: const NoWaveMasthead()),
+      // The heading, field and results share one scroll view so they can all
+      // reflow when the keyboard or a large text scale reduces the viewport.
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                NoWaveSpacing.page,
+                24,
+                NoWaveSpacing.page,
+                16,
               ),
-            ),
-          ],
-        ),
-      ),
-      // The search field is outside the fixed-height app bar so it can
-      // grow naturally with the system font size.
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              controller: _searchController,
-              maxLength: kMaxSearchQueryLength,
-              textInputAction: TextInputAction.search,
-              onSubmitted: _onSubmitted,
-              decoration: InputDecoration(
-                labelText: l10n.searchHint,
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: l10n.clearSearch,
-                        icon: const Icon(Icons.clear),
-                        onPressed: _searchController.clear,
+              child: _contentWidth(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    NoWaveSectionHeading(
+                      title: l10n.tabSearch,
+                      companion: l10n.searchHeadingCompanion,
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _searchController,
+                      maxLength: kMaxSearchQueryLength,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: _onSubmitted,
+                      style: NoWaveTypography.title(context, size: 24),
+                      decoration: InputDecoration(
+                        labelText: l10n.searchHint,
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchController.text.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: l10n.clearSearch,
+                                icon: const Icon(Icons.clear),
+                                onPressed: _searchController.clear,
+                              ),
+                        counterText: '',
+                        filled: false,
+                        border: UnderlineInputBorder(
+                          borderSide: BorderSide(color: foreground, width: 2),
+                        ),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: foreground, width: 2),
+                        ),
+                        focusedBorder: const UnderlineInputBorder(
+                          borderSide: BorderSide(
+                            color: AppPalette.orange,
+                            width: 3,
+                          ),
+                        ),
                       ),
-                counterText: '',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(18),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-          Expanded(
-            child: BlocConsumer<BlogSearchBloc, BlogSearchState>(
-              listener: (context, state) {
-                if (state is BlogSearchFailure) {
-                  ScaffoldMessenger.of(context)
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          l10n.searchFailed(
-                            localizedFailure(l10n, state.failure),
-                          ),
+          BlocConsumer<BlogSearchBloc, BlogSearchState>(
+            listener: (context, state) {
+              if (state is BlogSearchFailure) {
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        l10n.searchFailed(
+                          localizedFailure(l10n, state.failure),
                         ),
-                        duration: const Duration(seconds: 2),
                       ),
-                    );
-                }
-              },
-              builder: (context, state) {
-                if (state is BlogSearchInitial) {
-                  return Center(child: Text(l10n.searchInitial));
-                }
-                if (state is BlogSearchLoading) {
-                  return Center(
-                    child: CircularProgressIndicator(
-                      semanticsLabel: l10n.searching,
+                      duration: const Duration(seconds: 2),
                     ),
                   );
-                }
-                if (state is BlogSearchFailure) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            l10n.searchFailed(
-                              localizedFailure(l10n, state.failure),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 12),
-                          TextButton(
-                            onPressed: () =>
-                                _onSubmitted(_searchController.text),
-                            child: Text(l10n.actionRetry),
-                          ),
-                        ],
-                      ),
+              }
+            },
+            builder: (context, state) {
+              if (state is BlogSearchInitial) {
+                return _state(NoWaveStatus(message: l10n.searchInitial));
+              }
+              if (state is BlogSearchLoading) {
+                return _state(
+                  CircularProgressIndicator(semanticsLabel: l10n.searching),
+                );
+              }
+              if (state is BlogSearchFailure) {
+                return _state(
+                  NoWaveStatus(
+                    message: l10n.searchFailed(
+                      localizedFailure(l10n, state.failure),
                     ),
-                  );
-                }
-                final blogs = (state as BlogSearchSuccess).blogs;
-                if (blogs.isEmpty) {
-                  return Center(child: Text(l10n.searchNoResults));
-                }
-                return ListView.separated(
-                  itemCount: blogs.length + 1,
-                  separatorBuilder: (context, index) =>
-                      const Divider(height: 1),
-                  itemBuilder: (context, index) {
+                    actionLabel: l10n.actionRetry,
+                    onAction: () => _onSubmitted(_searchController.text),
+                  ),
+                );
+              }
+              final blogs = (state as BlogSearchSuccess).blogs;
+              if (blogs.isEmpty) {
+                return _state(NoWaveStatus(message: l10n.searchNoResults));
+              }
+              return SliverPadding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: NoWaveSpacing.page,
+                ),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
                     if (index == blogs.length) {
                       return Padding(
                         padding: const EdgeInsets.all(16),
@@ -186,25 +210,27 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                                     ),
                                   )
                                 : l10n.searchNoMore,
+                            style: NoWaveTypography.meta(context),
                           ),
                         ),
                       );
                     }
                     final blog = blogs[index];
-                    final name = blog.posterName?.trim().isNotEmpty == true
-                        ? blog.posterName!
-                        : l10n.anonymousAuthor;
-                    return ListTile(
-                      title: Text(blog.title),
-                      subtitle: Text(l10n.posterLabel(name)),
-                      leading: const Icon(Icons.article),
-                      onTap: () =>
-                          context.push('/search/view/${blog.id}', extra: blog),
+                    return _contentWidth(
+                      BlogCard(
+                        blog: blog,
+                        index: index + 1,
+                        labelAuthor: true,
+                        onTap: () => context.push(
+                          '/search/view/${blog.id}',
+                          extra: blog,
+                        ),
+                      ),
                     );
-                  },
-                );
-              },
-            ),
+                  }, childCount: blogs.length + 1),
+                ),
+              );
+            },
           ),
         ],
       ),

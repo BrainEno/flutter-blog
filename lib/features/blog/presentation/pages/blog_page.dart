@@ -1,7 +1,12 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/common/widgets/loader.dart';
+import 'package:belog/core/common/widgets/no_wave_masthead.dart';
+import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
+import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
-import 'package:belog/core/common/widgets/loader.dart';
+import 'package:belog/core/theme/app_palette.dart';
+import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/blog/blog_bloc.dart';
@@ -38,11 +43,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // One guarded refresh per resume; the bloc drops it while a newer
-    // request is already in flight.
-    if (state == AppLifecycleState.resumed) {
-      _fetchFirstPage();
-    }
+    if (state == AppLifecycleState.resumed) _fetchFirstPage();
   }
 
   void _fetchFirstPage() {
@@ -52,8 +53,6 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      // The bloc ignores this while a request is running, once the end is
-      // reached, or before a list exists.
       context.read<BlogBloc>().add(const BlogLoadMore());
     }
   }
@@ -66,33 +65,14 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
   }
 
   Future<void> _openEditor() async {
-    // The editor pops with `true` when something was published, so the feed
-    // reloads page 1 instead of appending a stale page.
     final published = await context.push<bool>('/editor');
-    if (published == true && mounted) {
-      _fetchFirstPage();
-    }
+    if (published == true && mounted) _fetchFirstPage();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ImageIcon(AssetImage('assets/images/icon.png'), size: 30),
-            SizedBox(width: 7),
-            const Flexible(
-              child: Text(
-                'Bottom Think',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
+      appBar: AppBar(title: const NoWaveMasthead()),
       body: BlocConsumer<BlogBloc, BlogState>(
         listener: (context, state) {
           if (state is BlogListFailure) {
@@ -102,87 +82,98 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
             );
           }
         },
-        builder: (context, state) {
-          return RefreshIndicator(
-            onRefresh: _refreshBlogs,
-            child: _buildBody(state),
-          );
-        },
+        builder: (context, state) => RefreshIndicator(
+          onRefresh: _refreshBlogs,
+          child: _buildBody(state),
+        ),
       ),
       floatingActionButton: BlocSelector<AppUserCubit, AppUserState, bool>(
         selector: (state) => state is AppUserLoggedIn,
-        builder: (context, isLoggedIn) {
-          return isLoggedIn
-              ? FloatingActionButton(
-                  onPressed: _openEditor,
-                  tooltip: context.l10n.newPostTooltip,
-                  child: const Icon(CupertinoIcons.add),
-                )
-              : const SizedBox();
-        },
+        builder: (context, isLoggedIn) => isLoggedIn
+            ? FloatingActionButton(
+                onPressed: _openEditor,
+                tooltip: context.l10n.newPostTooltip,
+                child: const Icon(CupertinoIcons.add),
+              )
+            : const SizedBox.shrink(),
       ),
     );
   }
 
+  Widget _heading() => NoWaveSectionHeading(
+    title: context.l10n.feedHeading,
+    companion: context.l10n.feedHeadingCompanion,
+    eyebrow: context.l10n.feedEyebrow,
+  );
+
+  Widget _contentWidth(Widget child) => Align(
+    alignment: Alignment.topCenter,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 680),
+      child: child,
+    ),
+  );
+
+  Widget _statusList(Widget status) => ListView(
+    physics: const AlwaysScrollableScrollPhysics(),
+    padding: const EdgeInsets.fromLTRB(
+      NoWaveSpacing.page,
+      24,
+      NoWaveSpacing.page,
+      NoWaveSpacing.section,
+    ),
+    children: [
+      _contentWidth(_heading()),
+      const SizedBox(height: 56),
+      _contentWidth(status),
+    ],
+  );
+
   Widget _buildBody(BlogState state) {
     final l10n = context.l10n;
     final blogs = _visibleBlogs(state);
-
-    // Initial load with nothing to show yet.
     if (blogs.isEmpty &&
         (state is BlogInitial || state is BlogFirstPageLoading)) {
       return Loader(semanticLabel: l10n.loadingArticles);
     }
-
-    // Actionable failure without any list to fall back to.
     if (state is BlogListFailure && blogs.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          const SizedBox(height: 120),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                localizedFailure(l10n, state.failure),
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: TextButton(
-              onPressed: _fetchFirstPage,
-              child: Text(l10n.actionRetry),
-            ),
-          ),
-        ],
+      return _statusList(
+        NoWaveStatus(
+          message: localizedFailure(l10n, state.failure),
+          actionLabel: l10n.actionRetry,
+          onAction: _fetchFirstPage,
+        ),
       );
     }
-
-    // Loaded but empty: distinguishable from loading and from failure.
-    if (blogs.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          const SizedBox(height: 160),
-          Center(child: Text(l10n.feedEmpty)),
-        ],
-      );
-    }
+    if (blogs.isEmpty)
+      return _statusList(NoWaveStatus(message: l10n.feedEmpty));
 
     final loadingMore =
         state is BlogLoaded && state.isLoadingMore && !state.hasReachedMax;
     final reachedMax = state is BlogLoaded && state.hasReachedMax;
     final failed = state is BlogListFailure;
+    final hasFooter = loadingMore || reachedMax || failed;
     return ListView.builder(
       controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(top: 8, bottom: 30),
-      itemCount: blogs.length + (loadingMore || reachedMax || failed ? 1 : 0),
+      padding: const EdgeInsets.fromLTRB(
+        NoWaveSpacing.page,
+        24,
+        NoWaveSpacing.page,
+        NoWaveSpacing.section,
+      ),
+      itemCount: 1 + blogs.length + (hasFooter ? 1 : 0),
       itemBuilder: (context, index) {
-        if (index == blogs.length) {
+        if (index == 0) {
+          return _contentWidth(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: _heading(),
+            ),
+          );
+        }
+        final articleIndex = index - 1;
+        if (articleIndex == blogs.length) {
           if (failed) {
             return Center(
               child: TextButton(
@@ -193,7 +184,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
           }
           if (loadingMore) {
             return Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16),
               child: Center(
                 child: CircularProgressIndicator(
                   semanticsLabel: l10n.loadingMoreArticles,
@@ -202,16 +193,24 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
             );
           }
           return Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             child: Center(
               child: Text(
                 l10n.feedNoMore,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: NoWaveTypography.meta(context),
               ),
             ),
           );
         }
-        return BlogCard(blog: blogs[index]);
+        final blog = blogs[articleIndex];
+        return _contentWidth(
+          BlogCard(
+            blog: blog,
+            featured: articleIndex == 0,
+            index: articleIndex + 1,
+            onTap: () => context.push('/view/${blog.id}', extra: blog),
+          ),
+        );
       },
     );
   }

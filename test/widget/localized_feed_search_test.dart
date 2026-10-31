@@ -11,6 +11,7 @@ import 'package:belog/features/blog/presentation/blocs/blog/blog_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
+import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -110,12 +111,19 @@ void main() {
 
         bloc.add(const BlogFetchFirstPage());
         await tester.pumpAndSettle();
-        expect(find.text(l10n.feedNoMore), findsOneWidget);
         expect(find.text(l10n.anonymousAuthor), findsOneWidget);
+        await tester.ensureVisible(find.byType(ArticleCover));
+        await tester.pumpAndSettle();
         expect(
           find.bySemanticsLabel(RegExp(l10n.coverOf('Sample'))),
           findsWidgets,
         );
+        await tester.scrollUntilVisible(
+          find.text(l10n.feedNoMore),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(find.text(l10n.feedNoMore), findsOneWidget);
         expect(tester.takeException(), isNull);
       } finally {
         semantics.dispose();
@@ -193,7 +201,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 350));
       await tester.pumpAndSettle();
       final resultsScroll = find.descendant(
-        of: find.byType(ListView),
+        of: find.byType(CustomScrollView),
         matching: find.byType(Scrollable),
       );
       await tester.scrollUntilVisible(
@@ -229,18 +237,29 @@ void main() {
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: const [Locale('zh'), Locale('en')],
               builder: (context, child) => MediaQuery(
-                data: MediaQuery.of(
-                  context,
-                ).copyWith(textScaler: const TextScaler.linear(2)),
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: const TextScaler.linear(2),
+                  // Simulate space taken by an on-screen keyboard as well.
+                  viewInsets: const EdgeInsets.only(bottom: 260),
+                ),
                 child: child!,
               ),
               home: const SearchBlogPage(),
             ),
           ),
         );
+        await tester.ensureVisible(find.byType(TextField));
         await tester.enterText(find.byType(TextField), 'search');
         await tester.pump(const Duration(milliseconds: 350));
         await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(
+          find.text(l10n.searchNoResults),
+          120,
+          scrollable: find.descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          ),
+        );
         expect(find.text(l10n.searchNoResults), findsOneWidget);
         expect(tester.takeException(), isNull);
       } finally {
@@ -335,6 +354,11 @@ void main() {
     bloc.add(const BlogFetchFirstPage());
     await tester.pumpAndSettle();
     expect(find.text('Sample'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Retry'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Retry'), findsOneWidget);
     await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
@@ -357,7 +381,16 @@ void main() {
           GoRoute(
             path: '/',
             builder: (context, state) => Scaffold(
-              body: ListView(children: [BlogCard(blog: _article())]),
+              body: ListView(
+                children: [
+                  BlogCard(
+                    blog: _article(),
+                    featured: true,
+                    onTap: () =>
+                        context.push('/view/sample', extra: _article()),
+                  ),
+                ],
+              ),
             ),
           ),
           GoRoute(
