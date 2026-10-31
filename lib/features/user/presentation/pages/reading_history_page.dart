@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/storage/reading_history_store.dart';
@@ -27,13 +29,21 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
     with RouteAware {
   late final ReadingHistoryStore _store;
   List<ReadingHistoryEntry> _entries = [];
+  String? _entriesUserId;
+  int _loadVersion = 0;
+  int _accountVersion = 0;
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     _store = widget.store ?? GetIt.instance<ReadingHistoryStore>();
-    _reload();
+    _entriesUserId = _userId;
+    if (_entriesUserId == null) {
+      _loading = false;
+    } else {
+      unawaited(_reload());
+    }
   }
 
   @override
@@ -57,38 +67,66 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
     _reload();
   }
 
-  String? get _userId {
-    final state = context.read<AppUserCubit>().state;
-    return state is AppUserLoggedIn ? state.user.id : null;
+  String? _idFor(AppUserState state) =>
+      state is AppUserLoggedIn && state.user.id.isNotEmpty
+      ? state.user.id
+      : null;
+
+  String? get _userId => _idFor(context.read<AppUserCubit>().state);
+
+  void _onAccountChanged(BuildContext _, AppUserState state) {
+    final userId = _idFor(state);
+    if (userId == _entriesUserId) return;
+    _loadVersion++;
+    _accountVersion++;
+    setState(() {
+      _entriesUserId = userId;
+      _entries = [];
+      _loading = userId != null;
+    });
+    if (userId != null) unawaited(_reload());
   }
 
   Future<void> _reload() async {
     final userId = _userId;
+    final version = ++_loadVersion;
     if (userId == null) return;
+    if (_entriesUserId != userId) {
+      setState(() {
+        _entriesUserId = userId;
+        _entries = [];
+        _loading = true;
+      });
+    }
     try {
       final entries = await _store.list(userId: userId);
-      if (!mounted) return;
+      if (!mounted || _userId != userId || version != _loadVersion) return;
       setState(() {
         _entries = entries;
         _loading = false;
       });
     } catch (_) {
-      // Local bookkeeping: never block the page on a storage hiccup.
-      if (!mounted) return;
+      // Local bookkeeping: never display another account's stale result.
+      if (!mounted || _userId != userId || version != _loadVersion) return;
       setState(() => _loading = false);
     }
   }
 
   Future<void> _remove(ReadingHistoryEntry entry) async {
     final userId = _userId;
-    if (userId == null) return;
+    if (userId == null || userId != _entriesUserId) return;
     setState(() => _entries.removeWhere((e) => e.blogId == entry.blogId));
-    await _store.remove(userId: userId, blogId: entry.blogId);
+    try {
+      await _store.remove(userId: userId, blogId: entry.blogId);
+    } catch (_) {
+      if (mounted && _userId == userId) await _reload();
+    }
   }
 
   Future<void> _confirmClearAll() async {
     final userId = _userId;
-    if (userId == null) return;
+    if (userId == null || userId != _entriesUserId) return;
+    final version = _accountVersion;
     final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -107,21 +145,49 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
         ],
       ),
     );
-    if (confirmed != true) return;
-    await _store.clear(userId: userId);
-    if (mounted) setState(() => _entries = []);
+    if (confirmed != true ||
+        !mounted ||
+        _userId != userId ||
+        version != _accountVersion) {
+      return;
+    }
+    try {
+      await _store.clear(userId: userId);
+      if (mounted && _userId == userId && version == _accountVersion) {
+        // Ignore any list load that began before the clear completed.
+        _loadVersion++;
+        setState(() {
+          _entries = [];
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted && _userId == userId && version == _accountVersion) {
+        await _reload();
+      }
+    }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      BlocListener<AppUserCubit, AppUserState>(
+        listener: _onAccountChanged,
+        child: _buildScaffold(context),
+      );
+
+  Widget _buildScaffold(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final userId = _userId;
+    final ownerMatches = userId != null && userId == _entriesUserId;
+    final entries = ownerMatches ? _entries : <ReadingHistoryEntry>[];
+    final loading = userId != null && (!ownerMatches || _loading);
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
         title: Text(context.l10n.historyTitle),
         elevation: 1.0,
         actions: [
-          if (_entries.isNotEmpty)
+          if (entries.isNotEmpty)
             IconButton(
               tooltip: context.l10n.clearHistoryTitle,
               icon: const Icon(Icons.delete_sweep),
@@ -129,13 +195,13 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
             ),
         ],
       ),
-      body: _loading
+      body: loading
           ? Center(
               child: CircularProgressIndicator(
                 semanticsLabel: context.l10n.loading,
               ),
             )
-          : _entries.isEmpty
+          : entries.isEmpty
           ? Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -159,10 +225,10 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
               ),
             )
           : ListView.separated(
-              itemCount: _entries.length,
+              itemCount: entries.length,
               separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
-                final entry = _entries[index];
+                final entry = entries[index];
                 final readAtLabel = formatDate(
                   Localizations.localeOf(context),
                   entry.readAt,

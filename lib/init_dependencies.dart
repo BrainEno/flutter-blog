@@ -122,7 +122,7 @@ Future<void> initDependencies() async {
   );
   await sessionManager.restore();
 
-  _initAuth(sessionManager, apiClient);
+  _initAuth(sessionManager, apiClient, uri);
   await _initBlog(apiClient);
   _initComments(apiClient);
   _initAuthors(apiClient);
@@ -157,7 +157,11 @@ Future<void> initDependencies() async {
   );
 }
 
-void _initAuth(NowaveSessionManager sessionManager, NowaveApiClient apiClient) {
+void _initAuth(
+  NowaveSessionManager sessionManager,
+  NowaveApiClient apiClient,
+  Uri apiBaseUrl,
+) {
   // Datasource
   serviceLocator
     ..registerFactory<AuthRemoteDataSource>(
@@ -168,7 +172,11 @@ void _initAuth(NowaveSessionManager sessionManager, NowaveApiClient apiClient) {
       () => AuthRepositoryImpl(
         serviceLocator(),
         serviceLocator(),
-        SqliteProfileCache(serviceLocator<AppDatabase>()),
+        SqliteProfileCache(
+          serviceLocator<AppDatabase>(),
+          apiBaseUrl: apiBaseUrl,
+        ),
+        readingHistoryStore: serviceLocator<ReadingHistoryStore>(),
       ),
     )
     // Usecases
@@ -184,6 +192,14 @@ void _initAuth(NowaveSessionManager sessionManager, NowaveApiClient apiClient) {
         userSignOut: serviceLocator(),
         currentUser: serviceLocator(),
         appUserCubit: serviceLocator(),
+        sessionGeneration: () => sessionManager.sessionGeneration,
+        hasActiveSession: () => sessionManager.currentSession != null,
+        isCurrentSessionUser: (user) {
+          final session = sessionManager.currentSession;
+          return session != null &&
+              session.userId == user.id &&
+              session.email == user.email;
+        },
       ),
     )
     // App-level auth service, started in main() once the session is

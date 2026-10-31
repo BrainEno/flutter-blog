@@ -19,6 +19,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final CurrentUser _currentUser;
   final UserSignOut _userSignOut;
   final AppUserCubit _appUserCubit;
+  final int Function() _sessionGeneration;
+  final bool Function() _hasActiveSession;
+  final bool Function(User) _isCurrentSessionUser;
 
   AuthBloc({
     required UserSignUp userSignUp,
@@ -26,11 +29,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required UserSignOut userSignOut,
     required CurrentUser currentUser,
     required AppUserCubit appUserCubit,
+    required int Function() sessionGeneration,
+    required bool Function() hasActiveSession,
+    required bool Function(User) isCurrentSessionUser,
   }) : _userSignUp = userSignUp,
        _userLogin = userLogin,
        _userSignOut = userSignOut,
        _currentUser = currentUser,
        _appUserCubit = appUserCubit,
+       _sessionGeneration = sessionGeneration,
+       _hasActiveSession = hasActiveSession,
+       _isCurrentSessionUser = isCurrentSessionUser,
        super(AuthInitial()) {
     // NOTE: there is deliberately no catch-all `on<AuthEvent>` handler.
     // Each handler below decides whether it emits [AuthLoading], so
@@ -80,11 +89,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthIsUserLoggedIn event,
     Emitter<AuthState> emit,
   ) async {
+    final generation = _sessionGeneration();
     final res = await _currentUser(NoParams());
 
-    res.fold((failure) => emit(AuthFailure(failure.forPresentation())), (user) {
-      _emitAuthSuccess(user, emit);
-    });
+    res.fold(
+      (failure) {
+        // A stale restore must not replace a newer account's UI state.
+        if (_sessionGeneration() != generation &&
+            failure.code == 'auth.sessionChanged') {
+          return;
+        }
+        emit(AuthFailure(failure.forPresentation()));
+      },
+      (user) {
+        if (_sessionGeneration() == generation) _emitAuthSuccess(user, emit);
+      },
+    );
   }
 
   Future<void> _onAuthLogout(AuthLogout event, Emitter<AuthState> emit) async {
@@ -93,13 +113,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     res.fold(
       (failure) {
-        // A newer account must not be removed by an older sign-out result.
-        if (failure.code != 'auth.sessionChanged') {
+        // Do not clear an active or newer session after a failed sign-out.
+        if (failure.code != 'auth.sessionChanged' && !_hasActiveSession()) {
           _appUserCubit.updateUser(null);
         }
         emit(AuthLogoutFailure(failure.forPresentation()));
       },
       (_) {
+        // A new login may arrive while per-account cleanup is still running.
+        if (_hasActiveSession()) {
+          emit(
+            AuthLogoutFailure(
+              Failure(
+                '登录账户已变更，请重试',
+                kind: FailureKind.auth,
+                code: 'auth.sessionChanged',
+              ),
+            ),
+          );
+          return;
+        }
         _appUserCubit.updateUser(null);
         emit(AuthLogoutSuccess());
       },
@@ -107,6 +140,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   void _emitAuthSuccess(User user, Emitter<AuthState> emit) {
+    // A newer session can replace the result between repository and UI.
+    if (!_isCurrentSessionUser(user)) {
+      emit(
+        AuthFailure(
+          Failure(
+            '登录账户已变更，请重试',
+            kind: FailureKind.auth,
+            code: 'auth.sessionChanged',
+          ),
+        ),
+      );
+      return;
+    }
     _appUserCubit.updateUser(user);
     emit(AuthSuccess(user));
   }
