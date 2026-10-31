@@ -32,7 +32,7 @@
 - 请求体规则：写操作必须 `Content-Type: application/json`、≤2MiB、**未知字段直接 400 拒绝**（requireOnly）。
 - 错误统一格式：`{"error":{"code","message"}}`；域错误映射 BAD_USER_INPUT→400 / FORBIDDEN→403 / NOT_FOUND→404 / CONFLICT→409 / UNAUTHENTICATED→401 / RATE_LIMITED→429（带 `Retry-After` 头）。
 - 限流：写操作按 用户+IP 双桶；register 20/IP/h、login 60/IP + 5/email/窗口。
-- locale：写入仅支持 `zh-CN`（body/query 传其他值一律 400）；读取默认 zh-CN。
+- locale：内容等写入 body 当前只接受 `zh-CN`；读取默认 `zh-CN`，并接受 `zh-TW` / `en` 查询。接受查询不保证对应翻译存在；App 内容请求目前固定 `zh-CN`。
 - 响应包一层 `{data: ...}`，列表无分页 meta（用 `limit/offset`，是否还有下一页由「本页条数==limit」判断）。
 
 ### 1.1 认证（已核对 application/identity.ts、transport/rest/http.ts）
@@ -76,7 +76,7 @@
 
 | 端点 | 说明 |
 |------|------|
-| `GET /articles?locale&query&limit(1-100,默认20)&offset` | 已发布列表 + 全文搜索（trigram，title/summary），viewer 可选 |
+| `GET /articles?locale&query&limit(1-100,默认20)&offset` | 已发布列表 + 标题/摘要子串搜索，viewer 可选；PostgreSQL 使用 trigram 索引加速 |
 | `GET /articles/:slug?locale` | 公开详情（**只能按 slug**，无按 id 的公开读） |
 | `GET /me/articles?locale&limit` | 自己的文章（含草稿） |
 | `GET /me/liked-articles?locale&limit` | 收藏列表 |
@@ -140,7 +140,7 @@
 | `getBlogById(id)` | `GET /articles/{slug}` | ⚠️ 寻址改 slug：见 §3.3 |
 | `getBlogsByPosterId` | `GET /authors/{userId}/articles?limit&offset` | ✅（含草稿吗：此端点列已发布；自己草稿走 `GET /me/articles` —— 现有 App 本就只显示已发布，等价） |
 | `getBlogsByTag(tag)` | `GET /tags?query=<名>`（或全量 `GET /tags` 后本地匹配）→ `GET /tags/{slug}/articles` | ✅（两跳；slug 无法本地推导，必须先解析） |
-| `searchBlogs(query)` | `GET /articles?query=<q>&limit=kMaxSearchResults` | ✅。trigram 全文检索，语义优于现在的 ilike |
+| `searchBlogs(query)` | `GET /articles?query=<q>&limit=kMaxSearchResults` | ✅。匹配标题/摘要子串，不搜索全文正文；PostgreSQL 的 trigram 是索引而非独立搜索语义 |
 | `editBlog(blog)` | `PUT /articles/{articleId}` body **必须含** `{slug(当前或新), publish:true, title, contentBlocks, tagIds?, summary?, workType?}` | ✅（需 BlogModel 存服务端 articleId + slug） |
 | `deleteBlog(id)` | `DELETE /articles/{articleId}`（墓碑软删，200 返回 `{id, deletedAt}`；地址是服务端 UUID 非 slug） | ✅ 已接入（缓存/远端解析 UUID，成功后清除本地缓存行）。配套：`GET /me/articles/deleted`（回收站，含 `purgesAt`）与 `POST /articles/{id}/restore?locale=`（恢复为草稿） |
 | `getUserLikedBlogs(userId)` | `GET /me/liked-articles?limit=100` | ✅（只能看自己的，现有调用即当前用户，等价） |
