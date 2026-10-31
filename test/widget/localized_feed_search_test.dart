@@ -361,7 +361,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Sample'), findsOneWidget);
     // Let the transient error snackbar finish so it cannot cover Retry.
-    await tester.pump(const Duration(seconds: 3));
+    await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Retry'),
