@@ -261,11 +261,13 @@ Windows PowerShell mock 测试为 `powershell -File scripts/tests/test_android.p
    已启用，请使用 `AppLogger`）。
 3. **test**：`flutter test --coverage --concurrency=1`。
 4. **android-release**：使用显式 QA debug 签名和不可路由配置构建 Android release APK，
-   不发布、不代表生产后端或正式签名已验证。
+   另编译 debug APK 并检查两者网络策略；不发布、不代表正式签名已验证。
 
 `.github/workflows/local-scripts.yml` 在 Linux/macOS/Windows 上运行本地脚本的
-mock 控制流测试；`.github/workflows/dart.yml` 的 iOS 无签名编译只在手动选择
-`include_ios` 时执行。以上不等同于设备、后端或分发签名实测。
+mock 控制流测试，并在 macOS 上编译 iOS debug 模拟器版本、运行默认 ad-hoc IPA
+脚本及检查 debug/release 网络策略。`.github/workflows/dart.yml` 的额外 iOS
+无签名编译只在手动选择 `include_ios` 时执行。CI 编译/打包不等同于真实模拟器
+启动、设备安装、后端或分发签名实测。
 
 单元与 widget 测试覆盖：分页/刷新竞态（BlogBloc）、搜索竞态（BlogSearchBloc）、
 点赞并发与回滚、草稿隔离与自动保存、异常映射矩阵、离线行为、API 客户端

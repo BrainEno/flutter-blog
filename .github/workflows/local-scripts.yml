@@ -1,4 +1,4 @@
-name: Local development script checks (mocked tools)
+name: Local development scripts and iOS build checks
 
 on:
   pull_request:
@@ -29,6 +29,64 @@ jobs:
         run: bash -n scripts/lib/common.sh scripts/run_ios.sh scripts/build_ios_ipa.sh scripts/run_ios.command scripts/build_ios_ipa.command
       - name: Test mocked simulator, packaging and configuration paths
         run: python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+
+  ios-build:
+    name: iOS simulator compile and ad-hoc IPA / macOS
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Set up pinned Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: "3.47.8"
+          cache: true
+          pub-cache: true
+      - name: Prepare a non-deployed public config
+        shell: bash
+        run: |
+          umask 077
+          printf '%s\n' '{"API_BASE_URL":"https://127.0.0.1"}' > env.json
+          mkdir -p build/reports
+      - name: Build the iOS debug simulator variant
+        shell: bash
+        run: |
+          set -o pipefail
+          set +e
+          flutter build ios --simulator --debug --no-codesign --dart-define-from-file=env.json --dart-define=BELOG_DEV_BACKEND_CHECK=true 2>&1 | tee build/reports/ios-simulator-build.log
+          statuses=("${PIPESTATUS[@]}")
+          set -e
+          if (( statuses[0] != 0 || statuses[1] != 0 )); then
+            bash tool/ci/annotate_failure.sh analyze build/reports/ios-simulator-build.log
+            exit 1
+          fi
+      - name: Run the real ad-hoc IPA script (not published)
+        shell: bash
+        run: |
+          set -o pipefail
+          set +e
+          bash scripts/build_ios_ipa.sh --config env.json --mode altstore 2>&1 | tee build/reports/ios-adhoc-ipa.log
+          statuses=("${PIPESTATUS[@]}")
+          set -e
+          if (( statuses[0] != 0 || statuses[1] != 0 )); then
+            bash tool/ci/annotate_failure.sh analyze build/reports/ios-adhoc-ipa.log
+            exit 1
+          fi
+      - name: Verify built debug and release transport policy
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+          def loads_allowed(path):
+              with Path(path).open('rb') as f:
+                  return plistlib.load(f).get('NSAppTransportSecurity', {}).get('NSAllowsArbitraryLoads', False)
+          assert loads_allowed('build/ios/iphonesimulator/Runner.app/Info.plist') is True
+          assert loads_allowed('build/ios/iphoneos/Runner.app/Info.plist') is not True
+          print('Only the debug iOS variant permits arbitrary cleartext HTTP.')
+          PY
 
   windows-control-flow:
     name: PowerShell mock AVD scenarios / Windows
