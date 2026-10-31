@@ -43,24 +43,28 @@ void main() {
   );
 
   test('the profile cache round-trips and clears (issue #50)', () async {
-    final cache = SqliteProfileCache(db);
-    expect(await cache.read(), isNull);
+    final cache = SqliteProfileCache(
+      db,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    );
+    expect(await cache.read(userId: 'u1'), isNull);
 
     await cache.write(
-      CachedProfile(
+      userId: 'u1',
+      profile: CachedProfile(
         displayName: '测试用户',
         avatarUrl: 'https://api.example.invalid/avatar.webp',
         website: 'https://example.invalid',
         updatedAt: DateTime.utc(2026, 10, 1),
       ),
     );
-    final read = await cache.read();
+    final read = await cache.read(userId: 'u1');
     expect(read?.displayName, '测试用户');
     expect(read?.avatarUrl, 'https://api.example.invalid/avatar.webp');
     expect(read?.website, 'https://example.invalid');
 
-    await cache.clear();
-    expect(await cache.read(), isNull);
+    await cache.clear(userId: 'u1');
+    expect(await cache.read(userId: 'u1'), isNull);
   });
 
   test('deleting a cached blog drops only that row', () async {

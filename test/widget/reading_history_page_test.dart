@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
@@ -38,6 +40,30 @@ class _FakeStore implements ReadingHistoryStore {
   }
 }
 
+class _ControlledStore extends _FakeStore {
+  _ControlledStore() : super([]);
+
+  final Map<String, List<Completer<List<ReadingHistoryEntry>>>> requests = {};
+
+  @override
+  Future<List<ReadingHistoryEntry>> list({
+    required String userId,
+    int limit = 200,
+  }) {
+    final pending = Completer<List<ReadingHistoryEntry>>();
+    requests.putIfAbsent(userId, () => []).add(pending);
+    return pending.future;
+  }
+}
+
+ReadingHistoryEntry _entry(String id, String title) => ReadingHistoryEntry(
+  blogId: id,
+  title: title,
+  posterName: '',
+  imageUrl: '',
+  readAt: DateTime.utc(2026, 10, 1),
+);
+
 void main() {
   late AppUserCubit cubit;
   final user = User(
@@ -50,7 +76,11 @@ void main() {
   setUp(() => cubit = AppUserCubit()..updateUser(user));
   tearDown(() => cubit.close());
 
-  Future<void> pumpPage(WidgetTester tester, ReadingHistoryStore store) async {
+  Future<void> pumpPage(
+    WidgetTester tester,
+    ReadingHistoryStore store, {
+    bool settle = true,
+  }) async {
     await tester.pumpWidget(
       BlocProvider<AppUserCubit>.value(
         value: cubit,
@@ -62,7 +92,11 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      await tester.pump();
+    }
   }
 
   testWidgets('renders the recorded reads newest-first', (tester) async {
@@ -88,6 +122,89 @@ void main() {
     expect(find.text('较早的文章'), findsOneWidget);
     // No poster name: the date renders alone, never as "null · ...".
     expect(find.textContaining('null'), findsNothing);
+  });
+
+  testWidgets('switching accounts hides the old list and ignores late loads', (
+    tester,
+  ) async {
+    final store = _ControlledStore();
+    await pumpPage(tester, store, settle: false);
+    expect(store.requests['u1'], hasLength(1));
+
+    cubit.updateUser(
+      User(
+        id: 'u2',
+        email: 'b@example.invalid',
+        name: 'B',
+        updatedAt: DateTime.utc(2026),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(store.requests['u2'], hasLength(1));
+    store.requests['u2']!.single.complete([_entry('b', 'B private history')]);
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('B private history'), findsOneWidget);
+
+    store.requests['u1']!.single.complete([_entry('a', 'A private history')]);
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('A private history'), findsNothing);
+    expect(find.text('B private history'), findsOneWidget);
+  });
+
+  testWidgets('a visible old list is hidden immediately after account switch', (
+    tester,
+  ) async {
+    final store = _ControlledStore();
+    await pumpPage(tester, store, settle: false);
+    store.requests['u1']!.single.complete([_entry('a', 'A private history')]);
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('A private history'), findsOneWidget);
+
+    cubit.updateUser(
+      User(
+        id: 'u2',
+        email: 'b@example.invalid',
+        name: 'B',
+        updatedAt: DateTime.utc(2026),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('A private history'), findsNothing);
+    expect(store.requests['u2'], hasLength(1));
+    store.requests['u2']!.single.complete([]);
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('account switch cancels the old account clear confirmation', (
+    tester,
+  ) async {
+    final store = _ControlledStore();
+    await pumpPage(tester, store, settle: false);
+    store.requests['u1']!.single.complete([_entry('a', 'A private history')]);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('清空阅读历史'));
+    await tester.pumpAndSettle();
+
+    cubit.updateUser(
+      User(
+        id: 'u2',
+        email: 'b@example.invalid',
+        name: 'B',
+        updatedAt: DateTime.utc(2026),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    store.requests['u2']!.single.complete([]);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('清空'));
+    await tester.pumpAndSettle();
+    expect(store.cleared, isEmpty);
   });
 
   testWidgets('an empty history explains itself', (tester) async {

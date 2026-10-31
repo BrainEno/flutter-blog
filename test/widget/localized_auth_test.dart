@@ -55,6 +55,9 @@ void main() {
             userSignOut: UserSignOut(repo),
             currentUser: CurrentUser(repo),
             appUserCubit: user,
+            sessionGeneration: () => 0,
+            hasActiveSession: () => false,
+            isCurrentSessionUser: (_) => true,
           );
           addTearDown(auth.close);
           addTearDown(user.close);

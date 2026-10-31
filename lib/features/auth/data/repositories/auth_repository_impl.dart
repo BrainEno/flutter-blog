@@ -20,23 +20,27 @@ class AuthRepositoryImpl implements AuthRepository {
   /// and an avatar (issue #50). Display-layer fallback only.
   final ProfileCacheStore profileCache;
 
-  /// Device-local reading history (issue #22). Optional so tests that do
-  /// not care about it keep constructing the repository with three args.
-  final ReadingHistoryStore? readingHistoryStore;
+  /// Device-local history is cleared for the signing-out account (#22).
+  /// Required so the production composition root cannot silently omit it.
+  final ReadingHistoryStore readingHistoryStore;
 
   const AuthRepositoryImpl(
     this.remoteDataSource,
     this.connectionChecker,
     this.profileCache, {
-    this.readingHistoryStore,
+    required this.readingHistoryStore,
   });
 
   @override
   Future<Either<Failure, User>> currentUser() async {
     try {
-      if (!await (connectionChecker.isConnected)) {
-        final session = remoteDataSource.currentSession;
+      final generation = remoteDataSource.sessionGeneration;
+      final connected = await connectionChecker.isConnected;
+      var stale = _staleSessionFailure(generation);
+      if (stale != null) return left(stale);
 
+      if (!connected) {
+        final session = remoteDataSource.currentSession;
         if (session == null) {
           return left(
             Failure(
@@ -48,11 +52,12 @@ class AuthRepositoryImpl implements AuthRepository {
           );
         }
 
-        // Offline restore: the locally persisted session keeps the user
-        // signed in with a minimal identity; the last confirmed profile
-        // fills in name/avatar so the page does not look broken, and the
-        // fresh profile is fetched once the network is back.
-        final cached = await _readCachedProfile();
+        // An unresolved identity must never inherit the old global cache.
+        final cached = session.userId.trim().isEmpty
+            ? null
+            : await _readCachedProfile(session.userId);
+        stale = _staleSessionFailure(generation);
+        if (stale != null) return left(stale);
         return right(
           UserModel(
             id: session.userId,
@@ -64,20 +69,22 @@ class AuthRepositoryImpl implements AuthRepository {
           ),
         );
       }
+
       final userModel = await remoteDataSource.getCurrentUserData();
-      if (userModel == null) {
-        // No session, or the session could not be refreshed. Either way
-        // the user is not logged in.
-        return left(
-          Failure(
-            '登录状态已失效，请重新登录',
-            kind: FailureKind.auth,
-            code: 'auth.rejected',
-            l10nKey: 'auth.sessionExpired',
-          ),
-        );
+      stale = _staleSessionFailure(generation);
+      if (stale != null) return left(stale);
+      if (userModel == null || remoteDataSource.currentSession == null) {
+        return left(_expiredSessionFailure());
       }
-      await _writeCachedProfile(userModel);
+      final session = remoteDataSource.currentSession!;
+      if (session.userId.isNotEmpty &&
+          (session.userId != userModel.id ||
+              session.email != userModel.email)) {
+        return left(_changedSessionFailure());
+      }
+      if (session.userId.isNotEmpty) await _writeCachedProfile(userModel);
+      stale = _staleSessionFailure(generation);
+      if (stale != null) return left(stale);
       return right(userModel);
     } on ServerException catch (e) {
       return left(e.toFailure());
@@ -99,7 +106,11 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
       );
+      final generation = remoteDataSource.sessionGeneration;
+      if (!_matchesCurrentSession(user)) return left(_changedSessionFailure());
       await _writeCachedProfile(user);
+      final stale = _staleSessionFailure(generation);
+      if (stale != null) return left(stale);
       return right(user);
     } on NowaveApiException catch (e) {
       return left(_loginFailure(e));
@@ -127,7 +138,11 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
       );
+      final generation = remoteDataSource.sessionGeneration;
+      if (!_matchesCurrentSession(user)) return left(_changedSessionFailure());
       await _writeCachedProfile(user);
+      final stale = _staleSessionFailure(generation);
+      if (stale != null) return left(stale);
       return right(user);
     } on NowaveApiException catch (e) {
       return left(_signUpFailure(e));
@@ -146,12 +161,13 @@ class AuthRepositoryImpl implements AuthRepository {
     // local session regardless.
     // The reading history belongs to the account that is signing out and
     // must not leak into the next account on a shared device.
-    final historyUserId = remoteDataSource.currentSession?.userId;
+    final signingOutUserId = remoteDataSource.currentSession?.userId;
     try {
       await remoteDataSource.logout();
-      // The cached profile must not leak into the next account.
-      await _clearCachedProfile();
-      await _clearReadingHistory(historyUserId);
+      // Delete only the account captured before the async logout. A different
+      // account can sign in while cleanup is in flight.
+      await _clearCachedProfile(signingOutUserId);
+      await _clearReadingHistory(signingOutUserId);
       return right(null);
     } on ServerException catch (e) {
       return left(e.toFailure());
@@ -163,9 +179,9 @@ class AuthRepositoryImpl implements AuthRepository {
   /// Best-effort like the profile cache: a storage hiccup is logged and
   /// swallowed, never surfaced as a logout failure.
   Future<void> _clearReadingHistory(String? userId) async {
-    if (userId == null || readingHistoryStore == null) return;
+    if (userId == null || userId.trim().isEmpty) return;
     try {
-      await readingHistoryStore!.clear(userId: userId);
+      await readingHistoryStore.clear(userId: userId);
     } catch (e, stackTrace) {
       AppLogger.error(
         'clearing the reading history failed',
@@ -175,11 +191,39 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  Failure _expiredSessionFailure() => Failure(
+    '登录状态已失效，请重新登录',
+    kind: FailureKind.auth,
+    code: 'auth.rejected',
+    l10nKey: 'auth.sessionExpired',
+  );
+
+  Failure _changedSessionFailure() => Failure(
+    '登录账户已变更，请重试',
+    kind: FailureKind.auth,
+    code: 'auth.sessionChanged',
+  );
+
+  Failure? _staleSessionFailure(int expectedGeneration) {
+    if (remoteDataSource.sessionGeneration == expectedGeneration) return null;
+    return remoteDataSource.currentSession == null
+        ? _expiredSessionFailure()
+        : _changedSessionFailure();
+  }
+
+  bool _matchesCurrentSession(User user) {
+    final session = remoteDataSource.currentSession;
+    return session != null &&
+        session.userId.isNotEmpty &&
+        session.userId == user.id &&
+        session.email == user.email;
+  }
+
   /// Cache reads/writes are display conveniences: a storage hiccup is
   /// logged and swallowed, never surfaced as a login failure.
-  Future<CachedProfile?> _readCachedProfile() async {
+  Future<CachedProfile?> _readCachedProfile(String userId) async {
     try {
-      return await profileCache.read();
+      return await profileCache.read(userId: userId);
     } catch (e, stackTrace) {
       AppLogger.error(
         'reading the cached profile failed',
@@ -191,9 +235,11 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   Future<void> _writeCachedProfile(UserModel user) async {
+    if (user.id.trim().isEmpty) return;
     try {
       await profileCache.write(
-        CachedProfile(
+        userId: user.id,
+        profile: CachedProfile(
           displayName: user.name,
           avatarUrl: user.avatarUrl,
           website: user.website,
@@ -209,9 +255,10 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  Future<void> _clearCachedProfile() async {
+  Future<void> _clearCachedProfile(String? userId) async {
+    if (userId == null || userId.trim().isEmpty) return;
     try {
-      await profileCache.clear();
+      await profileCache.clear(userId: userId);
     } catch (e, stackTrace) {
       AppLogger.error(
         'clearing the cached profile failed',

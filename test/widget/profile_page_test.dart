@@ -52,6 +52,9 @@ class _Harness {
       userSignOut: UserSignOut(repository),
       currentUser: CurrentUser(repository),
       appUserCubit: appUser,
+      sessionGeneration: () => 0,
+      hasActiveSession: () => false,
+      isCurrentSessionUser: (_) => true,
     );
     router = GoRouter(
       initialLocation: '/profile',

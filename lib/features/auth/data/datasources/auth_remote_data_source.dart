@@ -16,6 +16,9 @@ abstract interface class AuthRemoteDataSource {
   /// The locally persisted session, without any network traffic.
   NowaveSessionData? get currentSession;
 
+  /// Changes when a session is adopted, restored or cleared, not on refresh.
+  int get sessionGeneration;
+
   Future<UserModel> signUpWithEmailPassword({
     required String name,
     required String email,
@@ -44,6 +47,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   NowaveSessionData? get currentSession => sessionManager.currentSession;
 
   @override
+  int get sessionGeneration => sessionManager.sessionGeneration;
+
+  @override
   Future<UserModel> signUpWithEmailPassword({
     required String name,
     required String email,
@@ -57,13 +63,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'password': password,
       }, authenticate: false),
     );
-    await sessionManager.adoptSession(tokens, email: email);
+    // Capture the generation immediately: adoptSession changes it before
+    // awaiting persistence, during which another account may be adopted.
+    final adopting = sessionManager.adoptSession(tokens, email: email);
+    final generation = sessionManager.sessionGeneration;
+    await adopting;
+    _requireGeneration(generation);
     try {
-      await _resolveUserIdentity();
+      await _resolveUserIdentity(generation);
+      _requireGeneration(generation);
       // The backend has no name field at registration: the display name is
       // written to the profile right after the account exists.
       await client.putJson('/me/profile', {'displayName': name});
+      _requireGeneration(generation);
     } catch (e, stackTrace) {
+      // A replacement session is not a recoverable profile-write failure.
+      _requireGeneration(generation);
       // The account exists and the session is valid; a failed profile
       // write must not fail the whole sign-up. The name can be edited
       // later in the profile page - but the failure must leave a trace,
@@ -74,7 +89,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         stackTrace: stackTrace,
       );
     }
+    _requireGeneration(generation);
     final user = await _loadCurrentUser(email: email);
+    await _recordProfileIdentityIfMissing(user, generation);
+    _requireGeneration(generation);
     sessionManager.notifySignedIn();
     return user;
   }
@@ -90,21 +108,28 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'password': password,
       }, authenticate: false),
     );
-    await sessionManager.adoptSession(tokens, email: email);
-    await _resolveUserIdentity();
+    final adopting = sessionManager.adoptSession(tokens, email: email);
+    final generation = sessionManager.sessionGeneration;
+    await adopting;
+    _requireGeneration(generation);
+    await _resolveUserIdentity(generation);
     final user = await _loadCurrentUser(email: email);
+    _requireGeneration(generation);
     sessionManager.notifySignedIn();
     return user;
   }
 
   @override
   Future<UserModel?> getCurrentUserData() async {
+    final generation = sessionManager.sessionGeneration;
     final email = currentSession?.email ?? '';
     if (sessionManager.accessToken == null) {
       return null;
     }
     try {
-      return await _loadCurrentUser(email: email);
+      final user = await _loadCurrentUser(email: email);
+      await _recordProfileIdentityIfMissing(user, generation);
+      return user;
     } on NowaveApiException catch (e) {
       if (e.statusCode == HttpStatus.unauthorized) {
         // The session could not be refreshed: not signed in.
@@ -156,14 +181,41 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     return NowaveTokenPair.fromDataMap(data.cast<String, dynamic>());
   }
 
-  /// Fetches the user id via `GET /me` and records it on the session.
-  Future<void> _resolveUserIdentity() async {
+  void _requireGeneration(int generation) {
+    if (sessionManager.sessionGeneration != generation) {
+      throw const NowaveApiException(
+        statusCode: HttpStatus.conflict,
+        code: 'SESSION_CHANGED',
+        message: 'Session changed during authentication.',
+      );
+    }
+  }
+
+  /// Fetches the user id via `GET /me` and records it only on that session.
+  Future<void> _resolveUserIdentity(int generation) async {
+    _requireGeneration(generation);
     final data = await client.getJson('/me');
+    _requireGeneration(generation);
     final id = (data as Map?)?['id'] as String?;
     if (id == null || id.isEmpty) {
       throw const ServerException('登录响应缺少用户信息', code: 'auth.parse.missingUser');
     }
     await sessionManager.updateUserId(id);
+    _requireGeneration(generation);
+  }
+
+  /// A successfully fetched `/me/profile` also supplies the server's user id.
+  /// It can recover sessions where the initial `/me` lookup was interrupted.
+  Future<void> _recordProfileIdentityIfMissing(
+    UserModel user,
+    int generation,
+  ) async {
+    _requireGeneration(generation);
+    if (sessionManager.currentSession?.userId.isEmpty == true &&
+        user.id.isNotEmpty) {
+      await sessionManager.updateUserId(user.id);
+      _requireGeneration(generation);
+    }
   }
 
   Future<UserModel> _loadCurrentUser({required String email}) async {

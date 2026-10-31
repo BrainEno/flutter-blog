@@ -35,6 +35,9 @@ void main() {
   late MockCurrentUser currentUser;
   late AppUserCubit appUserCubit;
   late AuthBloc bloc;
+  late int sessionGeneration;
+  late bool hasActiveSession;
+  late String? currentSessionUserId;
 
   setUpAll(() {
     registerFallbackValue(UserSignUpParams(email: '', name: '', password: ''));
@@ -48,12 +51,19 @@ void main() {
     userSignOut = MockUserSignOut();
     currentUser = MockCurrentUser();
     appUserCubit = AppUserCubit();
+    sessionGeneration = 0;
+    hasActiveSession = false;
+    currentSessionUserId = null;
     bloc = AuthBloc(
       userSignUp: userSignUp,
       userLogin: userLogin,
       userSignOut: userSignOut,
       currentUser: currentUser,
       appUserCubit: appUserCubit,
+      sessionGeneration: () => sessionGeneration,
+      hasActiveSession: () => hasActiveSession,
+      isCurrentSessionUser: (user) =>
+          currentSessionUserId == null || currentSessionUserId == user.id,
     );
     addTearDown(bloc.close);
     addTearDown(appUserCubit.close);
@@ -125,6 +135,28 @@ void main() {
       expect(appUserCubit.state, isA<AppUserLoggedIn>());
     });
 
+    test(
+      'a late login result cannot overwrite a newer account in the UI',
+      () async {
+        final started = Completer<void>();
+        final pending = Completer<Either<Failure, User>>();
+        when(() => userLogin(any())).thenAnswer((_) {
+          started.complete();
+          return pending.future;
+        });
+        bloc.add(AuthLogin(email: 'a@example.invalid', password: 'password'));
+        await started.future;
+        hasActiveSession = true;
+        currentSessionUserId = 'new-account';
+        appUserCubit.updateUser(_user('new-account'));
+        pending.complete(Right(_user('old-account')));
+        await bloc.close();
+
+        expect((appUserCubit.state as AppUserLoggedIn).user.id, 'new-account');
+        expect(bloc.state, isA<AuthFailure>());
+      },
+    );
+
     test('a rejected login emits a failure', () async {
       when(
         () => userLogin(any()),
@@ -159,6 +191,8 @@ void main() {
     );
 
     test('a stale logout failure does not clear the newer account', () async {
+      hasActiveSession = true;
+      currentSessionUserId = 'new-account';
       appUserCubit.updateUser(_user('new-account'));
       when(() => userSignOut(any())).thenAnswer(
         (_) async => Left(Failure('账户已变更', code: 'auth.sessionChanged')),
@@ -168,6 +202,58 @@ void main() {
 
       expect(states.last, isA<AuthLogoutFailure>());
       expect((appUserCubit.state as AppUserLoggedIn).user.id, 'new-account');
+    });
+
+    test(
+      'a new session arriving during cleanup is not cleared by logout',
+      () async {
+        final started = Completer<void>();
+        final pending = Completer<Either<Failure, void>>();
+        appUserCubit.updateUser(_user('old-account'));
+        when(() => userSignOut(any())).thenAnswer((_) {
+          started.complete();
+          return pending.future;
+        });
+        bloc.add(AuthLogout());
+        await started.future;
+        hasActiveSession = true;
+        currentSessionUserId = 'new-account';
+        sessionGeneration++;
+        appUserCubit.updateUser(_user('new-account'));
+        pending.complete(Right<Failure, void>(null));
+        await bloc.close();
+
+        expect(bloc.state, isA<AuthLogoutFailure>());
+        expect((appUserCubit.state as AppUserLoggedIn).user.id, 'new-account');
+      },
+    );
+
+    test(
+      'a stale identity is removed when another session is active',
+      () async {
+        hasActiveSession = true;
+        currentSessionUserId = 'new-account';
+        appUserCubit.updateUser(_user('old-account'));
+        when(() => userSignOut(any())).thenAnswer(
+          (_) async => Left(Failure('账户已变更', code: 'auth.sessionChanged')),
+        );
+
+        final states = await capture(() => bloc.add(AuthLogout()));
+        expect(states.last, isA<AuthLogoutFailure>());
+        expect(appUserCubit.state, isA<AppUserInitial>());
+      },
+    );
+
+    test('a failed logout does not hide a still-active session', () async {
+      hasActiveSession = true;
+      appUserCubit.updateUser(_user());
+      when(() => userSignOut(any())).thenAnswer(
+        (_) async => Left(Failure('local failure', kind: FailureKind.storage)),
+      );
+
+      final states = await capture(() => bloc.add(AuthLogout()));
+      expect(states.last, isA<AuthLogoutFailure>());
+      expect(appUserCubit.state, isA<AppUserLoggedIn>());
     });
 
     test('a successful logout emits success', () async {
@@ -205,6 +291,33 @@ void main() {
 
       expect(states, [isA<AuthFailure>()]);
       expect(appUserCubit.state, isA<AppUserInitial>());
+    });
+
+    test('a late restore cannot replace a newly signed-in account', () async {
+      final started = Completer<void>();
+      final pending = Completer<Either<Failure, User>>();
+      when(() => currentUser(any())).thenAnswer((_) {
+        started.complete();
+        return pending.future;
+      });
+      bloc.add(AuthIsUserLoggedIn());
+      await started.future;
+      sessionGeneration++;
+      appUserCubit.updateUser(_user('new-account'));
+      pending.complete(Right(_user('old-account')));
+      await bloc.close();
+
+      expect((appUserCubit.state as AppUserLoggedIn).user.id, 'new-account');
+      expect(bloc.state, isNot(isA<AuthSuccess>()));
+    });
+
+    test('an expired session still emits a restore failure', () async {
+      when(() => currentUser(any())).thenAnswer((_) async {
+        sessionGeneration++;
+        return Left(Failure('登录状态已失效，请重新登录'));
+      });
+      final states = await capture(() => bloc.add(AuthIsUserLoggedIn()));
+      expect(states, [isA<AuthFailure>()]);
     });
   });
 }

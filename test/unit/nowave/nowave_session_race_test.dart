@@ -167,6 +167,238 @@ void main() {
     },
   );
 
+  test('a replaced session cannot continue signup after persistence', () async {
+    final store = _BlockingStore(blockFirstWrite: true);
+    final manager = NowaveSessionManager(
+      client: _client((_) async => _rotated('unused')),
+      store: store,
+      now: () => DateTime.utc(2026),
+    );
+    final paths = <String>[];
+    final client = NowaveApiClient(
+      baseUrl: Uri.parse('https://api.example.invalid'),
+      authenticator: manager,
+      httpClient: MockClient((request) async {
+        paths.add(request.url.path);
+        return _rotated('A');
+      }),
+    );
+    final source = AuthRemoteDataSourceImpl(client, manager);
+    final pending = source.signUpWithEmailPassword(
+      name: 'Alice',
+      email: 'a@example.invalid',
+      password: 'password',
+    );
+    final expectation = expectLater(
+      pending,
+      throwsA(
+        isA<NowaveApiException>().having(
+          (e) => e.code,
+          'code',
+          'SESSION_CHANGED',
+        ),
+      ),
+    );
+    await store.started.future;
+    final adoptedB = manager.adoptSession(
+      _tokens('B'),
+      email: 'b@example.invalid',
+    );
+    store.release.complete();
+    await adoptedB;
+    await expectation;
+    expect(paths, ['/api/v1/auth/register']);
+    expect(manager.accessToken, 'access-B');
+  });
+
+  test('a stale signup cannot write its name to the new account', () async {
+    final started = Completer<void>();
+    final response = Completer<http.Response>();
+    final store = _MemoryStore();
+    final manager = NowaveSessionManager(
+      client: _client((_) async => _rotated('unused')),
+      store: store,
+      now: () => DateTime.utc(2026),
+    );
+    var profileWrites = 0;
+    var profileReads = 0;
+    final client = NowaveApiClient(
+      baseUrl: Uri.parse('https://api.example.invalid'),
+      authenticator: manager,
+      httpClient: MockClient((request) async {
+        if (request.url.path.endsWith('/auth/register')) return _rotated('A');
+        if (request.url.path.endsWith('/me')) {
+          started.complete();
+          return response.future;
+        }
+        if (request.method == 'PUT') profileWrites++;
+        if (request.url.path.endsWith('/me/profile')) profileReads++;
+        return http.Response(jsonEncode({'data': null}), 200);
+      }),
+    );
+    final source = AuthRemoteDataSourceImpl(client, manager);
+    final pending = source.signUpWithEmailPassword(
+      name: 'Alice',
+      email: 'a@example.invalid',
+      password: 'password',
+    );
+    final expectation = expectLater(
+      pending,
+      throwsA(
+        isA<NowaveApiException>().having(
+          (e) => e.code,
+          'code',
+          'SESSION_CHANGED',
+        ),
+      ),
+    );
+    await started.future;
+    await manager.adoptSession(_tokens('B'), email: 'b@example.invalid');
+    await manager.updateUserId('user-B');
+    response.complete(
+      http.Response(
+        jsonEncode({
+          'data': {'id': 'user-A'},
+        }),
+        200,
+      ),
+    );
+    await expectation;
+    expect(profileWrites, 0);
+    expect(profileReads, 0);
+    expect(manager.currentSession?.userId, 'user-B');
+  });
+
+  test(
+    'normal signup resolves identity, writes the name, and signs in',
+    () async {
+      final store = _MemoryStore();
+      final manager = NowaveSessionManager(
+        client: _client((_) async => _rotated('unused')),
+        store: store,
+        now: () => DateTime.utc(2026),
+      );
+      final requests = <String>[];
+      final client = NowaveApiClient(
+        baseUrl: Uri.parse('https://api.example.invalid'),
+        authenticator: manager,
+        httpClient: MockClient((request) async {
+          requests.add('${request.method} ${request.url.path}');
+          if (request.url.path.endsWith('/auth/register')) return _rotated('A');
+          if (request.url.path.endsWith('/me')) {
+            return http.Response(
+              jsonEncode({
+                'data': {'id': 'user-A'},
+              }),
+              200,
+            );
+          }
+          if (request.method == 'PUT') {
+            expect(jsonDecode(request.body), {'displayName': 'Alice'});
+            return http.Response(jsonEncode({'data': null}), 200);
+          }
+          return http.Response(
+            jsonEncode({
+              'data': {'userId': 'user-A', 'displayName': 'Alice'},
+            }),
+            200,
+          );
+        }),
+      );
+      final user = await AuthRemoteDataSourceImpl(client, manager)
+          .signUpWithEmailPassword(
+            name: 'Alice',
+            email: 'a@example.invalid',
+            password: 'password',
+          );
+      expect(user.id, 'user-A');
+      expect(manager.currentSession?.userId, 'user-A');
+      expect(requests, [
+        'POST /api/v1/auth/register',
+        'GET /api/v1/me',
+        'PUT /api/v1/me/profile',
+        'GET /api/v1/me/profile',
+      ]);
+    },
+  );
+
+  test(
+    'signup recovers identity from the profile if initial lookup fails',
+    () async {
+      final store = _MemoryStore();
+      final manager = NowaveSessionManager(
+        client: _client((_) async => _rotated('unused')),
+        store: store,
+        now: () => DateTime.utc(2026),
+      );
+      var profileWrites = 0;
+      final client = NowaveApiClient(
+        baseUrl: Uri.parse('https://api.example.invalid'),
+        authenticator: manager,
+        httpClient: MockClient((request) async {
+          if (request.url.path.endsWith('/auth/register')) return _rotated('A');
+          if (request.url.path.endsWith('/me')) {
+            return http.Response(
+              jsonEncode({
+                'error': {'code': 'UNAVAILABLE'},
+              }),
+              503,
+            );
+          }
+          if (request.method == 'PUT') profileWrites++;
+          return http.Response(
+            jsonEncode({
+              'data': {'userId': 'user-A', 'displayName': 'Alice'},
+            }),
+            200,
+          );
+        }),
+      );
+      final source = AuthRemoteDataSourceImpl(client, manager);
+      final user = await source.signUpWithEmailPassword(
+        name: 'Alice',
+        email: 'a@example.invalid',
+        password: 'password',
+      );
+      expect(user.id, 'user-A');
+      expect(manager.currentSession?.userId, 'user-A');
+      expect(store.stored?.userId, 'user-A');
+      expect(profileWrites, 0);
+    },
+  );
+
+  test(
+    'online restore fills a missing session identity from the profile',
+    () async {
+      final store = _MemoryStore(_session('A').copyWith(userId: ''));
+      final manager = NowaveSessionManager(
+        client: _client((_) async => _rotated('unused')),
+        store: store,
+        now: () => DateTime.utc(2026),
+      );
+      await manager.restore();
+      final client = NowaveApiClient(
+        baseUrl: Uri.parse('https://api.example.invalid'),
+        authenticator: manager,
+        httpClient: MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'data': {'userId': 'user-A', 'displayName': 'Alice'},
+            }),
+            200,
+          ),
+        ),
+      );
+      final user = await AuthRemoteDataSourceImpl(
+        client,
+        manager,
+      ).getCurrentUserData();
+      expect(user?.id, 'user-A');
+      expect(manager.currentSession?.userId, 'user-A');
+      expect(store.stored?.userId, 'user-A');
+    },
+  );
+
   test('a delayed logout cannot clear a newly adopted account', () async {
     final started = Completer<void>();
     final response = Completer<http.Response>();

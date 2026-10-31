@@ -222,6 +222,9 @@ class Harness {
       userSignOut: UserSignOut(authRepository),
       currentUser: CurrentUser(authRepository),
       appUserCubit: appUserCubit,
+      sessionGeneration: () => 0,
+      hasActiveSession: () => false,
+      isCurrentSessionUser: (_) => true,
     );
   }
 
