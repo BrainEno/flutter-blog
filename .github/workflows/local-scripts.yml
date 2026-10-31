@@ -38,4 +38,14 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Test Android script with fake tools (PowerShell 5.1)
         shell: powershell
-        run: .\scripts\tests\test_android.ps1
+        run: |
+          try {
+            .\scripts\tests\test_android.ps1
+          } catch {
+            # Expose a bounded diagnostic even where Actions log downloads
+            # are unavailable; fixtures contain no real credentials.
+            $detail = $_.Exception.Message -replace '%', '%25' -replace "`r", '%0D' -replace "`n", '%0A'
+            if ($detail.Length -gt 3000) { $detail = $detail.Substring(0, 3000) }
+            Write-Output "::error title=Windows script mock::$detail"
+            throw
+          }

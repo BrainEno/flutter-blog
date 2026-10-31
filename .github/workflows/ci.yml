@@ -385,6 +385,20 @@ jobs:
             bash tool/ci/annotate_failure.sh analyze build/reports/signing-test.log
           fi
           exit "$status"
+      - name: Compile the Android debug variant and check network policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter build apk --debug --dart-define-from-file=env.json --dart-define=BELOG_DEV_BACKEND_CHECK=true
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -n "$AAPT"
+          "$AAPT" dump xmltree build/app/outputs/flutter-apk/app-debug.apk AndroidManifest.xml > build/reports/android-debug-manifest.txt
+          "$AAPT" dump xmltree build/app/outputs/flutter-apk/app-release.apk AndroidManifest.xml > build/reports/android-release-manifest.txt
+          grep -E 'android:usesCleartextTraffic.*0xffffffff' build/reports/android-debug-manifest.txt
+          if grep -E 'android:usesCleartextTraffic.*0xffffffff' build/reports/android-release-manifest.txt; then
+            echo '::error::Cleartext must not be enabled in the release manifest.'
+            exit 1
+          fi
       - name: Upload Android build evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -395,6 +409,8 @@ jobs:
             build/reports/apk-permissions.txt
             build/reports/apk-16k-alignment.log
             build/reports/signing-test.log
+            build/reports/android-debug-manifest.txt
+            build/reports/android-release-manifest.txt
             build/reports/belog-QA-debug-signed.apk
           if-no-files-found: warn
           retention-days: 14
