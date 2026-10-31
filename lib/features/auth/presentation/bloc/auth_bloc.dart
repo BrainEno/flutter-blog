@@ -113,15 +113,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     res.fold(
       (failure) {
-        // Do not clear an active or newer session after a failed sign-out.
-        if (failure.code != 'auth.sessionChanged' && !_hasActiveSession()) {
-          _appUserCubit.updateUser(null);
-        }
+        // Keep only a UI identity that still belongs to the active session.
+        _discardStaleUser();
         emit(AuthLogoutFailure(failure.forPresentation()));
       },
       (_) {
         // A new login may arrive while per-account cleanup is still running.
         if (_hasActiveSession()) {
+          _discardStaleUser();
           emit(
             AuthLogoutFailure(
               Failure(
@@ -139,9 +138,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
   }
 
+  void _discardStaleUser() {
+    final state = _appUserCubit.state;
+    if (!_hasActiveSession() ||
+        (state is AppUserLoggedIn && !_isCurrentSessionUser(state.user))) {
+      _appUserCubit.updateUser(null);
+    }
+  }
+
   void _emitAuthSuccess(User user, Emitter<AuthState> emit) {
     // A newer session can replace the result between repository and UI.
     if (!_isCurrentSessionUser(user)) {
+      _discardStaleUser();
       emit(
         AuthFailure(
           Failure(
