@@ -57,6 +57,11 @@ class _UserBlogsPageState extends State<UserBlogsPage>
     }
   }
 
+  Future<void> _openRecycleBin() async {
+    await context.push('/profile/my-articles/recycle-bin');
+    if (mounted) _fetchUserBlogs();
+  }
+
   /// Long-press delete: the article moves to the recycle bin, where it can
   /// still be restored until the server purge.
   Future<void> _confirmDelete(Blog blog) async {
@@ -92,7 +97,7 @@ class _UserBlogsPageState extends State<UserBlogsPage>
           IconButton(
             tooltip: context.l10n.recycleBinTooltip,
             icon: const Icon(Icons.delete_outline),
-            onPressed: () => context.push('/profile/recycle-bin'),
+            onPressed: _openRecycleBin,
           ),
         ],
       ),

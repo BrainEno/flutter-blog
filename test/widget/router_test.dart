@@ -1,6 +1,7 @@
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
+import 'package:belog/core/common/widgets/no_wave_action_row.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
@@ -19,7 +20,10 @@ import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/data/models/comment_model.dart';
 import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart';
 import 'package:belog/features/blog/data/repositories/comment_repository_impl.dart';
+import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
+import 'package:belog/features/blog/domain/usecase/get_deleted_blogs.dart';
+import 'package:belog/features/blog/domain/usecase/restore_deleted_blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
@@ -36,10 +40,13 @@ import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
+import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
 import 'package:belog/features/blog/presentation/pages/saved_blogs_page.dart';
 import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
+import 'package:belog/features/blog/presentation/pages/recycle_bin_page.dart';
+import 'package:belog/features/blog/presentation/pages/user_blogs_page.dart';
 import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:belog/features/user/data/datasources/author_remote_data_source.dart';
@@ -418,6 +425,162 @@ void main() {
     verify(() => harness.authorRemote.getAuthorProfile('author')).called(1);
   });
 
+  testWidgets('reader and author navigation stay on the search tab stack', (
+    tester,
+  ) async {
+    final harness = Harness()..buildRouter(initialLocation: '/search/view/abc');
+    addTearDown(harness.dispose);
+    when(
+      () => harness.remote.getBlogsByPosterId('author'),
+    ).thenAnswer((_) async => [sampleBlog('another', '作者的另一篇文章')]);
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(BlogViewerPage), findsOneWidget);
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      1,
+    );
+
+    await tester.tap(find.text('匿名作者'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AuthorPage), findsOneWidget);
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      1,
+    );
+    await tester.ensureVisible(find.text('作者的另一篇文章'));
+    await tester.tap(find.text('作者的另一篇文章'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BlogViewerPage), findsOneWidget);
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      1,
+    );
+
+    await tester.tap(find.text('首页'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('搜索'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BlogViewerPage), findsOneWidget);
+    final backLabel = MaterialLocalizations.of(
+      tester.element(find.byType(BlogViewerPage)),
+    ).backButtonTooltip;
+    await tester.tap(find.byTooltip(backLabel));
+    await tester.pumpAndSettle();
+    expect(find.byType(AuthorPage), findsOneWidget);
+    await tester.tap(find.byTooltip(backLabel));
+    await tester.pumpAndSettle();
+    expect(find.byType(BlogViewerPage), findsOneWidget);
+    expect(find.text('深链文章'), findsOneWidget);
+  });
+
+  testWidgets('article deletion still requires confirmation', (tester) async {
+    final harness = Harness();
+    addTearDown(harness.dispose);
+    final article = sampleBlog(
+      'editable',
+      '可删除的文章',
+    ).copyWith(articleId: 'article-uuid');
+    var deleted = false;
+    when(
+      () => harness.remote.getBlogsByPosterId('user'),
+    ).thenAnswer((_) async => deleted ? <BlogModel>[] : [article]);
+    when(
+      () => harness.remote.getBlogById('editable'),
+    ).thenAnswer((_) async => article);
+    when(() => harness.remote.deleteArticle('article-uuid')).thenAnswer((
+      _,
+    ) async {
+      deleted = true;
+      return true;
+    });
+    when(
+      () => harness.local.deleteCachedBlog('editable'),
+    ).thenAnswer((_) async {});
+    harness.appUserCubit.updateUser(sampleUser());
+    harness.buildRouter(initialLocation: '/profile/my-articles');
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('删除文章'));
+    await tester.pumpAndSettle();
+    expect(find.text('确定删除「可删除的文章」吗？删除后可在回收站中恢复。'), findsOneWidget);
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    verifyNever(() => harness.remote.deleteArticle(any()));
+    expect(find.text('可删除的文章'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('删除文章'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除'));
+    await tester.pumpAndSettle();
+    verify(() => harness.remote.deleteArticle('article-uuid')).called(1);
+    expect(find.text('您还没有发布任何文章'), findsOneWidget);
+  });
+
+  testWidgets('profile to recycle bin restores and refreshes my articles', (
+    tester,
+  ) async {
+    final harness = Harness();
+    addTearDown(harness.dispose);
+    var restored = false;
+    when(() => harness.remote.getBlogsByPosterId('user')).thenAnswer(
+      (_) async => restored ? [sampleBlog('restored', '恢复的文章')] : <BlogModel>[],
+    );
+    when(() => harness.remote.getDeletedBlogs()).thenAnswer(
+      (_) async => [
+        DeletedBlog(
+          articleId: 'deleted-uuid',
+          title: '恢复的文章',
+          imageUrl: '',
+          deletedAt: DateTime.utc(2026, 10, 1),
+          purgesAt: null,
+        ),
+      ],
+    );
+    when(() => harness.remote.restoreArticle('deleted-uuid')).thenAnswer((
+      _,
+    ) async {
+      restored = true;
+      return sampleBlog('restored', '恢复的文章');
+    });
+    final repository = BlogRepositoryImpl(
+      harness.remote,
+      harness.local,
+      harness.connection,
+    );
+    GetIt.instance.registerFactory(
+      () => RecycleBinBloc(
+        getDeletedBlogs: GetDeletedBlogs(repository),
+        restoreDeletedBlog: RestoreDeletedBlog(repository),
+      ),
+    );
+    harness.appUserCubit.updateUser(sampleUser());
+    harness.buildRouter(initialLocation: '/profile');
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('我的文章'));
+    await tester.pumpAndSettle();
+    expect(find.byType(UserBlogsPage), findsOneWidget);
+    expect(find.text('您还没有发布任何文章'), findsOneWidget);
+    await tester.tap(find.byTooltip('回收站'));
+    await tester.pumpAndSettle();
+    expect(find.byType(RecycleBinPage), findsOneWidget);
+    expect(find.text('恢复的文章'), findsOneWidget);
+    await tester.tap(find.text('恢复'));
+    await tester.pumpAndSettle();
+    verify(() => harness.remote.restoreArticle('deleted-uuid')).called(1);
+    expect(find.text('回收站是空的'), findsOneWidget);
+
+    harness.router!.pop();
+    await tester.pumpAndSettle();
+    expect(find.byType(UserBlogsPage), findsOneWidget);
+    expect(find.text('恢复的文章'), findsOneWidget);
+    verify(() => harness.remote.getBlogsByPosterId('user')).called(2);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('signing out from the profile lands on the login page', (
     tester,
   ) async {
@@ -428,11 +591,8 @@ void main() {
     await harness.pump(tester);
     await tester.pumpAndSettle();
 
-    // The profile list lost an entry in the no-wave migration (G2 hides
-    // account settings), which moved the sign-out tile to a screen position
-    // where tapping the Text widget itself lands outside its render box.
-    // Tap the ListTile instead: its whole area belongs to the ink response.
-    final signOutTile = find.widgetWithText(ListTile, '退出登录');
+    // Scroll to the action row before tapping its full ink response.
+    final signOutTile = find.widgetWithText(NoWaveActionRow, '退出登录');
     await tester.scrollUntilVisible(
       signOutTile,
       120,

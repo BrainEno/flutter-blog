@@ -16,6 +16,7 @@ import 'package:belog/features/blog/presentation/widgets/article_reader_header.d
 import 'package:belog/features/blog/presentation/widgets/comments_section.dart';
 import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
 import 'package:belog/features/blog/presentation/widgets/related_articles_section.dart';
+import 'package:belog/router/shell_branch_location.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -159,6 +160,15 @@ class _ViewerScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    void openAuthor(String userId) {
+      context.push(
+        shellBranchLocation(
+          GoRouterState.of(context).uri,
+          '/author/${Uri.encodeComponent(userId)}',
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -223,8 +233,7 @@ class _ViewerScaffold extends StatelessWidget {
                     children: [
                       ArticleReaderHeader(
                         blog: blog,
-                        onAuthorTap: () =>
-                            context.push('/author/${blog.posterId}'),
+                        onAuthorTap: () => openAuthor(blog.posterId),
                       ),
                       const SizedBox(height: 32),
                       MarkdownBody(
@@ -239,12 +248,18 @@ class _ViewerScaffold extends StatelessWidget {
                       RelatedArticlesSection(
                         getRelatedArticles: getRelatedArticles,
                         slug: blog.id,
-                        onOpenArticle: (related) =>
-                            context.push('/view/${related.id}', extra: related),
+                        onOpenArticle: (related) => context.push(
+                          shellBranchLocation(
+                            GoRouterState.of(context).uri,
+                            '/view/${Uri.encodeComponent(related.id)}',
+                          ),
+                          extra: related,
+                        ),
                       ),
                       CommentsSection(
                         slug: blog.id,
                         onRequestLogin: onRequestLogin,
+                        onOpenAuthor: openAuthor,
                       ),
                     ],
                   ),

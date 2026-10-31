@@ -1,6 +1,7 @@
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
+import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
@@ -20,6 +21,8 @@ class MockCreateComment extends Mock implements CreateComment {}
 class MockDeleteComment extends Mock implements DeleteComment {}
 
 class MockUuid extends Mock implements Uuid {}
+
+void _ignoreAuthor(String userId) {}
 
 Comment _comment(
   String id, {
@@ -61,7 +64,12 @@ Future<void> _pumpSection(
         supportedLocales: AppLocalizations.supportedLocales,
 
         home: Scaffold(
-          body: SingleChildScrollView(child: CommentsSection(slug: 'my-slug')),
+          body: SingleChildScrollView(
+            child: CommentsSection(
+              slug: 'my-slug',
+              onOpenAuthor: _ignoreAuthor,
+            ),
+          ),
         ),
       ),
     ),
@@ -128,8 +136,48 @@ void main() {
     expect(find.text('写得真好'), findsOneWidget);
     expect(find.text('同感'), findsOneWidget);
     expect(find.text('沙发'), findsOneWidget);
-    // Two roots + one nested reply.
+    // Two roots + one nested reply share the same neutral portrait component.
     expect(find.text('3'), findsOneWidget);
+    expect(find.byType(NoWaveAvatar), findsNWidgets(3));
+  });
+
+  testWidgets('comment and reply portraits delegate author selection', (
+    tester,
+  ) async {
+    when(() => getComments('my-slug')).thenAnswer(
+      (_) async => right<Failure, List<Comment>>([
+        _comment(
+          'c1',
+          authorId: 'first-author',
+          replies: [_comment('c2', authorId: 'reply-author', parentId: 'c1')],
+        ),
+      ]),
+    );
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+    final opened = <String>[];
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<AppUserCubit>.value(value: appUserCubit),
+          BlocProvider<CommentBloc>.value(value: bloc),
+        ],
+        child: MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: CommentsSection(slug: 'my-slug', onOpenAuthor: opened.add),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(NoWaveAvatar).first);
+    await tester.tap(find.byType(NoWaveAvatar).last);
+    expect(opened, ['first-author', 'reply-author']);
   });
 
   testWidgets('signed-out readers see the login prompt, no composer', (
@@ -173,6 +221,7 @@ void main() {
           home: Scaffold(
             body: CommentsSection(
               slug: 'my-slug',
+              onOpenAuthor: _ignoreAuthor,
               onRequestLogin: () => requested = true,
             ),
           ),
