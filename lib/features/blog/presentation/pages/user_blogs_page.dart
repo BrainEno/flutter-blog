@@ -123,6 +123,10 @@ class _UserBlogsPageState extends State<UserBlogsPage>
                   context,
                   localizedFailure(context.l10n, state.failure),
                 );
+                // The remote delete committed even though cache cleanup failed.
+                if (state.failure.code == 'article.deletedCacheFailed') {
+                  _fetchUserBlogs();
+                }
               }
             },
           ),

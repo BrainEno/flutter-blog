@@ -61,8 +61,8 @@ class BlogRepositoryImpl implements BlogRepository {
       );
       final blog = await blogRemoteDataSource.uploadBlog(blogModel);
       return right(blog);
-    } on ServerException catch (e) {
-      return left(e.toFailure());
+    } catch (error) {
+      return left(mapErrorToFailure(error));
     }
   }
 
@@ -128,26 +128,33 @@ class BlogRepositoryImpl implements BlogRepository {
       }
       final blogs = await blogRemoteDataSource.getBlogsByPosterId(userId);
       return right(blogs);
-    } on ServerException catch (e) {
-      return left(e.toFailure());
+    } catch (error) {
+      return left(mapErrorToFailure(error));
     }
   }
 
   @override
   Future<Either<Failure, Blog>> getBlogById(String blogId) async {
     try {
-      if (!await (connectionChecker.isConnected)) {
-        final cached = await blogLocalDataSource.loadBlogById(blogId);
-        if (cached != null) {
-          return right(cached);
+      if (!await connectionChecker.isConnected) {
+        try {
+          final cached = await blogLocalDataSource.loadBlogById(blogId);
+          return cached == null
+              ? left(Failure.networkOffline())
+              : right(cached);
+        } catch (error) {
+          return left(Failure.storage(cause: error));
         }
-        return left(Failure.networkOffline());
       }
       final blog = await blogRemoteDataSource.getBlogById(blogId);
-      await blogLocalDataSource.uploadLocalBlogs(blogs: [blog]);
+      try {
+        await blogLocalDataSource.uploadLocalBlogs(blogs: [blog]);
+      } catch (error) {
+        return left(Failure.storage(cause: error));
+      }
       return right(blog);
-    } on ServerException catch (e) {
-      return left(e.toFailure());
+    } catch (error) {
+      return left(mapErrorToFailure(error));
     }
   }
 
@@ -159,22 +166,24 @@ class BlogRepositoryImpl implements BlogRepository {
       }
       final blogs = await blogRemoteDataSource.getBlogsByTag(tag);
       return right(blogs);
-    } on ServerException catch (e) {
-      return left(e.toFailure());
+    } catch (error) {
+      return left(mapErrorToFailure(error));
     }
   }
 
   @override
   Future<Either<Failure, List<Blog>>> searchBlogs(String query) async {
     try {
-      if (!await (connectionChecker.isConnected)) {
-        final blogs = await blogLocalDataSource.searchLocalBlogs(query);
-        return right(blogs);
+      if (!await connectionChecker.isConnected) {
+        try {
+          return right(await blogLocalDataSource.searchLocalBlogs(query));
+        } catch (error) {
+          return left(Failure.storage(cause: error));
+        }
       }
-      final blogs = await blogRemoteDataSource.searchBlogs(query);
-      return right(blogs);
-    } on ServerException catch (e) {
-      return left(e.toFailure());
+      return right(await blogRemoteDataSource.searchBlogs(query));
+    } catch (error) {
+      return left(mapErrorToFailure(error));
     }
   }
 
@@ -187,19 +196,36 @@ class BlogRepositoryImpl implements BlogRepository {
       // The delete endpoint addresses the server UUID, the app addresses
       // articles by slug: resolve via the cache first (no extra request),
       // falling back to a remote fetch like editBlog does.
-      var articleId =
-          (await blogLocalDataSource.loadBlogById(blogId))?.articleId ?? '';
+      late String articleId;
+      try {
+        articleId =
+            (await blogLocalDataSource.loadBlogById(blogId))?.articleId ?? '';
+      } catch (error) {
+        return left(Failure.storage(cause: error));
+      }
       if (articleId.isEmpty) {
         articleId = (await blogRemoteDataSource.getBlogById(blogId)).articleId;
       }
       final res = await blogRemoteDataSource.deleteArticle(articleId);
       if (res) {
-        // The cached copy must not outlive the server article offline.
-        await blogLocalDataSource.deleteCachedBlog(blogId);
+        try {
+          await blogLocalDataSource.deleteCachedBlog(blogId);
+        } catch (error) {
+          // Do not report an ordinary delete failure: the server already
+          // committed. The cached row may still be visible while offline.
+          return left(
+            Failure(
+              '文章已在服务器删除，但本地缓存未清除；离线时可能仍显示旧内容',
+              kind: FailureKind.storage,
+              code: 'article.deletedCacheFailed',
+              cause: error,
+            ),
+          );
+        }
       }
       return right(res);
-    } on ServerException catch (e) {
-      return left(e.toFailure());
+    } catch (error) {
+      return left(mapErrorToFailure(error));
     }
   }
 
@@ -210,8 +236,8 @@ class BlogRepositoryImpl implements BlogRepository {
         return left(Failure.networkOffline());
       }
       return right(await blogRemoteDataSource.getDeletedBlogs());
-    } on ServerException catch (e) {
-      return left(e.toFailure());
+    } catch (error) {
+      return left(mapErrorToFailure(error));
     }
   }
 
@@ -222,8 +248,8 @@ class BlogRepositoryImpl implements BlogRepository {
         return left(Failure.networkOffline());
       }
       return right(await blogRemoteDataSource.restoreArticle(articleId));
-    } on ServerException catch (e) {
-      return left(e.toFailure());
+    } catch (error) {
+      return left(mapErrorToFailure(error));
     }
   }
 
@@ -260,8 +286,8 @@ class BlogRepositoryImpl implements BlogRepository {
 
       final blogUpdated = await blogRemoteDataSource.editBlog(blogToUpdate);
       return right(blogUpdated);
-    } on ServerException catch (e) {
-      return left(e.toFailure());
+    } catch (error) {
+      return left(mapErrorToFailure(error));
     }
   }
 

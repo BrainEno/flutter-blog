@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/network/api_connection_checker.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
@@ -25,7 +26,7 @@ import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:belog/features/blog/data/datasources/blog_draft_store.dart';
+import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
@@ -62,6 +63,8 @@ import 'package:belog/features/user/domain/repositories/user_repository.dart';
 import 'package:belog/features/user/data/user_data_export.dart';
 import 'package:belog/features/user/domain/usecases/author.dart';
 import 'package:belog/features/user/domain/usecases/edit_user_usecase.dart';
+import 'package:belog/features/user/domain/usecases/export_user_data.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -144,8 +147,13 @@ Future<void> initDependencies() async {
   serviceLocator.registerLazySingleton(() => ThemeBloc(serviceLocator()));
 
   serviceLocator.registerLazySingleton(() => AppUserCubit());
+  // Opt in only for debug builds: development APIs can be reachable on a
+  // LAN even when the public-internet probe cannot reach its endpoints.
+  const useDevBackendProbe = bool.fromEnvironment('BELOG_DEV_BACKEND_CHECK');
   serviceLocator.registerFactory<ConnectionChecker>(
-    () => ConnectionCheckerImpl(serviceLocator()),
+    () => kDebugMode && useDevBackendProbe
+        ? ApiConnectionChecker(uri)
+        : ConnectionCheckerImpl(serviceLocator()),
   );
 }
 
@@ -322,7 +330,7 @@ void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {
       ),
     )
     // Data export (issue #22): profile + own articles as a JSON file.
-    ..registerLazySingleton(
+    ..registerLazySingleton<ExportUserData>(
       () => UserDataExporter(
         getBlogsByPoster: serviceLocator<GetBlogsByPoster>(),
       ),

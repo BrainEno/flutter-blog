@@ -158,6 +158,18 @@ void main() {
       },
     );
 
+    test('a stale logout failure does not clear the newer account', () async {
+      appUserCubit.updateUser(_user('new-account'));
+      when(() => userSignOut(any())).thenAnswer(
+        (_) async => Left(Failure('账户已变更', code: 'auth.sessionChanged')),
+      );
+
+      final states = await capture(() => bloc.add(AuthLogout()));
+
+      expect(states.last, isA<AuthLogoutFailure>());
+      expect((appUserCubit.state as AppUserLoggedIn).user.id, 'new-account');
+    });
+
     test('a successful logout emits success', () async {
       appUserCubit.updateUser(_user());
       when(

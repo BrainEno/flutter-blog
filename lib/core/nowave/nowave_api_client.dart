@@ -80,6 +80,14 @@ abstract interface class NowaveProactiveAuthenticator
   Future<bool> ensureFreshAccess();
 }
 
+/// Optional identity fence for authenticators that can switch sessions.
+/// Refreshing a token for the same session does not change the generation;
+/// signing in, signing out, or replacing a session does.
+abstract interface class NowaveSessionBoundAuthenticator
+    implements NowaveAuthenticator {
+  int get sessionGeneration;
+}
+
 /// Thin HTTP client for the no-wave `apps/api` REST surface (`/api/v1`).
 ///
 /// Responsibilities:
@@ -262,47 +270,90 @@ class NowaveApiClient {
       );
     } else {
       final authenticator = _authenticator;
-      if (authenticator is NowaveProactiveAuthenticator) {
-        // Cheap time check inside; rotates only when expiry is close. A
-        // failure here never blocks the request - the 401 path below is
-        // the authority for unrecoverable sessions.
-        await authenticator.ensureFreshAccess();
+      final bound = authenticator is NowaveSessionBoundAuthenticator
+          ? authenticator
+          : null;
+      final generation = bound?.sessionGeneration;
+
+      bool sessionEnded() =>
+          bound != null &&
+          bound.sessionGeneration != generation &&
+          authenticator.accessToken == null;
+
+      void ensureSameSession() {
+        if (bound != null && bound.sessionGeneration != generation) {
+          // A write may already have committed under the old account. Do not
+          // replay it with the new account or present the old response as new.
+          throw const NowaveApiException(
+            statusCode: HttpStatus.conflict,
+            code: 'SESSION_CHANGED',
+            message: 'Session changed while a request was in flight.',
+          );
+        }
       }
-      // Attach the bearer token; a 401 rotates the access token exactly
-      // once (a failed refresh - revoked session family - leaves the 401
-      // for the caller to map).
-      final headers = _headers(
-        body: body,
-        rawBody: rawBody,
-        contentType: contentType,
-        token: authenticator.accessToken,
-      )..addAll(extraHeaders ?? const {});
-      response = await _send(
-        method,
-        uri,
-        headers,
-        rawBody ?? (body == null ? null : jsonEncode(body)),
-        timeout: timeout,
-      );
-      if (response.statusCode == HttpStatus.unauthorized &&
-          allowRefresh &&
-          authenticator.accessToken != null) {
-        AppLogger.debug('401 from $method ${uri.path}; refreshing session');
-        final refreshed = await authenticator.refresh();
-        if (refreshed) {
-          final headers = _headers(
-            body: body,
-            rawBody: rawBody,
-            contentType: contentType,
-            token: authenticator.accessToken,
-          )..addAll(extraHeaders ?? const {});
-          response = await _send(
+
+      Future<http.Response> sendForSession(Map<String, String> headers) async {
+        try {
+          return await _send(
             method,
             uri,
             headers,
             rawBody ?? (body == null ? null : jsonEncode(body)),
             timeout: timeout,
           );
+        } finally {
+          // Applies to both responses and transport errors.
+          ensureSameSession();
+        }
+      }
+
+      if (authenticator is NowaveProactiveAuthenticator) {
+        await authenticator.ensureFreshAccess();
+        if (sessionEnded()) {
+          // No request has been sent yet. Preserve the ordinary expired-login
+          // behavior instead of implying that a write might have committed.
+          throw const NowaveApiException(
+            statusCode: HttpStatus.unauthorized,
+            code: 'UNAUTHENTICATED',
+            message: 'Session expired before the request was sent.',
+          );
+        }
+        ensureSameSession();
+      }
+      final sentToken = authenticator.accessToken;
+      final headers = _headers(
+        body: body,
+        rawBody: rawBody,
+        contentType: contentType,
+        token: sentToken,
+      )..addAll(extraHeaders ?? const {});
+      response = await sendForSession(headers);
+      if (response.statusCode == HttpStatus.unauthorized &&
+          allowRefresh &&
+          sentToken != null) {
+        // Another request may already have refreshed the same session while
+        // this response was in flight. Reuse that token instead of rotating
+        // the same family again. Without an identity fence, fail closed if
+        // the token changed because it might belong to a different account.
+        var refreshed =
+            bound != null &&
+            authenticator.accessToken != null &&
+            authenticator.accessToken != sentToken;
+        if (!refreshed && authenticator.accessToken == sentToken) {
+          AppLogger.debug('401 from $method ${uri.path}; refreshing session');
+          refreshed = await authenticator.refresh();
+          // If refresh ended the session, preserve the definitive original
+          // 401 and never retry. A replacement account still fails the fence.
+          if (!sessionEnded()) ensureSameSession();
+        }
+        if (refreshed && authenticator.accessToken != null) {
+          final headers = _headers(
+            body: body,
+            rawBody: rawBody,
+            contentType: contentType,
+            token: authenticator.accessToken,
+          )..addAll(extraHeaders ?? const {});
+          response = await sendForSession(headers);
         } else {
           AppLogger.debug(
             'session refresh failed; surfacing the 401 from $method'
