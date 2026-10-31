@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
+import 'package:http/http.dart' as http;
 
 /// Single place where raw exceptions become typed, display-safe errors.
 ///
@@ -97,7 +98,9 @@ ServerException mapToServerException(Object error) {
     }
   }
 
-  if (error is SocketException || error is HttpException) {
+  if (error is SocketException ||
+      error is HttpException ||
+      error is http.ClientException) {
     return ServerException(
       '网络连接不可用，请检查网络',
       kind: FailureKind.network,

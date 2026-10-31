@@ -121,9 +121,10 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   }) async {
     try {
       final bytes = await image.readAsBytes();
-      final asset = await retryOnConnectionClosed(() async {
-        return client.uploadMedia(bytes, mimeType ?? 'image/jpeg');
-      });
+      // A lost response does not prove the upload failed: the server may
+      // already have stored a new asset. Media has no idempotency key yet,
+      // so do not silently create another one on a transport retry.
+      final asset = await client.uploadMedia(bytes, mimeType ?? 'image/jpeg');
       return client.mediaUri(asset.id).toString();
     } catch (e) {
       throw mapToServerException(e);

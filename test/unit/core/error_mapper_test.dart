@@ -6,6 +6,7 @@ import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   group('mapToServerException classifies by exception type', () {
@@ -16,6 +17,15 @@ void main() {
       expect(exception.kind, FailureKind.network);
       expect(exception.toFailure().kind, FailureKind.network);
       expect(exception.message, contains('网络'));
+    });
+
+    test('HTTP transport failures become safe network errors', () {
+      final raw = http.ClientException('private connection detail');
+      final exception = mapToServerException(raw);
+      expect(exception.kind, FailureKind.network);
+      expect(exception.code, 'network.unavailable');
+      expect(exception.message, isNot(contains('private connection detail')));
+      expect(exception.cause, same(raw));
     });
 
     test('timeouts become timeout errors', () {
