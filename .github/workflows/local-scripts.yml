@@ -41,6 +41,7 @@ jobs:
         run: |
           try {
             .\scripts\tests\test_android.ps1
+            Write-Output "::notice title=Windows script mock::Scenarios completed; final exit code: $LASTEXITCODE"
           } catch {
             # Expose a bounded diagnostic even where Actions log downloads
             # are unavailable; fixtures contain no real credentials.

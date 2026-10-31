@@ -121,6 +121,9 @@ public static class FakeEmulator {
     Assert-True ($timeout.ExitCode -ne 0 -and $timeout.Output -match 'timed out') 'Boot timeout was not surfaced.'
 
     Write-Host 'Windows PowerShell mock scenarios passed (no Android SDK/device exercised).'
+    # Negative test cases intentionally leave a child process exit code of 1.
+    # Do not leak it into the caller/Actions shell after all assertions pass.
+    $global:LASTEXITCODE = 0
 } finally {
     $env:PATH = $oldPath
     if (Test-Path -LiteralPath $pidFile) {
