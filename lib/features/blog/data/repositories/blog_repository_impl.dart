@@ -84,7 +84,7 @@ class BlogRepositoryImpl implements BlogRepository {
         if (source == BlogFeedSource.network) {
           return left(Failure.networkOffline());
         }
-        return _loadCachedFeed(page);
+        return await _loadCachedFeed(page);
       }
       blogs = await blogRemoteDataSource.getAllBlogs(page: page);
     } catch (error) {
