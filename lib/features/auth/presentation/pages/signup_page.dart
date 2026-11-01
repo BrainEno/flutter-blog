@@ -1,7 +1,8 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
-import 'package:belog/l10n/app_localizations.dart';
+import 'package:belog/features/auth/domain/password_rules.dart';
+import 'package:belog/features/auth/presentation/password_validation_l10n.dart';
 import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
@@ -42,19 +43,6 @@ class _SignUpPageState extends State<SignUpPage> {
   void _openLogin() {
     final target = Uri.encodeComponent(widget.redirectTo ?? '/');
     context.go('/login?redirect=$target');
-  }
-
-  /// The backend enforces a 12-character minimum at registration (see
-  /// docs/supabase-to-nowave-migration.md); checking it here keeps the
-  /// error message localized and off the network.
-  String? _validatePassword(AppLocalizations l10n, String? value) {
-    if (value == null || value.isEmpty) {
-      return l10n.passwordRequired;
-    }
-    if (value.length < 12) {
-      return l10n.passwordMinLength;
-    }
-    return null;
   }
 
   @override
@@ -121,8 +109,10 @@ class _SignUpPageState extends State<SignUpPage> {
                         controller: passwordController,
                         isObscureText: true,
                         prefixIcon: Icons.lock_outline,
-                        validator: (value) =>
-                            _validatePassword(context.l10n, value),
+                        validator: (value) => passwordProblemMessage(
+                          context.l10n,
+                          validateNewPassword(value),
+                        ),
                       ),
                       const SizedBox(height: 30),
                       AuthPrimaryButton(
@@ -133,7 +123,9 @@ class _SignUpPageState extends State<SignUpPage> {
                               AuthSignUp(
                                 email: emailController.text.trim(),
                                 name: nameController.text.trim(),
-                                password: passwordController.text.trim(),
+                                // Passwords are exact credentials, including
+                                // any intentional leading/trailing spaces.
+                                password: passwordController.text,
                               ),
                             );
                           }

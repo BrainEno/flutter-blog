@@ -252,6 +252,52 @@ class NowaveApiClient {
     return _request('PUT', path, body: body, authenticate: authenticate);
   }
 
+  /// Sends one sensitive, viewer-scoped PUT, with no 401 replay or redirect.
+  ///
+  /// A 401 can mean the submitted credential was rejected, not an expired
+  /// access token. Replaying the write could consume another rate-limit slot.
+  /// Redirects are disabled so credentials cannot be forwarded elsewhere.
+  /// The caller's captured generation also prevents a form opened by an old
+  /// session from being submitted after even a same-account re-login.
+  Future<dynamic> putJsonForViewerOnce(
+    String path,
+    Object? body, {
+    required String expectedUserId,
+    required int expectedSessionGeneration,
+  }) async {
+    final auth = _authenticator;
+    bool matches() =>
+        auth is NowaveViewerAuthenticator &&
+        expectedUserId.isNotEmpty &&
+        auth.activeUserId == expectedUserId &&
+        auth.sessionGeneration == expectedSessionGeneration &&
+        (auth.accessToken?.isNotEmpty ?? false);
+
+    void ensureSameViewer() {
+      if (!matches()) {
+        throw const NowaveApiException(
+          statusCode: HttpStatus.conflict,
+          code: 'SESSION_CHANGED',
+          message: 'Session changed during a viewer-scoped write.',
+        );
+      }
+    }
+
+    ensureSameViewer();
+    try {
+      return await _request(
+        'PUT',
+        path,
+        body: body,
+        allowRefresh: false,
+        followRedirects: false,
+      );
+    } finally {
+      // The old write may have reached the server even on a transport error.
+      ensureSameViewer();
+    }
+  }
+
   /// DELETE an endpoint; returns the unwrapped `data` payload when present.
   Future<dynamic> deleteJson(String path) => _request('DELETE', path);
 
@@ -290,6 +336,7 @@ class NowaveApiClient {
     Map<String, String>? query,
     bool authenticate = true,
     bool allowRefresh = true,
+    bool followRedirects = true,
     Duration? timeout,
     Map<String, String>? extraHeaders,
   }) async {
@@ -310,6 +357,7 @@ class NowaveApiClient {
         headers,
         rawBody ?? (body == null ? null : jsonEncode(body)),
         timeout: timeout,
+        followRedirects: followRedirects,
       );
     } else {
       final authenticator = _authenticator;
@@ -343,6 +391,7 @@ class NowaveApiClient {
             headers,
             rawBody ?? (body == null ? null : jsonEncode(body)),
             timeout: timeout,
+            followRedirects: followRedirects,
           );
         } finally {
           // Applies to both responses and transport errors.
@@ -430,9 +479,12 @@ class NowaveApiClient {
     Map<String, String> headers,
     Object? payload, {
     Duration? timeout,
+    bool followRedirects = true,
   }) async {
     final budget = timeout ?? this.timeout;
-    final request = http.Request(method, uri)..headers.addAll(headers);
+    final request = http.Request(method, uri)
+      ..headers.addAll(headers)
+      ..followRedirects = followRedirects;
     if (payload is Uint8List) {
       request.bodyBytes = payload;
     } else if (payload is String) {

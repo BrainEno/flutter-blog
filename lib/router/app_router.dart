@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/nowave/nowave_session.dart';
+import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
+import 'package:belog/features/auth/presentation/pages/change_password_page.dart';
 import 'package:belog/features/auth/presentation/pages/login_page.dart';
 import 'package:belog/features/auth/presentation/pages/signup_page.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -221,6 +224,13 @@ GoRouter createAppRouter({
                     builder: (context, state) => BlocProvider(
                       create: (_) => serviceLocator<UserEditBloc>(),
                       child: const EditUserInfoPage(),
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'change-password',
+                    builder: (context, state) => ChangePasswordPage(
+                      repository: serviceLocator<AccountSecurityRepository>(),
+                      session: serviceLocator<NowaveSessionManager>(),
                     ),
                   ),
                   GoRoute(

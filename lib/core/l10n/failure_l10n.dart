@@ -36,6 +36,16 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
       return l10n.errorAuthRateLimited;
     case 'auth.signupRateLimited':
       return l10n.errorSignupRateLimited;
+    case 'auth.passwordRejected':
+      return l10n.errorPasswordRejected;
+    case 'auth.passwordIdentityUnconfirmed':
+      return l10n.errorPasswordIdentityUnconfirmed;
+    case 'auth.passwordOutcomeUnknown':
+      return l10n.errorPasswordOutcomeUnknown;
+    case 'auth.passwordUnsupported':
+      return l10n.errorPasswordUnsupported;
+    case 'auth.passwordInProgress':
+      return l10n.errorPasswordInProgress;
     case 'auth.parse':
       return l10n.errorLoginParse;
     case 'auth.parse.missingUser':

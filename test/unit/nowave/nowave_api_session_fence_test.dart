@@ -49,6 +49,19 @@ class _ViewerAuth extends _BoundAuth implements NowaveViewerAuthenticator {
   }
 }
 
+class _ProactiveViewer extends _ViewerAuth
+    implements NowaveProactiveAuthenticator {
+  final started = Completer<void>();
+  final gate = Completer<void>();
+
+  @override
+  Future<bool> ensureFreshAccess() async {
+    started.complete();
+    await gate.future;
+    return false;
+  }
+}
+
 class _RejectedRefreshAuth extends _BoundAuth {
   @override
   Future<bool> refresh() async {
@@ -99,6 +112,89 @@ Matcher get _sessionChanged =>
     isA<NowaveApiException>().having((e) => e.code, 'code', 'SESSION_CHANGED');
 
 void main() {
+  group('sensitive viewer-scoped writes', () {
+    test('requires a matching viewer, token and captured generation', () async {
+      final auth = _ViewerAuth();
+      var calls = 0;
+      final client = _client(
+        auth,
+        MockClient((_) async {
+          calls++;
+          return http.Response(
+            jsonEncode({
+              'data': {'ok': true},
+            }),
+            200,
+          );
+        }),
+      );
+      await expectLater(
+        client.putJsonForViewerOnce(
+          '/me/password',
+          const {},
+          expectedUserId: 'user-B',
+          expectedSessionGeneration: 1,
+        ),
+        throwsA(_sessionChanged),
+      );
+      auth.generation++;
+      await expectLater(
+        client.putJsonForViewerOnce(
+          '/me/password',
+          const {},
+          expectedUserId: 'user-A',
+          expectedSessionGeneration: 1,
+        ),
+        throwsA(_sessionChanged),
+      );
+      auth.token = null;
+      await expectLater(
+        client.putJsonForViewerOnce(
+          '/me/password',
+          const {},
+          expectedUserId: 'user-A',
+          expectedSessionGeneration: 2,
+        ),
+        throwsA(_sessionChanged),
+      );
+      expect(calls, 0);
+    });
+
+    test(
+      'account switch during proactive refresh prevents the write',
+      () async {
+        final auth = _ProactiveViewer();
+        var calls = 0;
+        final client = _client(
+          auth,
+          MockClient((_) async {
+            calls++;
+            return http.Response(
+              jsonEncode({
+                'data': {'ok': true},
+              }),
+              200,
+            );
+          }),
+        );
+        final pending = client.putJsonForViewerOnce(
+          '/me/password',
+          const {
+            'currentPassword': 'fixture',
+            'newPassword': 'fixture-password',
+          },
+          expectedUserId: 'user-A',
+          expectedSessionGeneration: 1,
+        );
+        await auth.started.future;
+        auth.switchViewerToB();
+        auth.gate.complete();
+        await expectLater(pending, throwsA(_sessionChanged));
+        expect(calls, 0);
+      },
+    );
+  });
+
   group('viewer-scoped reads', () {
     test('rejects a mismatched viewer before sending any request', () async {
       final auth = _ViewerAuth()..switchViewerToB();
