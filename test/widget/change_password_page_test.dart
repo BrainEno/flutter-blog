@@ -93,12 +93,14 @@ Future<void> _pump(
 Future<void> _enter(WidgetTester tester, int index, String value) async {
   final field = find.byType(TextFormField).at(index);
   await tester.ensureVisible(field);
+  await tester.pumpAndSettle();
   await tester.enterText(field, value);
 }
 
 Future<void> _tapSubmit(WidgetTester tester, AppLocalizations l10n) async {
   final button = find.widgetWithText(FilledButton, l10n.passwordChangeAction);
   await tester.ensureVisible(button);
+  await tester.pumpAndSettle();
   await tester.tap(button);
   await tester.pump();
 }
@@ -138,19 +140,30 @@ void main() {
             expect(field.enableSuggestions, isFalse);
             expect(field.enableIMEPersonalizedLearning, isFalse);
           }
-          final show = find.byTooltip(
-            l10n.passwordShowField(l10n.passwordCurrent),
+          expect(
+            find.byTooltip(l10n.passwordShowField(l10n.passwordCurrent)),
+            findsOneWidget,
           );
-          await tester.ensureVisible(show);
-          await tester.tap(show);
+          // Scroll the actual field icon into the real ListView viewport;
+          // a tooltip's surrogate render box can be outside it at 2x text.
+          final showIcon = find.byIcon(Icons.visibility).first;
+          await tester.scrollUntilVisible(
+            showIcon,
+            140,
+            scrollable: find.byType(Scrollable),
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(showIcon);
           await tester.pump();
           expect(
             tester.widget<TextField>(find.byType(TextField).first).obscureText,
             isFalse,
           );
-          await tester.tap(
+          expect(
             find.byTooltip(l10n.passwordHideField(l10n.passwordCurrent)),
+            findsOneWidget,
           );
+          await tester.tap(find.byIcon(Icons.visibility_off).first);
           await tester.pump();
 
           await _tapSubmit(tester, l10n);
