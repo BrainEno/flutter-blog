@@ -27,10 +27,12 @@
   "feedCachedNoMore": "已显示全部本机缓存，联网后可刷新查看新内容。",
   "feedSourceChanged": "文章来源已变化，请刷新后重试。",
   "feedTabLatest": "最新",
-  "feedTabPopular": "热门",
+  "feedTabFeatured": "精选",
+  "feedTabPopular": "最多收藏",
   "feedTabFollowing": "关注",
-  "feedPopularDescription": "按最近 30 天发布作品的点赞数排序。",
-  "feedPopularEmpty": "最近 30 天暂无作品，稍后再来看看。",
+  "feedFeaturedEmpty": "编辑尚未添加精选作品。",
+  "feedPopularDescription": "按服务端提供的收藏数排序。",
+  "feedPopularEmpty": "此列表暂无作品，稍后再来看看。",
   "feedFollowingEmpty": "关注的作者暂无已发布作品。关注作者后，可在这里查看更新。",
 
 

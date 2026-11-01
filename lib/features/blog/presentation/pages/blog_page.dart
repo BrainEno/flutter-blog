@@ -173,6 +173,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
           children: [
             for (final (kind, label) in [
               (BlogFeedKind.latest, l10n.feedTabLatest),
+              (BlogFeedKind.featured, l10n.feedTabFeatured),
               (BlogFeedKind.popular, l10n.feedTabPopular),
               (BlogFeedKind.following, l10n.feedTabFollowing),
             ])
@@ -191,6 +192,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     final l10n = context.l10n;
     final title = switch (kind) {
       BlogFeedKind.latest => l10n.feedHeading,
+      BlogFeedKind.featured => l10n.feedTabFeatured,
       BlogFeedKind.popular => l10n.feedTabPopular,
       BlogFeedKind.following => l10n.feedTabFollowing,
     };
@@ -268,6 +270,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     if (blogs.isEmpty) {
       final emptyMessage = switch (state.kind) {
         BlogFeedKind.latest => l10n.feedEmpty,
+        BlogFeedKind.featured => l10n.feedFeaturedEmpty,
         BlogFeedKind.popular => l10n.feedPopularEmpty,
         BlogFeedKind.following => l10n.feedFollowingEmpty,
       };

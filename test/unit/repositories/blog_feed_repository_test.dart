@@ -44,8 +44,12 @@ void main() {
     repository = BlogRepositoryImpl(remote, local, connection);
   });
 
-  group('popular and following feeds', () {
-    for (final kind in [BlogFeedKind.popular, BlogFeedKind.following]) {
+  group('online-only feeds', () {
+    for (final kind in [
+      BlogFeedKind.featured,
+      BlogFeedKind.popular,
+      BlogFeedKind.following,
+    ]) {
       test(
         '$kind requires network and never falls back to the general cache',
         () async {

@@ -183,8 +183,9 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           query: query,
         );
       } else {
+        final path = kind == BlogFeedKind.featured ? '/featured' : '/articles';
         data = await retryOnConnectionClosed(
-          () => client.getJson('/articles', query: query),
+          () => client.getJson(path, query: query),
         );
       }
       return _articleList(data);

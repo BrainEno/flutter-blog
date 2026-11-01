@@ -112,6 +112,11 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('Article latest'), findsOneWidget);
 
+        await tester.tap(find.widgetWithText(ChoiceChip, l10n.feedTabFeatured));
+        await tester.pumpAndSettle();
+        expect(find.text('Article featured'), findsOneWidget);
+        expect(requests.last.kind, BlogFeedKind.featured);
+
         await tester.tap(find.widgetWithText(ChoiceChip, l10n.feedTabPopular));
         await tester.pumpAndSettle();
         expect(find.text('Article popular'), findsOneWidget);
@@ -167,6 +172,12 @@ void main() {
           textScale: 2,
         );
         await tester.pumpAndSettle();
+
+        await tester.tap(find.widgetWithText(ChoiceChip, l10n.feedTabFeatured));
+        await tester.pumpAndSettle();
+        await tester.drag(find.byType(ListView), const Offset(0, -400));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.feedFeaturedEmpty), findsOneWidget);
 
         await tester.tap(find.widgetWithText(ChoiceChip, l10n.feedTabPopular));
         await tester.pumpAndSettle();

@@ -59,6 +59,36 @@ void main() {
   });
 
   group('online feeds', () {
+    test(
+      'featured uses the editorial endpoint and keeps server order',
+      () async {
+        when(
+          () => client.getJson('/featured', query: any(named: 'query')),
+        ).thenAnswer(
+          (_) async => [
+            {..._articleMap(), 'slug': 'editor-first'},
+            {..._articleMap(), 'slug': 'editor-second'},
+          ],
+        );
+
+        final blogs = await dataSource.getOnlineFeed(
+          page: 2,
+          kind: BlogFeedKind.featured,
+        );
+
+        expect(blogs.map((blog) => blog.id), ['editor-first', 'editor-second']);
+        verify(
+          () => client.getJson(
+            '/featured',
+            query: {'limit': '10', 'offset': '10', 'locale': 'zh-CN'},
+          ),
+        ).called(1);
+        verifyNever(
+          () => client.getJson('/articles', query: any(named: 'query')),
+        );
+      },
+    );
+
     test('popular sends the documented ranking and page offset', () async {
       when(
         () => client.getJson('/articles', query: any(named: 'query')),

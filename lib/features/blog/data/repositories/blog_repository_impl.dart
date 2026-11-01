@@ -131,7 +131,7 @@ class BlogRepositoryImpl implements BlogRepository {
         expectedViewerId: expectedViewerId,
       );
       // Never use or write the general cache for these lists. It cannot
-      // represent a popularity ranking or an account's follow graph.
+      // represent editorial order, popularity or an account's follow graph.
       return right(BlogFeedPage(blogs: blogs, source: BlogFeedSource.network));
     } catch (error) {
       return left(mapErrorToFailure(error));
