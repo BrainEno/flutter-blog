@@ -359,6 +359,15 @@ void main() {
     expect(find.byType(LoginPage), findsNothing);
   });
 
+  testWidgets('session list deep link requires sign-in', (tester) async {
+    final harness = Harness()
+      ..buildRouter(initialLocation: '/profile/sessions');
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginPage), findsOneWidget);
+  });
+
   testWidgets('deep link /view/:id loads the article by id', (tester) async {
     final harness = Harness()..buildRouter(initialLocation: '/view/abc');
     addTearDown(harness.dispose);

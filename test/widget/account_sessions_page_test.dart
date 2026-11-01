@@ -1,0 +1,338 @@
+import 'dart:async';
+
+import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/common/entities/user.dart';
+import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/nowave/nowave_session.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/features/user/domain/entities/account_session.dart';
+import 'package:belog/features/user/domain/repositories/account_session_repository.dart';
+import 'package:belog/features/user/presentation/pages/account_sessions_page.dart';
+import 'package:belog/l10n/app_localizations.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:fpdart/fpdart.dart';
+
+class _Identity implements NowaveSessionIdentity {
+  String? userId = 'user-a';
+  String? token = 'fake-token-a';
+  int generation = 1;
+  final controller = StreamController<void>.broadcast(sync: true);
+
+  @override
+  String? get activeUserId => userId;
+
+  @override
+  String? get accessToken => token;
+
+  @override
+  int get sessionGeneration => generation;
+
+  @override
+  Stream<void> get identityChanges => controller.stream;
+
+  void replace(String? user) {
+    generation++;
+    userId = user;
+    token = user == null ? null : 'fake-replacement-token';
+    controller.add(null);
+  }
+}
+
+class _Repository implements AccountSessionRepository {
+  final fences = <NowaveSessionFence>[];
+  final pending = <Completer<Either<Failure, List<AccountSession>>>>[];
+
+  @override
+  Future<Either<Failure, List<AccountSession>>> listSessions(
+    NowaveSessionFence fence,
+  ) {
+    fences.add(fence);
+    final result = Completer<Either<Failure, List<AccountSession>>>();
+    pending.add(result);
+    return result.future;
+  }
+}
+
+User _user(String id) => User(
+  id: id,
+  email: '$id@example.invalid',
+  name: id,
+  updatedAt: DateTime.utc(2025),
+);
+
+AccountSession _session({bool current = true, bool refreshed = true}) =>
+    AccountSession(
+      createdAt: DateTime.utc(2026, 10, 30, 1),
+      lastRefreshedAt: refreshed ? DateTime.utc(2026, 10, 31, 2, 30) : null,
+      expiresAt: DateTime.utc(2026, 12, 30, 1),
+      current: current,
+    );
+
+class _Harness {
+  final identity = _Identity();
+  final repository = _Repository();
+  final userCubit = AppUserCubit()..updateUser(_user('user-a'));
+
+  Future<void> pump(
+    WidgetTester tester, {
+    Locale locale = const Locale('en'),
+    double scale = 1,
+  }) async {
+    await tester.pumpWidget(
+      BlocProvider<AppUserCubit>.value(
+        value: userCubit,
+        child: MaterialApp(
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(scale)),
+            child: child!,
+          ),
+          home: AccountSessionsPage(repository: repository, identity: identity),
+        ),
+      ),
+    );
+    await tester.pump();
+  }
+
+  Future<void> dispose() async {
+    await userCubit.close();
+    await identity.controller.close();
+  }
+}
+
+void main() {
+  testWidgets(
+    'shows the server list as sessions, with current and refresh semantics',
+    (tester) async {
+      final harness = _Harness();
+      addTearDown(harness.dispose);
+      await harness.pump(tester);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(harness.repository.fences.single.userId, 'user-a');
+      expect(harness.repository.fences.single.generation, 1);
+      harness.repository.pending.single.complete(
+        right([_session(), _session(current: false, refreshed: false)]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('This session'), findsOneWidget);
+      expect(find.text('Session'), findsOneWidget);
+      expect(find.text('Last refreshed: Not recorded'), findsOneWidget);
+      expect(find.textContaining('up to 50 active sessions'), findsOneWidget);
+      expect(
+        find.textContaining('token renewal, not all activity'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Device names and locations are not provided'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Signed in:'), findsNWidgets(2));
+      expect(find.textContaining('Expires:'), findsNWidgets(2));
+      expect(find.byIcon(Icons.delete), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('refresh clears stale rows before an offline failure', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.repository.pending.single.complete(right([_session()]));
+    await tester.pumpAndSettle();
+    expect(find.text('This session'), findsOneWidget);
+    await tester.tap(find.byTooltip('Refresh sessions'));
+    await tester.tap(find.byTooltip('Refresh sessions'));
+    await tester.pump();
+    expect(harness.repository.pending, hasLength(2));
+    expect(find.text('This session'), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    harness.repository.pending.last.complete(left(Failure.networkOffline()));
+    await tester.pumpAndSettle();
+    expect(find.text('This session'), findsNothing);
+    expect(
+      find.text('No network connection — check your settings'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('empty and unknown-current responses are not confused', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.repository.pending.single.complete(
+      right([_session(current: false)]),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('current session was not identified'),
+      findsOneWidget,
+    );
+    expect(find.text('This session'), findsNothing);
+  });
+
+  testWidgets('the server may legitimately return an empty list', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.repository.pending.single.complete(right([]));
+    await tester.pumpAndSettle();
+    expect(find.text('No active sessions were returned.'), findsOneWidget);
+    expect(
+      find.textContaining('current session was not identified'),
+      findsNothing,
+    );
+  });
+
+  testWidgets(
+    'an account switch hides A immediately and ignores a late result',
+    (tester) async {
+      final harness = _Harness();
+      addTearDown(harness.dispose);
+      await harness.pump(tester);
+      harness.identity.replace('user-b');
+      await tester.pump();
+      expect(find.textContaining('Your sign-in changed'), findsOneWidget);
+      harness.userCubit.updateUser(_user('user-b'));
+      harness.repository.pending.single.complete(right([_session()]));
+      await tester.pumpAndSettle();
+      expect(find.text('This session'), findsNothing);
+      expect(find.textContaining('Your sign-in changed'), findsOneWidget);
+      expect(harness.repository.pending, hasLength(1));
+    },
+  );
+
+  for (final replacement in <String?>['user-a', null]) {
+    testWidgets(
+      'loaded data is cleared on same-user login or sign-out: $replacement',
+      (tester) async {
+        final harness = _Harness();
+        addTearDown(harness.dispose);
+        await harness.pump(tester);
+        harness.repository.pending.single.complete(right([_session()]));
+        await tester.pumpAndSettle();
+        expect(find.text('This session'), findsOneWidget);
+        harness.identity.replace(replacement);
+        await tester.pump();
+        expect(find.text('This session'), findsNothing);
+        expect(find.textContaining('Your sign-in changed'), findsOneWidget);
+        expect(harness.repository.pending, hasLength(1));
+      },
+    );
+  }
+
+  testWidgets('app-user changes independently of identity also hide the list', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.repository.pending.single.complete(right([_session()]));
+    await tester.pumpAndSettle();
+    harness.userCubit.updateUser(_user('user-b'));
+    await tester.pump();
+    expect(find.text('This session'), findsNothing);
+    expect(find.textContaining('Your sign-in changed'), findsOneWidget);
+  });
+
+  testWidgets(
+    'a transient app-user switch is not hidden by a quick switch back',
+    (tester) async {
+      final harness = _Harness();
+      addTearDown(harness.dispose);
+      await harness.pump(tester);
+      harness.repository.pending.single.complete(right([_session()]));
+      await tester.pumpAndSettle();
+      harness.userCubit.updateUser(_user('user-b'));
+      harness.userCubit.updateUser(_user('user-a'));
+      await tester.pump();
+      expect(find.text('This session'), findsNothing);
+      expect(find.textContaining('Your sign-in changed'), findsOneWidget);
+    },
+  );
+
+  testWidgets('missing or mismatched identity sends no request', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    harness.identity.userId = 'user-b';
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    expect(harness.repository.pending, isEmpty);
+    expect(find.textContaining('Your sign-in changed'), findsOneWidget);
+  });
+
+  testWidgets(
+    'unavailable and offline errors are not shown as empty data; retry fetches again',
+    (tester) async {
+      final harness = _Harness();
+      addTearDown(harness.dispose);
+      await harness.pump(tester);
+      harness.repository.pending.single.complete(
+        left(
+          const Failure(
+            '不显示此原始文字',
+            code: 'sessions.unavailable',
+            kind: FailureKind.server,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('This server does not provide the session list'),
+        findsOneWidget,
+      );
+      expect(find.text('No active sessions were returned.'), findsNothing);
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+      expect(harness.repository.pending, hasLength(2));
+      harness.repository.pending.last.complete(left(Failure.networkOffline()));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('No network connection — check your settings'),
+        findsOneWidget,
+      );
+      expect(find.text('No active sessions were returned.'), findsNothing);
+    },
+  );
+
+  for (final locale in [const Locale('en'), const Locale('zh')]) {
+    testWidgets('supports $locale at 320px and 2x text', (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final harness = _Harness();
+      addTearDown(harness.dispose);
+      final semantics = tester.ensureSemantics();
+      try {
+        await harness.pump(tester, locale: locale, scale: 2);
+        harness.repository.pending.single.complete(
+          right([_session(), _session(current: false, refreshed: false)]),
+        );
+        await tester.pumpAndSettle();
+        final l10n = lookupAppLocalizations(locale);
+        expect(find.text(l10n.accountSessionsTitle), findsOneWidget);
+        expect(find.text(l10n.accountSessionsCurrent), findsOneWidget);
+        await tester.drag(find.byType(ListView), const Offset(0, -500));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.accountSessionsNeverRefreshed), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      } finally {
+        semantics.dispose();
+      }
+    });
+  }
+}

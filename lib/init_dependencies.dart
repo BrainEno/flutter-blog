@@ -60,8 +60,10 @@ import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_b
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/data/datasources/author_remote_data_source.dart';
 import 'package:belog/features/user/data/datasources/user_remote_data_source.dart';
+import 'package:belog/features/user/data/repositories/account_session_repository_impl.dart';
 import 'package:belog/features/user/data/repositories/author_repository_impl.dart';
 import 'package:belog/features/user/data/repositories/user_repository_impl.dart';
+import 'package:belog/features/user/domain/repositories/account_session_repository.dart';
 import 'package:belog/features/user/domain/repositories/author_repository.dart';
 import 'package:belog/features/user/domain/repositories/user_repository.dart';
 import 'package:belog/features/user/data/user_data_export.dart';
@@ -346,6 +348,9 @@ void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {
         serviceLocator<UserRemoteDataSource>(),
         serviceLocator<ConnectionChecker>(),
       ),
+    )
+    ..registerFactory<AccountSessionRepository>(
+      () => AccountSessionRepositoryImpl(apiClient),
     )
     // Usecases
     ..registerFactory(() => EditUserUseCase(serviceLocator<UserRepository>()))
