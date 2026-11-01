@@ -24,7 +24,8 @@ else
   NAME=BottomThink-android-debug-temporary-key.apk
 fi
 bash tool/mobile/verify_android_package.sh "$APK" "$BUILD_NAME" "$BUILD_NUMBER" "$MODE" "$EXPECTED_CERT"
-mkdir -p build/mobile/android
-[[ ! -e "build/mobile/android/$NAME" ]] || { echo 'Refusing to overwrite an existing artifact.' >&2; exit 1; }
-cp "$APK" "build/mobile/android/$NAME"
-python3 tool/mobile/artifact_metadata.py "build/mobile/android/$NAME" "android-$MODE" "$BUILD_NAME" "$BUILD_NUMBER"
+OUTPUT_DIR="build/mobile/android/$MODE"
+mkdir -p "$OUTPUT_DIR"
+[[ ! -e "$OUTPUT_DIR/$NAME" ]] || { echo 'Refusing to overwrite an existing artifact.' >&2; exit 1; }
+cp "$APK" "$OUTPUT_DIR/$NAME"
+python3 tool/mobile/artifact_metadata.py "$OUTPUT_DIR/$NAME" "android-$MODE" "$BUILD_NAME" "$BUILD_NUMBER"

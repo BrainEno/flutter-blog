@@ -205,12 +205,29 @@ jobs:
             bash tool/ci/annotate_failure.sh android build/reports/android-mobile-fixture.log
             exit 1
           fi
+      - name: Build and verify the debug APK path with fixture configuration
+        shell: bash
+        env:
+          BUILD_NAME: ${{ needs.prepare.outputs.build_name }}
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
+        run: |
+          set -o pipefail
+          set +e
+          bash tool/mobile/build_android_package.sh "$RUNNER_TEMP/belog-mobile-env.json" "$BUILD_NAME" "$BUILD_NUMBER" debug - 2>&1 | tee build/reports/android-mobile-debug-fixture.log
+          statuses=("${PIPESTATUS[@]}")
+          set -e
+          if (( statuses[0] != 0 || statuses[1] != 0 )); then
+            bash tool/ci/annotate_failure.sh android build/reports/android-mobile-debug-fixture.log
+            exit 1
+          fi
       - name: Upload fixture diagnostics (not a distributable APK)
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: android-package-ci-fixture-log
-          path: build/reports/android-mobile-fixture.log
+          path: |
+            build/reports/android-mobile-fixture.log
+            build/reports/android-mobile-debug-fixture.log
           if-no-files-found: warn
           retention-days: 14
       - name: Delete disposable key and fixture configuration
@@ -267,7 +284,7 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: android-personal-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/mobile/android/*
+          path: build/mobile/android/personal/*
           if-no-files-found: error
           retention-days: 30
       - name: Delete temporary signing key and public configuration
@@ -309,7 +326,7 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: android-debug-temporary-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/mobile/android/*
+          path: build/mobile/android/debug/*
           if-no-files-found: error
           retention-days: 30
       - name: Delete temporary public configuration

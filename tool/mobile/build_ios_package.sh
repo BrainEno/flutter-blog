@@ -23,7 +23,7 @@ trap 'rm -rf "$tmp"' EXIT
 ditto -x -k "$IPA" "$tmp"
 APP="$tmp/Payload/Runner.app"
 for executable in "$APP/Runner" "$APP/Frameworks/Flutter.framework/Flutter" "$APP/Frameworks/App.framework/App"; do
-  xcrun lipo -verify_arch arm64 "$executable"
+  xcrun lipo "$executable" -verify_arch arm64
 done
 # Ensure this is an iPhoneOS device binary, rather than an arm64 simulator build.
 xcrun vtool -show-build "$APP/Runner" > "$tmp/platform.txt"

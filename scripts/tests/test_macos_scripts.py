@@ -33,7 +33,7 @@ elif name == 'xcrun':
         ]}}))
     elif args[:2] == ['simctl', 'bootstatus'] and os.environ.get('MOCK_SLOW_BOOT'):
         time.sleep(4)
-    elif args[:2] == ['lipo', '-verify_arch']:
+    elif args[:1] == ['lipo'] and args[-2:] == ['-verify_arch', 'arm64']:
         if os.environ.get('MOCK_BAD_ARCH'): sys.exit(1)
     elif args[:2] == ['vtool', '-show-build']:
         print('platform IOSSIMULATOR' if os.environ.get('MOCK_SIM_BINARY') else 'platform IOS')
