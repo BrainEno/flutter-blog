@@ -192,8 +192,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
       _hasUnsavedEdits = version != _draftRequestVersion;
       setState(() => _autoSaveStatus = _AutoSaveStatus.saved);
     } catch (_) {
-      if (_isCurrentEditor)
+      if (_isCurrentEditor) {
         setState(() => _autoSaveStatus = _AutoSaveStatus.failed);
+      }
     }
   }
 
@@ -263,8 +264,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
       _recoveryRoute = null;
       if (!mounted ||
           !_isCurrentEditor ||
-          requestVersion != _draftRequestVersion)
+          requestVersion != _draftRequestVersion) {
         return;
+      }
 
       if (choice == DraftRecoveryChoice.restore) {
         _restoringDraft = true;

@@ -33,6 +33,7 @@ class FakeDraftStore implements BlogDraftStore {
   bool loaded = false;
   Completer<BlogDraft?>? pendingLoad;
   Completer<void>? pendingSave;
+  Completer<bool>? pendingDiscard;
   BlogDraft? saved;
   BlogDraft? discarded;
   bool failSave = false;
@@ -61,6 +62,8 @@ class FakeDraftStore implements BlogDraftStore {
   @override
   Future<bool> discardIfUnchanged(BlogDraft draft) async {
     discarded = draft;
+    final pending = pendingDiscard;
+    if (pending != null) return pending.future;
     return true;
   }
 
@@ -483,6 +486,20 @@ void main() {
     expect(store.savedDrafts, isEmpty);
   });
 
+  testWidgets('disposing before a draft load completes leaves no late dialog', (
+    tester,
+  ) async {
+    final store = FakeDraftStore()..pendingLoad = Completer<BlogDraft?>();
+    await openEditor(tester, store);
+    await tester.pumpWidget(const SizedBox.shrink());
+    store.pendingLoad!.complete(makeDraft(null, 'late private text'));
+    await tester.pumpAndSettle();
+    expect(find.text('发现草稿'), findsNothing);
+    expect(find.text('late private text'), findsNothing);
+    expect(store.savedDrafts, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('account switch dismisses the old recovery dialog', (
     tester,
   ) async {
@@ -507,6 +524,31 @@ void main() {
     expect(find.byType(TextFormField), findsNothing);
     expect(store.discarded, isNull);
   });
+
+  testWidgets(
+    'discard finishing after a switch never reports to the new account',
+    (tester) async {
+      final draft = makeDraft(null, 'private A', userId: 'account-A');
+      final store = FakeDraftStore()
+        ..scopedDrafts[('account-A', null)] = draft
+        ..pendingDiscard = Completer<bool>();
+      final user = AppUserCubit()..updateUser(testUser('account-A'));
+      final identity = FakeSessionIdentity('account-A');
+      addTearDown(user.close);
+      addTearDown(identity.changes.close);
+      await openEditor(tester, store, appUser: user, session: identity);
+      await tester.tap(find.text('丢弃草稿'));
+      await tester.pumpAndSettle();
+      expect(store.discarded, same(draft));
+      identity.switchTo('account-B');
+      user.updateUser(testUser('account-B'));
+      store.pendingDiscard!.complete(true);
+      await tester.pumpAndSettle();
+      expect(store.discarded?.userId, 'account-A');
+      expect(find.text('草稿已丢弃'), findsNothing);
+      expect(find.byType(TextFormField), findsNothing);
+    },
+  );
 
   testWidgets('pending edits are saved only for the original account', (
     tester,
