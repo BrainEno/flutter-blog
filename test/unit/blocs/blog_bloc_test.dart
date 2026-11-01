@@ -110,11 +110,9 @@ void main() {
 
       final loaded = states.whereType<BlogLoaded>().toList();
       expect(loaded, hasLength(1));
-      expect(
-        loaded.single.blogs.map((b) => b.id),
-        ['new'],
-        reason: 'stale response must be discarded',
-      );
+      expect(loaded.single.blogs.map((b) => b.id), [
+        'new',
+      ], reason: 'stale response must be discarded');
     });
   });
 
