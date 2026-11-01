@@ -146,6 +146,57 @@ void main() {
       }
     });
 
+    testWidgets(
+      '$language shows pagination safety failures without losing the list',
+      (tester) async {
+        final bloc = BlogBloc(
+          getAllBlogs: _GetFeed((params) async {
+            if (params.page == 1) {
+              return Right(
+                BlogFeedPage(
+                  blogs: List.generate(
+                    10,
+                    (index) => Blog(
+                      id: 'article-$index',
+                      title: 'Article $index',
+                      content: 'Body',
+                      posterId: 'author',
+                      imageUrl: '',
+                      tags: const [],
+                      updatedAt: DateTime.utc(2026),
+                    ),
+                  ),
+                  source: BlogFeedSource.network,
+                  nextCursor: 'fixture-cursor',
+                ),
+              );
+            }
+            return const Left(Failure('fixture', code: 'feed.paginationDense'));
+          }),
+        );
+        final user = AppUserCubit();
+        addTearDown(bloc.close);
+        addTearDown(user.close);
+        await tester.pumpWidget(
+          MultiBlocProvider(
+            providers: [
+              BlocProvider<BlogBloc>.value(value: bloc),
+              BlocProvider<AppUserCubit>.value(value: user),
+            ],
+            child: _app(locale: locale, child: const BlogPage()),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Article 0'), findsOneWidget);
+        bloc.add(const BlogLoadMore());
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.feedPaginationDense), findsOneWidget);
+        expect(find.text('Article 0'), findsOneWidget);
+        expect(find.text(l10n.feedNoMore), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets('$language feed labels cached, empty and refreshed states', (
       tester,
     ) async {

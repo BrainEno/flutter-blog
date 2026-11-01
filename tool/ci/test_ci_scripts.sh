@@ -103,4 +103,51 @@ message="${output#*diagnostics::}"
 [[ ${#message} == 3600 && "$message" == *END ]]
 expect_failure 'Usage:' bash "$annotation" unknown "$tmp/log"
 expect_failure 'not readable' bash "$annotation" analyze "$tmp/missing"
+
+# The debug Android gate must retain both manifest policy checks and fail
+# closed on build errors. Mocks exercise its script without an Android SDK.
+mkdir -p "$tmp/bin" "$tmp/sdk/build-tools/36.0.0" "$tmp/build/app/outputs/flutter-apk"
+cat > "$tmp/bin/flutter" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+[[ "$*" == *'build apk --debug'* && "$*" == *'BELOG_DEV_BACKEND_CHECK=true'* ]] || exit 2
+if [[ "${MOCK_BUILD_FAIL:-0}" == 1 ]]; then
+  echo 'synthetic debug build failure' >&2
+  exit 7
+fi
+if [[ "${MOCK_MISSING_DEBUG:-0}" != 1 ]]; then
+  touch build/app/outputs/flutter-apk/app-debug.apk
+fi
+EOF
+cat > "$tmp/sdk/build-tools/36.0.0/aapt" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$3" == *app-debug.apk ]]; then
+  if [[ "${MOCK_DEBUG_DISALLOWS:-0}" == 1 ]]; then
+    echo 'android:usesCleartextTraffic 0x0'
+  else
+    echo 'android:usesCleartextTraffic 0xffffffff'
+  fi
+elif [[ "$3" == *app-release.apk ]]; then
+  if [[ "${MOCK_RELEASE_ALLOWS:-0}" == 1 ]]; then
+    echo 'android:usesCleartextTraffic 0xffffffff'
+  else
+    echo 'no cleartext opt-in'
+  fi
+else
+  exit 2
+fi
+EOF
+chmod +x "$tmp/bin/flutter" "$tmp/sdk/build-tools/36.0.0/aapt"
+touch "$tmp/build/app/outputs/flutter-apk/app-release.apk"
+run_android_debug_fixture() {
+  (cd "$tmp" && env PATH="$tmp/bin:$PATH" ANDROID_HOME="$tmp/sdk" "$@" bash tool/ci/check_android_debug.sh)
+}
+run_android_debug_fixture >/dev/null
+expect_failure 'synthetic debug build failure' run_android_debug_fixture MOCK_BUILD_FAIL=1
+expect_failure 'Debug manifest must explicitly allow' run_android_debug_fixture MOCK_DEBUG_DISALLOWS=1
+expect_failure 'Release manifest must not allow' run_android_debug_fixture MOCK_RELEASE_ALLOWS=1
+rm "$tmp/build/app/outputs/flutter-apk/app-debug.apk"
+expect_failure 'Expected debug and release APKs' run_android_debug_fixture MOCK_MISSING_DEBUG=1
+
 echo 'CI script tests passed.'

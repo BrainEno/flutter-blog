@@ -14,8 +14,16 @@ enum BlogFeedSource { network, cache }
 /// All pages in one scrolling session must use the same source. A refresh
 /// starts a new session and chooses a source again.
 class BlogFeedPage {
-  const BlogFeedPage({required this.blogs, required this.source});
+  const BlogFeedPage({
+    required this.blogs,
+    required this.source,
+    this.nextCursor,
+  });
 
   final List<Blog> blogs;
   final BlogFeedSource source;
+
+  /// Opaque, in-memory continuation for this network feed session. Null means
+  /// this session uses the legacy offset strategy (or has no further page).
+  final String? nextCursor;
 }

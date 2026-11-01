@@ -7,6 +7,7 @@ import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
+import 'package:belog/features/blog/data/datasources/latest_feed_cursor.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
@@ -70,15 +71,20 @@ class BlogRepositoryImpl implements BlogRepository {
   Future<Either<Failure, BlogFeedPage>> getAllBlogs({
     required int page,
     BlogFeedSource? source,
+    String? cursor,
   }) async {
     if (page < 1) return left(Failure.validation('页码必须大于零'));
+    if (cursor != null && (page < 2 || source != BlogFeedSource.network)) {
+      return left(Failure.validation('无效的文章分页请求'));
+    }
 
     // Keep every page in a scrolling session on the first page's source.
-    // In particular, reconnecting must not splice a remote offset into a
+    // In particular, reconnecting must not splice a remote page into a
     // (potentially incomplete and differently ordered) cached list.
     if (source == BlogFeedSource.cache) return _loadCachedFeed(page);
 
-    late final List<BlogModel> blogs;
+    late List<BlogModel> blogs;
+    String? nextCursor;
     try {
       if (!await connectionChecker.isConnected) {
         if (source == BlogFeedSource.network) {
@@ -86,7 +92,38 @@ class BlogRepositoryImpl implements BlogRepository {
         }
         return await _loadCachedFeed(page);
       }
-      blogs = await blogRemoteDataSource.getAllBlogs(page: page);
+      if (cursor == null) {
+        blogs = await blogRemoteDataSource.getAllBlogs(page: page);
+        // Once a session has fallen back to offsets, do not re-enable cursor
+        // halfway through its differently positioned list.
+        if (page == 1) {
+          nextCursor = LatestFeedContinuation.tryStart(blogs)?.token;
+        }
+      } else {
+        try {
+          final slice = await blogRemoteDataSource.getAllBlogsAfter(
+            cursor: cursor,
+          );
+          blogs = slice.blogs;
+          nextCursor = slice.nextCursor;
+        } on LatestFeedCursorUnavailable {
+          if (page != 2) {
+            return left(
+              const Failure('文章分页方式已改变，请刷新后重试', code: 'feed.paginationChanged'),
+            );
+          }
+          // Older servers may ignore the query parameter or reject it. This
+          // is the first continuation, so use legacy offsets for this session.
+          blogs = await blogRemoteDataSource.getAllBlogs(page: page);
+        } on LatestFeedCursorTooDense {
+          return left(
+            const Failure(
+              '同一毫秒内的文章过多，无法安全继续分页；请刷新后重试',
+              code: 'feed.paginationDense',
+            ),
+          );
+        }
+      }
     } catch (error) {
       final failure = mapErrorToFailure(error);
       // A connection probe can succeed just before a socket fails. Only a
@@ -105,7 +142,13 @@ class BlogRepositoryImpl implements BlogRepository {
     } catch (error) {
       return left(Failure.storage(cause: error));
     }
-    return right(BlogFeedPage(blogs: blogs, source: BlogFeedSource.network));
+    return right(
+      BlogFeedPage(
+        blogs: blogs,
+        source: BlogFeedSource.network,
+        nextCursor: nextCursor,
+      ),
+    );
   }
 
   @override

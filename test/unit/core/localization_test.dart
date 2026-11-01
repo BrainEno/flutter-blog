@@ -57,6 +57,15 @@ void main() {
     expect(localizedFailure(en, failure), en.feedSourceChanged);
   });
 
+  test('pagination safety failures have localized guidance', () {
+    final changed = const Failure('fallback', code: 'feed.paginationChanged');
+    final dense = const Failure('fallback', code: 'feed.paginationDense');
+    expect(localizedFailure(zh, changed), zh.feedPaginationChanged);
+    expect(localizedFailure(en, changed), en.feedPaginationChanged);
+    expect(localizedFailure(zh, dense), zh.feedPaginationDense);
+    expect(localizedFailure(en, dense), en.feedPaginationDense);
+  });
+
   test(
     'unknown messages do not expose backend details or foreign fallbacks',
     () {

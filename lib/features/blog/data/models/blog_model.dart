@@ -19,6 +19,7 @@ class BlogModel extends Blog {
     super.document,
     this.documentJson,
     this.articleId = '',
+    this.publishedAt,
     this.serverSummary,
     this.plainEditorCompatible = false,
   });
@@ -26,6 +27,10 @@ class BlogModel extends Blog {
   /// The no-wave server article id (UUID). [Blog.id] is the public slug;
   /// this is the address used by `PUT /articles/:articleId`.
   final String articleId;
+
+  /// Exact UTC millisecond timestamp returned by the server. It is only
+  /// used for a live feed continuation and is not stored in the cache.
+  final String? publishedAt;
 
   /// Original server body for the local read cache; never used for writes.
   /// Legacy Markdown models and pre-migration rows leave it null.
@@ -54,6 +59,7 @@ class BlogModel extends Blog {
     return BlogModel(
       id: id ?? this.id,
       articleId: articleId ?? this.articleId,
+      publishedAt: publishedAt,
       document: content == null || content == this.content ? document : null,
       documentJson: content == null || content == this.content
           ? documentJson
@@ -100,6 +106,9 @@ class BlogModel extends Blog {
       serverSummary: map['summary'] is String ? map['summary'] as String : null,
       id: map['slug'] as String? ?? '',
       articleId: map['id'] as String? ?? '',
+      publishedAt: map['publishedAt'] is String
+          ? map['publishedAt'] as String
+          : null,
       title: map['title'] as String? ?? '',
       content: extracted.content,
       posterId: map['authorId'] as String? ?? '',

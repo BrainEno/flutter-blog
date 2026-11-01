@@ -26,6 +26,8 @@
   "feedCachedEmpty": "No cached articles on this device. Connect and try again.",
   "feedCachedNoMore": "End of cached articles. Refresh when connected for newer content.",
   "feedSourceChanged": "The article source changed. Refresh and try again.",
+  "feedPaginationChanged": "The feed pagination changed. Refresh and try again.",
+  "feedPaginationDense": "Too many articles share the same time to load safely. Refresh and try again.",
   "feedTabLatest": "Latest",
   "feedTabFeatured": "Featured",
   "feedTabPopular": "Most saved",

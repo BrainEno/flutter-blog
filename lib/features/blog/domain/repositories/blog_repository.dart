@@ -33,10 +33,12 @@ abstract interface class BlogRepository {
   /// Fetches a 1-based feed page. With no [source], the repository chooses
   /// the network or falls back to the local cache on a connectivity failure.
   /// Pass the first page's source for subsequent pages to avoid mixing
-  /// different orderings or cache contents in one scrolling session.
+  /// different orderings or cache contents in one scrolling session. Pass
+  /// the preceding page's [cursor] only for a pinned network session.
   Future<Either<Failure, BlogFeedPage>> getAllBlogs({
     required int page,
     BlogFeedSource? source,
+    String? cursor,
   });
 
   /// Loads a server-ranked or viewer-specific feed. These lists are online

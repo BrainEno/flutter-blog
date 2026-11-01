@@ -37,6 +37,9 @@ final class BlogLoaded extends BlogState {
   final bool hasReachedMax;
   final bool isLoadingMore;
 
+  /// Local continuation for this latest/network session, or null for offset.
+  final String? nextCursor;
+
   const BlogLoaded({
     super.kind,
     super.viewerId,
@@ -45,6 +48,7 @@ final class BlogLoaded extends BlogState {
     required this.page,
     required this.hasReachedMax,
     this.isLoadingMore = false,
+    this.nextCursor,
   });
 
   BlogLoaded copyWith({
@@ -62,6 +66,7 @@ final class BlogLoaded extends BlogState {
       page: page ?? this.page,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      nextCursor: nextCursor,
     );
   }
 }

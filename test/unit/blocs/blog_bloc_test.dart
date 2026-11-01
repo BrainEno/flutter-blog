@@ -556,4 +556,165 @@ void main() {
       },
     );
   });
+
+  group('latest feed cursor sessions', () {
+    test('forwards continuation, advances it and resets on refresh', () async {
+      final requests = <GetAllBlogsParams>[];
+      var firstPages = 0;
+      final bloc = BlogBloc(
+        getAllBlogs: _FakeFeed((params) async {
+          requests.add(params);
+          if (params.page == 1) {
+            firstPages++;
+            return Right(
+              BlogFeedPage(
+                blogs: List.generate(10, (i) => _blog('first-$firstPages-$i')),
+                source: BlogFeedSource.network,
+                nextCursor: firstPages == 1 ? 'cursor-1' : 'fresh-cursor',
+              ),
+            );
+          }
+          return Right(
+            BlogFeedPage(
+              blogs: List.generate(10, (i) => _blog('more-$i')),
+              source: BlogFeedSource.network,
+              nextCursor: 'cursor-2',
+            ),
+          );
+        }),
+      );
+      final states = <BlogState>[];
+      final subscription = bloc.stream.listen(states.add);
+      bloc.add(const BlogFetchFirstPage());
+      await Future<void>.delayed(Duration.zero);
+      expect((bloc.state as BlogLoaded).nextCursor, 'cursor-1');
+      bloc.add(const BlogLoadMore());
+      await Future<void>.delayed(Duration.zero);
+      expect((bloc.state as BlogLoaded).nextCursor, 'cursor-2');
+      bloc.add(const BlogFetchFirstPage());
+      await bloc.close();
+      await subscription.cancel();
+      expect(requests.map((p) => p.cursor), [null, 'cursor-1', null]);
+      expect(requests.map((p) => p.source), [
+        null,
+        BlogFeedSource.network,
+        null,
+      ]);
+      expect(states.whereType<BlogLoaded>().last.nextCursor, 'fresh-cursor');
+    });
+
+    test('feed switch ignores an in-flight old cursor response', () async {
+      final pending = Completer<Either<Failure, BlogFeedPage>>();
+      final requests = <GetAllBlogsParams>[];
+      final bloc = BlogBloc(
+        getAllBlogs: _FakeFeed((params) {
+          requests.add(params);
+          if (params.kind == BlogFeedKind.popular) {
+            return Future.value(
+              Right(
+                BlogFeedPage(
+                  blogs: [_blog('popular')],
+                  source: BlogFeedSource.network,
+                  nextCursor: 'not-valid-for-popular',
+                ),
+              ),
+            );
+          }
+          if (params.page == 1) {
+            return Future.value(
+              Right(
+                BlogFeedPage(
+                  blogs: List.generate(10, (i) => _blog('first-$i')),
+                  source: BlogFeedSource.network,
+                  nextCursor: 'old-cursor',
+                ),
+              ),
+            );
+          }
+          return pending.future;
+        }),
+      );
+      bloc.add(const BlogFetchFirstPage());
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(const BlogLoadMore());
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(const BlogFetchFirstPage(kind: BlogFeedKind.popular));
+      await Future<void>.delayed(Duration.zero);
+      pending.complete(
+        Right(
+          BlogFeedPage(
+            blogs: [_blog('stale')],
+            source: BlogFeedSource.network,
+            nextCursor: 'stale-cursor',
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      final loaded = bloc.state as BlogLoaded;
+      expect(loaded.kind, BlogFeedKind.popular);
+      expect(loaded.blogs.map((b) => b.id), ['popular']);
+      expect(loaded.nextCursor, isNull);
+      expect(requests[1].cursor, 'old-cursor');
+      expect(requests[2].cursor, isNull);
+      await bloc.close();
+    });
+
+    test('never forwards a cursor from a cached feed', () async {
+      final requests = <GetAllBlogsParams>[];
+      final bloc = BlogBloc(
+        getAllBlogs: _FakeFeed((params) async {
+          requests.add(params);
+          return Right(
+            BlogFeedPage(
+              blogs: params.page == 1
+                  ? List.generate(10, (i) => _blog('cached-$i'))
+                  : [_blog('cached-end')],
+              source: BlogFeedSource.cache,
+              nextCursor: 'must-not-leave-cache',
+            ),
+          );
+        }),
+      );
+      bloc.add(const BlogFetchFirstPage());
+      await Future<void>.delayed(Duration.zero);
+      expect((bloc.state as BlogLoaded).nextCursor, isNull);
+      bloc.add(const BlogLoadMore());
+      await Future<void>.delayed(Duration.zero);
+      expect(requests.last.source, BlogFeedSource.cache);
+      expect(requests.last.cursor, isNull);
+      await bloc.close();
+    });
+
+    test(
+      'dense pagination keeps previous results and does not signal the end',
+      () async {
+        final bloc = BlogBloc(
+          getAllBlogs: _FakeFeed((params) async {
+            if (params.page == 1) {
+              return Right(
+                BlogFeedPage(
+                  blogs: List.generate(10, (i) => _blog('first-$i')),
+                  source: BlogFeedSource.network,
+                  nextCursor: 'cursor',
+                ),
+              );
+            }
+            return const Left(Failure('refresh', code: 'feed.paginationDense'));
+          }),
+        );
+        bloc.add(const BlogFetchFirstPage());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const BlogLoadMore());
+        await Future<void>.delayed(Duration.zero);
+        final failure = bloc.state as BlogListFailure;
+        final previous = failure.previousState as BlogLoaded;
+        expect(failure.failure.code, 'feed.paginationDense');
+        expect(previous.blogs, hasLength(10));
+        expect(previous.hasReachedMax, isFalse);
+        expect(previous.isLoadingMore, isFalse);
+        expect(previous.nextCursor, 'cursor');
+        await bloc.close();
+      },
+    );
+  });
 }

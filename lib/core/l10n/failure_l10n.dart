@@ -89,6 +89,10 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
     // Feature-specific failures.
     case 'feed.sourceChanged':
       return l10n.feedSourceChanged;
+    case 'feed.paginationChanged':
+      return l10n.feedPaginationChanged;
+    case 'feed.paginationDense':
+      return l10n.feedPaginationDense;
     case 'comments.load':
       return l10n.errorCommentsLoad;
     case 'comments.send':

@@ -69,6 +69,37 @@ void main() {
       ).called(1);
     });
 
+    test('forwards an online latest continuation to the repository', () async {
+      const page = BlogFeedPage(
+        blogs: [],
+        source: BlogFeedSource.network,
+        nextCursor: 'next',
+      );
+      when(
+        () => mockRepository.getAllBlogs(
+          page: 2,
+          source: BlogFeedSource.network,
+          cursor: 'previous',
+        ),
+      ).thenAnswer((_) async => const Right(page));
+
+      final result = await useCase(
+        const GetAllBlogsParams(
+          page: 2,
+          source: BlogFeedSource.network,
+          cursor: 'previous',
+        ),
+      );
+      expect(result, const Right(page));
+      verify(
+        () => mockRepository.getAllBlogs(
+          page: 2,
+          source: BlogFeedSource.network,
+          cursor: 'previous',
+        ),
+      ).called(1);
+    });
+
     test('forwards the following feed and local viewer fence', () async {
       const page = BlogFeedPage(blogs: [], source: BlogFeedSource.network);
       when(
