@@ -35,7 +35,7 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
   late final AppUserCubit _userCubit;
   late final NowaveSessionFence? _fence;
   StreamSubscription<void>? _identitySubscription;
-  StreamSubscription<AppUserState>? _userSubscription;
+  bool _listeningToUser = false;
 
   List<AccountSession> _sessions = const [];
   Failure? _failure;
@@ -69,18 +69,13 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
     _identitySubscription = _identity.identityChanges.listen((_) {
       if (!_matchesFence) _invalidate();
     });
-    _userSubscription = _userCubit.stream.listen((state) {
-      final fence = _fence;
-      // Inspect the emitted state too: B followed immediately by A must not
-      // keep an A page alive just because the stream listener ran later.
-      if (fence == null ||
-          state is! AppUserLoggedIn ||
-          state.user.id != fence.userId ||
-          !_matchesFence) {
-        _invalidate();
-      }
-    });
+    _userCubit.identityRevision.addListener(_onUserRevision);
+    _listeningToUser = true;
     unawaited(_reload());
+  }
+
+  void _onUserRevision() {
+    if (!_matchesFence) _invalidate();
   }
 
   bool get _matchesFence {
@@ -146,7 +141,9 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
     _loadVersion++;
     _sessions = const [];
     unawaited(_identitySubscription?.cancel());
-    unawaited(_userSubscription?.cancel());
+    if (_listeningToUser) {
+      _userCubit.identityRevision.removeListener(_onUserRevision);
+    }
     super.dispose();
   }
 
@@ -167,8 +164,8 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
       ),
       body: BlocBuilder<AppUserCubit, AppUserState>(
         builder: (context, _) {
-          // Also check on every build, in case the app-user state changes
-          // before its asynchronous listener has delivered the event.
+          // Double-check the current identity on every build in addition
+          // to the synchronous invalidation signals.
           if (!_matchesFence) {
             return _status(context, l10n.accountSessionsChanged);
           }

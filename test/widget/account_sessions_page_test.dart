@@ -233,6 +233,19 @@ void main() {
     );
   }
 
+  testWidgets('a same-account profile update keeps the page', (tester) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.repository.pending.single.complete(right([_session()]));
+    await tester.pumpAndSettle();
+    harness.userCubit.updateUser(_user('user-a'));
+    await tester.pump();
+    expect(find.text('This session'), findsOneWidget);
+    expect(find.textContaining('Your sign-in changed'), findsNothing);
+    expect(harness.repository.pending, hasLength(1));
+  });
+
   testWidgets('app-user changes independently of identity also hide the list', (
     tester,
   ) async {
