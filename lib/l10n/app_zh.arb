@@ -160,7 +160,7 @@
   "menuReadingHistory": "阅读历史",
   "menuAbout": "关于我们",
   "exportMyData": "导出我的数据",
-  "exportMyDataHint": "将个人资料与全部文章导出为 JSON 文件",
+  "exportMyDataHint": "仅导出个人资料及最多 100 篇简体中文已发布文章的部分文字；不含草稿、其他语言及完整格式和图片，并非完整备份。",
   "logout": "退出登录",
   "notSignedIn": "您还没有登录",
   "signIn": "登录",

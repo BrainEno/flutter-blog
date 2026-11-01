@@ -98,8 +98,8 @@ void main() {
       expect(header.visualOffset(4), 4); // inline-code WidgetSpan starts here
       expect(header.visualOffset(5), 4);
       expect(
-        header.inlineRanges.values.map((r) => [r.start, r.end]),
-        contains([4, 6]),
+        header.inlineRanges.values.any((r) => r.start == 4 && r.end == 6),
+        isTrue,
       );
       final code = speech.blocks.last;
       expect(code.inlineRanges[code.node]?.start, 0);

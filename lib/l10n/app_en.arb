@@ -263,7 +263,7 @@
   "menuReadingHistory": "Reading history",
   "menuAbout": "About",
   "exportMyData": "Export my data",
-  "exportMyDataHint": "Export your profile and all your articles as a JSON file",
+  "exportMyDataHint": "Exports your profile and text from up to 100 published Simplified Chinese articles. Drafts, other languages and full formatting or images are not included. This is not a complete backup.",
   "logout": "Sign out",
   "notSignedIn": "You are not signed in",
   "signIn": "Sign in",

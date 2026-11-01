@@ -111,8 +111,9 @@ void main() {
               data: const MediaQueryData(textScaler: TextScaler.linear(2)),
               child: NoWaveActionRow(
                 label: 'Export my data',
-                description:
-                    'Export your profile and all your articles as a JSON file',
+                description: lookupAppLocalizations(
+                  const Locale('en'),
+                ).exportMyDataHint,
                 icon: Icons.file_download_outlined,
                 onTap: () => actions++,
               ),

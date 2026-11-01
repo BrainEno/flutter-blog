@@ -53,37 +53,43 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
         final semantics = tester.ensureSemantics();
-        addTearDown(semantics.dispose);
-        final model = BlogModel.fromNowaveArticle(structuredArticle());
-        final nodes = structuredArticleNodes(model.document!, webBaseUrl: '');
-        final document = ReadAloudDocument.fromNodes(model.title, nodes);
-        await tester.pumpWidget(
-          readerApp(
-            MarkdownBody(markdown: model.content, readAloudDocument: document),
-            locale: locale,
-            scale: 2,
-          ),
-        );
-        final l10n = lookupAppLocalizations(locale);
-        expect(find.text(l10n.articleImageUnavailable), findsNWidgets(2));
-        expect(find.text('First caption'), findsOneWidget);
-        expect(find.text('Second caption'), findsOneWidget);
-        expect(find.text('literal **asterisks**'), findsOneWidget);
-        expect(find.text('Quoted words'), findsOneWidget);
-        expect(find.text('— Author name'), findsOneWidget);
-        expect(find.text('First item'), findsOneWidget);
-        expect(find.text(' second item '), findsOneWidget);
-        expect(find.text('dart'), findsOneWidget);
-        expect(find.text('  a\n\n b  \n'), findsOneWidget);
-        expect(
-          find.bySemanticsLabel(RegExp('First image alt')),
-          findsOneWidget,
-        );
-        expect(
-          find.bySemanticsLabel(RegExp('Second image alt')),
-          findsOneWidget,
-        );
-        expect(tester.takeException(), isNull);
+        try {
+          final model = BlogModel.fromNowaveArticle(structuredArticle());
+          final nodes = structuredArticleNodes(model.document!, webBaseUrl: '');
+          final document = ReadAloudDocument.fromNodes(model.title, nodes);
+          await tester.pumpWidget(
+            readerApp(
+              MarkdownBody(
+                markdown: model.content,
+                readAloudDocument: document,
+              ),
+              locale: locale,
+              scale: 2,
+            ),
+          );
+          final l10n = lookupAppLocalizations(locale);
+          expect(find.text(l10n.articleImageUnavailable), findsNWidgets(2));
+          expect(find.text('First caption'), findsOneWidget);
+          expect(find.text('Second caption'), findsOneWidget);
+          expect(find.text('literal **asterisks**'), findsOneWidget);
+          expect(find.text('Quoted words'), findsOneWidget);
+          expect(find.text('— Author name'), findsOneWidget);
+          expect(find.text('First item'), findsOneWidget);
+          expect(find.text(' second item '), findsOneWidget);
+          expect(find.text('dart'), findsOneWidget);
+          expect(find.text('  a\n\n b  \n'), findsOneWidget);
+          expect(
+            find.bySemanticsLabel(RegExp('First image alt')),
+            findsOneWidget,
+          );
+          expect(
+            find.bySemanticsLabel(RegExp('Second image alt')),
+            findsOneWidget,
+          );
+          expect(tester.takeException(), isNull);
+        } finally {
+          semantics.dispose();
+        }
       },
     );
   }
