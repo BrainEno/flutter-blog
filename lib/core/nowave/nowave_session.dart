@@ -120,6 +120,15 @@ abstract class NowaveSessionStore {
   Future<void> clear();
 }
 
+/// The immediate identity signal used by sensitive UI. It changes before
+/// storage or network work can delay the ordinary signed-in/out events.
+abstract interface class NowaveSessionIdentity {
+  String? get activeUserId;
+  String? get accessToken;
+  int get sessionGeneration;
+  Stream<void> get identityChanges;
+}
+
 /// Owns the no-wave session lifecycle: adopting token pairs from
 /// login/register, rotating the refresh token, and broadcasting
 /// sign-in/sign-out to the rest of the app (the replacement for
@@ -129,7 +138,10 @@ abstract class NowaveSessionStore {
 /// revokes the whole session family server-side, so [refresh] is strictly
 /// single-flight.
 class NowaveSessionManager
-    implements NowaveProactiveAuthenticator, NowaveViewerAuthenticator {
+    implements
+        NowaveProactiveAuthenticator,
+        NowaveViewerAuthenticator,
+        NowaveSessionIdentity {
   NowaveSessionManager({
     required NowaveApiClient client,
     required NowaveSessionStore store,
@@ -151,6 +163,13 @@ class NowaveSessionManager
 
   final StreamController<NowaveAuthStatus> _status =
       StreamController<NowaveAuthStatus>.broadcast();
+  // Synchronous so sensitive editors can invalidate their view before the
+  // account-changing call yields to persistence or a network request.
+  final StreamController<void> _identityChanges =
+      StreamController<void>.broadcast(sync: true);
+
+  @override
+  Stream<void> get identityChanges => _identityChanges.stream;
 
   NowaveSessionData? _session;
   Future<bool>? _refreshInFlight;
@@ -190,6 +209,7 @@ class NowaveSessionManager
   /// access token is validated lazily by the first authenticated request.
   Future<void> restore() async {
     final generation = ++_sessionGeneration;
+    _identityChanges.add(null);
     try {
       final restored = await _withStore(_store.read);
       if (generation == _sessionGeneration) _session = restored;
@@ -220,6 +240,7 @@ class NowaveSessionManager
       accessExpiresAt: tokens.accessExpiresAt,
       refreshExpiresAt: tokens.refreshExpiresAt,
     );
+    _identityChanges.add(null);
     await _persist();
   }
 
@@ -228,6 +249,7 @@ class NowaveSessionManager
     final session = _session;
     if (session == null || session.userId == userId) return;
     _session = session.copyWith(userId: userId);
+    _identityChanges.add(null);
     await _persist();
   }
 
@@ -346,6 +368,7 @@ class NowaveSessionManager
     final hadSession = _session != null;
     final generation = ++_sessionGeneration;
     _session = null;
+    _identityChanges.add(null);
     try {
       await _withStore(_store.clear);
     } catch (e, stackTrace) {

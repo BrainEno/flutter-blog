@@ -104,13 +104,57 @@ message="${output#*diagnostics::}"
 expect_failure 'Usage:' bash "$annotation" unknown "$tmp/log"
 expect_failure 'not readable' bash "$annotation" analyze "$tmp/missing"
 
-# The debug Android gate must retain both manifest policy checks and fail
-# closed on build errors. Mocks exercise its script without an Android SDK.
-mkdir -p "$tmp/bin" "$tmp/sdk/build-tools/36.0.0" "$tmp/build/app/outputs/flutter-apk"
+# CI uses a private temporary Gradle home, not a developer's settings. Verify
+# the real GitHub environment file protocol and fail closed if inputs are absent.
+mkdir -p "$tmp/runner with spaces" "$tmp/home/.gradle"
+printf 'developer.setting=preserve\n' > "$tmp/home/.gradle/gradle.properties"
+printf 'EXISTING=kept\n' > "$tmp/github-env"
+env HOME="$tmp/home" RUNNER_TEMP="$tmp/runner with spaces" GITHUB_ENV="$tmp/github-env" \
+  bash "$tmp/tool/ci/setup_android_gradle.sh" >/dev/null
+ci_gradle_home="$(sed -n 's/^GRADLE_USER_HOME=//p' "$tmp/github-env")"
+[[ "$ci_gradle_home" == "$tmp/runner with spaces/belog-ci-gradle."* ]]
+grep -Fxq 'EXISTING=kept' "$tmp/github-env"
+grep -Fxq 'org.gradle.workers.max=1' "$ci_gradle_home/gradle.properties"
+grep -Fxq 'developer.setting=preserve' "$tmp/home/.gradle/gradle.properties"
+: > "$tmp/github-env-2"
+env HOME="$tmp/home" RUNNER_TEMP="$tmp/runner with spaces" GITHUB_ENV="$tmp/github-env-2" \
+  bash "$tmp/tool/ci/setup_android_gradle.sh" >/dev/null
+second_gradle_home="$(sed -n 's/^GRADLE_USER_HOME=//p' "$tmp/github-env-2")"
+[[ "$ci_gradle_home" != "$second_gradle_home" && -f "$ci_gradle_home/gradle.properties" ]]
+expect_failure 'RUNNER_TEMP is required' env -u RUNNER_TEMP GITHUB_ENV="$tmp/github-env" bash "$tmp/tool/ci/setup_android_gradle.sh"
+expect_failure 'GITHUB_ENV is required' env -u GITHUB_ENV RUNNER_TEMP="$tmp/runner" bash "$tmp/tool/ci/setup_android_gradle.sh"
+expect_failure 'single-line path' env RUNNER_TEMP="$tmp/runner"$'\n''bad' GITHUB_ENV="$tmp/github-env" bash "$tmp/tool/ci/setup_android_gradle.sh"
+
+# The debug Android gate verifies the effective Gradle limit, starts a fresh
+# daemon and retains both manifest policies. Mocks need no Android SDK.
+mkdir -p "$tmp/bin" "$tmp/android" "$tmp/sdk/build-tools/36.0.0" "$tmp/build/app/outputs/flutter-apk"
+cat > "$tmp/android/gradlew" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+echo "gradle:$*" >> "$MOCK_CALLS"
+case "$*" in
+  '--info help')
+    if [[ "${MOCK_GRADLE_FAIL:-0}" == 1 ]]; then
+      echo 'synthetic Gradle probe failure' >&2
+      exit 13
+    fi
+    echo "Using ${MOCK_WORKERS:-1} worker leases."
+    ;;
+  '--stop')
+    if [[ "${MOCK_STOP_FAIL:-0}" == 1 ]]; then
+      echo 'synthetic Gradle stop failure' >&2
+      exit 14
+    fi
+    echo 'Stopped the fixture daemon.'
+    ;;
+  *) exit 2 ;;
+esac
+EOF
 cat > "$tmp/bin/flutter" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 [[ "$*" == *'build apk --debug'* && "$*" == *'BELOG_DEV_BACKEND_CHECK=true'* ]] || exit 2
+echo 'flutter:debug' >> "$MOCK_CALLS"
 if [[ "${MOCK_BUILD_FAIL:-0}" == 1 ]]; then
   echo 'synthetic debug build failure' >&2
   exit 7
@@ -141,13 +185,34 @@ EOF
 chmod +x "$tmp/bin/flutter" "$tmp/sdk/build-tools/36.0.0/aapt"
 touch "$tmp/build/app/outputs/flutter-apk/app-release.apk"
 run_android_debug_fixture() {
-  (cd "$tmp" && env PATH="$tmp/bin:$PATH" ANDROID_HOME="$tmp/sdk" "$@" bash tool/ci/check_android_debug.sh)
+  (cd "$tmp" && env PATH="$tmp/bin:$PATH" ANDROID_HOME="$tmp/sdk" MOCK_CALLS="$tmp/debug-calls" "$@" bash tool/ci/check_android_debug.sh)
 }
+: > "$tmp/debug-calls"
 run_android_debug_fixture >/dev/null
+printf 'gradle:--info help\ngradle:--stop\nflutter:debug\n' > "$tmp/debug-expected-calls"
+cmp "$tmp/debug-expected-calls" "$tmp/debug-calls"
+: > "$tmp/debug-calls"
+expect_failure 'Gradle did not report the required single worker' run_android_debug_fixture MOCK_WORKERS=2
+! grep -Fq 'flutter:debug' "$tmp/debug-calls"
+: > "$tmp/debug-calls"
+expect_failure 'synthetic Gradle probe failure' run_android_debug_fixture MOCK_GRADLE_FAIL=1
+! grep -Fq 'flutter:debug' "$tmp/debug-calls"
+: > "$tmp/debug-calls"
+expect_failure 'synthetic Gradle stop failure' run_android_debug_fixture MOCK_STOP_FAIL=1
+! grep -Fq 'flutter:debug' "$tmp/debug-calls"
 expect_failure 'synthetic debug build failure' run_android_debug_fixture MOCK_BUILD_FAIL=1
+for case_and_status in MOCK_GRADLE_FAIL=1:13 MOCK_STOP_FAIL=1:14 MOCK_BUILD_FAIL=1:7; do
+  flag="${case_and_status%:*}"
+  expected_status="${case_and_status##*:}"
+  actual_status=0
+  run_android_debug_fixture "$flag" >/dev/null 2>&1 || actual_status=$?
+  [[ "$actual_status" == "$expected_status" ]]
+done
 expect_failure 'Debug manifest must explicitly allow' run_android_debug_fixture MOCK_DEBUG_DISALLOWS=1
 expect_failure 'Release manifest must not allow' run_android_debug_fixture MOCK_RELEASE_ALLOWS=1
 rm "$tmp/build/app/outputs/flutter-apk/app-debug.apk"
 expect_failure 'Expected debug and release APKs' run_android_debug_fixture MOCK_MISSING_DEBUG=1
+rm "$tmp/android/gradlew"
+expect_failure 'Gradle wrapper is missing' run_android_debug_fixture
 
 echo 'CI script tests passed.'

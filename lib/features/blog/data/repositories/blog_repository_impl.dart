@@ -4,6 +4,7 @@ import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
@@ -35,6 +36,7 @@ class BlogRepositoryImpl implements BlogRepository {
     required String posterId,
     required List<String> tags,
     String? imageMimeType,
+    NowaveSessionFence? sessionFence,
   }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
@@ -47,9 +49,15 @@ class BlogRepositoryImpl implements BlogRepository {
       // server-side). A coverless publish (issue #17) skips the upload.
       final imageUrl = image == null
           ? ''
+          : sessionFence == null
+          ? await blogRemoteDataSource.uploadBlogImage(
+              image: image,
+              mimeType: imageMimeType,
+            )
           : await blogRemoteDataSource.uploadBlogImage(
               image: image,
               mimeType: imageMimeType,
+              sessionFence: sessionFence,
             );
       final blogModel = BlogModel(
         id: '',
@@ -60,7 +68,12 @@ class BlogRepositoryImpl implements BlogRepository {
         tags: tags,
         updatedAt: DateTime.now(),
       );
-      final blog = await blogRemoteDataSource.uploadBlog(blogModel);
+      final blog = sessionFence == null
+          ? await blogRemoteDataSource.uploadBlog(blogModel)
+          : await blogRemoteDataSource.uploadBlog(
+              blogModel,
+              sessionFence: sessionFence,
+            );
       return right(blog);
     } catch (error) {
       return left(mapErrorToFailure(error));
@@ -334,6 +347,7 @@ class BlogRepositoryImpl implements BlogRepository {
     required List<String> tags,
     required File? image,
     String? imageMimeType,
+    NowaveSessionFence? sessionFence,
   }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
@@ -342,7 +356,12 @@ class BlogRepositoryImpl implements BlogRepository {
       // Fetch the current article first: the update addresses the server
       // article id carried on the model, and the existing cover is kept
       // when no new one was picked.
-      var blogToUpdate = await blogRemoteDataSource.getBlogById(blogId);
+      var blogToUpdate = sessionFence == null
+          ? await blogRemoteDataSource.getBlogById(blogId)
+          : await blogRemoteDataSource.getBlogById(
+              blogId,
+              sessionFence: sessionFence,
+            );
       if (!blogToUpdate.plainEditorCompatible ||
           blogToUpdate.serverSummary == null) {
         // Reject before uploading a cover or mutating anything: flattening a
@@ -356,10 +375,16 @@ class BlogRepositoryImpl implements BlogRepository {
         );
       }
       if (image != null) {
-        final newImageUrl = await blogRemoteDataSource.uploadBlogImage(
-          image: image,
-          mimeType: imageMimeType,
-        );
+        final newImageUrl = sessionFence == null
+            ? await blogRemoteDataSource.uploadBlogImage(
+                image: image,
+                mimeType: imageMimeType,
+              )
+            : await blogRemoteDataSource.uploadBlogImage(
+                image: image,
+                mimeType: imageMimeType,
+                sessionFence: sessionFence,
+              );
         blogToUpdate = blogToUpdate.copyWith(imageUrl: newImageUrl);
       }
       blogToUpdate = blogToUpdate.copyWith(
@@ -369,7 +394,12 @@ class BlogRepositoryImpl implements BlogRepository {
         updatedAt: DateTime.now(),
       );
 
-      final blogUpdated = await blogRemoteDataSource.editBlog(blogToUpdate);
+      final blogUpdated = sessionFence == null
+          ? await blogRemoteDataSource.editBlog(blogToUpdate)
+          : await blogRemoteDataSource.editBlog(
+              blogToUpdate,
+              sessionFence: sessionFence,
+            );
       return right(blogUpdated);
     } catch (error) {
       return left(mapErrorToFailure(error));

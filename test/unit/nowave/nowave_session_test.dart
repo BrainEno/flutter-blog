@@ -104,6 +104,38 @@ void main() {
     });
   });
 
+  test(
+    'identity changes synchronously on replacement and clear, not refresh',
+    () async {
+      final store = MemorySessionStore()..stored = _session();
+      final manager = NowaveSessionManager(
+        client: clientFor(body: _tokenBody('2')),
+        store: store,
+      );
+      await manager.restore();
+      final seen = <(String?, int)>[];
+      final subscription = manager.identityChanges.listen((_) {
+        seen.add((manager.activeUserId, manager.sessionGeneration));
+      });
+      addTearDown(subscription.cancel);
+      final generation = manager.sessionGeneration;
+
+      expect(await manager.refresh(), isTrue);
+      expect(manager.sessionGeneration, generation);
+      expect(seen, isEmpty);
+
+      final adoption = manager.adoptSession(_tokens('3'), email: 'a@b.c');
+      expect(seen, [('', generation + 1)]);
+      await adoption;
+      final update = manager.updateUserId('u1');
+      expect(seen.last, ('u1', generation + 1));
+      await update;
+      final clearing = manager.clear();
+      expect(seen.last, (null, generation + 2));
+      await clearing;
+    },
+  );
+
   group('refresh', () {
     test('a successful rotation replaces the pair and persists it', () async {
       final store = MemorySessionStore()..stored = _session();

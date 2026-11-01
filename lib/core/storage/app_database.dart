@@ -18,7 +18,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -36,6 +36,7 @@ class AppDatabase extends GeneratedDatabase {
         'CREATE TABLE drafts (id INTEGER PRIMARY KEY AUTOINCREMENT, blog_id TEXT, title TEXT NOT NULL, content TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL)',
       );
       await customStatement('CREATE INDEX drafts_blog_id ON drafts(blog_id)');
+      await _createAccountDrafts();
       await _createBlogCache();
       await _createBlogCacheFeedIndex();
       await _createReadingHistory();
@@ -70,8 +71,32 @@ class AppDatabase extends GeneratedDatabase {
           '''UPDATE blog_cache SET document_json = '{"version":null,"blocks":[]}' WHERE length(article_id) > 0''',
         );
       }
+      if (from < 6) {
+        // Pre-v6 drafts have no provable owner. Keep the old table intact,
+        // but never read or assign those rows as any signed-in user's drafts.
+        await _createAccountDrafts();
+      }
     },
   );
+
+  /// New drafts are separate from the unattributed legacy table. Partial
+  /// unique indexes include the null new-article key as well as article ids.
+  Future<void> _createAccountDrafts() async {
+    await customStatement(
+      'CREATE TABLE account_drafts ('
+      'id INTEGER PRIMARY KEY AUTOINCREMENT, backend TEXT NOT NULL, '
+      'user_id TEXT NOT NULL, blog_id TEXT, title TEXT NOT NULL, '
+      'content TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL)',
+    );
+    await customStatement(
+      'CREATE UNIQUE INDEX account_drafts_new '
+      'ON account_drafts(backend, user_id) WHERE blog_id IS NULL',
+    );
+    await customStatement(
+      'CREATE UNIQUE INDEX account_drafts_article '
+      'ON account_drafts(backend, user_id, blog_id) WHERE blog_id IS NOT NULL',
+    );
+  }
 
   /// The offline blog cache. `id` is the article's public slug on the
   /// no-wave backend; `article_id` is the server UUID needed for writes.

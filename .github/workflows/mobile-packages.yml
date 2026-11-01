@@ -189,6 +189,8 @@ jobs:
             echo 'ANDROID_KEY_ALIAS=ci-only'
             echo 'ANDROID_KEY_PASSWORD=ci-only-password'
           } >> "$GITHUB_ENV"
+      - name: Report runner disk space before personal fixture build
+        run: df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
       - name: Build and verify with disposable key and unreachable fixture API
         shell: bash
         env:
@@ -205,6 +207,51 @@ jobs:
             bash tool/ci/annotate_failure.sh android build/reports/android-mobile-fixture.log
             exit 1
           fi
+      - name: Report runner disk space after personal fixture build
+        if: always()
+        run: df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
+      - name: Upload fixture diagnostics (not a distributable APK)
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: android-package-ci-fixture-log
+          path: build/reports/android-mobile-fixture.log
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Delete disposable key and fixture configuration
+        if: always()
+        run: rm -f "$RUNNER_TEMP/source-ci.keystore" "$RUNNER_TEMP/belog-mobile.keystore" "$RUNNER_TEMP/belog-mobile-env.json"
+
+  # Build the debug fixture on a fresh runner rather than accumulating it
+  # alongside release intermediates on the same limited disk (issue #80).
+  android-fixture-debug:
+    name: Android debug pipeline / disposable CI runner
+    needs: prepare
+    env:
+      PUBLIC_API_ORIGIN: ${{ needs.prepare.outputs.api_origin }}
+      PUBLIC_WEB_ORIGIN: ${{ needs.prepare.outputs.web_origin }}
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Set up Java 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up pinned Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          pub-cache: true
+      - name: Prepare public fixture configuration
+        run: python3 tool/mobile/prepare_config.py "$RUNNER_TEMP/belog-mobile-env.json"
+      - name: Report runner disk space before debug fixture build
+        run: df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
       - name: Build and verify the debug APK path with fixture configuration
         shell: bash
         env:
@@ -212,6 +259,7 @@ jobs:
           BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
         run: |
           set -o pipefail
+          mkdir -p build/reports
           set +e
           bash tool/mobile/build_android_package.sh "$RUNNER_TEMP/belog-mobile-env.json" "$BUILD_NAME" "$BUILD_NUMBER" debug - 2>&1 | tee build/reports/android-mobile-debug-fixture.log
           statuses=("${PIPESTATUS[@]}")
@@ -220,19 +268,20 @@ jobs:
             bash tool/ci/annotate_failure.sh android build/reports/android-mobile-debug-fixture.log
             exit 1
           fi
+      - name: Report runner disk space after debug fixture build
+        if: always()
+        run: df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
       - name: Upload fixture diagnostics (not a distributable APK)
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: android-package-ci-fixture-log
-          path: |
-            build/reports/android-mobile-fixture.log
-            build/reports/android-mobile-debug-fixture.log
+          name: android-package-debug-ci-fixture-log
+          path: build/reports/android-mobile-debug-fixture.log
           if-no-files-found: warn
           retention-days: 14
-      - name: Delete disposable key and fixture configuration
+      - name: Delete temporary public configuration
         if: always()
-        run: rm -f "$RUNNER_TEMP/source-ci.keystore" "$RUNNER_TEMP/belog-mobile.keystore" "$RUNNER_TEMP/belog-mobile-env.json"
+        run: rm -f "$RUNNER_TEMP/belog-mobile-env.json"
 
   android-personal:
     name: Android APK / owner signing key

@@ -33,10 +33,30 @@ void main() {
         await File('${dir.path}/default.isar').readAsBytes(),
         fixtureBytes,
       );
-      // Highest theme id wins, drafts keep their scoping, cache is filled.
+      // Highest theme id wins. Legacy drafts are preserved but cannot be
+      // assigned to any account because the old schema had no owner.
       expect(await SqliteThemePreferenceStore(db).load(), ThemeMode.dark);
-      expect((await SqliteBlogDraftStore(db).load('a'))!.content, 'unsent');
-      expect((await SqliteBlogDraftStore(db).load(null))!.title, 'new article');
+      final drafts = SqliteBlogDraftStore(
+        db,
+        apiBaseUrl: Uri.parse('https://api.example.invalid'),
+      );
+      expect(await drafts.hasUnclaimedDrafts(), isTrue);
+      expect(await drafts.load('a', userId: 'user-a'), isNull);
+      expect(await drafts.load(null, userId: 'user-a'), isNull);
+      final legacyRows = await db
+          .customSelect(
+            'SELECT blog_id, title, content FROM drafts ORDER BY id',
+          )
+          .get();
+      expect(legacyRows, hasLength(2));
+      expect(
+        legacyRows.map((row) => row.read<String>('content')),
+        contains('unsent'),
+      );
+      expect(
+        legacyRows.map((row) => row.read<String>('title')),
+        contains('new article'),
+      );
       expect(
         (await SqliteBlogCache(db).loadBlogs()).single.posterName,
         'Alice',

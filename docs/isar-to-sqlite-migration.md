@@ -1,5 +1,7 @@
 # Isar to SQLite migration
 
+For drafts from versions without account ownership, see [unclaimed legacy drafts](unclaimed-drafts.md); they are preserved but never automatically attributed.
+
 The active theme, draft and cached-article stores use Drift/SQLite. Isar is
 retained only as a one-time reader for existing local databases; it is not the
 active storage engine. Since issue #3 the reader runs on the maintained
@@ -19,8 +21,10 @@ rows with duplicate business IDs are collapsed in legacy ID order.
 SQLite writes are not synchronized back to the Isar snapshot. A downgrade will
 see old data rather than edits made after migration, and later Isar edits will
 not be automatically re-imported once the SQLite marker exists. A seamless
-rollback/export strategy remains unimplemented. Test on representative old
-databases and take a backup before a production rollout.
+rollback or full-data export remains unimplemented; the separate unclaimed-draft
+export is limited to legacy rows already in SQLite and does not prove ownership.
+Test on representative old databases and take a backup before a production rollout.
+A downgrade can also reveal an unscoped legacy draft to the wrong account.
 
 ## Android 16 KiB compatibility
 

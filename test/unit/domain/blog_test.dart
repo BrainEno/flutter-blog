@@ -64,6 +64,7 @@ void main() {
   group('BlogDraft Entity', () {
     test('starts without a local row id until the store assigns one', () {
       final draft = BlogDraft(
+        userId: 'user-a',
         blogId: 'blog_123',
         title: 'title',
         content: 'content',
@@ -81,6 +82,7 @@ void main() {
 
     test('supports a null blogId for new-article drafts', () {
       final draft = BlogDraft(
+        userId: 'user-a',
         title: 'title',
         content: 'content',
         tags: const [],

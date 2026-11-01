@@ -4,6 +4,31 @@
 set -euo pipefail
 
 mkdir -p build/reports
+if [[ ! -f android/gradlew ]]; then
+  echo 'error: The Flutter-generated Android Gradle wrapper is missing.' >&2
+  exit 1
+fi
+# The release/signing checks precede this step. Verify Gradle actually picked
+# up the CI worker limit, then stop that daemon so debug begins with a fresh
+# heap rather than inheriting several release builds' in-memory state.
+echo 'Checking the effective Gradle worker limit.'
+set +e
+(cd android && bash ./gradlew --info help) > build/reports/gradle-worker-check.log 2>&1
+status=$?
+set -e
+if (( status != 0 )); then
+  echo 'error: Gradle worker verification failed.' >&2
+  tail -n 80 build/reports/gradle-worker-check.log >&2
+  exit "$status"
+fi
+if ! grep -Fq 'Using 1 worker leases.' build/reports/gradle-worker-check.log; then
+  echo 'error: Gradle did not report the required single worker.' >&2
+  tail -n 80 build/reports/gradle-worker-check.log >&2
+  exit 1
+fi
+echo 'Stopping the previous Gradle daemon before debug compilation.'
+(cd android && bash ./gradlew --stop)
+
 echo 'Building the Android debug APK.'
 flutter build apk --debug --dart-define-from-file=env.json --dart-define=BELOG_DEV_BACKEND_CHECK=true
 

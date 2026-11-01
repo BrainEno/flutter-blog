@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/usecase/usecase.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
@@ -19,6 +20,7 @@ class UploadBlog implements UseCase<Blog, UploadBlogParams> {
       posterId: params.posterId,
       tags: params.tags,
       imageMimeType: params.imageMimeType,
+      sessionFence: params.sessionFence,
     );
   }
 }
@@ -31,6 +33,7 @@ class UploadBlogParams {
   final String posterId;
   final List<String> tags;
   final String? imageMimeType;
+  final NowaveSessionFence sessionFence;
 
   UploadBlogParams({
     required this.image,
@@ -38,6 +41,7 @@ class UploadBlogParams {
     required this.content,
     required this.posterId,
     required this.tags,
+    required this.sessionFence,
     this.imageMimeType,
   });
 }

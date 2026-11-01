@@ -17,10 +17,21 @@ class MobileWorkflowContractTests(unittest.TestCase):
         self.assertNotIn('secrets.', ios)
         self.assertNotIn('environment: production', ios)
         self.assertIn("github.event_name == 'workflow_dispatch' && success()", ios)
-        fixture = workflow.split('\n  android-fixture:\n', 1)[1].split('\n  android-personal:\n', 1)[0]
-        self.assertIn("github.event_name == 'pull_request'", fixture)
-        self.assertNotIn('secrets.', fixture)
-        self.assertIn('build_android_package.sh', fixture)
+        fixture = workflow.split('\n  android-fixture:\n', 1)[1].split('\n  android-fixture-debug:\n', 1)[0]
+        debug_fixture = workflow.split('\n  android-fixture-debug:\n', 1)[1].split('\n  android-personal:\n', 1)[0]
+        for job in (fixture, debug_fixture):
+            self.assertIn("github.event_name == 'pull_request'", job)
+            self.assertNotIn('secrets.', job)
+            self.assertNotIn('environment: production', job)
+            self.assertIn('needs: prepare', job)
+            self.assertIn('build_android_package.sh', job)
+            self.assertIn('statuses=("${PIPESTATUS[@]}")', job)
+            self.assertIn('df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP"', job)
+        self.assertIn(' personal "$ANDROID_RELEASE_CERT_SHA256"', fixture)
+        self.assertNotIn(' debug - ', fixture)
+        self.assertIn(' debug - ', debug_fixture)
+        self.assertNotIn(' personal ', debug_fixture)
+        self.assertNotIn('ANDROID_KEYSTORE_PASSWORD', debug_fixture)
         personal = workflow.split('\n  android-personal:\n', 1)[1].split('\n  android-debug:\n', 1)[0]
         self.assertIn("github.event_name == 'workflow_dispatch'", personal)
         self.assertIn('environment: production', personal)
