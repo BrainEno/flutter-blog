@@ -133,6 +133,7 @@
   "editorRequiredFields": "Please fill in the title and the body",
   "draftSaved": "Draft saved",
   "draftSaveFailed": "Could not save the draft, please try again",
+  "publishDraftSafetyFailed": "The local backup could not be saved, so the article was not published. Check storage and try again.",
   "editorSessionChanged": "The session changed. Please reopen the editor. An unconfirmed publish may already have completed.",
   "legacyDraftsNotice": "Older drafts remain on this device, but are hidden because their owner cannot be verified. Back up the app data before uninstalling.",
   "uploadCoverHint": "Tap to upload a cover (optional)",

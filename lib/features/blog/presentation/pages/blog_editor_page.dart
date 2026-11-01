@@ -243,7 +243,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
         widget.blog?.id,
         userId: _draftOwnerId!,
       );
-      if (!_isCurrentEditor ||
+      if (!mounted ||
+          !_isCurrentEditor ||
           requestVersion != _draftRequestVersion ||
           draft == null ||
           draft.userId != _draftOwnerId ||
@@ -260,7 +261,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
         onRouteCreated: (route) => _recoveryRoute = route,
       );
       _recoveryRoute = null;
-      if (!_isCurrentEditor || requestVersion != _draftRequestVersion) return;
+      if (!mounted ||
+          !_isCurrentEditor ||
+          requestVersion != _draftRequestVersion)
+        return;
 
       if (choice == DraftRecoveryChoice.restore) {
         _restoringDraft = true;
@@ -276,7 +280,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
         showSnackBar(context, context.l10n.draftRestored);
       } else if (choice == DraftRecoveryChoice.discard) {
         final deleted = await _draftStore.discardIfUnchanged(draft);
-        if (_isCurrentEditor) {
+        if (mounted && _isCurrentEditor) {
           showSnackBar(
             context,
             deleted ? context.l10n.draftDiscarded : context.l10n.draftChanged,
@@ -284,7 +288,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
         }
       }
     } catch (_) {
-      if (_isCurrentEditor) showSnackBar(context, context.l10n.draftReadFailed);
+      if (mounted && _isCurrentEditor) {
+        showSnackBar(context, context.l10n.draftReadFailed);
+      }
     } finally {
       if (_isCurrentEditor) {
         _draftsReady = true;
@@ -309,7 +315,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     } catch (_) {
       // Picking failed (as opposed to being cancelled): surface it
       // instead of silently keeping the old cover.
-      if (_isCurrentEditor) {
+      if (mounted && _isCurrentEditor) {
         showSnackBar(context, context.l10n.imagePickFailed);
       }
     }
@@ -342,14 +348,14 @@ class _BlogEditorState extends State<BlogEditorPage> {
     try {
       await _draftStore.save(draft);
     } catch (_) {
-      if (_isCurrentEditor) {
+      if (mounted && _isCurrentEditor) {
         _publishStartedAt = null;
         if (_hasUnsavedEdits && _draftsReady) _scheduleAutoSave();
-        showSnackBar(context, context.l10n.draftSaveFailed);
+        showSnackBar(context, context.l10n.publishDraftSafetyFailed);
       }
       return;
     }
-    if (!_isCurrentEditor) return;
+    if (!mounted || !_isCurrentEditor) return;
     _hasUnsavedEdits = version != _draftRequestVersion;
     _publishedDraftSnapshot = draft;
     if (widget.blog == null) {
@@ -387,11 +393,13 @@ class _BlogEditorState extends State<BlogEditorPage> {
     final draft = _currentDraft();
     try {
       await _draftStore.save(draft);
-      if (!_isCurrentEditor) return;
+      if (!mounted || !_isCurrentEditor) return;
       _hasUnsavedEdits = version != _draftRequestVersion;
       showSnackBar(context, context.l10n.draftSaved);
     } catch (_) {
-      if (_isCurrentEditor) showSnackBar(context, context.l10n.draftSaveFailed);
+      if (mounted && _isCurrentEditor) {
+        showSnackBar(context, context.l10n.draftSaveFailed);
+      }
     }
   }
 

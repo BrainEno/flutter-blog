@@ -61,6 +61,30 @@ class UnclaimedDraftExportTest(unittest.TestCase):
         self.assertNotIn("private body", result.stdout + result.stderr)
         self.assertNotIn("not-json", result.stdout + result.stderr)
 
+    def test_consistent_copy_reads_uncheckpointed_wal_without_modifying_main_or_wal(self):
+        db = sqlite3.connect(self.source)
+        self.assertEqual(db.execute("PRAGMA journal_mode = WAL").fetchone()[0], "wal")
+        db.execute(
+            "INSERT INTO drafts VALUES (?, ?, ?, ?, ?, ?)",
+            (3, None, "WAL only", "not checkpointed", "[]", 44),
+        )
+        db.commit()
+        copied = self.root / "copied.sqlite"
+        copied.write_bytes(self.source.read_bytes())
+        for suffix in ("-wal", "-shm"):
+            Path(str(copied) + suffix).write_bytes(Path(str(self.source) + suffix).read_bytes())
+        db.close()
+        wal = Path(str(copied) + "-wal")
+        main_before = copied.read_bytes()
+        wal_before = wal.read_bytes()
+        result = self.run_tool(source=copied)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(copied.read_bytes(), main_before)
+        self.assertEqual(wal.read_bytes(), wal_before)
+        rows = json.loads(self.output.read_text(encoding="utf-8"))["drafts"]
+        self.assertEqual([row["id"] for row in rows], [1, 2, 3])
+        self.assertNotIn("WAL only", result.stdout + result.stderr)
+
     def test_existing_destination_and_symlinks_are_never_overwritten(self):
         self.output.write_text("keep me", encoding="utf-8")
         self.assertNotEqual(self.run_tool().returncode, 0)

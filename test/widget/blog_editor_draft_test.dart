@@ -413,6 +413,35 @@ void main() {
     await states.close();
   });
 
+  testWidgets('edits during publish survive a successful response', (
+    tester,
+  ) async {
+    final store = FakeDraftStore();
+    final states = StreamController<BlogUploadState>.broadcast();
+    addTearDown(states.close);
+    final bloc = await openEditorLive(
+      tester,
+      store,
+      blog: makeBlog('article-a'),
+      states: states,
+    );
+    await tester.enterText(
+      find.byType(TextFormField).first,
+      'published snapshot',
+    );
+    await tester.pump();
+    await tester.tap(find.text('发布'));
+    await tester.pump();
+    expect((bloc.events.single as UpdateBlogEvent).title, 'published snapshot');
+    await tester.enterText(find.byType(TextFormField).first, 'newer work');
+    await tester.pump();
+    states.add(BlogUploadSuccess());
+    await tester.pumpAndSettle();
+    expect(store.discarded, isNull);
+    expect(store.savedDrafts.last.userId, 'user');
+    expect(store.savedDrafts.last.title, 'newer work');
+  });
+
   testWidgets('another account cannot recover the first account new draft', (
     tester,
   ) async {
@@ -616,7 +645,7 @@ void main() {
     await tester.tap(find.text('发布'));
     await tester.pump();
     expect(bloc.events, isEmpty);
-    expect(find.text('草稿保存失败，请重试'), findsOneWidget);
+    expect(find.text('无法保存本地备份，文章尚未发布。请检查存储后重试。'), findsOneWidget);
   });
 
   testWidgets('same-account relogin invalidates an in-flight publish', (
