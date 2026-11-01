@@ -10,6 +10,7 @@ import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_highlight.dart';
 import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
 import 'package:belog/features/blog/presentation/widgets/article_tag_label.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Article identity and author details, independent of routing and state.

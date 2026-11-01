@@ -147,6 +147,34 @@ void main() {
     },
   );
 
+  testWidgets(
+    'cancelling a slider pointer restores the real position without seeking',
+    (tester) async {
+      final engine = FakeSpeechEngine();
+      final reader = readerFor(engine, FakeReadAloudPreferences());
+      await reader.initialize();
+      addTearDown(() async {
+        reader.dispose();
+        await flushSpeech();
+        await engine.close();
+      });
+      await tester.pumpWidget(app(ReadAloudControls(controller: reader)));
+      await tester.tap(find.byKey(const ValueKey('read-aloud-play')));
+      await tester.pumpAndSettle();
+      final calls = engine.calls.length;
+      final original = reader.progress;
+      final slider = find.byKey(const ValueKey('read-aloud-seek'));
+      final gesture = await tester.startGesture(tester.getCenter(slider));
+      await tester.pump();
+      await gesture.moveBy(const Offset(40, 0));
+      await tester.pump();
+      await gesture.cancel();
+      await tester.pumpAndSettle();
+      expect(reader.progress, original);
+      expect(engine.calls, hasLength(calls));
+    },
+  );
+
   testWidgets('word and code highlights keep Markdown text and styles intact', (
     tester,
   ) async {
@@ -214,8 +242,7 @@ void main() {
       await tester.pump();
       engine.event(engine.calls.last.id, SpeechEventType.completed);
       await tester.pump();
-      final paragraph = () =>
-          tester.widget<Text>(find.textContaining('See').first);
+      Text paragraph() => tester.widget<Text>(find.textContaining('See').first);
       final before = leaves(
         paragraph().textSpan!,
       ).singleWhere((leaf) => leaf.text == 'link').recognizer;

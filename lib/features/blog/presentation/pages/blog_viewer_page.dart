@@ -297,8 +297,9 @@ class _ViewerScaffoldState extends State<_ViewerScaffold>
           _reader?.follow != true ||
           _reader?.phase == ReadAloudPhase.idle ||
           !_scrollController.hasClients ||
-          blockIndex >= _blockKeys.length)
+          blockIndex >= _blockKeys.length) {
         return;
+      }
       final targetContext = _blockKeys[blockIndex].currentContext;
       if (targetContext == null) return;
       final object = targetContext.findRenderObject();

@@ -14,11 +14,15 @@ class ReadAloudControls extends StatefulWidget {
 
 class _ReadAloudControlsState extends State<ReadAloudControls> {
   bool _dragging = false;
+  bool _cancelled = false;
 
   @override
   void didUpdateWidget(covariant ReadAloudControls oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller != widget.controller) _dragging = false;
+    if (oldWidget.controller != widget.controller) {
+      _dragging = false;
+      _cancelled = false;
+    }
   }
 
   @override
@@ -152,6 +156,7 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                     onPointerCancel: (_) {
                       if (_dragging) {
                         _dragging = false;
+                        _cancelled = true;
                         controller.cancelSeek();
                       }
                     },
@@ -165,9 +170,15 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                         divisions: 1000,
                         semanticFormatterCallback: (value) =>
                             l10n.readAloudPercent((value * 100).round()),
-                        onChangeStart: active ? (_) => _dragging = true : null,
+                        onChangeStart: active
+                            ? (_) {
+                                _cancelled = false;
+                                _dragging = true;
+                              }
+                            : null,
                         onChanged: active
                             ? (value) {
+                                if (_cancelled) return;
                                 controller.previewSeek(value);
                                 // Keyboard/assistive adjustments may not have a
                                 // pointer drag; commit those immediately.
@@ -177,6 +188,10 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                         onChangeEnd: active
                             ? (value) {
                                 _dragging = false;
+                                if (_cancelled) {
+                                  _cancelled = false;
+                                  return;
+                                }
                                 controller.commitSeek(value);
                               }
                             : null,
