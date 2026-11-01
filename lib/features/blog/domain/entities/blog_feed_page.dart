@@ -1,5 +1,11 @@
 import 'package:belog/features/blog/domain/entities/blog.dart';
 
+/// Which server-side article ordering or audience is selected.
+///
+/// Only [BlogFeedKind.latest] has a compatible local cache. Popularity and follow
+/// relationships cannot be reconstructed from the device's article cache.
+enum BlogFeedKind { latest, popular, following }
+
 /// The source of a feed page. Cached articles may be stale or incomplete.
 enum BlogFeedSource { network, cache }
 

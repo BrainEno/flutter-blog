@@ -1,8 +1,108 @@
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/features/blog/data/datasources/nowave_article_codec.dart';
+import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  group('plain editor compatibility', () {
+    const paragraph = {'id': 'p', 'type': 'paragraph', 'text': '正文'};
+    const cover = {
+      'id': 'cover',
+      'type': 'image',
+      'src': 'https://api.example.invalid/cover',
+      'alt': '',
+    };
+
+    test('accepts the v0 shapes created by the app', () {
+      expect(supportsPlainEditor(version: 0, blocks: [paragraph]), isTrue);
+      expect(
+        supportsPlainEditor(version: 0, blocks: [cover, paragraph]),
+        isTrue,
+      );
+    });
+
+    test('rejects unknown versions and structured blocks', () {
+      for (final version in [null, 1, 2, '0']) {
+        expect(
+          supportsPlainEditor(version: version, blocks: [paragraph]),
+          isFalse,
+        );
+      }
+      expect(
+        supportsPlainEditor(
+          version: 0,
+          blocks: [
+            {'id': 'h', 'type': 'heading', 'text': '标题', 'level': 2},
+            paragraph,
+          ],
+        ),
+        isFalse,
+      );
+      expect(
+        supportsPlainEditor(version: 0, blocks: [cover, paragraph, cover]),
+        isFalse,
+      );
+      expect(
+        supportsPlainEditor(version: 0, blocks: [paragraph, cover]),
+        isFalse,
+      );
+      expect(
+        supportsPlainEditor(
+          version: 0,
+          blocks: [
+            {...cover, 'alt': 'An illustration'},
+            paragraph,
+          ],
+        ),
+        isFalse,
+      );
+    });
+
+    test('fails closed for hidden fields and lossy whitespace', () {
+      expect(
+        supportsPlainEditor(
+          version: 0,
+          blocks: [
+            {...paragraph, 'inlines': []},
+          ],
+        ),
+        isFalse,
+      );
+      expect(
+        supportsPlainEditor(
+          version: 0,
+          blocks: [
+            {...paragraph, 'text': 'first\n\nsecond'},
+          ],
+        ),
+        isFalse,
+      );
+      expect(supportsPlainEditor(version: 0, blocks: []), isFalse);
+    });
+
+    test('fresh server models retain the decision across copies', () {
+      final model = BlogModel.fromNowaveArticle({
+        'slug': 'test',
+        'id': 'id',
+        'summary': '作者的摘要',
+        'contentBlocksVersion': 0,
+        'contentBlocks': [paragraph],
+      });
+      expect(model.plainEditorCompatible, isTrue);
+      expect(model.serverSummary, '作者的摘要');
+      expect(model.copyWith(title: 'changed').plainEditorCompatible, isTrue);
+      expect(model.copyWith(title: 'changed').serverSummary, '作者的摘要');
+      final richer = BlogModel.fromNowaveArticle({
+        'slug': 'test',
+        'id': 'id',
+        'contentBlocksVersion': 1,
+        'contentBlocks': [paragraph],
+      });
+      expect(richer.plainEditorCompatible, isFalse);
+      expect(richer.copyWith(title: 'changed').plainEditorCompatible, isFalse);
+    });
+  });
+
   group('blogToContentBlocks', () {
     test('blank-line separated passages become paragraph blocks with ids', () {
       final blocks = blogToContentBlocks(content: '第一段\n\n第二段', coverUrl: null);

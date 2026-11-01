@@ -39,6 +39,14 @@ abstract interface class BlogRepository {
     BlogFeedSource? source,
   });
 
+  /// Loads a server-ranked or viewer-specific feed. These lists are online
+  /// only: the general article cache cannot reproduce their order or scope.
+  Future<Either<Failure, BlogFeedPage>> getOnlineFeed({
+    required int page,
+    required BlogFeedKind kind,
+    String? expectedViewerId,
+  });
+
   Future<Either<Failure, Blog>> getBlogById(String blogId);
 
   Future<Either<Failure, List<Blog>>> getBlogsByTag(String tag);

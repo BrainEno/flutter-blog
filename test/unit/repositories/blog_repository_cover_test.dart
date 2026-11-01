@@ -18,9 +18,15 @@ class MockConnection extends Mock implements ConnectionChecker {}
 const _kOldCoverUrl = 'https://api.example.invalid/api/v1/media/old-asset';
 const _kNewCoverUrl = 'https://api.example.invalid/api/v1/media/new-asset';
 
-BlogModel _blog({String imageUrl = _kOldCoverUrl}) => BlogModel(
+BlogModel _blog({
+  String imageUrl = _kOldCoverUrl,
+  bool plainEditorCompatible = true,
+  String? serverSummary = '作者的摘要',
+}) => BlogModel(
   id: 'my-slug',
   articleId: 'b1',
+  plainEditorCompatible: plainEditorCompatible,
+  serverSummary: serverSummary,
   title: '标题',
   content: '正文',
   posterId: 'u1',
@@ -158,6 +164,59 @@ void main() {
   });
 
   group('editBlog', () {
+    test(
+      'rejects unsupported structures before uploading or writing',
+      () async {
+        when(
+          () => remote.getBlogById('my-slug'),
+        ).thenAnswer((_) async => _blog(plainEditorCompatible: false));
+
+        final result = await repository.editBlog(
+          blogId: 'my-slug',
+          image: cover,
+          title: '新标题',
+          content: '新正文',
+          tags: const ['诗歌'],
+        );
+
+        result.fold(
+          (failure) =>
+              expect(failure.code, 'article.structuredEditUnsupported'),
+          (_) => fail('unsupported content must not be overwritten'),
+        );
+        verifyNever(
+          () => remote.uploadBlogImage(
+            image: any(named: 'image'),
+            mimeType: any(named: 'mimeType'),
+          ),
+        );
+        verifyNever(() => remote.editBlog(any()));
+      },
+    );
+
+    test('unknown server summary also blocks the cover and edit', () async {
+      when(
+        () => remote.getBlogById('my-slug'),
+      ).thenAnswer((_) async => _blog(serverSummary: null));
+
+      final result = await repository.editBlog(
+        blogId: 'my-slug',
+        image: cover,
+        title: '新标题',
+        content: '正文',
+        tags: const [],
+      );
+
+      expect(result.isLeft(), isTrue);
+      verifyNever(
+        () => remote.uploadBlogImage(
+          image: any(named: 'image'),
+          mimeType: any(named: 'mimeType'),
+        ),
+      );
+      verifyNever(() => remote.editBlog(any()));
+    });
+
     test('fetches the article, uploads a new cover, then updates', () async {
       when(
         () => remote.getBlogById('my-slug'),
@@ -192,6 +251,7 @@ void main() {
       ]);
       final updated = order.last.captured.single as BlogModel;
       expect(updated.imageUrl, _kNewCoverUrl);
+      expect(updated.serverSummary, '作者的摘要');
       expect(updated.articleId, 'b1');
       expect(updated.id, 'my-slug');
       expect(updated.title, '新标题');

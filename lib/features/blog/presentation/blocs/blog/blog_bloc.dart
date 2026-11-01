@@ -8,62 +8,108 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 part 'blog_event.dart';
 part 'blog_state.dart';
 
-/// Drives the feed list.
-///
-/// Paging contract:
-/// - [BlogFetchFirstPage] replaces the whole list (initial load, refresh,
-///   post-publish reload). The newest first-page request always wins: an
-///   in-flight older one is discarded via a generation counter, so refresh
-///   and load-more can never interleave into a corrupted list.
-/// - [BlogLoadMore] appends the next page. It is ignored while another
-///   load-more is running (the loading flag is emitted synchronously before
-///   the first await), once the end is reached, or without a loaded list.
-///   Appends are deduplicated by business id, so page shifts caused by newly
-///   published articles cannot produce duplicate cards.
+/// Drives the selected feed. Refreshes, feed changes and identity changes
+/// invalidate older requests; load-more never mixes sources or feed kinds.
 class BlogBloc extends Bloc<BlogEvent, BlogState> {
   final GetAllBlogs _getAllBlogs;
 
   int _generation = 0;
+  BlogFeedKind _kind = BlogFeedKind.latest;
+  String? _viewerId;
 
   BlogBloc({required GetAllBlogs getAllBlogs})
     : _getAllBlogs = getAllBlogs,
       super(const BlogInitial()) {
     on<BlogFetchFirstPage>(_onFetchFirstPage);
     on<BlogLoadMore>(_onLoadMore);
+    on<BlogViewerChanged>(_onViewerChanged);
   }
 
   Future<void> _onFetchFirstPage(
     BlogFetchFirstPage event,
     Emitter<BlogState> emit,
   ) async {
+    final kind = event.kind ?? _kind;
+    final viewerId = kind == BlogFeedKind.following
+        ? (event.kind == null ? _viewerId : event.viewerId)
+        : null;
+    final selectionChanged = kind != _kind || viewerId != _viewerId;
+    _kind = kind;
+    _viewerId = viewerId;
     final generation = ++_generation;
-    // Retry/refresh after a failure must keep the last rendered articles,
-    // including when that failure wrapped a previous refresh state.
+
+    // Keep content for a refresh of the same list only. A different tab or
+    // account must never temporarily display the previous selection's data.
     emit(
       BlogFirstPageLoading(
-        previousBlogs: _previousBlogs(state),
-        previousSource: _previousSource(state),
+        kind: kind,
+        viewerId: viewerId,
+        previousBlogs: selectionChanged ? const [] : _previousBlogs(state),
+        previousSource: selectionChanged ? null : _previousSource(state),
       ),
     );
-    final res = await _getAllBlogs(const GetAllBlogsParams(page: 1));
-    // A newer first-page request supersedes this one.
+    if (kind == BlogFeedKind.following &&
+        (viewerId == null || viewerId.isEmpty)) {
+      emit(
+        BlogListFailure(
+          kind: kind,
+          viewerId: viewerId,
+          failure: Failure.auth('请先登录账户'),
+        ),
+      );
+      return;
+    }
+    final res = await _getAllBlogs(
+      GetAllBlogsParams(page: 1, kind: kind, expectedViewerId: viewerId),
+    );
     if (generation != _generation) return;
     res.fold(
       (failure) => emit(
         BlogListFailure(
+          kind: kind,
+          viewerId: viewerId,
           failure: failure.forPresentation(),
           previousState: state,
         ),
       ),
-      (result) => emit(
-        BlogLoaded(
-          blogs: result.blogs,
-          source: result.source,
-          page: 1,
-          hasReachedMax: result.blogs.length < kBlogPageSize,
-        ),
-      ),
+      (result) {
+        if (kind != BlogFeedKind.latest &&
+            result.source != BlogFeedSource.network) {
+          emit(
+            BlogListFailure(
+              kind: kind,
+              viewerId: viewerId,
+              failure: const Failure(
+                '文章来源已变化，请刷新后重试',
+                code: 'feed.sourceChanged',
+              ),
+            ),
+          );
+          return;
+        }
+        emit(
+          BlogLoaded(
+            kind: kind,
+            viewerId: viewerId,
+            blogs: result.blogs,
+            source: result.source,
+            page: 1,
+            hasReachedMax: result.blogs.length < kBlogPageSize,
+          ),
+        );
+      },
     );
+  }
+
+  void _onViewerChanged(BlogViewerChanged event, Emitter<BlogState> emit) {
+    if (_kind != BlogFeedKind.following || event.viewerId == _viewerId) return;
+    // Invalidate in-flight first/load-more requests before clearing private
+    // follow relationships. A new default feed is fetched independently.
+    _generation++;
+    _kind = BlogFeedKind.latest;
+    _viewerId = null;
+    emit(const BlogInitial());
+    add(const BlogFetchFirstPage());
   }
 
   List<Blog> _previousBlogs(BlogState current) {
@@ -91,30 +137,36 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
         current.hasReachedMax) {
       return;
     }
-    // Synchronous guard: the flag is visible to a concurrently dispatched
-    // event before this handler reaches its first await.
+    // Synchronous guard before the first await.
     emit(current.copyWith(isLoadingMore: true));
     final generation = _generation;
     final nextPage = current.page + 1;
     final res = await _getAllBlogs(
-      GetAllBlogsParams(page: nextPage, source: current.source),
+      GetAllBlogsParams(
+        page: nextPage,
+        source: current.source,
+        kind: current.kind,
+        expectedViewerId: current.viewerId,
+      ),
     );
-    // A refresh started while this request was in flight; the fresh first
-    // page supersedes anything this response would append.
     if (generation != _generation) return;
     final latest = state is BlogLoaded ? state as BlogLoaded : current;
     res.fold(
       (failure) => emit(
         BlogListFailure(
+          kind: latest.kind,
+          viewerId: latest.viewerId,
           failure: failure.forPresentation(),
           previousState: latest.copyWith(isLoadingMore: false),
         ),
       ),
       (result) {
-        // Never silently combine offsets from two different data sources.
+        // Never combine offsets from two different data sources.
         if (result.source != latest.source) {
           emit(
             BlogListFailure(
+              kind: latest.kind,
+              viewerId: latest.viewerId,
               failure: const Failure(
                 '文章来源已变化，请刷新后重试',
                 code: 'feed.sourceChanged',
@@ -133,6 +185,8 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
         final fresh = blogs.where((blog) => seen.add(blog.id)).toList();
         emit(
           BlogLoaded(
+            kind: latest.kind,
+            viewerId: latest.viewerId,
             blogs: [...latest.blogs, ...fresh],
             source: latest.source,
             page: nextPage,

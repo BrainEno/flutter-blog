@@ -129,7 +129,10 @@ abstract class NowaveSessionStore {
 /// revokes the whole session family server-side, so [refresh] is strictly
 /// single-flight.
 class NowaveSessionManager
-    implements NowaveProactiveAuthenticator, NowaveSessionBoundAuthenticator {
+    implements
+        NowaveProactiveAuthenticator,
+        NowaveSessionBoundAuthenticator,
+        NowaveViewerAuthenticator {
   NowaveSessionManager({
     required NowaveApiClient client,
     required NowaveSessionStore store,
@@ -182,6 +185,9 @@ class NowaveSessionManager
 
   @override
   String? get accessToken => _session?.accessToken;
+
+  @override
+  String? get activeUserId => _session?.userId;
 
   /// Loads a previously persisted session into memory. Network-free; the
   /// access token is validated lazily by the first authenticated request.

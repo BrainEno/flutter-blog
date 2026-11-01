@@ -37,6 +37,18 @@ class _BoundAuth implements NowaveSessionBoundAuthenticator {
   }
 }
 
+class _ViewerAuth extends _BoundAuth implements NowaveViewerAuthenticator {
+  String? userId = 'user-A';
+
+  @override
+  String? get activeUserId => userId;
+
+  void switchViewerToB() {
+    switchToB();
+    userId = 'user-B';
+  }
+}
+
 class _RejectedRefreshAuth extends _BoundAuth {
   @override
   Future<bool> refresh() async {
@@ -87,6 +99,114 @@ Matcher get _sessionChanged =>
     isA<NowaveApiException>().having((e) => e.code, 'code', 'SESSION_CHANGED');
 
 void main() {
+  group('viewer-scoped reads', () {
+    test('rejects a mismatched viewer before sending any request', () async {
+      final auth = _ViewerAuth()..switchViewerToB();
+      var requests = 0;
+      final client = _client(
+        auth,
+        MockClient((_) async {
+          requests++;
+          return http.Response(jsonEncode({'data': []}), 200);
+        }),
+      );
+
+      await expectLater(
+        client.getJsonForViewer('/me/feed', expectedUserId: 'user-A'),
+        throwsA(_sessionChanged),
+      );
+      expect(requests, 0);
+    });
+
+    test('requires both identity and session-fencing capabilities', () async {
+      final auth = _BoundAuth();
+      var requests = 0;
+      final client = _client(
+        auth,
+        MockClient((_) async {
+          requests++;
+          return http.Response(jsonEncode({'data': []}), 200);
+        }),
+      );
+
+      await expectLater(
+        client.getJsonForViewer('/me/feed', expectedUserId: 'user-A'),
+        throwsA(_sessionChanged),
+      );
+      expect(requests, 0);
+    });
+
+    test('rejects a missing access token before making a request', () async {
+      final auth = _ViewerAuth()..token = null;
+      var requests = 0;
+      final client = _client(
+        auth,
+        MockClient((_) async {
+          requests++;
+          return http.Response(jsonEncode({'data': []}), 200);
+        }),
+      );
+      await expectLater(
+        client.getJsonForViewer('/me/feed', expectedUserId: 'user-A'),
+        throwsA(_sessionChanged),
+      );
+      expect(requests, 0);
+    });
+
+    test('returns data for the matching authenticated viewer', () async {
+      final auth = _ViewerAuth();
+      String? authorization;
+      final client = _client(
+        auth,
+        MockClient((request) async {
+          authorization = request.headers['authorization'];
+          return http.Response(
+            jsonEncode({
+              'data': ['article'],
+            }),
+            200,
+          );
+        }),
+      );
+
+      final data = await client.getJsonForViewer(
+        '/me/feed',
+        expectedUserId: 'user-A',
+      );
+      expect(data, ['article']);
+      expect(authorization, 'Bearer token-A');
+    });
+
+    test('drops a response after an account switch', () async {
+      final auth = _ViewerAuth();
+      final started = Completer<void>();
+      final response = Completer<http.Response>();
+      final client = _client(
+        auth,
+        MockClient((_) {
+          started.complete();
+          return response.future;
+        }),
+      );
+      final pending = client.getJsonForViewer(
+        '/me/feed',
+        expectedUserId: 'user-A',
+      );
+      final expectation = expectLater(pending, throwsA(_sessionChanged));
+      await started.future;
+      auth.switchViewerToB();
+      response.complete(
+        http.Response(
+          jsonEncode({
+            'data': ['old'],
+          }),
+          200,
+        ),
+      );
+      await expectation;
+    });
+  });
+
   for (final status in [200, 401]) {
     test(
       'a $status from the previous account is not reused or presented',

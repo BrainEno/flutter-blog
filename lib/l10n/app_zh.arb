@@ -26,6 +26,13 @@
   "feedCachedEmpty": "本机暂无缓存文章，请联网后重试。",
   "feedCachedNoMore": "已显示全部本机缓存，联网后可刷新查看新内容。",
   "feedSourceChanged": "文章来源已变化，请刷新后重试。",
+  "feedTabLatest": "最新",
+  "feedTabPopular": "热门",
+  "feedTabFollowing": "关注",
+  "feedPopularDescription": "按最近 30 天发布作品的点赞数排序。",
+  "feedPopularEmpty": "最近 30 天暂无作品，稍后再来看看。",
+  "feedFollowingEmpty": "关注的作者暂无已发布作品。关注作者后，可在这里查看更新。",
+
 
   "newPostTooltip": "写文章",
   "readingTimeMinutes": "{count, plural, other{约 {count} 分钟}}",
@@ -249,6 +256,7 @@
   "errorFollowToggle": "关注操作失败，请稍后重试",
   "errorServerParse": "服务器返回了无法解析的数据",
   "errorArticleIdUpdate": "该文章缺少服务端编号，无法更新，请尝试重新打开后再编辑",
+  "errorArticleStructuredEditUnsupported": "当前编辑器无法安全保留这篇文章的正文或摘要，请使用 no-wave 网页编辑。",
   "errorArticleIdDelete": "该文章缺少服务端编号，无法删除",
   "errorArticleDeletedCacheFailed": "文章已在服务器删除，但本地缓存未清除；离线时可能仍显示旧内容",
   "errorArticleDeleteFailed": "文章未删除，请稍后重试",

@@ -29,6 +29,46 @@ class ExtractedBlogContent {
 
 const int _kMaxBlockTextLength = 20000;
 
+/// Whether the current plain editor can rebuild the server's body without
+/// dropping structured block types, inline formatting or image metadata.
+/// Unknown versions and shapes fail closed. Block IDs are regenerated when
+/// writing; this check does not provide concurrent edit detection.
+bool supportsPlainEditor({
+  required Object? version,
+  required List<Map<String, dynamic>> blocks,
+}) {
+  if (version is! int || version != 0 || blocks.isEmpty) return false;
+  var hasParagraph = false;
+  for (var index = 0; index < blocks.length; index++) {
+    final block = blocks[index];
+    if (block['type'] == 'paragraph') {
+      const allowed = {'id', 'type', 'text'};
+      final text = block['text'];
+      if (block.keys.any((key) => !allowed.contains(key)) ||
+          text is! String ||
+          text.isEmpty ||
+          text != text.trim() ||
+          RegExp(r'\n[ \t]*\n').hasMatch(text)) {
+        return false;
+      }
+      hasParagraph = true;
+    } else if (block['type'] == 'image') {
+      const allowed = {'id', 'type', 'src', 'alt', 'caption'};
+      if (index != 0 ||
+          block.keys.any((key) => !allowed.contains(key)) ||
+          block['src'] is! String ||
+          (block['src'] as String).isEmpty ||
+          block['alt'] != '' ||
+          (block['caption'] != null && block['caption'] != '')) {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+  return hasParagraph;
+}
+
 /// Splits the plain-text body into paragraphs, bounding each block below
 /// the server's per-block text limit.
 List<String> splitContentParagraphs(String content) {

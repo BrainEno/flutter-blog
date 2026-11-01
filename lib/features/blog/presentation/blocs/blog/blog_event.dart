@@ -5,13 +5,25 @@ sealed class BlogEvent {
   const BlogEvent();
 }
 
-/// Loads or reloads page 1 of the feed, replacing the current list.
+/// Loads page 1. Omit [kind] to refresh the current list; selecting a new
+/// kind discards the old list. A following request must supply its viewer.
 final class BlogFetchFirstPage extends BlogEvent {
-  const BlogFetchFirstPage();
+  const BlogFetchFirstPage({this.kind, this.viewerId})
+    : assert(kind != BlogFeedKind.following || viewerId != null);
+
+  final BlogFeedKind? kind;
+  final String? viewerId;
 }
 
-/// Appends the next page to the current list. See [BlogBloc] for the guard
-/// rules; events that arrive while a request is running are dropped.
+/// Invalidates a following feed when the signed-in identity changes.
+final class BlogViewerChanged extends BlogEvent {
+  const BlogViewerChanged(this.viewerId);
+
+  final String? viewerId;
+}
+
+/// Appends the next page to the current list. Events that arrive while a
+/// request is running, after the end, or without a loaded list are dropped.
 final class BlogLoadMore extends BlogEvent {
   const BlogLoadMore();
 }

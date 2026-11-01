@@ -16,11 +16,21 @@ class BlogModel extends Blog {
     super.posterName,
     super.posterAvatar,
     this.articleId = '',
+    this.serverSummary,
+    this.plainEditorCompatible = false,
   });
 
   /// The no-wave server article id (UUID). [Blog.id] is the public slug;
   /// this is the address used by `PUT /articles/:articleId`.
   final String articleId;
+
+  /// The fresh server summary. Null means the value is unknown and an edit
+  /// must fail closed instead of implicitly asking the server to regenerate it.
+  final String? serverSummary;
+
+  /// True only after inspecting a fresh server document known to use the
+  /// plain editor's supported block shape. Cached/unknown models fail closed.
+  final bool plainEditorCompatible;
 
   BlogModel copyWith({
     String? id,
@@ -37,6 +47,8 @@ class BlogModel extends Blog {
     return BlogModel(
       id: id ?? this.id,
       articleId: articleId ?? this.articleId,
+      serverSummary: serverSummary,
+      plainEditorCompatible: plainEditorCompatible,
       content: content ?? this.content,
       posterId: posterId ?? this.posterId,
       title: title ?? this.title,
@@ -57,10 +69,15 @@ class BlogModel extends Blog {
         .map((tag) => (tag as Map<String, dynamic>)['name'] as String? ?? '')
         .where((name) => name.isNotEmpty)
         .toList();
-    final extracted = extractBlogContent(
-      (map['contentBlocks'] as List? ?? []).cast<Map<String, dynamic>>(),
-    );
+    final blocks = (map['contentBlocks'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+    final extracted = extractBlogContent(blocks);
     return BlogModel(
+      plainEditorCompatible: supportsPlainEditor(
+        version: map['contentBlocksVersion'],
+        blocks: blocks,
+      ),
+      serverSummary: map['summary'] is String ? map['summary'] as String : null,
       id: map['slug'] as String? ?? '',
       articleId: map['id'] as String? ?? '',
       title: map['title'] as String? ?? '',

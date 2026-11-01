@@ -44,6 +44,117 @@ void main() {
     repository = BlogRepositoryImpl(remote, local, connection);
   });
 
+  group('popular and following feeds', () {
+    for (final kind in [BlogFeedKind.popular, BlogFeedKind.following]) {
+      test(
+        '$kind requires network and never falls back to the general cache',
+        () async {
+          when(() => connection.isConnected).thenAnswer((_) async => false);
+
+          final result = await repository.getOnlineFeed(
+            page: 1,
+            kind: kind,
+            expectedViewerId: kind == BlogFeedKind.following
+                ? 'viewer-A'
+                : null,
+          );
+
+          result.fold(
+            (failure) => expect(failure.kind, FailureKind.network),
+            (_) => fail('expected an offline failure'),
+          );
+          verifyNever(
+            () => local.loadBlogs(
+              limit: any(named: 'limit'),
+              offset: any(named: 'offset'),
+            ),
+          );
+          verifyNever(() => local.uploadLocalBlogs(blogs: any(named: 'blogs')));
+        },
+      );
+
+      test(
+        '$kind returns the online result without caching the list',
+        () async {
+          when(() => connection.isConnected).thenAnswer((_) async => true);
+          final viewer = kind == BlogFeedKind.following ? 'viewer-A' : null;
+          when(
+            () => remote.getOnlineFeed(
+              page: 2,
+              kind: kind,
+              expectedViewerId: viewer,
+            ),
+          ).thenAnswer((_) async => [_blog('remote')]);
+
+          final result = await repository.getOnlineFeed(
+            page: 2,
+            kind: kind,
+            expectedViewerId: viewer,
+          );
+
+          result.fold((f) => fail(f.message), (page) {
+            expect(page.source, BlogFeedSource.network);
+            expect(page.blogs.single.id, 'remote');
+          });
+          verify(
+            () => remote.getOnlineFeed(
+              page: 2,
+              kind: kind,
+              expectedViewerId: viewer,
+            ),
+          ).called(1);
+          verifyNever(() => local.uploadLocalBlogs(blogs: any(named: 'blogs')));
+        },
+      );
+    }
+
+    test(
+      'rejects following without a viewer before checking connectivity',
+      () async {
+        final result = await repository.getOnlineFeed(
+          page: 1,
+          kind: BlogFeedKind.following,
+        );
+        result.fold(
+          (failure) => expect(failure.kind, FailureKind.auth),
+          (_) => fail('expected authentication failure'),
+        );
+        verifyNever(() => connection.isConnected);
+      },
+    );
+
+    test(
+      'a following auth error is not hidden behind cached content',
+      () async {
+        when(() => connection.isConnected).thenAnswer((_) async => true);
+        when(
+          () => remote.getOnlineFeed(
+            page: 1,
+            kind: BlogFeedKind.following,
+            expectedViewerId: 'viewer-A',
+          ),
+        ).thenThrow(
+          const ServerException('session ended', kind: FailureKind.auth),
+        );
+        final result = await repository.getOnlineFeed(
+          page: 1,
+          kind: BlogFeedKind.following,
+          expectedViewerId: 'viewer-A',
+        );
+        result.fold(
+          (failure) => expect(failure.kind, FailureKind.auth),
+          (_) => fail('expected authentication failure'),
+        );
+        verifyNever(
+          () => local.loadBlogs(
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+          ),
+        );
+      },
+    );
+  });
+
   test('offline pages use the correct bounded SQLite offsets', () async {
     when(() => connection.isConnected).thenAnswer((_) async => false);
     when(

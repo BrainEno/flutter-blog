@@ -108,6 +108,36 @@ class BlogRepositoryImpl implements BlogRepository {
     return right(BlogFeedPage(blogs: blogs, source: BlogFeedSource.network));
   }
 
+  @override
+  Future<Either<Failure, BlogFeedPage>> getOnlineFeed({
+    required int page,
+    required BlogFeedKind kind,
+    String? expectedViewerId,
+  }) async {
+    if (page < 1 || kind == BlogFeedKind.latest) {
+      return left(Failure.validation('无效的文章列表请求'));
+    }
+    if (kind == BlogFeedKind.following &&
+        (expectedViewerId == null || expectedViewerId.isEmpty)) {
+      return left(Failure.auth('请先登录账户'));
+    }
+    try {
+      if (!await connectionChecker.isConnected) {
+        return left(Failure.networkOffline());
+      }
+      final blogs = await blogRemoteDataSource.getOnlineFeed(
+        page: page,
+        kind: kind,
+        expectedViewerId: expectedViewerId,
+      );
+      // Never use or write the general cache for these lists. It cannot
+      // represent a popularity ranking or an account's follow graph.
+      return right(BlogFeedPage(blogs: blogs, source: BlogFeedSource.network));
+    } catch (error) {
+      return left(mapErrorToFailure(error));
+    }
+  }
+
   Future<Either<Failure, BlogFeedPage>> _loadCachedFeed(int page) async {
     try {
       final blogs = await blogLocalDataSource.loadBlogs(
@@ -270,6 +300,18 @@ class BlogRepositoryImpl implements BlogRepository {
       // article id carried on the model, and the existing cover is kept
       // when no new one was picked.
       var blogToUpdate = await blogRemoteDataSource.getBlogById(blogId);
+      if (!blogToUpdate.plainEditorCompatible ||
+          blogToUpdate.serverSummary == null) {
+        // Reject before uploading a cover or mutating anything: flattening a
+        // richer server document into v0 paragraphs would overwrite content.
+        return left(
+          const Failure(
+            '无法安全保留这篇文章的正文或摘要，请在 no-wave 网页编辑',
+            kind: FailureKind.validation,
+            code: 'article.structuredEditUnsupported',
+          ),
+        );
+      }
       if (image != null) {
         final newImageUrl = await blogRemoteDataSource.uploadBlogImage(
           image: image,
