@@ -7,9 +7,13 @@ enum DraftRecoveryChoice { restore, discard, keepCurrent }
 Future<DraftRecoveryChoice?> showDraftRecoveryDialog(
   BuildContext context, {
   required bool isOlderThanPublished,
+  void Function(Route<DraftRecoveryChoice> route)? onRouteCreated,
 }) {
-  return showDialog<DraftRecoveryChoice>(
+  final navigator = Navigator.of(context, rootNavigator: true);
+  final route = DialogRoute<DraftRecoveryChoice>(
     context: context,
+    themes: InheritedTheme.capture(from: context, to: navigator.context),
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     builder: (context) => AlertDialog(
       title: Text(context.l10n.draftFoundTitle),
       content: Text(
@@ -34,4 +38,6 @@ Future<DraftRecoveryChoice?> showDraftRecoveryDialog(
       ],
     ),
   );
+  onRouteCreated?.call(route);
+  return navigator.push(route);
 }

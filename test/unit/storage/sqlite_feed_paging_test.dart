@@ -5,7 +5,6 @@ import 'package:belog/core/storage/sqlite_blog_cache.dart';
 import 'package:belog/core/storage/sqlite_draft_store.dart';
 import 'package:belog/core/storage/sqlite_theme_store.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
-import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -125,14 +124,10 @@ void main() {
 
   test('v3 upgrade adds the feed index without changing existing data', () async {
     await SqliteThemePreferenceStore(db).save(ThemeMode.dark);
-    await SqliteBlogDraftStore(db).save(
-      BlogDraft(
-        blogId: 'draft-blog',
-        title: 'unsent',
-        content: 'draft body',
-        tags: const ['draft'],
-        updatedAt: DateTime.utc(2024),
-      ),
+    // Populate the original ownerless table as a v3 installation did.
+    await db.customStatement(
+      'INSERT INTO drafts(blog_id, title, content, tags, updated_at) VALUES (?, ?, ?, ?, ?)',
+      ['draft-blog', 'unsent', 'draft body', '["draft"]', 1],
     );
     await db.writeMetadata('test-marker', 'preserved');
     await SqliteBlogCache(db).uploadLocalBlogs(blogs: [_blog('cached')]);
@@ -145,14 +140,22 @@ void main() {
     // Recreate the v3 shape: no feed index and no v5 document column.
     final old = raw.sqlite3.open(file.path);
     old.execute('DROP INDEX blog_cache_feed_order');
+    old.execute('DROP TABLE account_drafts');
     old.execute('ALTER TABLE blog_cache DROP COLUMN document_json');
     old.execute('PRAGMA user_version = 3');
     old.close();
 
     db = AppDatabase(NativeDatabase(file));
     expect(await SqliteThemePreferenceStore(db).load(), ThemeMode.dark);
+    final drafts = SqliteBlogDraftStore(
+      db,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    );
+    expect(await drafts.load('draft-blog', userId: 'user-a'), isNull);
+    expect(await drafts.hasUnclaimedDrafts(), isTrue);
     expect(
-      (await SqliteBlogDraftStore(db).load('draft-blog'))?.content,
+      (await db.customSelect('SELECT content FROM drafts').getSingle())
+          .read<String>('content'),
       'draft body',
     );
     expect(await db.readMetadata('test-marker'), 'preserved');
@@ -176,7 +179,7 @@ void main() {
       (await db.customSelect('PRAGMA user_version').get()).single.read<int>(
         'user_version',
       ),
-      5,
+      6,
     );
 
     await db.close();

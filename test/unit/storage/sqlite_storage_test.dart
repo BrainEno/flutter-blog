@@ -10,6 +10,7 @@ import 'package:belog/core/storage/sqlite_theme_store.dart';
 import 'package:belog/features/auth/data/datasources/profile_cache_store.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
+import 'package:drift/drift.dart' show Variable;
 import 'package:drift/native.dart';
 import 'package:sqlite3/sqlite3.dart' as raw;
 import 'package:flutter/material.dart';
@@ -86,8 +87,12 @@ void main() {
     final themes = SqliteThemePreferenceStore(db);
     expect(await themes.load(), ThemeMode.system);
     await themes.save(ThemeMode.dark);
-    final drafts = SqliteBlogDraftStore(db);
+    final drafts = SqliteBlogDraftStore(
+      db,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    );
     final draft = BlogDraft(
+      userId: 'user-a',
       blogId: 'a',
       title: 'title',
       content: 'text',
@@ -95,7 +100,7 @@ void main() {
       updatedAt: DateTime.utc(2024),
     );
     await drafts.save(draft);
-    expect((await drafts.load('a'))!.content, 'text');
+    expect((await drafts.load('a', userId: 'user-a'))!.content, 'text');
     final cache = SqliteBlogCache(db);
     await cache.uploadLocalBlogs(blogs: [blog('1', 'old')]);
     await cache.uploadLocalBlogs(
@@ -108,14 +113,24 @@ void main() {
     db = AppDatabase(NativeDatabase(File('${dir.path}/new.sqlite')));
     await db.importLegacyIfNeeded(dir);
     expect(await SqliteThemePreferenceStore(db).load(), ThemeMode.dark);
-    expect(await SqliteBlogDraftStore(db).load('a'), isNull);
+    expect(
+      await SqliteBlogDraftStore(
+        db,
+        apiBaseUrl: Uri.parse('https://api.example.invalid'),
+      ).load('a', userId: 'user-a'),
+      isNull,
+    );
   });
 
   test('deleteDraftsFor clears one scope without touching others', () async {
     await db.importLegacyIfNeeded(dir);
-    final store = SqliteBlogDraftStore(db);
+    final store = SqliteBlogDraftStore(
+      db,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    );
     await store.save(
       BlogDraft(
+        userId: 'user-a',
         blogId: 'a',
         title: 'a',
         content: 'c',
@@ -125,6 +140,7 @@ void main() {
     );
     await store.save(
       BlogDraft(
+        userId: 'user-a',
         blogId: 'b',
         title: 'b',
         content: 'c',
@@ -134,6 +150,7 @@ void main() {
     );
     await store.save(
       BlogDraft(
+        userId: 'user-a',
         blogId: null,
         title: 'new',
         content: 'c',
@@ -142,18 +159,21 @@ void main() {
       ),
     );
 
-    final deleted = await store.deleteDraftsFor('a');
+    final deleted = await store.deleteDraftsFor('a', userId: 'user-a');
     expect(deleted, 1);
-    expect(await store.load('a'), isNull);
-    expect((await store.load('b'))!.title, 'b');
-    expect((await store.load(null))!.title, 'new');
+    expect(await store.load('a', userId: 'user-a'), isNull);
+    expect((await store.load('b', userId: 'user-a'))!.title, 'b');
+    expect((await store.load(null, userId: 'user-a'))!.title, 'new');
   });
 
   test(
     'deleteDraftsFor with olderThan keeps drafts edited during upload',
     () async {
       await db.importLegacyIfNeeded(dir);
-      final store = SqliteBlogDraftStore(db);
+      final store = SqliteBlogDraftStore(
+        db,
+        apiBaseUrl: Uri.parse('https://api.example.invalid'),
+      );
       final publishStarted = DateTime.utc(2025, 1, 1);
 
       // The store keeps one row per scope, so different scopes play the two
@@ -161,6 +181,7 @@ void main() {
       // is newer because the user typed while the upload was in flight.
       await store.save(
         BlogDraft(
+          userId: 'user-a',
           blogId: 'stale',
           title: 'pre-publish',
           content: 'c',
@@ -170,6 +191,7 @@ void main() {
       );
       await store.save(
         BlogDraft(
+          userId: 'user-a',
           blogId: 'fresh',
           title: 'typed-during-upload',
           content: 'c',
@@ -179,16 +201,27 @@ void main() {
       );
 
       expect(
-        await store.deleteDraftsFor('stale', olderThan: publishStarted),
+        await store.deleteDraftsFor(
+          'stale',
+          userId: 'user-a',
+          olderThan: publishStarted,
+        ),
         1,
       );
-      expect(await store.load('stale'), isNull);
+      expect(await store.load('stale', userId: 'user-a'), isNull);
 
       expect(
-        await store.deleteDraftsFor('fresh', olderThan: publishStarted),
+        await store.deleteDraftsFor(
+          'fresh',
+          userId: 'user-a',
+          olderThan: publishStarted,
+        ),
         0,
       );
-      expect((await store.load('fresh'))!.title, 'typed-during-upload');
+      expect(
+        (await store.load('fresh', userId: 'user-a'))!.title,
+        'typed-during-upload',
+      );
     },
   );
 
@@ -196,8 +229,12 @@ void main() {
     'drafts are scoped and stale snapshots cannot discard newer work',
     () async {
       await db.importLegacyIfNeeded(dir);
-      final store = SqliteBlogDraftStore(db);
+      final store = SqliteBlogDraftStore(
+        db,
+        apiBaseUrl: Uri.parse('https://api.example.invalid'),
+      );
       final old = BlogDraft(
+        userId: 'user-a',
         blogId: 'a',
         title: 'old',
         content: 'old',
@@ -205,6 +242,7 @@ void main() {
         updatedAt: DateTime.utc(2024),
       );
       final other = BlogDraft(
+        userId: 'user-a',
         blogId: null,
         title: 'new article',
         content: 'keep',
@@ -214,6 +252,7 @@ void main() {
       await store.save(old);
       await store.save(other);
       final replacement = BlogDraft(
+        userId: 'user-a',
         blogId: 'a',
         title: 'new',
         content: 'new',
@@ -223,8 +262,8 @@ void main() {
       await store.save(replacement);
       expect(replacement.id, old.id);
       expect(await store.discardIfUnchanged(old), isFalse);
-      expect((await store.load('a'))!.content, 'new');
-      expect((await store.load(null))!.content, 'keep');
+      expect((await store.load('a', userId: 'user-a'))!.content, 'new');
+      expect((await store.load(null, userId: 'user-a'))!.content, 'keep');
     },
   );
 
@@ -284,7 +323,23 @@ void main() {
       await db.importLegacyIfNeeded(dir);
       expect(await File('${dir.path}/default.isar').readAsBytes(), legacyBytes);
       expect(await SqliteThemePreferenceStore(db).load(), ThemeMode.dark);
-      expect((await SqliteBlogDraftStore(db).load('a'))!.content, 'unsent');
+      expect(
+        await SqliteBlogDraftStore(
+          db,
+          apiBaseUrl: Uri.parse('https://api.example.invalid'),
+        ).load('a', userId: 'user-a'),
+        isNull,
+      );
+      expect(
+        (await db
+                .customSelect(
+                  'SELECT content FROM drafts WHERE blog_id = ?',
+                  variables: [Variable<String>('a')],
+                )
+                .getSingle())
+            .read<String>('content'),
+        'unsent',
+      );
       expect(
         (await SqliteBlogCache(db).loadBlogs()).single.posterName,
         'Alice',

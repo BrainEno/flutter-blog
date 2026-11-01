@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:http/http.dart' as http;
 
@@ -183,8 +184,12 @@ class NowaveApiClient {
   }
 
   /// GET a JSON endpoint and return its unwrapped `data` payload.
-  Future<dynamic> getJson(String path, {Map<String, String>? query}) {
-    return _request('GET', path, query: query);
+  Future<dynamic> getJson(
+    String path, {
+    Map<String, String>? query,
+    NowaveSessionFence? sessionFence,
+  }) {
+    return _request('GET', path, query: query, sessionFence: sessionFence);
   }
 
   /// Reads account-scoped data only for the identity that initiated the
@@ -232,6 +237,7 @@ class NowaveApiClient {
     Map<String, String>? query,
     bool authenticate = true,
     Map<String, String>? extraHeaders,
+    NowaveSessionFence? sessionFence,
   }) {
     return _request(
       'POST',
@@ -240,6 +246,7 @@ class NowaveApiClient {
       body: body,
       authenticate: authenticate,
       extraHeaders: extraHeaders,
+      sessionFence: sessionFence,
     );
   }
 
@@ -248,8 +255,15 @@ class NowaveApiClient {
     String path,
     Object? body, {
     bool authenticate = true,
+    NowaveSessionFence? sessionFence,
   }) {
-    return _request('PUT', path, body: body, authenticate: authenticate);
+    return _request(
+      'PUT',
+      path,
+      body: body,
+      authenticate: authenticate,
+      sessionFence: sessionFence,
+    );
   }
 
   /// DELETE an endpoint; returns the unwrapped `data` payload when present.
@@ -262,14 +276,16 @@ class NowaveApiClient {
   /// upload gets a longer timeout budget than JSON calls.
   Future<NowaveMediaAsset> uploadMedia(
     Uint8List bytes,
-    String contentType,
-  ) async {
+    String contentType, {
+    NowaveSessionFence? sessionFence,
+  }) async {
     final data = await _request(
       'POST',
       '$_kApiPrefix/me/media',
       rawBody: bytes,
       contentType: contentType,
       timeout: const Duration(seconds: 90),
+      sessionFence: sessionFence,
     );
     final map = _asMap(data, 'media asset');
     return NowaveMediaAsset(
@@ -279,6 +295,21 @@ class NowaveApiClient {
       width: (map['width'] as num?)?.toInt() ?? 0,
       height: (map['height'] as num?)?.toInt() ?? 0,
     );
+  }
+
+  void _requireSessionFence(NowaveSessionFence fence) {
+    final auth = _authenticator;
+    if (auth is! NowaveViewerAuthenticator ||
+        fence.userId.isEmpty ||
+        auth.activeUserId != fence.userId ||
+        auth.sessionGeneration != fence.generation ||
+        (auth.accessToken?.isEmpty ?? true)) {
+      throw const NowaveApiException(
+        statusCode: HttpStatus.conflict,
+        code: 'SESSION_CHANGED',
+        message: 'The account that started this operation is no longer active.',
+      );
+    }
   }
 
   Future<dynamic> _request(
@@ -292,7 +323,14 @@ class NowaveApiClient {
     bool allowRefresh = true,
     Duration? timeout,
     Map<String, String>? extraHeaders,
+    NowaveSessionFence? sessionFence,
   }) async {
+    if (sessionFence != null) {
+      if (!authenticate) {
+        throw ArgumentError('An identity fence requires authentication.');
+      }
+      _requireSessionFence(sessionFence);
+    }
     final uri = path.startsWith(_kApiPrefix)
         ? _resolveUri(path, query)
         : _resolveUri('$_kApiPrefix$path', query);
@@ -324,6 +362,7 @@ class NowaveApiClient {
           authenticator.accessToken == null;
 
       void ensureSameSession() {
+        if (sessionFence != null) _requireSessionFence(sessionFence);
         if (bound != null && bound.sessionGeneration != generation) {
           // A write may already have committed under the old account. Do not
           // replay it with the new account or present the old response as new.

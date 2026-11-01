@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
@@ -15,6 +16,7 @@ abstract interface class BlogRepository {
     required String posterId,
     required List<String> tags,
     String? imageMimeType,
+    NowaveSessionFence? sessionFence,
   });
 
   /// Soft-deletes the article with the public id [blogId] (slug): it
@@ -64,6 +66,7 @@ abstract interface class BlogRepository {
     required List<String> tags,
     required File? image,
     String? imageMimeType,
+    NowaveSessionFence? sessionFence,
   });
 
   Future<Either<Failure, bool>> toggleLikeBlog(String userId, String blogId);

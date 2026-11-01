@@ -4,6 +4,7 @@ import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/utils/retry_on_connection_closed.dart';
 import 'package:belog/features/blog/data/datasources/latest_feed_cursor.dart';
 import 'package:belog/features/blog/data/datasources/nowave_article_codec.dart';
@@ -27,11 +28,18 @@ abstract interface class BlogRemoteDataSource {
   /// Creates the article (`POST /articles`). [blog.imageUrl] must already
   /// be an immutable media URL from [uploadBlogImage] (or empty: articles
   /// without covers are published as text-only content blocks).
-  Future<BlogModel> uploadBlog(BlogModel blog);
+  Future<BlogModel> uploadBlog(
+    BlogModel blog, {
+    NowaveSessionFence? sessionFence,
+  });
 
   /// Uploads a cover image (`POST /me/media`, raw bytes + MIME type) and
   /// returns its immutable public URL. The server re-encodes to WebP.
-  Future<String> uploadBlogImage({required File image, String? mimeType});
+  Future<String> uploadBlogImage({
+    required File image,
+    String? mimeType,
+    NowaveSessionFence? sessionFence,
+  });
 
   Future<List<BlogModel>> getAllBlogs({required int page});
 
@@ -47,7 +55,10 @@ abstract interface class BlogRemoteDataSource {
   });
 
   /// Loads an article by its public slug ([Blog.id]).
-  Future<BlogModel> getBlogById(String blogId);
+  Future<BlogModel> getBlogById(
+    String blogId, {
+    NowaveSessionFence? sessionFence,
+  });
 
   /// Same-topic articles the server recommends next to [slug]
   /// (`GET /articles/:slug/related`).
@@ -55,7 +66,10 @@ abstract interface class BlogRemoteDataSource {
   Future<List<BlogModel>> getBlogsByPosterId(String posterId);
   Future<List<BlogModel>> getBlogsByTag(String tag);
   Future<List<BlogModel>> searchBlogs(String query);
-  Future<BlogModel> editBlog(BlogModel blog);
+  Future<BlogModel> editBlog(
+    BlogModel blog, {
+    NowaveSessionFence? sessionFence,
+  });
 
   /// Soft-deletes an article (`DELETE /articles/:articleId`): the row
   /// becomes a tombstone, leaves every list and moves to the author's
@@ -97,7 +111,8 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
 
   /// In-flight `POST /tags` resolutions by tag name, so concurrent
   /// publishes share one request per name.
-  final Map<String, Future<Map<String, dynamic>>> _tagLookups = {};
+  final Map<(String, int?, String?), Future<Map<String, dynamic>>> _tagLookups =
+      {};
 
   /// One in-flight like toggle per article. The API sets an explicit like
   /// state rather than toggling, so two overlapping read-then-write pairs
@@ -107,10 +122,13 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   final Map<String, Future<bool>> _likeToggleBySlug = {};
 
   @override
-  Future<BlogModel> uploadBlog(BlogModel blog) async {
+  Future<BlogModel> uploadBlog(
+    BlogModel blog, {
+    NowaveSessionFence? sessionFence,
+  }) async {
     try {
-      final tagIds = await _resolveTagIds(blog.tags);
-      final data = await client.postJson('/articles', <String, dynamic>{
+      final tagIds = await _resolveTagIds(blog.tags, sessionFence);
+      final body = <String, dynamic>{
         'title': blog.title,
         'contentBlocks': blogToContentBlocks(
           content: blog.content,
@@ -120,7 +138,14 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         'publish': true,
         'locale': 'zh-CN',
         if (tagIds.isNotEmpty) 'tagIds': tagIds,
-      });
+      };
+      final data = sessionFence == null
+          ? await client.postJson('/articles', body)
+          : await client.postJson(
+              '/articles',
+              body,
+              sessionFence: sessionFence,
+            );
       return BlogModel.fromNowaveArticle(_articleMap(data));
     } catch (e) {
       throw mapToServerException(e);
@@ -131,13 +156,20 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   Future<String> uploadBlogImage({
     required File image,
     String? mimeType,
+    NowaveSessionFence? sessionFence,
   }) async {
     try {
       final bytes = await image.readAsBytes();
       // A lost response does not prove the upload failed: the server may
       // already have stored a new asset. Media has no idempotency key yet,
       // so do not silently create another one on a transport retry.
-      final asset = await client.uploadMedia(bytes, mimeType ?? 'image/jpeg');
+      final asset = sessionFence == null
+          ? await client.uploadMedia(bytes, mimeType ?? 'image/jpeg')
+          : await client.uploadMedia(
+              bytes,
+              mimeType ?? 'image/jpeg',
+              sessionFence: sessionFence,
+            );
       return client.mediaUri(asset.id).toString();
     } catch (e) {
       throw mapToServerException(e);
@@ -234,12 +266,21 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   }
 
   @override
-  Future<BlogModel> getBlogById(String blogId) async {
+  Future<BlogModel> getBlogById(
+    String blogId, {
+    NowaveSessionFence? sessionFence,
+  }) async {
     try {
-      final data = await client.getJson(
-        '/articles/$blogId',
-        query: {'locale': 'zh-CN'},
-      );
+      final data = sessionFence == null
+          ? await client.getJson(
+              '/articles/$blogId',
+              query: {'locale': 'zh-CN'},
+            )
+          : await client.getJson(
+              '/articles/$blogId',
+              query: {'locale': 'zh-CN'},
+              sessionFence: sessionFence,
+            );
       return BlogModel.fromNowaveArticle(_articleMap(data));
     } catch (e) {
       throw mapToServerException(e);
@@ -312,7 +353,10 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   }
 
   @override
-  Future<BlogModel> editBlog(BlogModel blog) async {
+  Future<BlogModel> editBlog(
+    BlogModel blog, {
+    NowaveSessionFence? sessionFence,
+  }) async {
     try {
       if (blog.articleId.isEmpty) {
         throw const ServerException(
@@ -328,8 +372,8 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           code: 'article.structuredEditUnsupported',
         );
       }
-      final tagIds = await _resolveTagIds(blog.tags);
-      final data = await client.putJson('/articles/${blog.articleId}', {
+      final tagIds = await _resolveTagIds(blog.tags, sessionFence);
+      final body = <String, dynamic>{
         'slug': blog.id,
         'title': blog.title,
         // Preserve the freshly fetched server summary. An empty value may
@@ -343,7 +387,14 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         'publish': true,
         'locale': 'zh-CN',
         if (tagIds.isNotEmpty) 'tagIds': tagIds,
-      });
+      };
+      final data = sessionFence == null
+          ? await client.putJson('/articles/${blog.articleId}', body)
+          : await client.putJson(
+              '/articles/${blog.articleId}',
+              body,
+              sessionFence: sessionFence,
+            );
       return BlogModel.fromNowaveArticle(_articleMap(data));
     } catch (e) {
       throw mapToServerException(e);
@@ -482,7 +533,10 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   /// an in-memory cache. Concurrent calls for the same name share one
   /// request (the create-or-reuse endpoint is idempotent, but halving the
   /// traffic is still worth it).
-  Future<List<String>> _resolveTagIds(List<String> tags) async {
+  Future<List<String>> _resolveTagIds(
+    List<String> tags,
+    NowaveSessionFence? sessionFence,
+  ) async {
     final names = tags
         .map((tag) => tag.trim())
         .where((tag) => tag.isNotEmpty)
@@ -495,7 +549,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         ids.add(cached['id'] as String);
         continue;
       }
-      final lookup = _claimTag(name);
+      final lookup = _claimTag(name, sessionFence);
       final tag = await lookup;
       _tagByName[name] = tag;
       ids.add(tag['id'] as String);
@@ -508,18 +562,29 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   /// The slot is released on success AND failure: a failed resolution
   /// must not poison the name for the rest of the app session, it just
   /// propagates its error to whoever joined it.
-  Future<Map<String, dynamic>> _claimTag(String name) {
-    final inFlight = _tagLookups[name];
+  Future<Map<String, dynamic>> _claimTag(
+    String name,
+    NowaveSessionFence? sessionFence,
+  ) {
+    // A new login must not join the previous account's in-flight lookup.
+    final key = (name, sessionFence?.generation, sessionFence?.userId);
+    final inFlight = _tagLookups[key];
     if (inFlight != null) {
       return inFlight;
     }
-    return _tagLookups[name] = _resolveTag(name).whenComplete(() {
-      _tagLookups.remove(name);
+    return _tagLookups[key] = _resolveTag(name, sessionFence).whenComplete(() {
+      _tagLookups.remove(key);
     });
   }
 
-  Future<Map<String, dynamic>> _resolveTag(String name) async {
-    final data = await client.postJson('/tags', {'name': name});
+  Future<Map<String, dynamic>> _resolveTag(
+    String name,
+    NowaveSessionFence? sessionFence,
+  ) async {
+    final body = {'name': name};
+    final data = sessionFence == null
+        ? await client.postJson('/tags', body)
+        : await client.postJson('/tags', body, sessionFence: sessionFence);
     return _articleMap(data);
   }
 

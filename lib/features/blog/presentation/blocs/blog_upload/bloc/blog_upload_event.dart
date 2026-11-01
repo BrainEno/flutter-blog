@@ -11,6 +11,7 @@ class UploadBlogEvent extends BlogUploadEvent {
   final String content;
   final String posterId;
   final List<String> tags;
+  final NowaveSessionFence sessionFence;
 
   /// MIME type reported by the picker; uploaded as the object's
   /// contentType.
@@ -22,6 +23,7 @@ class UploadBlogEvent extends BlogUploadEvent {
     required this.content,
     required this.posterId,
     required this.tags,
+    required this.sessionFence,
     this.imageMimeType,
   });
 
@@ -33,6 +35,8 @@ class UploadBlogEvent extends BlogUploadEvent {
     posterId,
     tags,
     imageMimeType,
+    sessionFence.userId,
+    sessionFence.generation,
   ];
 }
 
@@ -42,6 +46,7 @@ class UpdateBlogEvent extends BlogUploadEvent {
   final String title;
   final String content;
   final List<String> tags;
+  final NowaveSessionFence sessionFence;
 
   /// MIME type reported by the picker; uploaded as the object's
   /// contentType.
@@ -53,6 +58,7 @@ class UpdateBlogEvent extends BlogUploadEvent {
     required this.title,
     required this.content,
     required this.tags,
+    required this.sessionFence,
     this.imageMimeType,
   });
 
@@ -64,6 +70,8 @@ class UpdateBlogEvent extends BlogUploadEvent {
     content,
     tags,
     imageMimeType,
+    sessionFence.userId,
+    sessionFence.generation,
   ];
 }
 

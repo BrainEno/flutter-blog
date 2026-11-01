@@ -1,12 +1,13 @@
 /// Local draft of a blog article.
 ///
 /// Pure Dart domain entity: it must stay free of persistence annotations. A
-/// draft is scoped to [blogId] (`null` means a brand-new article), and [id] is
-/// the local row id assigned by [BlogDraftStore] when the draft is persisted;
-/// it is `null` until then and must never leak into UI logic.
+/// draft is scoped to [userId] and [blogId] (`null` means a brand-new
+/// article). The backend namespace is applied by the storage implementation.
+/// [id] is assigned when the draft is persisted; it is not a server id.
 class BlogDraft {
   int? id;
 
+  final String userId;
   final String? blogId;
   final String title;
   final String content;
@@ -15,10 +16,11 @@ class BlogDraft {
 
   BlogDraft({
     this.id,
+    required this.userId,
     this.blogId,
     required this.title,
     required this.content,
-    required this.tags,
+    required List<String> tags,
     required this.updatedAt,
-  });
+  }) : tags = List.unmodifiable(tags);
 }

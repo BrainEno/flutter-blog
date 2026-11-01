@@ -51,8 +51,15 @@ void main() {
       final oldRemote = await cache.loadBlogById('remote');
       expect(oldRemote?.content, 'flattened text');
       expect(oldRemote?.document?.supported, isFalse);
+      final drafts = SqliteBlogDraftStore(
+        db,
+        apiBaseUrl: Uri.parse('https://api.example.invalid'),
+      );
+      expect(await drafts.load('old', userId: 'user-a'), isNull);
+      expect(await drafts.hasUnclaimedDrafts(), isTrue);
       expect(
-        (await SqliteBlogDraftStore(db).load('old'))?.content,
+        (await db.customSelect('SELECT content FROM drafts').getSingle())
+            .read<String>('content'),
         'unpublished work',
       );
       expect(
@@ -64,7 +71,7 @@ void main() {
         (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
           'user_version',
         ),
-        5,
+        6,
       );
       expect(
         (await db.customSelect('PRAGMA table_info(blog_cache)').get()).map(

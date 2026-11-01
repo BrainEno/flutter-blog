@@ -134,7 +134,7 @@ Future<void> initDependencies() async {
 
   serviceLocator.registerLazySingleton(() => database);
   serviceLocator.registerLazySingleton<BlogDraftStore>(
-    () => SqliteBlogDraftStore(database),
+    () => SqliteBlogDraftStore(database, apiBaseUrl: uri),
   );
   serviceLocator.registerLazySingleton(() => apiClient);
   serviceLocator.registerLazySingleton(() => sessionManager);

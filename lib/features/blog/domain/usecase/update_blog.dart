@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/usecase/usecase.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
@@ -19,6 +20,7 @@ class UpdateBlog implements UseCase<Blog, UpdateBlogParams> {
       content: params.content,
       tags: params.tags,
       imageMimeType: params.imageMimeType,
+      sessionFence: params.sessionFence,
     );
   }
 }
@@ -30,6 +32,7 @@ class UpdateBlogParams {
   final String content;
   final List<String> tags;
   final String? imageMimeType;
+  final NowaveSessionFence sessionFence;
 
   UpdateBlogParams({
     required this.blogId,
@@ -37,6 +40,7 @@ class UpdateBlogParams {
     required this.title,
     required this.content,
     required this.tags,
+    required this.sessionFence,
     this.imageMimeType,
   });
 }

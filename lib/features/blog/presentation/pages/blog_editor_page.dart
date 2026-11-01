@@ -5,6 +5,8 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/l10n/tag_l10n.dart';
+import 'package:belog/core/nowave/nowave_session.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/pick_image.dart';
@@ -31,7 +33,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 class BlogEditorPage extends StatefulWidget {
   final Blog? blog;
   final BlogDraftStore? draftStore;
-  const BlogEditorPage({super.key, this.blog, this.draftStore});
+  final NowaveSessionIdentity? sessionIdentity;
+  const BlogEditorPage({
+    super.key,
+    this.blog,
+    this.draftStore,
+    this.sessionIdentity,
+  });
 
   @override
   State<BlogEditorPage> createState() => _BlogEditorState();
@@ -58,6 +66,17 @@ class _BlogEditorState extends State<BlogEditorPage> {
   String? imageMimeType;
   int _draftRequestVersion = 0;
   late final BlogDraftStore _draftStore;
+  late final AppUserCubit _userCubit;
+  late final NowaveSessionIdentity _session;
+  late final String? _draftOwnerId;
+  late final int _editorGeneration;
+  StreamSubscription<void>? _identitySubscription;
+  StreamSubscription<AppUserState>? _userSubscription;
+  NavigatorState? _recoveryNavigator;
+  Route<DraftRecoveryChoice>? _recoveryRoute;
+  bool _invalidated = false;
+  bool _restoringDraft = false;
+  bool _hasUnclaimedDrafts = false;
 
   Timer? _autoSaveTimer;
   _AutoSaveStatus _autoSaveStatus = _AutoSaveStatus.idle;
@@ -65,12 +84,25 @@ class _BlogEditorState extends State<BlogEditorPage> {
   bool _hasUnsavedEdits = false;
   bool _editedDuringPublish = false;
   DateTime? _publishStartedAt;
+  BlogDraft? _publishedDraftSnapshot;
 
   @override
   void initState() {
     super.initState();
     _draftStore = widget.draftStore ?? GetIt.instance<BlogDraftStore>();
-    if (widget.blog != null) {
+    _userCubit = context.read<AppUserCubit>();
+    _session = widget.sessionIdentity ?? GetIt.instance<NowaveSessionManager>();
+    final userState = _userCubit.state;
+    _draftOwnerId = userState is AppUserLoggedIn ? userState.user.id : null;
+    _editorGeneration = _session.sessionGeneration;
+    _invalidated = !_matchesSession;
+    _identitySubscription = _session.identityChanges.listen((_) {
+      if (!_matchesSession) _invalidateEditor();
+    });
+    _userSubscription = _userCubit.stream.listen((_) {
+      if (!_matchesSession) _invalidateEditor();
+    });
+    if (widget.blog != null && !_invalidated) {
       titleController.text = widget.blog!.title;
       contentController.text = widget.blog!.content;
       selectedTags = List.from(widget.blog!.tags);
@@ -79,32 +111,89 @@ class _BlogEditorState extends State<BlogEditorPage> {
     // editors is not mistaken for an edit.
     titleController.addListener(_onEditorContentChanged);
     contentController.addListener(_onEditorContentChanged);
-    loadDraft();
+    if (!_invalidated) {
+      loadDraft();
+      _loadUnclaimedDraftNotice();
+    }
   }
 
-  /// Debounces the 2s background draft save. It only ever writes to the
-  /// local draft store - it never publishes or network-posts anything.
+  bool get _matchesSession {
+    final owner = _draftOwnerId;
+    final state = _userCubit.state;
+    return owner != null &&
+        owner.isNotEmpty &&
+        owner == owner.trim() &&
+        state is AppUserLoggedIn &&
+        state.user.id == owner &&
+        _session.activeUserId == owner &&
+        _session.sessionGeneration == _editorGeneration &&
+        !(_session.accessToken?.isEmpty ?? true);
+  }
+
+  bool get _isCurrentEditor => mounted && !_invalidated && _matchesSession;
+
+  void _invalidateEditor() {
+    if (_invalidated) return;
+    // An in-flight publish may have committed. Retain any pending text for
+    // the original account, never in the replacement account's namespace.
+    _autoSaveTimer?.cancel();
+    _flushDraftOnDispose();
+    _invalidated = true;
+    _draftRequestVersion++;
+    _dismissRecoveryDialog();
+    if (mounted) setState(() {});
+  }
+
+  void _dismissRecoveryDialog() {
+    final route = _recoveryRoute;
+    final navigator = _recoveryNavigator;
+    _recoveryRoute = null;
+    _recoveryNavigator = null;
+    if (route == null || navigator == null) return;
+    // Disposing the editor can happen while Navigator itself is locked.
+    // Remove only our exact route after the current navigation frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (navigator.mounted && route.isActive) navigator.removeRoute(route);
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  Future<void> _loadUnclaimedDraftNotice() async {
+    try {
+      final found = await _draftStore.hasUnclaimedDrafts();
+      if (_isCurrentEditor && found) setState(() => _hasUnclaimedDrafts = true);
+    } catch (_) {
+      // This notice is informational; a failed check never exposes a draft.
+    }
+  }
+
+  /// Debounces the 2s background draft save. It only writes locally.
   void _onEditorContentChanged() {
-    if (!_draftsReady) return;
+    if (!_isCurrentEditor || _restoringDraft) return;
+    _draftRequestVersion++;
     _hasUnsavedEdits = true;
     if (_publishStartedAt != null) _editedDuringPublish = true;
+    if (_draftsReady) _scheduleAutoSave();
+  }
+
+  void _scheduleAutoSave() {
     _autoSaveTimer?.cancel();
     _autoSaveTimer = Timer(_kAutoSaveDelay, _autoSaveDraft);
   }
 
   Future<void> _autoSaveDraft() async {
-    if (!_isBlankDraft()) {
-      final draft = _currentDraft();
-      setState(() => _autoSaveStatus = _AutoSaveStatus.saving);
-      try {
-        await _draftStore.save(draft);
-        // Edits made while this save was awaiting re-arm the auto-save
-        // timer; only declare everything saved when none are pending.
-        _hasUnsavedEdits = _autoSaveTimer?.isActive ?? false;
-        if (mounted) setState(() => _autoSaveStatus = _AutoSaveStatus.saved);
-      } catch (_) {
-        if (mounted) setState(() => _autoSaveStatus = _AutoSaveStatus.failed);
-      }
+    if (!_isCurrentEditor || _isBlankDraft()) return;
+    final version = _draftRequestVersion;
+    final draft = _currentDraft();
+    setState(() => _autoSaveStatus = _AutoSaveStatus.saving);
+    try {
+      await _draftStore.save(draft);
+      if (!_isCurrentEditor) return;
+      _hasUnsavedEdits = version != _draftRequestVersion;
+      setState(() => _autoSaveStatus = _AutoSaveStatus.saved);
+    } catch (_) {
+      if (_isCurrentEditor)
+        setState(() => _autoSaveStatus = _AutoSaveStatus.failed);
     }
   }
 
@@ -113,6 +202,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
       contentController.text.trim().isEmpty;
 
   BlogDraft _currentDraft() => BlogDraft(
+    userId: _draftOwnerId!,
     blogId: widget.blog?.id,
     title: titleController.text,
     content: contentController.text,
@@ -120,55 +210,73 @@ class _BlogEditorState extends State<BlogEditorPage> {
     updatedAt: DateTime.now(),
   );
 
-  /// Publish succeeded: drop this article's drafts that predate the publish
-  /// request. Edits typed while the upload was in flight are newer and are
-  /// deliberately kept.
-  Future<void> _clearPublishedDrafts() async {
-    final startedAt = _publishStartedAt;
-    if (startedAt == null) return;
+  /// Only delete the exact locally saved snapshot that was published. A
+  /// concurrent edit, another editor, or a clock adjustment must never make
+  /// a later draft look old enough to delete.
+  Future<void> _clearPublishedDraft() async {
+    final snapshot = _publishedDraftSnapshot;
+    if (snapshot == null || _editedDuringPublish) return;
     try {
-      await _draftStore.deleteDraftsFor(widget.blog?.id, olderThan: startedAt);
+      await _draftStore.discardIfUnchanged(snapshot);
     } catch (_) {
-      // Best-effort cleanup: a leftover draft is harmless.
+      // Best-effort cleanup: a leftover draft is safer than lost work.
     }
   }
 
   /// Best-effort save when the page is disposed mid-edit. Must not touch
   /// [context] - the widget is already unmounted.
   void _flushDraftOnDispose() {
-    if (!_hasUnsavedEdits || _isBlankDraft()) return;
-    // Only edits made while a publish was uploading should survive it.
-    if (_publishStartedAt != null && !_editedDuringPublish) return;
+    if (_draftOwnerId == null || !_hasUnsavedEdits || _isBlankDraft()) return;
+    // A disposed or invalidated editor may have an unconfirmed publish. Keep
+    // its text unless a success listener already marked those edits published.
     final draft = _currentDraft();
-    unawaited(_draftStore.save(draft).then((_) {}, onError: (_) {}));
+    _hasUnsavedEdits = false;
+    unawaited(
+      Future.sync(() => _draftStore.save(draft)).then((_) {}, onError: (_) {}),
+    );
   }
 
   Future<void> loadDraft() async {
     final requestVersion = _draftRequestVersion;
     try {
-      final draft = await _draftStore.load(widget.blog?.id);
-      if (!mounted || requestVersion != _draftRequestVersion || draft == null) {
+      final draft = await _draftStore.load(
+        widget.blog?.id,
+        userId: _draftOwnerId!,
+      );
+      if (!_isCurrentEditor ||
+          requestVersion != _draftRequestVersion ||
+          draft == null ||
+          draft.userId != _draftOwnerId ||
+          draft.blogId != widget.blog?.id) {
         return;
       }
 
+      _recoveryNavigator = Navigator.of(context, rootNavigator: true);
       final choice = await showDraftRecoveryDialog(
         context,
         isOlderThanPublished:
             widget.blog != null &&
             widget.blog!.updatedAt.isAfter(draft.updatedAt),
+        onRouteCreated: (route) => _recoveryRoute = route,
       );
-      if (!mounted || requestVersion != _draftRequestVersion) return;
+      _recoveryRoute = null;
+      if (!_isCurrentEditor || requestVersion != _draftRequestVersion) return;
 
       if (choice == DraftRecoveryChoice.restore) {
-        setState(() {
-          titleController.text = draft.title;
-          contentController.text = draft.content;
-          selectedTags = List.from(draft.tags);
-        });
-        if (mounted) showSnackBar(context, context.l10n.draftRestored);
+        _restoringDraft = true;
+        try {
+          setState(() {
+            titleController.text = draft.title;
+            contentController.text = draft.content;
+            selectedTags = List.from(draft.tags);
+          });
+        } finally {
+          _restoringDraft = false;
+        }
+        showSnackBar(context, context.l10n.draftRestored);
       } else if (choice == DraftRecoveryChoice.discard) {
         final deleted = await _draftStore.discardIfUnchanged(draft);
-        if (mounted) {
+        if (_isCurrentEditor) {
           showSnackBar(
             context,
             deleted ? context.l10n.draftDiscarded : context.l10n.draftChanged,
@@ -176,15 +284,20 @@ class _BlogEditorState extends State<BlogEditorPage> {
         }
       }
     } catch (_) {
-      if (mounted) showSnackBar(context, context.l10n.draftReadFailed);
+      if (_isCurrentEditor) showSnackBar(context, context.l10n.draftReadFailed);
     } finally {
-      _draftsReady = true;
+      if (_isCurrentEditor) {
+        _draftsReady = true;
+        if (_hasUnsavedEdits) _scheduleAutoSave();
+      }
     }
   }
 
   void selectImage() async {
+    if (!_isCurrentEditor) return;
     try {
       final pickedImage = await pickImage();
+      if (!_isCurrentEditor) return;
       if (pickedImage != null) {
         setState(() {
           image = pickedImage.file;
@@ -196,68 +309,89 @@ class _BlogEditorState extends State<BlogEditorPage> {
     } catch (_) {
       // Picking failed (as opposed to being cancelled): surface it
       // instead of silently keeping the old cover.
-      if (mounted) {
+      if (_isCurrentEditor) {
         showSnackBar(context, context.l10n.imagePickFailed);
       }
     }
   }
 
-  void saveBlog() {
-    _draftRequestVersion++;
+  Future<void> saveBlog() async {
+    if (!_isCurrentEditor || _publishStartedAt != null) return;
+    final version = ++_draftRequestVersion;
     // Cover and tags are optional (issue #17): title and body are the
     // only required fields, and the backend already publishes text-only
     // articles as plain content blocks.
-    if (formKey.currentState!.validate()) {
-      _publishStartedAt = DateTime.now();
-      _editedDuringPublish = false;
-      final posterId =
-          (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
-      if (widget.blog == null) {
-        context.read<BlogUploadBloc>().add(
-          UploadBlogEvent(
-            image: image,
-            title: titleController.text.trim(),
-            content: contentController.text.trim(),
-            posterId: posterId,
-            tags: selectedTags,
-            imageMimeType: imageMimeType,
-          ),
-        );
-      } else if (widget.blog != null) {
-        context.read<BlogUploadBloc>().add(
-          UpdateBlogEvent(
-            blogId: widget.blog!.id,
-            image: isNewImageSelected ? image : null,
-            title: titleController.text.trim(),
-            content: contentController.text.trim(),
-            tags: selectedTags,
-            imageMimeType: isNewImageSelected ? imageMimeType : null,
-          ),
-        );
-      }
-    } else {
+    if (!formKey.currentState!.validate()) {
       showSnackBar(context, context.l10n.editorRequiredFields);
+      return;
+    }
+    _autoSaveTimer?.cancel();
+    _publishStartedAt = DateTime.now();
+    _editedDuringPublish = false;
+    final draft = _currentDraft();
+    final publishImage = widget.blog == null || isNewImageSelected
+        ? image
+        : null;
+    final publishMimeType = publishImage == null ? null : imageMimeType;
+    final sessionFence = NowaveSessionFence(
+      userId: draft.userId,
+      generation: _editorGeneration,
+    );
+    // Persist the exact request snapshot first. If the route is closed, the
+    // account changes, or the server response is lost, the text survives.
+    try {
+      await _draftStore.save(draft);
+    } catch (_) {
+      if (_isCurrentEditor) {
+        _publishStartedAt = null;
+        if (_hasUnsavedEdits && _draftsReady) _scheduleAutoSave();
+        showSnackBar(context, context.l10n.draftSaveFailed);
+      }
+      return;
+    }
+    if (!_isCurrentEditor) return;
+    _hasUnsavedEdits = version != _draftRequestVersion;
+    _publishedDraftSnapshot = draft;
+    if (widget.blog == null) {
+      context.read<BlogUploadBloc>().add(
+        UploadBlogEvent(
+          image: publishImage,
+          title: draft.title.trim(),
+          content: draft.content.trim(),
+          posterId: draft.userId,
+          tags: List.of(draft.tags),
+          imageMimeType: publishMimeType,
+          sessionFence: sessionFence,
+        ),
+      );
+    } else {
+      context.read<BlogUploadBloc>().add(
+        UpdateBlogEvent(
+          blogId: widget.blog!.id,
+          image: publishImage,
+          title: draft.title.trim(),
+          content: draft.content.trim(),
+          tags: List.of(draft.tags),
+          imageMimeType: publishMimeType,
+          sessionFence: sessionFence,
+        ),
+      );
     }
   }
 
   Future<void> saveDraft() async {
-    _draftRequestVersion++;
+    if (!_isCurrentEditor) return;
+    final version = ++_draftRequestVersion;
     // Take a snapshot before the first await: controllers may be edited or
     // disposed while the database transaction waits for its turn.
-    final draft = BlogDraft(
-      blogId: widget.blog?.id,
-      title: titleController.text,
-      content: contentController.text,
-      tags: List.of(selectedTags),
-      updatedAt: DateTime.now(),
-    );
+    final draft = _currentDraft();
     try {
       await _draftStore.save(draft);
-      // A pending auto-save timer means newer edits are waiting; let it run.
-      _hasUnsavedEdits = _autoSaveTimer?.isActive ?? false;
-      if (mounted) showSnackBar(context, context.l10n.draftSaved);
+      if (!_isCurrentEditor) return;
+      _hasUnsavedEdits = version != _draftRequestVersion;
+      showSnackBar(context, context.l10n.draftSaved);
     } catch (_) {
-      if (mounted) showSnackBar(context, context.l10n.draftSaveFailed);
+      if (_isCurrentEditor) showSnackBar(context, context.l10n.draftSaveFailed);
     }
   }
 
@@ -265,6 +399,11 @@ class _BlogEditorState extends State<BlogEditorPage> {
   void dispose() {
     _autoSaveTimer?.cancel();
     _flushDraftOnDispose();
+    final identitySubscription = _identitySubscription;
+    final userSubscription = _userSubscription;
+    if (identitySubscription != null) unawaited(identitySubscription.cancel());
+    if (userSubscription != null) unawaited(userSubscription.cancel());
+    _dismissRecoveryDialog();
     titleController.dispose();
     contentController.dispose();
     super.dispose();
@@ -272,6 +411,17 @@ class _BlogEditorState extends State<BlogEditorPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isCurrentEditor) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(context.l10n.editorSessionChanged),
+          ),
+        ),
+      );
+    }
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: isDarkMode ? AppPalette.ink : AppPalette.paper,
@@ -371,7 +521,11 @@ class _BlogEditorState extends State<BlogEditorPage> {
       ),
       body: BlocConsumer<BlogUploadBloc, BlogUploadState>(
         listener: (context, state) {
+          if (!_isCurrentEditor) return;
           if (state is BlogUploadFailure) {
+            _publishStartedAt = null;
+            _publishedDraftSnapshot = null;
+            if (_hasUnsavedEdits && _draftsReady) _scheduleAutoSave();
             showSnackBar(
               context,
               localizedFailure(context.l10n, state.failure),
@@ -387,10 +541,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
                   ? context.l10n.uploadSuccess
                   : context.l10n.updateSuccess,
             );
-            // Drop the drafts that were published; keep anything typed
-            // during the upload (see _clearPublishedDrafts).
+            // Clear only the exact published snapshot; later edits survive.
             _hasUnsavedEdits = _editedDuringPublish;
-            unawaited(_clearPublishedDrafts());
+            unawaited(_clearPublishedDraft());
             Navigator.of(context).pop(true);
           }
         },
@@ -409,6 +562,14 @@ class _BlogEditorState extends State<BlogEditorPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (_hasUnclaimedDrafts)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Semantics(
+                          liveRegion: true,
+                          child: Text(context.l10n.legacyDraftsNotice),
+                        ),
+                      ),
                     _AutoSaveBanner(status: _autoSaveStatus),
                     const SizedBox(
                       height: 20,
