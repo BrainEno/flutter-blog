@@ -164,7 +164,7 @@
   "passwordChangeSuccess": "密码已更新；你可能需要使用新密码重新登录。",
   "errorPasswordRejected": "当前密码可能不正确，或登录已失效；请核对密码或重新登录。",
   "errorPasswordIdentityUnconfirmed": "无法确认当前账户，本次未提交改密请求；请重新登录。",
-  "errorPasswordOutcomeUnknown": "无法确认修改结果：密码或会话可能已改变。请先尝试使用新密码登录确认，再决定是否重试。",
+  "errorPasswordOutcomeUnknown": "无法确认修改结果：密码可能已更改，但其他设备仍可能保持登录。请先尝试使用新密码登录确认，再决定是否重试。",
   "errorPasswordUnsupported": "当前服务器不支持修改密码，请联系服务提供方。",
   "errorPasswordInProgress": "已有密码修改请求正在处理，请等待结果。",
   "passwordShowField": "显示{field}",

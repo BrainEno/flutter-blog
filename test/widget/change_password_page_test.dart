@@ -238,39 +238,51 @@ void main() {
     },
   );
 
-  testWidgets('uncertain outcome is visible and credentials are cleared', (
-    tester,
-  ) async {
-    final user = AppUserCubit()..updateUser(_user('user-a'));
-    addTearDown(user.close);
-    final repository = _Repository()
-      ..result = left(
-        const Failure(
-          'fixture',
-          code: 'auth.passwordOutcomeUnknown',
-          cause: 'sensitive diagnostic',
-        ),
-      );
-    final l10n = lookupAppLocalizations(const Locale('en'));
-    await _pump(
-      tester,
-      repository: repository,
-      session: _Session(),
-      user: user,
+  for (final locale in [const Locale('zh'), const Locale('en')]) {
+    testWidgets(
+      'uncertain outcome warns that other sessions may remain: $locale',
+      (tester) async {
+        final user = AppUserCubit()..updateUser(_user('user-a'));
+        addTearDown(user.close);
+        final repository = _Repository()
+          ..result = left(
+            const Failure(
+              'fixture',
+              code: 'auth.passwordOutcomeUnknown',
+              cause: 'sensitive diagnostic',
+            ),
+          );
+        final l10n = lookupAppLocalizations(locale);
+        expect(
+          l10n.errorPasswordOutcomeUnknown,
+          contains(
+            locale.languageCode == 'zh'
+                ? '其他设备仍可能保持登录'
+                : 'other sessions may still be active',
+          ),
+        );
+        await _pump(
+          tester,
+          repository: repository,
+          session: _Session(),
+          user: user,
+          locale: locale,
+        );
+        await _enter(tester, 0, 'current password');
+        await _enter(tester, 1, 'a new password');
+        await _enter(tester, 2, 'a new password');
+        await _tapSubmit(tester, l10n);
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.errorPasswordOutcomeUnknown), findsOneWidget);
+        expect(find.text('sensitive diagnostic'), findsNothing);
+        for (final field in tester.widgetList<TextFormField>(
+          find.byType(TextFormField),
+        )) {
+          expect(field.controller!.text, isEmpty);
+        }
+      },
     );
-    await _enter(tester, 0, 'current password');
-    await _enter(tester, 1, 'a new password');
-    await _enter(tester, 2, 'a new password');
-    await _tapSubmit(tester, l10n);
-    await tester.pumpAndSettle();
-    expect(find.text(l10n.errorPasswordOutcomeUnknown), findsOneWidget);
-    expect(find.text('sensitive diagnostic'), findsNothing);
-    for (final field in tester.widgetList<TextFormField>(
-      find.byType(TextFormField),
-    )) {
-      expect(field.controller!.text, isEmpty);
-    }
-  });
+  }
 
   testWidgets('account switch during a write never displays the old success', (
     tester,

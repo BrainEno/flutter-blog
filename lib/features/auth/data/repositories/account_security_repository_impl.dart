@@ -127,7 +127,7 @@ const _identityUnconfirmed = Failure(
   code: 'auth.passwordIdentityUnconfirmed',
 );
 const _outcomeUnknown = Failure(
-  '无法确认修改结果：密码或会话可能已改变。请先用新密码登录确认，勿立即重复提交',
+  '无法确认修改结果：密码可能已更改，其他设备仍可能保持登录。请先用新密码登录确认，勿立即重复提交',
   kind: FailureKind.unknown,
   code: 'auth.passwordOutcomeUnknown',
 );

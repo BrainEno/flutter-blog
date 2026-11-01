@@ -253,7 +253,7 @@
   "passwordChangeSuccess": "Password updated. You may need to sign in again with the new password.",
   "errorPasswordRejected": "The current password may be incorrect, or your session may have expired. Check the password or sign in again.",
   "errorPasswordIdentityUnconfirmed": "The current account could not be confirmed. No password change was sent. Sign in again.",
-  "errorPasswordOutcomeUnknown": "The result could not be confirmed. The password or sessions may already have changed. Check by signing in with the new password before trying again.",
+  "errorPasswordOutcomeUnknown": "The result could not be confirmed. The password may have changed, but other sessions may still be active. Check by signing in with the new password before trying again.",
   "errorPasswordUnsupported": "This server does not support changing passwords. Contact the service provider.",
   "errorPasswordInProgress": "Another password change is already in progress. Wait for its result.",
   "passwordShowField": "Show {field}",
