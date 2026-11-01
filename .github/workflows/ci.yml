@@ -325,6 +325,9 @@ jobs:
           EOF
       - name: Resolve dependencies
         run: flutter pub get
+      - name: Isolate Gradle home and limit CI workers
+        shell: bash
+        run: bash tool/ci/setup_android_gradle.sh
       - name: Generate launcher icons
         # Executes the flutter_launcher_icons config in pubspec.yaml so the
         # release APK really carries the brand icons instead of the Flutter
@@ -412,6 +415,7 @@ jobs:
             build/reports/apk-16k-alignment.log
             build/reports/signing-test.log
             build/reports/android-debug-check.log
+            build/reports/gradle-worker-check.log
             build/reports/android-debug-manifest.txt
             build/reports/android-release-manifest.txt
             build/reports/belog-QA-debug-signed.apk
