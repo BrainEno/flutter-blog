@@ -49,6 +49,17 @@ print('hi');
     expect(find.text("print('hi');"), findsOneWidget);
   });
 
+  testWidgets('tight list items keep inline formatting in one paragraph', (
+    tester,
+  ) async {
+    await pumpMarkdown(
+      tester,
+      '- A **bold** [link](https://example.invalid)\n  - nested',
+    );
+    expect(find.text('A bold link'), findsOneWidget);
+    expect(find.text('nested'), findsOneWidget);
+  });
+
   testWidgets('bold and italic text is styled, not shown as asterisks', (
     tester,
   ) async {

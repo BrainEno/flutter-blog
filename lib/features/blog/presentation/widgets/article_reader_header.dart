@@ -5,8 +5,12 @@ import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/calculate_reading_time.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controller.dart';
+import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.dart';
+import 'package:belog/features/blog/presentation/read_aloud/read_aloud_highlight.dart';
 import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
 import 'package:belog/features/blog/presentation/widgets/article_tag_label.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Article identity and author details, independent of routing and state.
@@ -15,10 +19,14 @@ class ArticleReaderHeader extends StatelessWidget {
     super.key,
     required this.blog,
     required this.onAuthorTap,
+    this.titleHighlight,
+    this.titleKey,
   });
 
   final Blog blog;
   final VoidCallback onAuthorTap;
+  final ValueListenable<ReadAloudHighlight?>? titleHighlight;
+  final GlobalKey? titleKey;
 
   @override
   Widget build(BuildContext context) {
@@ -38,11 +46,26 @@ class ArticleReaderHeader extends StatelessWidget {
           ),
           const SizedBox(height: 16),
         ],
-        Semantics(
-          header: true,
-          child: Text(
-            blog.title,
-            style: NoWaveTypography.title(context, size: 36),
+        KeyedSubtree(
+          key: titleKey,
+          child: Semantics(
+            header: true,
+            child: titleHighlight == null
+                ? Text(
+                    blog.title,
+                    style: NoWaveTypography.title(context, size: 36),
+                  )
+                : ValueListenableBuilder<ReadAloudHighlight?>(
+                    valueListenable: titleHighlight!,
+                    builder: (context, highlight, child) => Text.rich(
+                      readAloudTextSpan(
+                        text: blog.title,
+                        range: SpeechTextRange(0, blog.title.length),
+                        highlight: highlight,
+                      ),
+                      style: NoWaveTypography.title(context, size: 36),
+                    ),
+                  ),
           ),
         ),
         const SizedBox(height: 24),

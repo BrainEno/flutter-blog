@@ -26,6 +26,10 @@ import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:belog/features/blog/data/read_aloud/platform_speech_engine.dart';
+import 'package:belog/features/blog/data/read_aloud/sqlite_read_aloud_preferences.dart';
+import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
+import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
@@ -143,6 +147,13 @@ Future<void> initDependencies() async {
   // Device-local reading history (issue #22); never synced anywhere.
   serviceLocator.registerLazySingleton<ReadingHistoryStore>(
     () => SqliteReadingHistoryStore(database),
+  );
+  serviceLocator.registerLazySingleton<ReadAloudPreferences>(
+    () => SqliteReadAloudPreferences(database),
+  );
+  // One coordinator/channel for the whole app, shared by retained tab stacks.
+  serviceLocator.registerLazySingleton(
+    () => SpeechCoordinator(PlatformSpeechEngine()),
   );
   serviceLocator.registerLazySingleton(() => ThemeBloc(serviceLocator()));
 

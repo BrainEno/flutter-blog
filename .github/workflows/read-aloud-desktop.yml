@@ -1,0 +1,66 @@
+name: Read-aloud desktop compile checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: read-aloud-desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  desktop:
+    name: ${{ matrix.target }} native runner / debug compile
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: macos
+          - os: windows-latest
+            target: windows
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Set up pinned Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: '3.47.8'
+          cache: true
+          pub-cache: true
+      - name: Prepare non-deployed configuration fixture
+        shell: bash
+        run: |
+          mkdir -p build/reports
+          printf '%s\n' '{"API_BASE_URL":"https://example.invalid"}' > env.json
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Compile native runner (no signing or real-device test)
+        shell: bash
+        run: |
+          set -o pipefail
+          set +e
+          flutter build ${{ matrix.target }} --debug --dart-define-from-file=env.json 2>&1 | tee build/reports/desktop-build.log
+          statuses=("${PIPESTATUS[@]}")
+          set -e
+          if (( statuses[0] != 0 || statuses[1] != 0 )); then
+            bash tool/ci/annotate_failure.sh analyze build/reports/desktop-build.log
+            exit 1
+          fi
+      - name: Upload compile diagnostics
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: read-aloud-${{ matrix.target }}-compile-log
+          path: build/reports/desktop-build.log
+          if-no-files-found: warn
+          retention-days: 14

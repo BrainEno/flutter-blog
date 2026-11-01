@@ -33,6 +33,7 @@ import 'package:belog/features/user/presentation/pages/reading_history_page.dart
 
 import 'package:belog/init_dependencies.dart';
 import 'package:belog/router/home_shell.dart';
+import 'package:belog/router/read_aloud_route_observers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -84,6 +85,7 @@ GoRouter createAppRouter({
 }) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
+    observers: [rootReadAloudRouteObserver],
     initialLocation: initialLocation,
     refreshListenable: _StreamListenable(appUserCubit.stream),
     errorBuilder: (context, state) => Scaffold(
@@ -140,7 +142,7 @@ GoRouter createAppRouter({
         branches: [
           StatefulShellBranch(
             navigatorKey: feedNavigatorKey,
-            observers: [feedRouteObserver],
+            observers: [feedRouteObserver, feedReadAloudRouteObserver],
             routes: [
               GoRoute(
                 path: '/',
@@ -154,7 +156,7 @@ GoRouter createAppRouter({
           ),
           StatefulShellBranch(
             navigatorKey: searchNavigatorKey,
-            observers: [searchRouteObserver],
+            observers: [searchRouteObserver, searchReadAloudRouteObserver],
             routes: [
               GoRoute(
                 path: '/search',
@@ -168,7 +170,7 @@ GoRouter createAppRouter({
           ),
           StatefulShellBranch(
             navigatorKey: savedNavigatorKey,
-            observers: [savedRouteObserver],
+            observers: [savedRouteObserver, savedReadAloudRouteObserver],
             routes: [
               GoRoute(
                 path: '/saved',
@@ -182,7 +184,7 @@ GoRouter createAppRouter({
           ),
           StatefulShellBranch(
             navigatorKey: profileNavigatorKey,
-            observers: [profileRouteObserver],
+            observers: [profileRouteObserver, profileReadAloudRouteObserver],
             routes: [
               GoRoute(
                 path: '/profile',
