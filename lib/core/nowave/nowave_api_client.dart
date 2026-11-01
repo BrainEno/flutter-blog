@@ -454,6 +454,18 @@ class NowaveApiClient {
         }
       }
     }
+    if (!followRedirects &&
+        response.statusCode >= 300 &&
+        response.statusCode < 400) {
+      // A redirect body is not a success envelope, even if it contains a
+      // misleading {data: {ok: true}}. The original write's outcome may be
+      // unknown; never follow it or report success based on the body.
+      throw NowaveApiException(
+        statusCode: response.statusCode,
+        code: 'HTTP_${response.statusCode}',
+        message: 'Redirect refused for $method ${uri.path}.',
+      );
+    }
     return _decode(method, uri, response);
   }
 

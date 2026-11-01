@@ -263,7 +263,9 @@ void main() {
         http.Response('not json', 200),
         _ok({'ok': false}),
         http.Response(
-          '',
+          jsonEncode({
+            'data': {'ok': true},
+          }),
           307,
           headers: {'location': 'https://elsewhere.invalid'},
         ),
