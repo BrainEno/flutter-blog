@@ -127,6 +127,9 @@ void main() {
         expect(requests.last.expectedViewerId, 'viewer-A');
 
         user.updateUser(null);
+        // Deliver the cubit's asynchronous stream notification before the
+        // next frame, as it is delivered in the real event loop.
+        await tester.idle();
         await tester.pump();
         expect(find.text('Article following'), findsNothing);
         await tester.pumpAndSettle();
@@ -144,34 +147,44 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
-      final l10n = lookupAppLocalizations(locale);
-      final user = AppUserCubit()..updateUser(_user('viewer-A'));
-      final feed = BlogBloc(
-        getAllBlogs: _GetFeed(
-          (_) async => const Right(
-            BlogFeedPage(blogs: [], source: BlogFeedSource.network),
+      try {
+        final l10n = lookupAppLocalizations(locale);
+        final user = AppUserCubit()..updateUser(_user('viewer-A'));
+        final feed = BlogBloc(
+          getAllBlogs: _GetFeed(
+            (_) async => const Right(
+              BlogFeedPage(blogs: [], source: BlogFeedSource.network),
+            ),
           ),
-        ),
-      );
-      addTearDown(feed.close);
-      addTearDown(user.close);
-      await _pumpPage(
-        tester,
-        feed: feed,
-        user: user,
-        locale: locale,
-        textScale: 2,
-      );
-      await tester.pumpAndSettle();
+        );
+        addTearDown(feed.close);
+        addTearDown(user.close);
+        await _pumpPage(
+          tester,
+          feed: feed,
+          user: user,
+          locale: locale,
+          textScale: 2,
+        );
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(ChoiceChip, l10n.feedTabPopular));
-      await tester.pumpAndSettle();
-      expect(find.text(l10n.feedPopularEmpty), findsOneWidget);
-      await tester.tap(find.widgetWithText(ChoiceChip, l10n.feedTabFollowing));
-      await tester.pumpAndSettle();
-      expect(find.text(l10n.feedFollowingEmpty), findsOneWidget);
-      expect(tester.takeException(), isNull);
+        await tester.tap(find.widgetWithText(ChoiceChip, l10n.feedTabPopular));
+        await tester.pumpAndSettle();
+        // At 2x text the status can be below the initial viewport.
+        await tester.drag(find.byType(ListView), const Offset(0, -400));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.feedPopularEmpty), findsOneWidget);
+        await tester.tap(
+          find.widgetWithText(ChoiceChip, l10n.feedTabFollowing),
+        );
+        await tester.pumpAndSettle();
+        await tester.drag(find.byType(ListView), const Offset(0, -400));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.feedFollowingEmpty), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      } finally {
+        semantics.dispose();
+      }
     });
   }
 

@@ -90,8 +90,9 @@ abstract interface class NowaveSessionBoundAuthenticator
 
 /// Supplies the resolved server identity for viewer-scoped requests.
 /// The identity is a local fence only; authorization remains server-side.
+/// A viewer authenticator must also expose its session generation.
 abstract interface class NowaveViewerAuthenticator
-    implements NowaveAuthenticator {
+    implements NowaveSessionBoundAuthenticator {
   String? get activeUserId;
 }
 
@@ -196,7 +197,6 @@ class NowaveApiClient {
   }) async {
     final auth = _authenticator;
     if (auth is! NowaveViewerAuthenticator ||
-        auth is! NowaveSessionBoundAuthenticator ||
         expectedUserId.isEmpty ||
         auth.activeUserId != expectedUserId ||
         (auth.accessToken?.isEmpty ?? true)) {

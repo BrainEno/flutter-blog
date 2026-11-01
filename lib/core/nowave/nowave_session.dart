@@ -129,10 +129,7 @@ abstract class NowaveSessionStore {
 /// revokes the whole session family server-side, so [refresh] is strictly
 /// single-flight.
 class NowaveSessionManager
-    implements
-        NowaveProactiveAuthenticator,
-        NowaveSessionBoundAuthenticator,
-        NowaveViewerAuthenticator {
+    implements NowaveProactiveAuthenticator, NowaveViewerAuthenticator {
   NowaveSessionManager({
     required NowaveApiClient client,
     required NowaveSessionStore store,
