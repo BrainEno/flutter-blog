@@ -33,6 +33,10 @@ elif name == 'xcrun':
         ]}}))
     elif args[:2] == ['simctl', 'bootstatus'] and os.environ.get('MOCK_SLOW_BOOT'):
         time.sleep(4)
+    elif args[:1] == ['lipo'] and args[-2:] == ['-verify_arch', 'arm64']:
+        if os.environ.get('MOCK_BAD_ARCH'): sys.exit(1)
+    elif args[:2] == ['vtool', '-show-build']:
+        print('platform IOSSIMULATOR' if os.environ.get('MOCK_SIM_BINARY') else 'platform IOS')
     elif args[:2] not in (['simctl','boot'], ['simctl','bootstatus']):
         sys.exit(1)
 elif name == 'codesign':
@@ -67,7 +71,12 @@ elif name == 'flutter':
             (app/'Frameworks/App.framework/App').unlink()
         info = {'CFBundleIdentifier':'com.nodeman24.belog', 'CFBundleShortVersionString':values['--build-name'],
                 'CFBundleVersion':values['--build-number'], 'CFBundleExecutable':'Runner', 'CFBundlePackageType':'APPL',
-                'LSRequiresIPhoneOS':True, 'UISupportedInterfaceOrientations':['UIInterfaceOrientationPortrait']}
+                'LSRequiresIPhoneOS':True, 'CFBundleSupportedPlatforms':['iPhoneOS'],
+                'NSPhotoLibraryUsageDescription':'Photo access', 'NSCameraUsageDescription':'Camera access',
+                'UISupportedInterfaceOrientations':['UIInterfaceOrientationPortrait']}
+        for locale in ['en', 'zh-Hans']:
+            (app/(locale + '.lproj')).mkdir(exist_ok=True)
+            (app/(locale + '.lproj')/'InfoPlist.strings').write_text('fixture')
         with (app/'Info.plist').open('wb') as f:
             plistlib.dump(info, f)
         if args[1] == 'ipa':
@@ -94,6 +103,7 @@ class MacScriptTests(unittest.TestCase):
         shutil.copytree(ROOT / 'scripts', self.root / 'scripts', ignore=shutil.ignore_patterns('__pycache__'))
         (self.root / 'tool/release').mkdir(parents=True)
         shutil.copy2(ROOT / 'tool/release/verify_ipa.py', self.root / 'tool/release/verify_ipa.py')
+        shutil.copytree(ROOT / 'tool/mobile', self.root / 'tool/mobile', ignore=shutil.ignore_patterns('__pycache__'))
         shutil.copy2(ROOT / 'pubspec.yaml', self.root / 'pubspec.yaml')
         self.config = self.root / 'env with spaces.json'
         self.config.write_text(json.dumps({'API_BASE_URL': 'https://api.real-site.dev', 'WEB_BASE_URL': ''}))
@@ -149,6 +159,21 @@ class MacScriptTests(unittest.TestCase):
         build = next(call for call in self.calls() if call[:3] == ['flutter','build','ios'])
         self.assertIn('--no-codesign', build)
         self.assertIn('--dart-define-from-file=' + str(self.config), build)
+
+    def test_ci_ios_package_requires_device_architecture_and_emits_checksum(self):
+        command = ['bash', 'tool/mobile/build_ios_package.sh', str(self.config), '1.2.3', '9']
+        for flag in ('MOCK_BAD_ARCH', 'MOCK_SIM_BINARY'):
+            with self.subTest(flag=flag):
+                result = subprocess.run(command, cwd=self.root, env={**self.env, flag:'1'},
+                                        text=True, capture_output=True, timeout=20)
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                shutil.rmtree(self.root/'build', ignore_errors=True)
+        result = subprocess.run(command, cwd=self.root, env=self.env, text=True, capture_output=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        folder = self.root/'build/mobile/ios'
+        self.assertTrue((folder/'BottomThink-ios-altstore-resign-required.ipa').is_file())
+        self.assertIn('BottomThink-ios-altstore-resign-required.ipa', (folder/'SHA256SUMS.txt').read_text())
+        self.assertIn('AltStore must re-sign', (folder/'BUILD-INFO.txt').read_text())
 
     def test_bad_or_failed_altstore_build_cannot_report_success(self):
         for env in ({'MOCK_FAIL_CODESIGN':'1'}, {'MOCK_FAIL_FRAMEWORK_SIGN':'1'}, {'MOCK_MISSING_FRAMEWORK':'1'}):

@@ -73,7 +73,7 @@ jobs:
         run: |
           set -euo pipefail
           APK=build/app/outputs/flutter-apk/app-release.apk
-          bash tool/release/verify_apk.sh "$APK" "$BUILD_NAME" "$BUILD_NUMBER" "$EXPECTED_CERT"
+          bash tool/mobile/verify_android_package.sh "$APK" "$BUILD_NAME" "$BUILD_NUMBER" personal "$EXPECTED_CERT"
           cp "$APK" "belog-android-${GITHUB_REF_NAME}.apk"
       - name: Create release without replacing existing assets
         env:
@@ -120,46 +120,19 @@ jobs:
           flutter-version: '3.47.8'
           cache: true
           pub-cache: true
-      - name: Build unsigned iOS app
-        env:
-          BUILD_NAME: ${{ steps.version.outputs.build_name }}
-          BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
-        run: |
-          flutter pub get
-          flutter build ios --release --no-codesign \
-            --build-name="$BUILD_NAME" \
-            --build-number="$BUILD_NUMBER" \
-            --dart-define-from-file="$RUNNER_TEMP/belog-release-env.json"
-      - name: Ad-hoc sign and package the AltStore IPA
-        shell: bash
-        run: |
-          set -euo pipefail
-          APP=build/ios/iphoneos/Runner.app
-          test -d "$APP"
-          # Ad-hoc signature (no identity) so every Mach-O carries a signature
-          # blob that AltStore replaces with the user's own certificate.
-          find "$APP/Frameworks" -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) \
-            -exec codesign --force --sign - {} \;
-          codesign --force --sign - "$APP"
-          STAGE="$RUNNER_TEMP/ipa"
-          rm -rf "$STAGE"
-          mkdir -p "$STAGE/Payload"
-          cp -R "$APP" "$STAGE/Payload/Runner.app"
-          (cd "$STAGE" && zip -qry "$GITHUB_WORKSPACE/belog-ios-${GITHUB_REF_NAME}-altstore.ipa" Payload)
-      - name: Verify IPA structure, identity and version
+      - name: Build and verify the AltStore input IPA
         env:
           BUILD_NAME: ${{ steps.version.outputs.build_name }}
           BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
         shell: bash
         run: |
           set -euo pipefail
+          # Use the same checked packaging path as manual personal builds.
+          # No Apple identity or provisioning profile is used on this runner.
+          bash tool/mobile/build_ios_package.sh "$RUNNER_TEMP/belog-release-env.json" "$BUILD_NAME" "$BUILD_NUMBER" 2>&1 | tee "$RUNNER_TEMP/ipa-altstore-evidence.log"
           IPA="belog-ios-${GITHUB_REF_NAME}-altstore.ipa"
-          {
-            python3 tool/release/verify_ipa.py "$IPA" com.nodeman24.belog "$BUILD_NAME" "$BUILD_NUMBER"
-            echo '--- ad-hoc code signature (no distribution identity involved) ---'
-            codesign -dv "build/ios/iphoneos/Runner.app" 2>&1
-            codesign --verify --verbose "build/ios/iphoneos/Runner.app" 2>&1
-          } | tee "$RUNNER_TEMP/ipa-altstore-evidence.log"
+          test ! -e "$IPA"
+          cp build/mobile/ios/BottomThink-ios-altstore-resign-required.ipa "$IPA"
       - name: Attach the AltStore IPA to the existing release
         env:
           GH_TOKEN: ${{ github.token }}

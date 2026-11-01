@@ -80,7 +80,12 @@ if [[ "$mode" == altstore ]]; then
   codesign --verify --verbose "$app"
   (cd "$stage" && zip -qry "$stage/candidate.ipa" Payload)
   candidate="$stage/candidate.ipa"
+  # Verify the archive before extracting it, then check the actual packaged
+  # bundle (including nested frameworks), not just the pre-zip staging copy.
   python3 "$PROJECT_ROOT/tool/release/verify_ipa.py" "$candidate" com.nodeman24.belog "$build_name" "$build_number"
+  mkdir -p "$stage/extracted"
+  ditto -x -k "$candidate" "$stage/extracted"
+  codesign --verify --deep --strict --verbose "$stage/extracted/Payload/Runner.app"
 else
   marker="$stage/build-started"
   : > "$marker"

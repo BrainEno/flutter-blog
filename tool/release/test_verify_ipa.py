@@ -17,6 +17,9 @@ INFO = {
     'CFBundleExecutable': 'Runner',
     'CFBundlePackageType': 'APPL',
     'LSRequiresIPhoneOS': True,
+    'CFBundleSupportedPlatforms': ['iPhoneOS'],
+    'NSPhotoLibraryUsageDescription': 'Select a cover photo',
+    'NSCameraUsageDescription': 'Take a photo',
     'UISupportedInterfaceOrientations': ['UIInterfaceOrientationPortrait'],
 }
 
@@ -35,6 +38,8 @@ def make_ipa(
         'Payload/Runner.app/Runner': b'Mach-O executable',
         'Payload/Runner.app/Frameworks/Flutter.framework/Flutter': b'engine',
         'Payload/Runner.app/Frameworks/App.framework/App': b'app',
+        'Payload/Runner.app/en.lproj/InfoPlist.strings': b'localized-en',
+        'Payload/Runner.app/zh-Hans.lproj/InfoPlist.strings': b'localized-zh',
     }
     with zipfile.ZipFile(path, 'w') as archive:
         for name, data in content.items():
@@ -141,7 +146,57 @@ class VerifyIpaTest(unittest.TestCase):
             ipa.write_bytes(b'this is not a zip file')
             result = self.run_verify(ipa)
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn('Cannot open IPA', result.stdout)
+            self.assertIn('IPA verification failed', result.stdout + result.stderr)
+
+    def test_rejects_simulator_and_missing_privacy_description(self):
+        with tempfile.TemporaryDirectory() as temp:
+            ipa = Path(temp) / 'app.ipa'
+            for info, message in (
+                ({**INFO, 'CFBundleSupportedPlatforms': ['iPhoneSimulator']}, 'iPhoneOS device'),
+                ({**INFO, 'NSPhotoLibraryUsageDescription': ''}, 'NSPhotoLibraryUsageDescription'),
+                ({**INFO, 'NSAppTransportSecurity': {'NSAllowsArbitraryLoads': True}}, 'cleartext'),
+            ):
+                with self.subTest(message=message):
+                    make_ipa(ipa, info=info)
+                    result = self.run_verify(ipa)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(message, result.stdout + result.stderr)
+
+    def test_rejects_traversal_duplicates_profiles_and_extensions(self):
+        with tempfile.TemporaryDirectory() as temp:
+            ipa = Path(temp) / 'app.ipa'
+            for extra, message in (
+                ('../../escape', 'Unsafe IPA entry'),
+                ('Payload/Runner.app/embedded.mobileprovision', 'provisioning profile'),
+                ('Payload/Runner.app/PlugIns/Widget.appex/Info.plist', 'App extensions'),
+            ):
+                with self.subTest(extra=extra):
+                    make_ipa(ipa)
+                    with zipfile.ZipFile(ipa, 'a') as archive:
+                        archive.writestr(extra, b'data')
+                    result = self.run_verify(ipa)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(message, result.stdout + result.stderr)
+            make_ipa(ipa)
+            with zipfile.ZipFile(ipa, 'a') as archive:
+                with self.assertWarns(UserWarning):
+                    archive.writestr('Payload/Runner.app/Runner', b'duplicate')
+            result = self.run_verify(ipa)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('duplicate', result.stdout + result.stderr)
+
+    def test_rejects_symlink_escaping_the_archive(self):
+        with tempfile.TemporaryDirectory() as temp:
+            ipa = Path(temp) / 'app.ipa'
+            make_ipa(ipa)
+            link = zipfile.ZipInfo('Payload/Runner.app/escape')
+            link.create_system = 3
+            link.external_attr = (0o120777 << 16)
+            with zipfile.ZipFile(ipa, 'a') as archive:
+                archive.writestr(link, '../../../../outside')
+            result = self.run_verify(ipa)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('Unsafe IPA symlink', result.stdout + result.stderr)
 
 
 if __name__ == '__main__':
