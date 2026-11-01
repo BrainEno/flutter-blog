@@ -9,7 +9,7 @@
 | Dart format | Pull request, push to `main`, manual | Blocks formatting issues in changed Dart files; separately audits repository-wide formatting drift | `format-audit` artifact and formatter logs |
 | Flutter analyze | Pull request, push to `main`, manual | `flutter analyze --fatal-infos` | `flutter-analyze-log` artifact (14 days) |
 | Flutter tests | Pull request, push to `main`, manual | `flutter test --coverage` | `flutter-test-evidence` artifact containing test log and LCOV when produced |
-| Android release | Pull request, push to `main`, manual | Explicitly debug-signed QA build, APK permission check, and isolated release-signing guard tests | `android-release-evidence` artifact with build log and permission dump when available |
+| Android release | Pull request, push to `main`, manual | Explicitly debug-signed QA release build, APK permission and alignment checks, isolated signing guard tests, debug build and debug/release cleartext policy | `android-release-evidence` includes build, signing and `android-debug-check.log` diagnostics plus manifest dumps when available |
 | Manual mobile build validation | PR, or manually dispatched | Android QA release build and optionally unsigned iOS compile; it does not publish releases | Platform-specific build artifacts/logs; iOS output is clearly named as unsigned |
 | Build personal mobile packages | Relevant PR changes, or manually dispatched on `main` | PR: disposable Android signing key and unreachable API fixture, plus device IPA packaging. Manual: configured public API, iOS AltStore input and/or Android owner-signed or explicitly debug APK | PR fixture logs only; manual artifacts include binaries, SHA-256 and provenance; see [mobile-packages.md](mobile-packages.md) |
 
@@ -28,6 +28,7 @@ The repository's CI helpers do not run in the Flutter app and do not require Pyt
 - `tool/ci/check_env_asset_contract.sh` checks for a tracked root `.env` and a literal `.env` entry in `pubspec.yaml`. This is a narrow configuration guard, not a general secret scanner or proof that all assets are safe.
 - `tool/ci/validate_agent_contract.sh` checks that the documented agent workflow and existing CI/release guardrails are present. It is a textual guard, not a replacement for branch protection or a full YAML security audit.
 - `tool/ci/annotate_failure.sh` selects bounded analyzer/Android failure excerpts for GitHub annotations; full logs remain in the existing artifacts.
+- `tool/ci/check_android_debug.sh` compiles the debug APK and checks that only debug opts into development cleartext traffic. CI captures its output with the non-secret fixture and annotates failures; mock cases cover failed builds, missing output and both policy violations.
 
 CI runs `bash tool/ci/test_ci_scripts.sh` using temporary, non-secret fixtures to exercise both passing and failing cases. These helpers use Bash, Git, grep, sed, and awk on the Linux CI runner; no separate language runtime or third-party package is needed. Run the same command locally on a compatible environment when changing the helpers.
 
