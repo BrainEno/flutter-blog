@@ -1,7 +1,7 @@
 # Supabase → no-wave apps/api 迁移核对文档
 
 > 原始目标：`github.com/BrainEno/no-wave` `apps/api`，2026-10-29 的迁移核对与设计记录。
-> **2026-10-31 增量复核**：[no-wave `55a24bd`](https://github.com/BrainEno/no-wave/tree/55a24bdaa1c01888fb5ecb5bf41befe219348049)；下方「当前状态」优先。其后的逐接口表保留了迁移前调用点与设计背景，不是全部部署或验收清单；不应据此推断新代码已经上线。
+> **2026-10-31 增量复核**：[no-wave `55a24bd`](https://github.com/BrainEno/no-wave/tree/55a24bdaa1c01888fb5ecb5bf41befe219348049)。本文保留该时点的迁移记录；更新的客户端差距与后端契约以 [2026-11-01 API 差距审计](nowave-api-gap-audit.md) 为准。源码核对不代表部署或验收完成。
 
 ### 2026-10-31 当前状态与修正
 
@@ -178,7 +178,7 @@
 
 - **写**：`Blog.content`（纯文本）按换行切段 → `[{type:"paragraph",text}…]`；封面图（现 `imageUrl`）→ 首块 `{type:"image",src:mediaUrl,alt:title}`。`contentBlocksVersion` 不传（默认 0）。
 - **读**：`contentBlocks` 中 image 块（取首个）→ `BlogModel.imageUrl`；paragraph 块 join("\n\n") → `content`。quote/heading 等块按文本降级拼入 content。
-- `summary`、`workType` 不由 App 管理（服务端自动摘要 / 默认 other）。
+- App 尚无摘要或作品类型编辑界面。创建时由服务端自动摘要、默认 `other`；普通编辑会回传已读取的摘要，服务端对空摘要仍可能重新生成。
 
 ### 3.2 tags ↔ tagIds
 

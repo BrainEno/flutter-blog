@@ -11,6 +11,7 @@ TextSpan readAloudTextSpan({
   required SpeechTextRange? range,
   required ReadAloudHighlight? highlight,
   GestureRecognizer? recognizer,
+  TextDecoration? existingDecoration,
 }) {
   if (range == null || highlight == null || text.isEmpty) {
     return TextSpan(text: text, recognizer: recognizer);
@@ -25,8 +26,13 @@ TextSpan readAloudTextSpan({
       TextSpan(
         text: text.substring(start, end),
         recognizer: recognizer,
-        style: const TextStyle(
-          decoration: TextDecoration.underline,
+        style: TextStyle(
+          decoration: existingDecoration == null
+              ? TextDecoration.underline
+              : TextDecoration.combine([
+                  existingDecoration,
+                  TextDecoration.underline,
+                ]),
           decorationColor: AppPalette.orange,
           decorationThickness: 2,
         ),

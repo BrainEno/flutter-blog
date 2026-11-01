@@ -2,20 +2,27 @@ part of 'blog_bloc.dart';
 
 @immutable
 sealed class BlogState {
-  const BlogState();
+  const BlogState({this.kind = BlogFeedKind.latest, this.viewerId});
+
+  /// The selected list. A following list is tied to [viewerId] and must
+  /// never be rendered for a different or signed-out viewer.
+  final BlogFeedKind kind;
+  final String? viewerId;
 }
 
 final class BlogInitial extends BlogState {
   const BlogInitial();
 }
 
-/// A first page is loading. [previousBlogs] keeps the last rendered list so
-/// pull-to-refresh and post-publish reloads do not blank the feed.
+/// A first page is loading. [previousBlogs] keeps the last rendered list
+/// during refresh, but is empty when changing feed or account.
 final class BlogFirstPageLoading extends BlogState {
   final List<Blog> previousBlogs;
   final BlogFeedSource? previousSource;
 
   const BlogFirstPageLoading({
+    super.kind,
+    super.viewerId,
     this.previousBlogs = const [],
     this.previousSource,
   });
@@ -31,6 +38,8 @@ final class BlogLoaded extends BlogState {
   final bool isLoadingMore;
 
   const BlogLoaded({
+    super.kind,
+    super.viewerId,
     required this.blogs,
     required this.source,
     required this.page,
@@ -46,6 +55,8 @@ final class BlogLoaded extends BlogState {
     bool? isLoadingMore,
   }) {
     return BlogLoaded(
+      kind: kind,
+      viewerId: viewerId,
       blogs: blogs ?? this.blogs,
       source: source ?? this.source,
       page: page ?? this.page,
@@ -55,13 +66,18 @@ final class BlogLoaded extends BlogState {
   }
 }
 
-/// A request failed. [previousState] preserves the last list so the feed can
-/// keep showing cached content with an error hint instead of a dead spinner.
+/// A request failed. [previousState] preserves the same feed's last list so
+/// a transient error does not discard already rendered content.
 final class BlogListFailure extends BlogState {
   final Failure failure;
   final BlogState? previousState;
 
-  const BlogListFailure({required this.failure, this.previousState});
+  const BlogListFailure({
+    super.kind,
+    super.viewerId,
+    required this.failure,
+    this.previousState,
+  });
 
   /// Display-safe Chinese fallback; the UI localizes via
   /// `localizedFailure` (issue #24).

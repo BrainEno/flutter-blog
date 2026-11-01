@@ -1,5 +1,6 @@
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
+import 'package:belog/core/utils/article_resource_url.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -19,12 +20,7 @@ class ArticleCover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final url = imageUrl.trim();
-    final uri = Uri.tryParse(url);
-    final validUrl =
-        uri != null &&
-        (uri.scheme == 'http' || uri.scheme == 'https') &&
-        uri.host.isNotEmpty;
+    final uri = resolveArticleResourceUrl(imageUrl);
     Widget fallback() => Image.asset(
       'assets/images/no_wave_cover_fallback.jpg',
       fit: BoxFit.cover,
@@ -39,9 +35,9 @@ class ArticleCover extends StatelessWidget {
           aspectRatio: aspectRatio,
           child: ColoredBox(
             color: AppPalette.ink,
-            child: validUrl
+            child: uri != null
                 ? CachedNetworkImage(
-                    imageUrl: url,
+                    imageUrl: uri.toString(),
                     fit: BoxFit.cover,
                     placeholder: (_, _) => fallback(),
                     errorWidget: (_, _, _) => fallback(),

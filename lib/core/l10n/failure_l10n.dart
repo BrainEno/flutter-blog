@@ -75,6 +75,8 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
       return l10n.errorEmptyBody;
     case 'article.idUpdate':
       return l10n.errorArticleIdUpdate;
+    case 'article.structuredEditUnsupported':
+      return l10n.errorArticleStructuredEditUnsupported;
     case 'article.idDelete':
       return l10n.errorArticleIdDelete;
     case 'article.deletedCacheFailed':

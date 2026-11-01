@@ -292,7 +292,10 @@ void main() {
 
     expect(find.byType(BlogPage), findsOneWidget);
 
-    // Open the viewer on top of the feed tab's stack.
+    // The feed selector leaves less vertical space on a short test viewport;
+    // scroll the featured card fully into view before opening it.
+    await tester.ensureVisible(find.byType(BlogCard));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(BlogCard));
     await tester.pumpAndSettle();
     expect(find.byType(BlogViewerPage), findsOneWidget);

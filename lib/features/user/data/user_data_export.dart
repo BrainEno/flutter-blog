@@ -10,8 +10,10 @@ import 'package:fpdart/fpdart.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-/// Builds the export document (issue #22): the user's profile and every
-/// article they posted, as plain JSON.
+/// Builds a partial export from the articles supplied by the caller.
+/// The current source is a single public zh-CN author page (at most 100),
+/// without server drafts or complete structured bodies and images. This is
+/// not a restorable backup; the profile UI explicitly discloses the limits.
 ///
 /// Pure function so the shape stays unit-tested. Field names describe the
 /// data (not the old Supabase schema); `slug` is the article's public id.
@@ -65,7 +67,7 @@ class UserDataExporter implements ExportUserData {
     this.temporaryDirectory = getTemporaryDirectory,
   });
 
-  /// Fetches the user's articles and shares the export file.
+  /// Fetches the available public author page and shares the partial export.
   /// [Failure] messages are user-facing (see [error_mapper]).
   @override
   Future<Either<Failure, void>> exportAndShare({

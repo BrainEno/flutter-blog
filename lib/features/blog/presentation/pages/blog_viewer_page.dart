@@ -15,6 +15,7 @@ import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controller.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controls.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.dart';
+import 'package:belog/features/blog/presentation/read_aloud/structured_article_nodes.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_viewer/blog_viewer_cubit.dart';
@@ -233,11 +234,18 @@ class _ViewerScaffoldState extends State<_ViewerScaffold>
 
   void _prepareReader() {
     _prepared = true;
+    final structured = blog.document;
+    final document = structured != null && structured.supported
+        ? ReadAloudDocument.fromNodes(
+            blog.title,
+            structuredArticleNodes(structured),
+          )
+        : ReadAloudDocument.parse(blog.title, blog.content);
+    // Rendering does not depend on whether a speech engine is available.
+    _document = document;
     final coordinator = widget.speechCoordinator;
     final preferences = widget.readAloudPreferences;
     if (coordinator == null || preferences == null) return;
-    final document = ReadAloudDocument.parse(blog.title, blog.content);
-    _document = document;
     _blockKeys = List.generate(document.blocks.length, (_) => GlobalKey());
     final reader = ReadAloudController(
       document: document,
@@ -256,6 +264,7 @@ class _ViewerScaffoldState extends State<_ViewerScaffold>
     if (oldWidget.blog.id != blog.id ||
         oldWidget.blog.title != blog.title ||
         oldWidget.blog.content != blog.content ||
+        oldWidget.blog.document != blog.document ||
         oldWidget.speechCoordinator != widget.speechCoordinator ||
         oldWidget.readAloudPreferences != widget.readAloudPreferences) {
       _reader?.dispose();
@@ -445,6 +454,21 @@ class _ViewerScaffoldState extends State<_ViewerScaffold>
                         titleKey: _blockKeys.isEmpty ? null : _blockKeys.first,
                       ),
                       const SizedBox(height: 32),
+                      if (blog.document?.supported == false) ...[
+                        Semantics(
+                          liveRegion: true,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: Text(
+                              context.l10n.articleUnsupportedDocument,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                            ),
+                          ),
+                        ),
+                      ],
                       if (_reader != null)
                         ReadAloudControls(controller: _reader!),
                       MarkdownBody(

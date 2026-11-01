@@ -128,8 +128,13 @@ class ArticleReaderHeader extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        ArticleCover(title: blog.title, imageUrl: blog.imageUrl),
+        // Structured image blocks render in their original body positions.
+        // Avoid repeating the first one as an invented cover.
+        if (blog.document?.supported != true ||
+            blog.document?.hasImages != true) ...[
+          const SizedBox(height: 8),
+          ArticleCover(title: blog.title, imageUrl: blog.imageUrl),
+        ],
       ],
     );
   }

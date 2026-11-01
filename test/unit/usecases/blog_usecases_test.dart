@@ -69,6 +69,34 @@ void main() {
       ).called(1);
     });
 
+    test('forwards the following feed and local viewer fence', () async {
+      const page = BlogFeedPage(blogs: [], source: BlogFeedSource.network);
+      when(
+        () => mockRepository.getOnlineFeed(
+          page: 2,
+          kind: BlogFeedKind.following,
+          expectedViewerId: 'viewer-A',
+        ),
+      ).thenAnswer((_) async => const Right(page));
+
+      final result = await useCase(
+        const GetAllBlogsParams(
+          page: 2,
+          kind: BlogFeedKind.following,
+          expectedViewerId: 'viewer-A',
+        ),
+      );
+
+      expect(result, const Right(page));
+      verify(
+        () => mockRepository.getOnlineFeed(
+          page: 2,
+          kind: BlogFeedKind.following,
+          expectedViewerId: 'viewer-A',
+        ),
+      ).called(1);
+    });
+
     test('should return Failure on repository error', () async {
       when(
         () => mockRepository.getAllBlogs(page: 1, source: null),

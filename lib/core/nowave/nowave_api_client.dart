@@ -88,6 +88,14 @@ abstract interface class NowaveSessionBoundAuthenticator
   int get sessionGeneration;
 }
 
+/// Supplies the resolved server identity for viewer-scoped requests.
+/// The identity is a local fence only; authorization remains server-side.
+/// A viewer authenticator must also expose its session generation.
+abstract interface class NowaveViewerAuthenticator
+    implements NowaveSessionBoundAuthenticator {
+  String? get activeUserId;
+}
+
 /// Thin HTTP client for the no-wave `apps/api` REST surface (`/api/v1`).
 ///
 /// Responsibilities:
@@ -177,6 +185,41 @@ class NowaveApiClient {
   /// GET a JSON endpoint and return its unwrapped `data` payload.
   Future<dynamic> getJson(String path, {Map<String, String>? query}) {
     return _request('GET', path, query: query);
+  }
+
+  /// Reads account-scoped data only for the identity that initiated the
+  /// operation. This also fences the interval before [_request] starts and
+  /// after it completes, when the UI's identity may lag a session switch.
+  Future<dynamic> getJsonForViewer(
+    String path, {
+    required String expectedUserId,
+    Map<String, String>? query,
+  }) async {
+    final auth = _authenticator;
+    if (auth is! NowaveViewerAuthenticator ||
+        expectedUserId.isEmpty ||
+        auth.activeUserId != expectedUserId ||
+        (auth.accessToken?.isEmpty ?? true)) {
+      throw const NowaveApiException(
+        statusCode: HttpStatus.conflict,
+        code: 'SESSION_CHANGED',
+        message: 'The active session no longer matches the requested viewer.',
+      );
+    }
+    final generation = auth.sessionGeneration;
+    try {
+      return await _request('GET', path, query: query);
+    } finally {
+      if (auth.sessionGeneration != generation ||
+          auth.activeUserId != expectedUserId ||
+          (auth.accessToken?.isEmpty ?? true)) {
+        throw const NowaveApiException(
+          statusCode: HttpStatus.conflict,
+          code: 'SESSION_CHANGED',
+          message: 'The active session changed during a viewer-scoped request.',
+        );
+      }
+    }
   }
 
   /// POST a JSON body; returns the unwrapped `data` payload.

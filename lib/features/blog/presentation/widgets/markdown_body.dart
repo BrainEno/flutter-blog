@@ -1,5 +1,6 @@
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/app_logger.dart';
+import 'package:belog/core/utils/article_resource_url.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controller.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_highlight.dart';
@@ -157,6 +158,7 @@ class _MarkdownBodyState extends State<MarkdownBody> {
       case 'ol':
         return _list(context, node, indent);
       case 'pre':
+        final language = node.attributes['data-language'];
         return Padding(
           padding: const EdgeInsets.only(top: 8, bottom: 8),
           child: Container(
@@ -166,21 +168,29 @@ class _MarkdownBodyState extends State<MarkdownBody> {
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: _followBlock(
-              node,
-              (highlight, block) => Text.rich(
-                readAloudTextSpan(
-                  // Match the visible trimmed fenced-code text exactly.
-                  text: node.textContent.trim(),
-                  range: block?.inlineRanges[node],
-                  highlight: highlight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (language != null && language.isNotEmpty) ...[
+                  Text(language, style: Theme.of(context).textTheme.labelSmall),
+                  const SizedBox(height: 6),
+                ],
+                _followBlock(
+                  node,
+                  (highlight, block) => Text.rich(
+                    readAloudTextSpan(
+                      text: markdownCodeText(node),
+                      range: block?.inlineRanges[node],
+                      highlight: highlight,
+                    ),
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
                 ),
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 13,
-                  height: 1.4,
-                ),
-              ),
+              ],
             ),
           ),
         );
@@ -203,21 +213,24 @@ class _MarkdownBodyState extends State<MarkdownBody> {
       3 => 19.0,
       _ => 17.0,
     };
-    return _followBlock(
-      element,
-      (highlight, block) => Text.rich(
-        TextSpan(
-          style: (headingStyle ?? Theme.of(context).textTheme.bodyLarge)
-              ?.copyWith(
-                fontSize: size,
-                fontWeight: FontWeight.bold,
-                height: 1.3,
-              ),
-          children: _inline(
-            context,
-            element.children ?? const [],
-            block,
-            highlight,
+    return Semantics(
+      header: true,
+      child: _followBlock(
+        element,
+        (highlight, block) => Text.rich(
+          TextSpan(
+            style: (headingStyle ?? Theme.of(context).textTheme.bodyLarge)
+                ?.copyWith(
+                  fontSize: size,
+                  fontWeight: FontWeight.bold,
+                  height: 1.3,
+                ),
+            children: _inline(
+              context,
+              element.children ?? const [],
+              block,
+              highlight,
+            ),
           ),
         ),
       ),
@@ -326,10 +339,11 @@ class _MarkdownBodyState extends State<MarkdownBody> {
     SpeechBlock? block,
     ReadAloudHighlight? highlight, {
     TapGestureRecognizer? link,
+    TextDecoration? decoration,
   }) {
     return [
       for (final node in nodes)
-        _inlineNode(context, node, block, highlight, link),
+        _inlineNode(context, node, block, highlight, link, decoration),
     ];
   }
 
@@ -339,6 +353,7 @@ class _MarkdownBodyState extends State<MarkdownBody> {
     SpeechBlock? block,
     ReadAloudHighlight? highlight,
     TapGestureRecognizer? link,
+    TextDecoration? decoration,
   ) {
     if (node is md.Text) {
       return readAloudTextSpan(
@@ -346,6 +361,7 @@ class _MarkdownBodyState extends State<MarkdownBody> {
         range: block?.inlineRanges[node],
         highlight: highlight,
         recognizer: link,
+        existingDecoration: decoration,
       );
     }
     if (node is! md.Element) {
@@ -354,9 +370,24 @@ class _MarkdownBodyState extends State<MarkdownBody> {
         range: block?.inlineRanges[node],
         highlight: highlight,
         recognizer: link,
+        existingDecoration: decoration,
       );
     }
     switch (node.tag) {
+      case 'span':
+        final style = _structuredMarks(node, link: link != null);
+        final combined = _combineDecorations(decoration, style.decoration);
+        return TextSpan(
+          style: style.copyWith(decoration: combined),
+          children: _inline(
+            context,
+            node.children ?? const [],
+            block,
+            highlight,
+            link: link,
+            decoration: combined,
+          ),
+        );
       case 'strong':
         return TextSpan(
           style: const TextStyle(fontWeight: FontWeight.bold),
@@ -366,6 +397,7 @@ class _MarkdownBodyState extends State<MarkdownBody> {
             block,
             highlight,
             link: link,
+            decoration: decoration,
           ),
         );
       case 'em':
@@ -377,6 +409,7 @@ class _MarkdownBodyState extends State<MarkdownBody> {
             block,
             highlight,
             link: link,
+            decoration: decoration,
           ),
         );
       case 'code':
@@ -395,8 +428,18 @@ class _MarkdownBodyState extends State<MarkdownBody> {
                   text: node.textContent,
                   range: block?.inlineRanges[node],
                   highlight: highlight,
+                  existingDecoration: _combineDecorations(
+                    decoration,
+                    _structuredMarks(node, link: link != null).decoration,
+                  ),
                 ),
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 14)
+                    .merge(_structuredMarks(node, link: link != null))
+                    .copyWith(
+                      color: link == null
+                          ? null
+                          : Theme.of(context).colorScheme.primary,
+                    ),
               ),
             ),
           ),
@@ -412,10 +455,12 @@ class _MarkdownBodyState extends State<MarkdownBody> {
                       ..onTap = () => _launch(context, href),
               );
         return TextSpan(
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.primary,
-            decoration: TextDecoration.underline,
-          ),
+          style: recognizer == null
+              ? null
+              : TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  decoration: TextDecoration.underline,
+                ),
           recognizer: recognizer,
           children: _inline(
             context,
@@ -423,6 +468,9 @@ class _MarkdownBodyState extends State<MarkdownBody> {
             block,
             highlight,
             link: recognizer,
+            decoration: recognizer == null
+                ? decoration
+                : _combineDecorations(decoration, TextDecoration.underline),
           ),
         );
       case 'img':
@@ -432,7 +480,17 @@ class _MarkdownBodyState extends State<MarkdownBody> {
         if (uri == null) {
           // Keep image placeholders to one rendered paragraph position, like
           // valid image WidgetSpans, without ever loading an unsafe URL.
-          return WidgetSpan(child: Text(l10n.markdownImageAlt));
+          final alt = (node.attributes['alt'] ?? '').trim();
+          return WidgetSpan(
+            child: Semantics(
+              image: true,
+              excludeSemantics: true,
+              label: alt.isEmpty
+                  ? l10n.articleImageUnavailable
+                  : '$alt, ${l10n.articleImageUnavailable}',
+              child: Text(l10n.articleImageUnavailable),
+            ),
+          );
         }
         return WidgetSpan(
           alignment: PlaceholderAlignment.middle,
@@ -470,9 +528,36 @@ class _MarkdownBodyState extends State<MarkdownBody> {
             block,
             highlight,
             link: link,
+            decoration: decoration,
           ),
         );
     }
+  }
+
+  TextDecoration? _combineDecorations(TextDecoration? a, TextDecoration? b) {
+    if (a == null) return b;
+    if (b == null) return a;
+    return TextDecoration.combine([a, b]);
+  }
+
+  TextStyle _structuredMarks(md.Element node, {bool link = false}) {
+    final decorations = <TextDecoration>[
+      if (link || node.attributes['data-underline'] == 'true')
+        TextDecoration.underline,
+      if (node.attributes['data-strikethrough'] == 'true')
+        TextDecoration.lineThrough,
+    ];
+    return TextStyle(
+      fontWeight: node.attributes['data-bold'] == 'true'
+          ? FontWeight.bold
+          : null,
+      fontStyle: node.attributes['data-italic'] == 'true'
+          ? FontStyle.italic
+          : null,
+      decoration: decorations.isEmpty
+          ? null
+          : TextDecoration.combine(decorations),
+    );
   }
 
   Widget _linkWidget(TapGestureRecognizer? link, Widget child) {
@@ -482,13 +567,7 @@ class _MarkdownBodyState extends State<MarkdownBody> {
 
   /// Only http(s) targets can be opened or loaded. Everything else
   /// (javascript:, file:, custom schemes, ...) is inert text.
-  static Uri? _httpUrl(String value) {
-    final uri = Uri.tryParse(value.trim());
-    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
-      return null;
-    }
-    return (uri.scheme == 'http' || uri.scheme == 'https') ? uri : null;
-  }
+  static Uri? _httpUrl(String value) => resolveArticleResourceUrl(value);
 
   static void _launch(BuildContext context, String href) {
     final uri = _httpUrl(href);

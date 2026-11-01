@@ -264,6 +264,173 @@ void main() {
     );
   });
 
+  group('feed selection and viewer fencing', () {
+    test(
+      'switching feeds clears old rows and ignores an in-flight append',
+      () async {
+        final staleMore = Completer<Either<Failure, BlogFeedPage>>();
+        final popular = Completer<Either<Failure, BlogFeedPage>>();
+        final bloc = BlogBloc(
+          getAllBlogs: _FakeFeed((params) {
+            if (params.kind == BlogFeedKind.popular) return popular.future;
+            if (params.page == 2) return staleMore.future;
+            return Future.value(
+              Right(
+                BlogFeedPage(
+                  blogs: List.generate(10, (i) => _blog('latest$i')),
+                  source: BlogFeedSource.network,
+                ),
+              ),
+            );
+          }),
+        );
+        final states = <BlogState>[];
+        final sub = bloc.stream.listen(states.add);
+        bloc.add(const BlogFetchFirstPage());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const BlogLoadMore());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const BlogFetchFirstPage(kind: BlogFeedKind.popular));
+        await Future<void>.delayed(Duration.zero);
+
+        final loading = states.whereType<BlogFirstPageLoading>().last;
+        expect(loading.kind, BlogFeedKind.popular);
+        expect(loading.previousBlogs, isEmpty);
+        popular.complete(
+          Right(
+            BlogFeedPage(
+              blogs: [_blog('popular')],
+              source: BlogFeedSource.network,
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+        staleMore.complete(
+          Right(
+            BlogFeedPage(
+              blogs: [_blog('stale')],
+              source: BlogFeedSource.network,
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+        final loaded = states.whereType<BlogLoaded>().last;
+        expect(loaded.kind, BlogFeedKind.popular);
+        expect(loaded.blogs.map((blog) => blog.id), ['popular']);
+        await bloc.close();
+        await sub.cancel();
+      },
+    );
+
+    test(
+      'following pagination retains its viewer and network source',
+      () async {
+        final requests = <GetAllBlogsParams>[];
+        final bloc = BlogBloc(
+          getAllBlogs: _FakeFeed((params) async {
+            requests.add(params);
+            return Right(
+              BlogFeedPage(
+                blogs: params.page == 1
+                    ? List.generate(10, (i) => _blog('followed$i'))
+                    : [_blog('followed10')],
+                source: BlogFeedSource.network,
+              ),
+            );
+          }),
+        );
+        bloc.add(
+          const BlogFetchFirstPage(kind: BlogFeedKind.following, viewerId: 'A'),
+        );
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const BlogLoadMore());
+        await Future<void>.delayed(Duration.zero);
+        final loaded = bloc.state as BlogLoaded;
+        expect(loaded.kind, BlogFeedKind.following);
+        expect(loaded.viewerId, 'A');
+        expect(loaded.blogs, hasLength(11));
+        expect(requests.map((request) => request.kind), [
+          BlogFeedKind.following,
+          BlogFeedKind.following,
+        ]);
+        expect(requests.map((request) => request.expectedViewerId), ['A', 'A']);
+        expect(requests.last.source, BlogFeedSource.network);
+        await bloc.close();
+      },
+    );
+
+    test(
+      'sign-out clears a following feed and rejects its late response',
+      () async {
+        final following = Completer<Either<Failure, BlogFeedPage>>();
+        final bloc = BlogBloc(
+          getAllBlogs: _FakeFeed((params) {
+            if (params.kind == BlogFeedKind.following) return following.future;
+            return Future.value(
+              Right(
+                BlogFeedPage(
+                  blogs: [_blog('public')],
+                  source: BlogFeedSource.network,
+                ),
+              ),
+            );
+          }),
+        );
+        final states = <BlogState>[];
+        final sub = bloc.stream.listen(states.add);
+        bloc.add(
+          const BlogFetchFirstPage(kind: BlogFeedKind.following, viewerId: 'A'),
+        );
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const BlogViewerChanged(null));
+        await Future<void>.delayed(Duration.zero);
+        following.complete(
+          Right(
+            BlogFeedPage(
+              blogs: [_blog('A-following')],
+              source: BlogFeedSource.network,
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        final loaded = states.whereType<BlogLoaded>().last;
+        expect(loaded.kind, BlogFeedKind.latest);
+        expect(loaded.viewerId, isNull);
+        expect(loaded.blogs.map((blog) => blog.id), ['public']);
+        expect(
+          states.whereType<BlogLoaded>().any(
+            (state) => state.blogs.any((blog) => blog.id == 'A-following'),
+          ),
+          isFalse,
+        );
+        await bloc.close();
+        await sub.cancel();
+      },
+    );
+
+    test('non-latest feeds reject general cached results', () async {
+      final bloc = BlogBloc(
+        getAllBlogs: _FakeFeed(
+          (_) async => Right(
+            BlogFeedPage(
+              blogs: [_blog('unscoped')],
+              source: BlogFeedSource.cache,
+            ),
+          ),
+        ),
+      );
+      bloc.add(const BlogFetchFirstPage(kind: BlogFeedKind.popular));
+      await Future<void>.delayed(Duration.zero);
+      expect(bloc.state, isA<BlogListFailure>());
+      expect(
+        (bloc.state as BlogListFailure).failure.code,
+        'feed.sourceChanged',
+      );
+      await bloc.close();
+    });
+  });
+
   group('feed source', () {
     test('pins cached pages until a refresh chooses a new source', () async {
       final requests = <GetAllBlogsParams>[];

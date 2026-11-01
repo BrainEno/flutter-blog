@@ -29,6 +29,46 @@ class ExtractedBlogContent {
 
 const int _kMaxBlockTextLength = 20000;
 
+/// Whether the current plain editor can rebuild the server's body without
+/// dropping structured block types, inline formatting or image metadata.
+/// Unknown versions and shapes fail closed. Block IDs are regenerated when
+/// writing; this check does not provide concurrent edit detection.
+bool supportsPlainEditor({
+  required Object? version,
+  required List<Map<String, dynamic>> blocks,
+}) {
+  if (version is! int || version != 0 || blocks.isEmpty) return false;
+  var hasParagraph = false;
+  for (var index = 0; index < blocks.length; index++) {
+    final block = blocks[index];
+    if (block['type'] == 'paragraph') {
+      const allowed = {'id', 'type', 'text'};
+      final text = block['text'];
+      if (block.keys.any((key) => !allowed.contains(key)) ||
+          text is! String ||
+          text.isEmpty ||
+          text != text.trim() ||
+          RegExp(r'\n[ \t]*\n').hasMatch(text)) {
+        return false;
+      }
+      hasParagraph = true;
+    } else if (block['type'] == 'image') {
+      const allowed = {'id', 'type', 'src', 'alt', 'caption'};
+      if (index != 0 ||
+          block.keys.any((key) => !allowed.contains(key)) ||
+          block['src'] is! String ||
+          (block['src'] as String).isEmpty ||
+          block['alt'] != '' ||
+          (block['caption'] != null && block['caption'] != '')) {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+  return hasParagraph;
+}
+
 /// Splits the plain-text body into paragraphs, bounding each block below
 /// the server's per-block text limit.
 List<String> splitContentParagraphs(String content) {
@@ -118,7 +158,7 @@ List<Map<String, dynamic>> blogToContentBlocks({
 ExtractedBlogContent extractBlogContent(List<Map<String, dynamic>> blocks) {
   final coverUrl = blocks
       .where((block) => block['type'] == 'image')
-      .map((block) => block['src'] as String? ?? '')
+      .map((block) => block['src'] is String ? block['src'] as String : '')
       .firstWhere((src) => src.isNotEmpty, orElse: () => '');
 
   final parts = <String>[];
@@ -127,19 +167,23 @@ ExtractedBlogContent extractBlogContent(List<Map<String, dynamic>> blocks) {
       case 'paragraph':
       case 'heading':
       case 'quote':
-        final text = (block['text'] as String?)?.trim() ?? '';
+        final rawText = block['text'];
+        final text = rawText is String ? rawText.trim() : '';
         if (text.isNotEmpty) parts.add(text);
       case 'list':
-        final items = (block['items'] as List? ?? const [])
-            .map((item) => item.toString())
+        final rawItems = block['items'];
+        final items = (rawItems is List ? rawItems : const [])
+            .whereType<String>()
             .where((item) => item.trim().isNotEmpty);
         if (items.isNotEmpty) parts.add(items.join('\n'));
       case 'code':
-        final code = (block['code'] as String?)?.trim() ?? '';
+        final rawCode = block['code'];
+        final code = rawCode is String ? rawCode.trim() : '';
         if (code.isNotEmpty) parts.add(code);
       case 'image':
         // The first image is the cover; later ones degrade to captions.
-        final caption = (block['caption'] as String?)?.trim() ?? '';
+        final rawCaption = block['caption'];
+        final caption = rawCaption is String ? rawCaption.trim() : '';
         if (caption.isNotEmpty) parts.add(caption);
       default:
         break;

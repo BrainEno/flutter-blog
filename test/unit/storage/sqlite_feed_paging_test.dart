@@ -142,9 +142,10 @@ void main() {
     );
     await db.close();
 
-    // A v3 install has the same tables but not the new index.
+    // Recreate the v3 shape: no feed index and no v5 document column.
     final old = raw.sqlite3.open(file.path);
     old.execute('DROP INDEX blog_cache_feed_order');
+    old.execute('ALTER TABLE blog_cache DROP COLUMN document_json');
     old.execute('PRAGMA user_version = 3');
     old.close();
 
@@ -175,7 +176,7 @@ void main() {
       (await db.customSelect('PRAGMA user_version').get()).single.read<int>(
         'user_version',
       ),
-      4,
+      5,
     );
 
     await db.close();

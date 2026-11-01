@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -28,7 +30,9 @@ Map<String, dynamic> _articleMap({bool likedByViewer = false}) {
     'id': 'server-uuid-1',
     'slug': _kSlug,
     'title': '标题',
+    'summary': '作者的摘要',
     'authorId': 'u1',
+    'contentBlocksVersion': 0,
     'contentBlocks': <Map<String, dynamic>>[
       <String, dynamic>{'id': 'b1', 'type': 'paragraph', 'text': '正文'},
     ],
@@ -52,6 +56,181 @@ void main() {
   setUp(() {
     client = MockNowaveApiClient();
     dataSource = BlogRemoteDataSourceImpl(client);
+  });
+
+  group('online feeds', () {
+    test(
+      'featured uses the editorial endpoint and keeps server order',
+      () async {
+        when(
+          () => client.getJson('/featured', query: any(named: 'query')),
+        ).thenAnswer(
+          (_) async => [
+            {..._articleMap(), 'slug': 'editor-first'},
+            {..._articleMap(), 'slug': 'editor-second'},
+          ],
+        );
+
+        final blogs = await dataSource.getOnlineFeed(
+          page: 2,
+          kind: BlogFeedKind.featured,
+        );
+
+        expect(blogs.map((blog) => blog.id), ['editor-first', 'editor-second']);
+        verify(
+          () => client.getJson(
+            '/featured',
+            query: {'limit': '10', 'offset': '10', 'locale': 'zh-CN'},
+          ),
+        ).called(1);
+        verifyNever(
+          () => client.getJson('/articles', query: any(named: 'query')),
+        );
+      },
+    );
+
+    test('popular sends the documented ranking and page offset', () async {
+      when(
+        () => client.getJson('/articles', query: any(named: 'query')),
+      ).thenAnswer((_) async => [_articleMap()]);
+
+      final blogs = await dataSource.getOnlineFeed(
+        page: 3,
+        kind: BlogFeedKind.popular,
+      );
+
+      expect(blogs.single.id, _kSlug);
+      verify(
+        () => client.getJson(
+          '/articles',
+          query: {
+            'limit': '10',
+            'offset': '20',
+            'locale': 'zh-CN',
+            'sort': 'popular',
+          },
+        ),
+      ).called(1);
+      verifyNever(
+        () => client.getJsonForViewer(
+          any(),
+          expectedUserId: any(named: 'expectedUserId'),
+          query: any(named: 'query'),
+        ),
+      );
+    });
+
+    test(
+      'following uses a viewer-fenced request without sending the ID',
+      () async {
+        when(
+          () => client.getJsonForViewer(
+            '/me/feed',
+            expectedUserId: 'viewer-A',
+            query: any(named: 'query'),
+          ),
+        ).thenAnswer((_) async => [_articleMap()]);
+
+        final blogs = await dataSource.getOnlineFeed(
+          page: 2,
+          kind: BlogFeedKind.following,
+          expectedViewerId: 'viewer-A',
+        );
+
+        expect(blogs.single.id, _kSlug);
+        verify(
+          () => client.getJsonForViewer(
+            '/me/feed',
+            expectedUserId: 'viewer-A',
+            query: {'limit': '10', 'offset': '10', 'locale': 'zh-CN'},
+          ),
+        ).called(1);
+        verifyNever(() => client.getJson(any(), query: any(named: 'query')));
+      },
+    );
+
+    test(
+      'following transport errors do not restart under another session',
+      () async {
+        when(
+          () => client.getJsonForViewer(
+            '/me/feed',
+            expectedUserId: 'viewer-A',
+            query: any(named: 'query'),
+          ),
+        ).thenThrow(const SocketException('offline'));
+
+        await expectLater(
+          dataSource.getOnlineFeed(
+            page: 1,
+            kind: BlogFeedKind.following,
+            expectedViewerId: 'viewer-A',
+          ),
+          throwsA(isA<ServerException>()),
+        );
+        verify(
+          () => client.getJsonForViewer(
+            '/me/feed',
+            expectedUserId: 'viewer-A',
+            query: any(named: 'query'),
+          ),
+        ).called(1);
+      },
+    );
+  });
+
+  test('direct edit also rejects unknown or unsupported structure', () async {
+    await expectLater(
+      dataSource.editBlog(_blog()),
+      throwsA(
+        isA<ServerException>().having(
+          (error) => error.code,
+          'code',
+          'article.structuredEditUnsupported',
+        ),
+      ),
+    );
+    verifyNever(() => client.postJson(any(), any()));
+    verifyNever(() => client.putJson(any(), any()));
+  });
+
+  test('direct edit sends the fresh server summary', () async {
+    final original = BlogModel.fromNowaveArticle({
+      ..._articleMap(),
+      'tags': <Map<String, dynamic>>[],
+    });
+    when(
+      () => client.putJson('/articles/server-uuid-1', any()),
+    ).thenAnswer((_) async => _articleMap());
+
+    await dataSource.editBlog(original.copyWith(title: '新标题', content: '新正文'));
+
+    final body =
+        verify(
+              () => client.putJson('/articles/server-uuid-1', captureAny()),
+            ).captured.single
+            as Map<String, dynamic>;
+    expect(body['summary'], '作者的摘要');
+    expect(body['contentBlocksVersion'], 0);
+  });
+
+  test('direct edit rejects an unknown server summary', () async {
+    final document = _articleMap()..remove('summary');
+    final original = BlogModel.fromNowaveArticle(document);
+    expect(original.plainEditorCompatible, isTrue);
+
+    await expectLater(
+      dataSource.editBlog(original),
+      throwsA(
+        isA<ServerException>().having(
+          (error) => error.code,
+          'code',
+          'article.structuredEditUnsupported',
+        ),
+      ),
+    );
+    verifyNever(() => client.postJson(any(), any()));
+    verifyNever(() => client.putJson(any(), any()));
   });
 
   group('toggleLikeBlog', () {

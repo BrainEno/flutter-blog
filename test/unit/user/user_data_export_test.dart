@@ -1,6 +1,8 @@
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/user/data/user_data_export.dart';
+import 'package:belog/l10n/app_localizations.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -55,6 +57,17 @@ void main() {
       expect(exported.single['updatedAt'], '2026-10-02T09:00:00.000Z');
     },
   );
+
+  test('both locales disclose the export is partial', () {
+    final en = lookupAppLocalizations(const Locale('en')).exportMyDataHint;
+    final zh = lookupAppLocalizations(const Locale('zh')).exportMyDataHint;
+    expect(en, contains('100'));
+    expect(en, contains('Drafts'));
+    expect(en, contains('not a complete backup'));
+    expect(zh, contains('100'));
+    expect(zh, contains('草稿'));
+    expect(zh, contains('并非完整备份'));
+  });
 
   test('an account without articles exports an empty list', () async {
     final user = User(

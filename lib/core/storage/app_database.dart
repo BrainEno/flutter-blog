@@ -18,7 +18,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -58,13 +58,25 @@ class AppDatabase extends GeneratedDatabase {
         // v4 adds only an index; cached articles and all other data stay put.
         await _createBlogCacheFeedIndex();
       }
+      if (from < 5) {
+        // Earlier no-wave cache rows already flattened the document, so we
+        // cannot know whether formatting or images were lost. Mark them as
+        // potentially incomplete until refreshed, without changing content.
+        // Pre-no-wave/Isar rows without a server article id remain Markdown.
+        await customStatement(
+          'ALTER TABLE blog_cache ADD COLUMN document_json TEXT',
+        );
+        await customStatement(
+          '''UPDATE blog_cache SET document_json = '{"version":null,"blocks":[]}' WHERE length(article_id) > 0''',
+        );
+      }
     },
   );
 
   /// The offline blog cache. `id` is the article's public slug on the
   /// no-wave backend; `article_id` is the server UUID needed for writes.
   Future<void> _createBlogCache() => customStatement(
-    'CREATE TABLE blog_cache (id TEXT PRIMARY KEY, article_id TEXT NOT NULL DEFAULT \'\', title TEXT NOT NULL, content TEXT NOT NULL, poster_id TEXT NOT NULL, image_url TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL, poster_name TEXT, poster_avatar TEXT)',
+    'CREATE TABLE blog_cache (id TEXT PRIMARY KEY, article_id TEXT NOT NULL DEFAULT \'\', title TEXT NOT NULL, content TEXT NOT NULL, poster_id TEXT NOT NULL, image_url TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL, poster_name TEXT, poster_avatar TEXT, document_json TEXT)',
   );
 
   /// Supports stable feed pagination without sorting all cached article bodies.
@@ -204,11 +216,12 @@ class AppDatabase extends GeneratedDatabase {
 
   Future<void> upsertBlog(BlogModel blog) => customStatement(
     '''
-    INSERT INTO blog_cache(id, article_id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO blog_cache(id, article_id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar, document_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET article_id = excluded.article_id, title = excluded.title, content = excluded.content,
       poster_id = excluded.poster_id, image_url = excluded.image_url, tags = excluded.tags,
-      updated_at = excluded.updated_at, poster_name = excluded.poster_name, poster_avatar = excluded.poster_avatar
+      updated_at = excluded.updated_at, poster_name = excluded.poster_name, poster_avatar = excluded.poster_avatar,
+      document_json = excluded.document_json
     ''',
     [
       blog.id,
@@ -221,6 +234,7 @@ class AppDatabase extends GeneratedDatabase {
       blog.updatedAt.microsecondsSinceEpoch,
       blog.posterName,
       blog.posterAvatar,
+      blog.documentJson,
     ],
   );
 }

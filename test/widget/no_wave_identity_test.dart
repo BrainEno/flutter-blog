@@ -109,12 +109,17 @@ void main() {
           identityApp(
             MediaQuery(
               data: const MediaQueryData(textScaler: TextScaler.linear(2)),
-              child: NoWaveActionRow(
-                label: 'Export my data',
-                description:
-                    'Export your profile and all your articles as a JSON file',
-                icon: Icons.file_download_outlined,
-                onTap: () => actions++,
+              // The profile page hosts this row in a scroll view. Long
+              // accessibility text must remain readable rather than clipped.
+              child: SingleChildScrollView(
+                child: NoWaveActionRow(
+                  label: 'Export my data',
+                  description: lookupAppLocalizations(
+                    const Locale('en'),
+                  ).exportMyDataHint,
+                  icon: Icons.file_download_outlined,
+                  onTap: () => actions++,
+                ),
               ),
             ),
           ),

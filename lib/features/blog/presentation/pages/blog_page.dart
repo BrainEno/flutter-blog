@@ -31,7 +31,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _fetchFirstPage();
+    _reconcileViewerAndRefresh();
     _scrollController.addListener(_onScroll);
   }
 
@@ -44,11 +44,49 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _fetchFirstPage();
+    if (state == AppLifecycleState.resumed) _reconcileViewerAndRefresh();
   }
 
   void _fetchFirstPage() {
     context.read<BlogBloc>().add(const BlogFetchFirstPage());
+  }
+
+  String? _viewerId(AppUserState state) =>
+      state is AppUserLoggedIn ? state.user.id : null;
+
+  void _reconcileViewerAndRefresh() {
+    final bloc = context.read<BlogBloc>();
+    final viewerId = _viewerId(context.read<AppUserCubit>().state);
+    final current = bloc.state;
+    // A page may be reattached after an account change happened elsewhere.
+    // Listener callbacks only observe future changes, not the initial state.
+    if (current.kind == BlogFeedKind.following &&
+        current.viewerId != viewerId) {
+      bloc.add(BlogViewerChanged(viewerId));
+    } else {
+      bloc.add(const BlogFetchFirstPage());
+    }
+  }
+
+  void _selectFeed(BlogFeedKind kind, BlogState state) {
+    final viewerId = _viewerId(context.read<AppUserCubit>().state);
+    if (kind == state.kind &&
+        (kind != BlogFeedKind.following || state.viewerId == viewerId)) {
+      return;
+    }
+    if (kind == BlogFeedKind.following &&
+        (viewerId == null || viewerId.isEmpty)) {
+      showSnackBar(context, context.l10n.signInRequired);
+      context.push('/login?redirect=${Uri.encodeComponent('/')}');
+      return;
+    }
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    context.read<BlogBloc>().add(
+      BlogFetchFirstPage(
+        kind: kind,
+        viewerId: kind == BlogFeedKind.following ? viewerId : null,
+      ),
+    );
   }
 
   void _onScroll() {
@@ -72,40 +110,112 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const NoWaveMasthead()),
-      body: BlocConsumer<BlogBloc, BlogState>(
-        listener: (context, state) {
-          if (state is BlogListFailure) {
-            showSnackBar(
-              context,
-              localizedFailure(context.l10n, state.failure),
-            );
-          }
-        },
-        builder: (context, state) => RefreshIndicator(
-          onRefresh: _refreshBlogs,
-          child: _buildBody(state),
+    final viewerId = context.select<AppUserCubit, String?>(
+      (cubit) => _viewerId(cubit.state),
+    );
+    return BlocListener<AppUserCubit, AppUserState>(
+      listenWhen: (previous, current) =>
+          _viewerId(previous) != _viewerId(current),
+      listener: (context, state) =>
+          context.read<BlogBloc>().add(BlogViewerChanged(_viewerId(state))),
+      child: Scaffold(
+        appBar: AppBar(title: const NoWaveMasthead()),
+        body: BlocConsumer<BlogBloc, BlogState>(
+          listener: (context, state) {
+            if (state is BlogListFailure &&
+                (state.kind != BlogFeedKind.following ||
+                    state.viewerId == viewerId)) {
+              showSnackBar(
+                context,
+                localizedFailure(context.l10n, state.failure),
+              );
+            }
+          },
+          builder: (context, state) => Column(
+            children: [
+              _feedSelector(state),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: _refreshBlogs,
+                  child: _buildBody(state, viewerId),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      floatingActionButton: BlocSelector<AppUserCubit, AppUserState, bool>(
-        selector: (state) => state is AppUserLoggedIn,
-        builder: (context, isLoggedIn) => isLoggedIn
-            ? FloatingActionButton(
-                onPressed: _openEditor,
-                tooltip: context.l10n.newPostTooltip,
-                child: const Icon(CupertinoIcons.add),
-              )
-            : const SizedBox.shrink(),
+        floatingActionButton: BlocSelector<AppUserCubit, AppUserState, bool>(
+          selector: (state) => state is AppUserLoggedIn,
+          builder: (context, isLoggedIn) => isLoggedIn
+              ? FloatingActionButton(
+                  onPressed: _openEditor,
+                  tooltip: context.l10n.newPostTooltip,
+                  child: const Icon(CupertinoIcons.add),
+                )
+              : const SizedBox.shrink(),
+        ),
       ),
     );
   }
 
-  Widget _heading() => NoWaveSectionHeading(
-    title: context.l10n.feedHeading,
-    companion: context.l10n.feedHeadingCompanion,
-    eyebrow: context.l10n.feedEyebrow,
-  );
+  Widget _feedSelector(BlogState state) {
+    final l10n = context.l10n;
+    return _contentWidth(
+      Padding(
+        padding: const EdgeInsets.fromLTRB(
+          NoWaveSpacing.page,
+          12,
+          NoWaveSpacing.page,
+          0,
+        ),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            for (final (kind, label) in [
+              (BlogFeedKind.latest, l10n.feedTabLatest),
+              (BlogFeedKind.featured, l10n.feedTabFeatured),
+              (BlogFeedKind.popular, l10n.feedTabPopular),
+              (BlogFeedKind.following, l10n.feedTabFollowing),
+            ])
+              ChoiceChip(
+                label: Text(label),
+                selected: state.kind == kind,
+                onSelected: (_) => _selectFeed(kind, state),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _heading(BlogFeedKind kind) {
+    final l10n = context.l10n;
+    final title = switch (kind) {
+      BlogFeedKind.latest => l10n.feedHeading,
+      BlogFeedKind.featured => l10n.feedTabFeatured,
+      BlogFeedKind.popular => l10n.feedTabPopular,
+      BlogFeedKind.following => l10n.feedTabFollowing,
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        NoWaveSectionHeading(
+          title: title,
+          companion: kind == BlogFeedKind.latest
+              ? l10n.feedHeadingCompanion
+              : null,
+          eyebrow: l10n.feedEyebrow,
+        ),
+        if (kind == BlogFeedKind.popular) ...[
+          const SizedBox(height: 8),
+          Text(
+            l10n.feedPopularDescription,
+            style: NoWaveTypography.meta(context),
+          ),
+        ],
+      ],
+    );
+  }
 
   Widget _contentWidth(Widget child) => Align(
     alignment: Alignment.topCenter,
@@ -115,7 +225,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     ),
   );
 
-  Widget _statusList(Widget status) => ListView(
+  Widget _statusList(Widget status, BlogFeedKind kind) => ListView(
     physics: const AlwaysScrollableScrollPhysics(),
     padding: const EdgeInsets.fromLTRB(
       NoWaveSpacing.page,
@@ -124,14 +234,23 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
       NoWaveSpacing.section,
     ),
     children: [
-      _contentWidth(_heading()),
+      _contentWidth(_heading(kind)),
       const SizedBox(height: 56),
       _contentWidth(status),
     ],
   );
 
-  Widget _buildBody(BlogState state) {
+  Widget _buildBody(BlogState state, String? viewerId) {
     final l10n = context.l10n;
+    // A session event can reach the UI before the queued bloc reset. Hide
+    // the old viewer's follow list immediately, even for that brief frame.
+    if (state.kind == BlogFeedKind.following &&
+        (viewerId == null || viewerId != state.viewerId)) {
+      return _statusList(
+        NoWaveStatus(message: l10n.signInRequired),
+        state.kind,
+      );
+    }
     final blogs = _visibleBlogs(state);
     final isCached = _visibleSource(state) == BlogFeedSource.cache;
     if (blogs.isEmpty &&
@@ -145,9 +264,16 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
           actionLabel: l10n.actionRetry,
           onAction: _fetchFirstPage,
         ),
+        state.kind,
       );
     }
     if (blogs.isEmpty) {
+      final emptyMessage = switch (state.kind) {
+        BlogFeedKind.latest => l10n.feedEmpty,
+        BlogFeedKind.featured => l10n.feedFeaturedEmpty,
+        BlogFeedKind.popular => l10n.feedPopularEmpty,
+        BlogFeedKind.following => l10n.feedFollowingEmpty,
+      };
       return _statusList(
         isCached
             ? NoWaveStatus(
@@ -155,7 +281,8 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
                 actionLabel: l10n.actionRetry,
                 onAction: _fetchFirstPage,
               )
-            : NoWaveStatus(message: l10n.feedEmpty),
+            : NoWaveStatus(message: emptyMessage),
+        state.kind,
       );
     }
 
@@ -182,7 +309,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _heading(),
+                  _heading(state.kind),
                   if (isCached) ...[
                     const SizedBox(height: 12),
                     Semantics(

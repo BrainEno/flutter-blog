@@ -107,6 +107,13 @@ Iterable<MarkdownListPart> markdownListParts(md.Element item) sync* {
   if (inline.isNotEmpty) yield MarkdownListPart(inline.first, inline);
 }
 
+/// Existing Markdown code remains trimmed; server code blocks can explicitly
+/// opt into preserving the exact whitespace supplied by the author.
+String markdownCodeText(md.Element node) =>
+    node.attributes['data-preserve-whitespace'] == 'true'
+    ? node.textContent
+    : node.textContent.trim();
+
 /// The same Markdown AST drives both rendering and narration. Visible code
 /// is included; link targets, controls, images and media URLs are not spoken.
 class ReadAloudDocument {
@@ -132,6 +139,11 @@ class ReadAloudDocument {
       // Keep a malformed article from taking down the reader.
       nodes = const [];
     }
+    return ReadAloudDocument.fromNodes(title, nodes);
+  }
+
+  /// Reuse one already-built AST for display, text offsets and speech.
+  factory ReadAloudDocument.fromNodes(String title, List<md.Node> nodes) {
     final blocks = <SpeechBlock>[
       SpeechBlock(
         index: 0,
@@ -196,8 +208,8 @@ class ReadAloudDocument {
         }
       }
 
-      if (code) {
-        append(owner, owner.textContent.trim());
+      if (code && owner is md.Element) {
+        append(owner, markdownCodeText(owner));
       } else {
         for (final node in inline) {
           walkInline(node);
