@@ -278,6 +278,16 @@ envelope/401 刷新重放、会话刷新单飞、contentBlocks 编解码、Markd
 （结构/样式/原始 HTML 惰性/javascript: 链接不可点）、阅读历史（去重/排序/
 按账号隔离/清空/v2→v3 升级）、导出文档形状、分享 URL 构造等。
 
+## GitHub Actions：个人设备安装包
+
+改动合并到 `main` 后，可在 **Actions → Build personal mobile packages → Run workflow**
+手动构建 IPA、APK 或两者。必须提供设备可访问的公开 no-wave HTTPS API origin；
+地址会被编译进应用，不能填 token 或密码。IPA 不需要付费 Apple Developer 会员，
+但下载后必须由 **AltStore Classic** 使用个人 Apple ID 重签；免费账号通常需每 7 天
+刷新。Android `personal` 模式需要预先配置所有者的稳定签名密钥；`debug` 模式仅供
+临时测试且不能保证跨构建升级。配置、下载、权限、限制与真机验收步骤详见
+[docs/mobile-packages.md](docs/mobile-packages.md)。
+
 ## 发布
 
 发布流程、签名与版本规则见 [docs/releasing.md](docs/releasing.md)。

@@ -1,0 +1,317 @@
+name: Build personal mobile packages
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/mobile-packages.yml'
+      - '.github/workflows/release.yml'
+      - 'tool/mobile/**'
+      - 'tool/release/**'
+      - 'tool/ci/check_apk_16k.py'
+      - 'scripts/**'
+      - 'android/**'
+      - 'ios/**'
+      - 'pubspec.*'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Package(s) to build'
+        type: choice
+        options: [both, ios, android]
+        default: both
+        required: true
+      android_mode:
+        description: 'personal = stable owner key; debug = temporary test key'
+        type: choice
+        options: [personal, debug]
+        default: personal
+        required: true
+      api_base_url:
+        description: 'Public HTTPS no-wave API origin (or set repository variable API_BASE_URL)'
+        type: string
+        required: false
+      web_base_url:
+        description: 'Optional public HTTPS no-wave web origin (or repository variable WEB_BASE_URL)'
+        type: string
+        required: false
+      build_number:
+        description: 'Optional positive Android/iOS build number; defaults to this workflow run number'
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-packages-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  FLUTTER_VERSION: '3.47.8'
+  # These are public values and become part of the application binary.
+  # Never pass passwords, tokens, API keys or other credentials here.
+  PUBLIC_API_ORIGIN: ${{ inputs.api_base_url || vars.API_BASE_URL }}
+  PUBLIC_WEB_ORIGIN: ${{ inputs.web_base_url || vars.WEB_BASE_URL }}
+  INPUT_TARGET: ${{ inputs.target }}
+  INPUT_ANDROID_MODE: ${{ inputs.android_mode }}
+  INPUT_BUILD_NUMBER: ${{ inputs.build_number }}
+
+jobs:
+  prepare:
+    name: Validate mobile build inputs and tests
+    runs-on: ubuntu-latest
+    outputs:
+      build_name: ${{ steps.config.outputs.build_name }}
+      build_number: ${{ steps.config.outputs.build_number }}
+      target: ${{ steps.config.outputs.target }}
+      android_mode: ${{ steps.config.outputs.android_mode }}
+      api_origin: ${{ steps.config.outputs.api_origin }}
+      web_origin: ${{ steps.config.outputs.web_origin }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Test preparation and artifact verification
+        run: |
+          set -euo pipefail
+          bash -n scripts/build_ios_ipa.sh tool/mobile/*.sh
+          python3 -m unittest discover -s tool/mobile -p 'test_*.py' -v
+          python3 -m unittest discover -s tool/release -p 'test_*.py' -v
+          python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      - name: Validate main branch, public origins and version
+        id: config
+        run: python3 tool/mobile/prepare_config.py "$RUNNER_TEMP/belog-mobile-env.json"
+      - name: Delete temporary public configuration
+        if: always()
+        run: rm -f "$RUNNER_TEMP/belog-mobile-env.json"
+
+  ios:
+    name: AltStore IPA / device arm64
+    needs: prepare
+    # Reuse the exact validated origin; environment-level vars must not
+    # silently change the backend between the two platform artifacts.
+    env:
+      PUBLIC_API_ORIGIN: ${{ needs.prepare.outputs.api_origin }}
+      PUBLIC_WEB_ORIGIN: ${{ needs.prepare.outputs.web_origin }}
+    if: ${{ needs.prepare.outputs.target == 'both' || needs.prepare.outputs.target == 'ios' }}
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Set up pinned Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          pub-cache: true
+      - name: Prepare public build configuration
+        run: python3 tool/mobile/prepare_config.py "$RUNNER_TEMP/belog-mobile-env.json"
+      - name: Build and verify AltStore input IPA
+        shell: bash
+        env:
+          BUILD_NAME: ${{ needs.prepare.outputs.build_name }}
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
+        run: |
+          set -o pipefail
+          mkdir -p build/reports
+          set +e
+          bash tool/mobile/build_ios_package.sh "$RUNNER_TEMP/belog-mobile-env.json" "$BUILD_NAME" "$BUILD_NUMBER" 2>&1 | tee build/reports/ios-mobile.log
+          statuses=("${PIPESTATUS[@]}")
+          set -e
+          if (( statuses[0] != 0 || statuses[1] != 0 )); then
+            bash tool/ci/annotate_failure.sh analyze build/reports/ios-mobile.log
+            exit 1
+          fi
+      - name: Upload AltStore IPA and checksums (manual builds only)
+        if: ${{ github.event_name == 'workflow_dispatch' && success() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: ios-altstore-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/mobile/ios/*
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload fixture diagnostics (not an installable package)
+        if: ${{ github.event_name == 'pull_request' && always() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: ios-package-ci-fixture-log
+          path: build/reports/ios-mobile.log
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Delete temporary public configuration
+        if: always()
+        run: rm -f "$RUNNER_TEMP/belog-mobile-env.json"
+
+  android-fixture:
+    name: Android personal-signing pipeline / disposable CI key
+    needs: prepare
+    env:
+      PUBLIC_API_ORIGIN: ${{ needs.prepare.outputs.api_origin }}
+      PUBLIC_WEB_ORIGIN: ${{ needs.prepare.outputs.web_origin }}
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Set up Java 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up pinned Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          pub-cache: true
+      - name: Prepare public fixture configuration
+        run: python3 tool/mobile/prepare_config.py "$RUNNER_TEMP/belog-mobile-env.json"
+      - name: Create disposable CI signing fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          keytool -genkeypair -keystore "$RUNNER_TEMP/source-ci.keystore" -storepass ci-only-password \
+            -alias ci-only -keypass ci-only-password -dname 'CN=CI Fixture Only' \
+            -keyalg RSA -keysize 2048 -validity 1 >/dev/null 2>&1
+          expected="$(keytool -exportcert -keystore "$RUNNER_TEMP/source-ci.keystore" -storepass ci-only-password -alias ci-only | sha256sum | cut -d' ' -f1)"
+          export ANDROID_APPLICATION_ID_APPROVED=com.example.belog ANDROID_RELEASE_CERT_SHA256="$expected"
+          export ANDROID_KEYSTORE_BASE64="$(base64 -w0 "$RUNNER_TEMP/source-ci.keystore")"
+          export ANDROID_KEYSTORE_PASSWORD=ci-only-password ANDROID_KEY_ALIAS=ci-only ANDROID_KEY_PASSWORD=ci-only-password
+          python3 tool/mobile/prepare_android_signing.py "$RUNNER_TEMP/belog-mobile.keystore"
+          {
+            echo "ANDROID_RELEASE_CERT_SHA256=$expected"
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/belog-mobile.keystore"
+            echo 'ANDROID_KEYSTORE_PASSWORD=ci-only-password'
+            echo 'ANDROID_KEY_ALIAS=ci-only'
+            echo 'ANDROID_KEY_PASSWORD=ci-only-password'
+          } >> "$GITHUB_ENV"
+      - name: Build and verify with disposable key and unreachable fixture API
+        shell: bash
+        env:
+          BUILD_NAME: ${{ needs.prepare.outputs.build_name }}
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
+        run: |
+          set -o pipefail
+          mkdir -p build/reports
+          set +e
+          bash tool/mobile/build_android_package.sh "$RUNNER_TEMP/belog-mobile-env.json" "$BUILD_NAME" "$BUILD_NUMBER" personal "$ANDROID_RELEASE_CERT_SHA256" 2>&1 | tee build/reports/android-mobile-fixture.log
+          statuses=("${PIPESTATUS[@]}")
+          set -e
+          if (( statuses[0] != 0 || statuses[1] != 0 )); then
+            bash tool/ci/annotate_failure.sh android build/reports/android-mobile-fixture.log
+            exit 1
+          fi
+      - name: Upload fixture diagnostics (not a distributable APK)
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: android-package-ci-fixture-log
+          path: build/reports/android-mobile-fixture.log
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Delete disposable key and fixture configuration
+        if: always()
+        run: rm -f "$RUNNER_TEMP/source-ci.keystore" "$RUNNER_TEMP/belog-mobile.keystore" "$RUNNER_TEMP/belog-mobile-env.json"
+
+  android-personal:
+    name: Android APK / owner signing key
+    needs: prepare
+    env:
+      PUBLIC_API_ORIGIN: ${{ needs.prepare.outputs.api_origin }}
+      PUBLIC_WEB_ORIGIN: ${{ needs.prepare.outputs.web_origin }}
+    if: ${{ github.event_name == 'workflow_dispatch' && needs.prepare.outputs.android_mode == 'personal' && (needs.prepare.outputs.target == 'both' || needs.prepare.outputs.target == 'android') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Set up Java 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up pinned Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          pub-cache: true
+      - name: Prepare public build configuration
+        run: python3 tool/mobile/prepare_config.py "$RUNNER_TEMP/belog-mobile-env.json"
+      - name: Validate and decode owner signing key
+        env:
+          ANDROID_APPLICATION_ID_APPROVED: ${{ vars.ANDROID_APPLICATION_ID_APPROVED }}
+          ANDROID_RELEASE_CERT_SHA256: ${{ vars.ANDROID_RELEASE_CERT_SHA256 }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: python3 tool/mobile/prepare_android_signing.py "$RUNNER_TEMP/belog-mobile.keystore"
+      - name: Build and verify owner-signed APK
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/belog-mobile.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_RELEASE_CERT_SHA256: ${{ vars.ANDROID_RELEASE_CERT_SHA256 }}
+          BUILD_NAME: ${{ needs.prepare.outputs.build_name }}
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
+        run: bash tool/mobile/build_android_package.sh "$RUNNER_TEMP/belog-mobile-env.json" "$BUILD_NAME" "$BUILD_NUMBER" personal "$ANDROID_RELEASE_CERT_SHA256"
+      - name: Upload owner-signed APK and checksums
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: android-personal-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/mobile/android/*
+          if-no-files-found: error
+          retention-days: 30
+      - name: Delete temporary signing key and public configuration
+        if: always()
+        run: rm -f "$RUNNER_TEMP/belog-mobile.keystore" "$RUNNER_TEMP/belog-mobile-env.json"
+
+  android-debug:
+    name: Android APK / temporary debug key
+    needs: prepare
+    env:
+      PUBLIC_API_ORIGIN: ${{ needs.prepare.outputs.api_origin }}
+      PUBLIC_WEB_ORIGIN: ${{ needs.prepare.outputs.web_origin }}
+    if: ${{ github.event_name == 'workflow_dispatch' && needs.prepare.outputs.android_mode == 'debug' && (needs.prepare.outputs.target == 'both' || needs.prepare.outputs.target == 'android') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Set up Java 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up pinned Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          pub-cache: true
+      - name: Prepare public build configuration
+        run: python3 tool/mobile/prepare_config.py "$RUNNER_TEMP/belog-mobile-env.json"
+      - name: Build and verify debuggable APK (temporary key)
+        env:
+          BUILD_NAME: ${{ needs.prepare.outputs.build_name }}
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
+        run: bash tool/mobile/build_android_package.sh "$RUNNER_TEMP/belog-mobile-env.json" "$BUILD_NAME" "$BUILD_NUMBER" debug -
+      - name: Upload debug APK and checksums
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: android-debug-temporary-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/mobile/android/*
+          if-no-files-found: error
+          retention-days: 30
+      - name: Delete temporary public configuration
+        if: always()
+        run: rm -f "$RUNNER_TEMP/belog-mobile-env.json"

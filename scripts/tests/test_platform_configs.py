@@ -31,6 +31,25 @@ class DebugNetworkPolicyTests(unittest.TestCase):
             app = ET.parse(root / variant / 'AndroidManifest.xml').getroot().find('application')
             self.assertTrue(app is None or app.get(android_name) != 'true')
 
+    def test_permissions_match_actual_mobile_capabilities(self):
+        android_name = '{http://schemas.android.com/apk/res/android}name'
+        root = ET.parse(ROOT / 'android/app/src/main/AndroidManifest.xml').getroot()
+        permissions = {element.get(android_name) for element in root.findall('uses-permission')}
+        self.assertTrue({'android.permission.INTERNET', 'android.permission.ACCESS_NETWORK_STATE'} <= permissions)
+        # Gallery selection is delegated to the system picker. Do not silently
+        # grant access to unrelated sensors or the entire media library.
+        self.assertFalse(permissions & {'android.permission.CAMERA', 'android.permission.RECORD_AUDIO',
+                                       'android.permission.ACCESS_FINE_LOCATION', 'android.permission.READ_EXTERNAL_STORAGE',
+                                       'android.permission.READ_MEDIA_IMAGES'})
+        with (ROOT / 'ios/Runner/Info.plist').open('rb') as stream:
+            info = plistlib.load(stream)
+        for key in ('NSPhotoLibraryUsageDescription', 'NSCameraUsageDescription'):
+            self.assertTrue(info.get(key))
+        for locale in ('en', 'zh-Hans'):
+            strings = (ROOT / f'ios/Runner/{locale}.lproj/InfoPlist.strings').read_text()
+            self.assertIn('NSPhotoLibraryUsageDescription', strings)
+            self.assertIn('NSCameraUsageDescription', strings)
+
     def test_only_public_example_is_tracked_by_config_ignore_rules(self):
         ignore = (ROOT / '.gitignore').read_text()
         self.assertIn('/env.json', ignore)

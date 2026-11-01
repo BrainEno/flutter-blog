@@ -41,19 +41,24 @@ def validate_api_base_url(url: str) -> None:
         raise ValueError("API_BASE_URL must be a real HTTPS endpoint.") from None
 
 
+def validate_android_signing(environ) -> None:
+    """Shared fail-closed policy for tagged and manually requested releases."""
+    if environ.get("ANDROID_APPLICATION_ID_APPROVED") != "com.example.belog":
+        raise ValueError("Owner must explicitly approve the existing Android application ID before publishing.")
+    cert = environ.get("ANDROID_RELEASE_CERT_SHA256", "")
+    if not re.fullmatch(r"[0-9A-Fa-f]{64}", cert):
+        raise ValueError("ANDROID_RELEASE_CERT_SHA256 must be the expected 64-digit certificate SHA-256.")
+    if not all(environ.get(k, "").strip() for k in ("ANDROID_KEYSTORE_BASE64", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD")):
+        raise ValueError("All Android release signing secrets are required.")
+    if environ["ANDROID_KEY_ALIAS"].lower() == "androiddebugkey":
+        raise ValueError("The Android debug key cannot be used for production signing.")
+
+
 def main() -> int:
     try:
         tag = os.environ.get("GITHUB_REF_NAME", "")
         name, number = validate_version(tag, Path("pubspec.yaml").read_text())
-        if os.environ.get("ANDROID_APPLICATION_ID_APPROVED") != "com.example.belog":
-            raise ValueError("Owner must explicitly approve the existing Android application ID before publishing.")
-        cert = os.environ.get("ANDROID_RELEASE_CERT_SHA256", "")
-        if not re.fullmatch(r"[0-9A-Fa-f]{64}", cert):
-            raise ValueError("ANDROID_RELEASE_CERT_SHA256 must be the expected 64-digit certificate SHA-256.")
-        if not all(os.environ.get(k, "").strip() for k in ("ANDROID_KEYSTORE_BASE64", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD")):
-            raise ValueError("All Android release signing secrets are required.")
-        if os.environ["ANDROID_KEY_ALIAS"].lower() == "androiddebugkey":
-            raise ValueError("The Android debug key cannot be used for production signing.")
+        validate_android_signing(os.environ)
         url = os.environ.get("API_BASE_URL", "")
         validate_api_base_url(url)
         config = Path(os.environ["RUNNER_TEMP"]) / "belog-release-env.json"

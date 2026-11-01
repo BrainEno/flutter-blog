@@ -10,7 +10,8 @@
 | Flutter analyze | Pull request, push to `main`, manual | `flutter analyze --fatal-infos` | `flutter-analyze-log` artifact (14 days) |
 | Flutter tests | Pull request, push to `main`, manual | `flutter test --coverage` | `flutter-test-evidence` artifact containing test log and LCOV when produced |
 | Android release | Pull request, push to `main`, manual | Explicitly debug-signed QA build, APK permission check, and isolated release-signing guard tests | `android-release-evidence` artifact with build log and permission dump when available |
-| Manual mobile build validation | Manually dispatched | Android release build and unsigned iOS compile check; it does not publish releases | Platform-specific build artifacts/logs; iOS output is clearly named as unsigned |
+| Manual mobile build validation | PR, or manually dispatched | Android QA release build and optionally unsigned iOS compile; it does not publish releases | Platform-specific build artifacts/logs; iOS output is clearly named as unsigned |
+| Build personal mobile packages | Relevant PR changes, or manually dispatched on `main` | PR: disposable Android signing key and unreachable API fixture, plus device IPA packaging. Manual: configured public API, iOS AltStore input and/or Android owner-signed or explicitly debug APK | PR fixture logs only; manual artifacts include binaries, SHA-256 and provenance; see [mobile-packages.md](mobile-packages.md) |
 
 ## Reproducibility
 
@@ -18,7 +19,7 @@
 - Action references in workflows use full-length commit SHAs with human-readable version comments.
 - Pull-request workflows request `contents: read` only. They use `pull_request`, not `pull_request_target`, and have no production credentials.
 - CI creates a temporary, non-secret `env.json` fixture with a non-routable URL for compilation. This fixture is not a valid backend configuration and must not be used for online smoke-test claims.
-- Artifact retention is 14 days to retain enough evidence for the next agent iteration without unbounded storage growth.
+- Diagnostic artifacts are generally retained for 14 days; manually requested personal mobile packages are retained for 30 days, subject to repository/organization limits.
 
 ## CI helper scripts
 
@@ -38,9 +39,9 @@ Previous runs exposed failures tracked by Issues #4 and #5; consult the latest r
 
 Analyzer and Android build failures also include a bounded diagnostic excerpt in the check annotations; the full log remains available as an artifact. Failures are signals to investigate, not reasons to weaken the workflow. The separate jobs should still run so the project has independent diagnostics.
 
-CI APKs are debug-signed QA artifacts, not production releases. See [release policy](releasing.md) for the separate signed tag workflow.
+Standard CI APKs are debug-signed QA artifacts; the personal-package PR check instead uses a disposable signing key. Neither is an owner-signed release. See [release policy](releasing.md) for the separate signed tag workflow.
 
-No live Supabase login/list query is performed by these jobs: a PR must never use production secrets or production user data. Real-network smoke tests require a dedicated test backend and a separately reviewed, secret-safe design. Likewise, successful compilation alone is not proof of 16KB page-size compatibility, signed distribution, or on-device functionality.
+No live no-wave login/list query is performed by these jobs: a PR must never use production secrets or production user data. Real-network smoke tests require a dedicated test backend and a separately reviewed, secret-safe design. Android jobs explicitly check APK ZIP/native-library 16 KiB alignment; compilation alone would not establish it, nor does it prove installation or on-device functionality.
 
 ## Debugging a failure
 
