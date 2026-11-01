@@ -150,7 +150,12 @@ void main() {
           await tester.scrollUntilVisible(
             showIcon,
             140,
-            scrollable: find.byType(Scrollable),
+            scrollable: find
+                .descendant(
+                  of: find.byType(ListView),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
           );
           await tester.pumpAndSettle();
           await tester.tap(showIcon);
