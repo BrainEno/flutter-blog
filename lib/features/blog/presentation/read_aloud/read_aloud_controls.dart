@@ -84,14 +84,14 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                       onPressed: controller.stop,
                       icon: const Icon(Icons.stop),
                     ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                  Wrap(
+                    spacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(
                         l10n.readAloudSpeed,
                         style: NoWaveTypography.meta(context),
                       ),
-                      const SizedBox(width: 8),
                       Semantics(
                         label: l10n.readAloudSpeed,
                         child: DropdownButton<double>(
@@ -118,8 +118,8 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                     child: MergeSemantics(
                       child: InkWell(
                         onTap: () => controller.setFollow(!controller.follow),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                        child: Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Checkbox(
                               key: const ValueKey('read-aloud-follow'),

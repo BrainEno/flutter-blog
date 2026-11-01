@@ -65,43 +65,50 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
         final semantics = tester.ensureSemantics();
-        addTearDown(semantics.dispose);
-        final engine = FakeSpeechEngine();
-        final prefs = FakeReadAloudPreferences();
-        final reader = readerFor(engine, prefs);
-        await reader.initialize();
-        addTearDown(() async {
-          reader.dispose();
-          await flushSpeech();
-          await engine.close();
-        });
-        await tester.pumpWidget(
-          app(ReadAloudControls(controller: reader), locale: locale, scale: 2),
-        );
-        await tester.pumpAndSettle();
-        final l10n = lookupAppLocalizations(locale);
-        expect(find.text(l10n.readAloudListen), findsOneWidget);
-        expect(find.text(l10n.readAloudFollow), findsOneWidget);
-        expect(find.bySemanticsLabel(l10n.readAloudSeek), findsWidgets);
-        final slider = tester.widget<Slider>(
-          find.byKey(const ValueKey('read-aloud-seek')),
-        );
-        expect(slider.onChanged, isNull);
-        await tester.tap(find.byKey(const ValueKey('read-aloud-play')));
-        await tester.pumpAndSettle();
-        expect(find.text(l10n.readAloudPause), findsOneWidget);
-        expect(find.byTooltip(l10n.readAloudStop), findsOneWidget);
-        expect(engine.calls.single.text, 'Title');
-        await tester.tap(find.byKey(const ValueKey('read-aloud-play')));
-        await tester.pumpAndSettle();
-        expect(find.text(l10n.readAloudResume), findsOneWidget);
-        await tester.tap(find.byKey(const ValueKey('read-aloud-follow')));
-        await tester.pumpAndSettle();
-        expect(prefs.follow, isFalse);
-        await tester.tap(find.byTooltip(l10n.readAloudStop));
-        await tester.pumpAndSettle();
-        expect(find.text(l10n.readAloudStopped), findsOneWidget);
-        expect(tester.takeException(), isNull);
+        try {
+          final engine = FakeSpeechEngine();
+          final prefs = FakeReadAloudPreferences();
+          final reader = readerFor(engine, prefs);
+          await reader.initialize();
+          addTearDown(() async {
+            reader.dispose();
+            await flushSpeech();
+            await engine.close();
+          });
+          await tester.pumpWidget(
+            app(
+              ReadAloudControls(controller: reader),
+              locale: locale,
+              scale: 2,
+            ),
+          );
+          await tester.pumpAndSettle();
+          final l10n = lookupAppLocalizations(locale);
+          expect(find.text(l10n.readAloudListen), findsOneWidget);
+          expect(find.text(l10n.readAloudFollow), findsOneWidget);
+          expect(find.bySemanticsLabel(l10n.readAloudSeek), findsWidgets);
+          final slider = tester.widget<Slider>(
+            find.byKey(const ValueKey('read-aloud-seek')),
+          );
+          expect(slider.onChanged, isNull);
+          await tester.tap(find.byKey(const ValueKey('read-aloud-play')));
+          await tester.pumpAndSettle();
+          expect(find.text(l10n.readAloudPause), findsOneWidget);
+          expect(find.byTooltip(l10n.readAloudStop), findsOneWidget);
+          expect(engine.calls.single.text, 'Title');
+          await tester.tap(find.byKey(const ValueKey('read-aloud-play')));
+          await tester.pumpAndSettle();
+          expect(find.text(l10n.readAloudResume), findsOneWidget);
+          await tester.tap(find.byKey(const ValueKey('read-aloud-follow')));
+          await tester.pumpAndSettle();
+          expect(prefs.follow, isFalse);
+          await tester.tap(find.byTooltip(l10n.readAloudStop));
+          await tester.pumpAndSettle();
+          expect(find.text(l10n.readAloudStopped), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        } finally {
+          semantics.dispose();
+        }
       },
     );
   }
