@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -9,6 +11,11 @@ import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/storage/reading_history_store.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
+import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controller.dart';
+import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controls.dart';
+import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.dart';
+import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_viewer/blog_viewer_cubit.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
@@ -17,7 +24,9 @@ import 'package:belog/features/blog/presentation/widgets/comments_section.dart';
 import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
 import 'package:belog/features/blog/presentation/widgets/related_articles_section.dart';
 import 'package:belog/router/shell_branch_location.dart';
+import 'package:belog/router/read_aloud_route_observers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
@@ -37,11 +46,20 @@ class BlogViewerPage extends StatefulWidget {
 
   /// Related-articles rider loader (issue #19); same injection pattern.
   final GetRelatedArticles? getRelatedArticles;
+
+  /// Injectable device speech and navigation boundaries for reader tests.
+  final SpeechCoordinator? speechCoordinator;
+  final ReadAloudPreferences? readAloudPreferences;
+  final RouteObserver<PageRoute<dynamic>>? readAloudRouteObserver;
+
   const BlogViewerPage({
     super.key,
     required this.blogId,
     this.historyStore,
     this.getRelatedArticles,
+    this.speechCoordinator,
+    this.readAloudPreferences,
+    this.readAloudRouteObserver,
   });
 
   @override
@@ -120,6 +138,17 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
             getRelatedArticles:
                 widget.getRelatedArticles ??
                 GetIt.instance<GetRelatedArticles>(),
+            speechCoordinator:
+                widget.speechCoordinator ??
+                (GetIt.instance.isRegistered<SpeechCoordinator>()
+                    ? GetIt.instance<SpeechCoordinator>()
+                    : null),
+            readAloudPreferences:
+                widget.readAloudPreferences ??
+                (GetIt.instance.isRegistered<ReadAloudPreferences>()
+                    ? GetIt.instance<ReadAloudPreferences>()
+                    : null),
+            readAloudRouteObserver: widget.readAloudRouteObserver,
           );
         }
         if (state is BlogViewerFailure) {
@@ -147,16 +176,192 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
   }
 }
 
-class _ViewerScaffold extends StatelessWidget {
+class _ViewerScaffold extends StatefulWidget {
   const _ViewerScaffold({
     required this.blog,
     required this.onRequestLogin,
     required this.getRelatedArticles,
+    required this.speechCoordinator,
+    required this.readAloudPreferences,
+    required this.readAloudRouteObserver,
   });
 
   final Blog blog;
   final VoidCallback onRequestLogin;
   final GetRelatedArticles getRelatedArticles;
+  final SpeechCoordinator? speechCoordinator;
+  final ReadAloudPreferences? readAloudPreferences;
+  final RouteObserver<PageRoute<dynamic>>? readAloudRouteObserver;
+
+  @override
+  State<_ViewerScaffold> createState() => _ViewerScaffoldState();
+}
+
+class _ViewerScaffoldState extends State<_ViewerScaffold>
+    with WidgetsBindingObserver, RouteAware {
+  final ScrollController _scrollController = ScrollController();
+  ReadAloudDocument? _document;
+  ReadAloudController? _reader;
+  List<GlobalKey> _blockKeys = const [];
+  int _scrollRequest = 0;
+  bool _prepared = false;
+
+  Blog get blog => widget.blog;
+  VoidCallback get onRequestLogin => widget.onRequestLogin;
+  GetRelatedArticles get getRelatedArticles => widget.getRelatedArticles;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_prepared) _prepareReader();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<dynamic>) {
+      final observers = widget.readAloudRouteObserver == null
+          ? readAloudBranchObservers
+          : [widget.readAloudRouteObserver!];
+      for (final observer in observers) {
+        observer.subscribe(this, route);
+      }
+    }
+  }
+
+  void _prepareReader() {
+    _prepared = true;
+    final coordinator = widget.speechCoordinator;
+    final preferences = widget.readAloudPreferences;
+    if (coordinator == null || preferences == null) return;
+    final document = ReadAloudDocument.parse(blog.title, blog.content);
+    _document = document;
+    _blockKeys = List.generate(document.blocks.length, (_) => GlobalKey());
+    final reader = ReadAloudController(
+      document: document,
+      coordinator: coordinator,
+      preferences: preferences,
+      fallbackLanguage: Localizations.localeOf(context).languageCode,
+      onFollowScroll: _followScroll,
+    );
+    _reader = reader;
+    unawaited(reader.initialize());
+  }
+
+  @override
+  void didUpdateWidget(covariant _ViewerScaffold oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.blog.id != blog.id ||
+        oldWidget.blog.title != blog.title ||
+        oldWidget.blog.content != blog.content ||
+        oldWidget.speechCoordinator != widget.speechCoordinator ||
+        oldWidget.readAloudPreferences != widget.readAloudPreferences) {
+      _reader?.dispose();
+      _reader = null;
+      _document = null;
+      _blockKeys = const [];
+      _scrollRequest++;
+      _prepareReader();
+    }
+  }
+
+  @override
+  void didPushNext() {
+    if (_reader?.phase != ReadAloudPhase.idle) _reader?.stop();
+  }
+
+  @override
+  void didPop() {
+    if (_reader?.phase != ReadAloudPhase.idle) _reader?.stop();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed &&
+        _reader?.phase != ReadAloudPhase.idle) {
+      _reader?.stop();
+    }
+  }
+
+  /// Follow the actual text position even inside a long paragraph. The
+  /// document maps spoken offsets to the RenderParagraph's UTF-16 positions,
+  /// accounting for inline-code/image WidgetSpans. Motion is disabled when
+  /// the user's platform requests reduced animations.
+  void _followScroll(int blockIndex, int spokenOffset) {
+    final request = ++_scrollRequest;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          request != _scrollRequest ||
+          _reader?.follow != true ||
+          _reader?.phase == ReadAloudPhase.idle ||
+          !_scrollController.hasClients ||
+          blockIndex >= _blockKeys.length)
+        return;
+      final targetContext = _blockKeys[blockIndex].currentContext;
+      if (targetContext == null) return;
+      final object = targetContext.findRenderObject();
+      if (object == null) return;
+      RenderParagraph? paragraph;
+      void findParagraph(RenderObject child) {
+        if (paragraph != null) return;
+        if (child is RenderParagraph) {
+          paragraph = child;
+        } else {
+          child.visitChildren(findParagraph);
+        }
+      }
+
+      findParagraph(object);
+      final render = paragraph;
+      final scrollable = Scrollable.maybeOf(targetContext);
+      final viewport = scrollable?.context.findRenderObject();
+      if (render == null || viewport is! RenderBox || !viewport.hasSize) return;
+      final plain = render.text.toPlainText(includeSemanticsLabels: false);
+      final visualOffset = _document!.blocks[blockIndex]
+          .visualOffset(spokenOffset)
+          .clamp(0, plain.length);
+      final caret = render.getOffsetForCaret(
+        TextPosition(offset: visualOffset),
+        Rect.zero,
+      );
+      final screenY = render.localToGlobal(caret).dy;
+      final viewportY = viewport.localToGlobal(Offset.zero).dy;
+      final relativeY = screenY - viewportY;
+      final height = viewport.size.height;
+      if (relativeY >= 80 && relativeY <= height - 72) return;
+      final position = _scrollController.position;
+      final destination = (position.pixels + relativeY - height * .38).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      );
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _scrollController.jumpTo(destination);
+      } else {
+        unawaited(
+          _scrollController.animateTo(
+            destination,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+          ),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollRequest++;
+    for (final observer in readAloudBranchObservers) {
+      observer.unsubscribe(this);
+    }
+    widget.readAloudRouteObserver?.unsubscribe(this);
+    WidgetsBinding.instance.removeObserver(this);
+    _reader?.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -215,6 +420,7 @@ class _ViewerScaffold extends StatelessWidget {
         ],
       ),
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           SliverToBoxAdapter(
             child: Align(
@@ -234,10 +440,17 @@ class _ViewerScaffold extends StatelessWidget {
                       ArticleReaderHeader(
                         blog: blog,
                         onAuthorTap: () => openAuthor(blog.posterId),
+                        titleHighlight: _reader?.highlights.first,
+                        titleKey: _blockKeys.isEmpty ? null : _blockKeys.first,
                       ),
                       const SizedBox(height: 32),
+                      if (_reader != null)
+                        ReadAloudControls(controller: _reader!),
                       MarkdownBody(
                         markdown: blog.content,
+                        readAloudDocument: _document,
+                        readAloudController: _reader,
+                        readAloudBlockKeys: _blockKeys,
                         bodyStyle: NoWaveTypography.title(
                           context,
                           size: 18,

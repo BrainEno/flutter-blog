@@ -1,4 +1,9 @@
+import 'dart:async';
+
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
+import 'package:belog/router/read_aloud_route_observers.dart';
+import 'package:get_it/get_it.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -13,7 +18,52 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with RouteAware {
+  late int _lastTab;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastTab = widget.shell.currentIndex;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<dynamic>) {
+      rootReadAloudRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_lastTab != widget.shell.currentIndex) {
+      _lastTab = widget.shell.currentIndex;
+      _stopAfterNavigation();
+    }
+  }
+
+  @override
+  void didPushNext() => _stopAfterNavigation();
+
+  void _stopAfterNavigation() {
+    if (!GetIt.instance.isRegistered<SpeechCoordinator>()) return;
+    final coordinator = GetIt.instance<SpeechCoordinator>();
+    final owner = coordinator.owner;
+    if (owner == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(coordinator.stopIfCurrent(owner).catchError((Object _) {}));
+    });
+  }
+
+  @override
+  void dispose() {
+    rootReadAloudRouteObserver.unsubscribe(this);
+    super.dispose();
+  }
+
   static const _icons = [
     Icons.home_outlined,
     Icons.search_outlined,
@@ -58,6 +108,7 @@ class _HomeShellState extends State<HomeShell> {
           onDestinationSelected: (index) {
             // Re-tapping the active destination preserves its existing stack.
             if (index != widget.shell.currentIndex) {
+              _stopAfterNavigation();
               widget.shell.goBranch(index);
             }
           },
