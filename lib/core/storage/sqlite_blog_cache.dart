@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:belog/core/storage/app_database.dart';
+import 'package:belog/features/blog/data/datasources/article_document_codec.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:drift/drift.dart';
@@ -60,6 +61,8 @@ class SqliteBlogCache implements BlogLocalDataSource {
     return BlogModel(
       id: data['id']! as String,
       articleId: data['article_id'] as String? ?? '',
+      documentJson: data['document_json'] as String?,
+      document: decodeCachedArticleDocument(data['document_json'] as String?),
       title: data['title']! as String,
       content: data['content']! as String,
       posterId: data['poster_id']! as String,

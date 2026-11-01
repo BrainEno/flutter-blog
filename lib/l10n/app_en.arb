@@ -403,6 +403,8 @@
   "errorServerParse": "The server sent data the app could not parse",
   "errorArticleIdUpdate": "This article lost its server id — reopen it and try editing again",
   "errorArticleStructuredEditUnsupported": "This editor cannot safely preserve the article's content or summary. Please edit it on the no-wave website.",
+  "articleUnsupportedDocument": "This article's format is unsupported, damaged, or its older cache is missing structure. The text below may be incomplete; read the original on the no-wave website.",
+  "articleImageUnavailable": "Image unavailable",
   "errorArticleIdDelete": "This article has no server id and cannot be deleted",
   "errorArticleDeletedCacheFailed": "The article was deleted on the server, but its local cache could not be cleared. An old copy may appear offline.",
   "errorArticleDeleteFailed": "The article was not deleted. Please try again.",

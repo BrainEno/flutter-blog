@@ -158,7 +158,7 @@ List<Map<String, dynamic>> blogToContentBlocks({
 ExtractedBlogContent extractBlogContent(List<Map<String, dynamic>> blocks) {
   final coverUrl = blocks
       .where((block) => block['type'] == 'image')
-      .map((block) => block['src'] as String? ?? '')
+      .map((block) => block['src'] is String ? block['src'] as String : '')
       .firstWhere((src) => src.isNotEmpty, orElse: () => '');
 
   final parts = <String>[];
@@ -167,19 +167,23 @@ ExtractedBlogContent extractBlogContent(List<Map<String, dynamic>> blocks) {
       case 'paragraph':
       case 'heading':
       case 'quote':
-        final text = (block['text'] as String?)?.trim() ?? '';
+        final rawText = block['text'];
+        final text = rawText is String ? rawText.trim() : '';
         if (text.isNotEmpty) parts.add(text);
       case 'list':
-        final items = (block['items'] as List? ?? const [])
-            .map((item) => item.toString())
+        final rawItems = block['items'];
+        final items = (rawItems is List ? rawItems : const [])
+            .whereType<String>()
             .where((item) => item.trim().isNotEmpty);
         if (items.isNotEmpty) parts.add(items.join('\n'));
       case 'code':
-        final code = (block['code'] as String?)?.trim() ?? '';
+        final rawCode = block['code'];
+        final code = rawCode is String ? rawCode.trim() : '';
         if (code.isNotEmpty) parts.add(code);
       case 'image':
         // The first image is the cover; later ones degrade to captions.
-        final caption = (block['caption'] as String?)?.trim() ?? '';
+        final rawCaption = block['caption'];
+        final caption = rawCaption is String ? rawCaption.trim() : '';
         if (caption.isNotEmpty) parts.add(caption);
       default:
         break;

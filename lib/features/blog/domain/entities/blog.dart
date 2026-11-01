@@ -1,3 +1,5 @@
+import 'package:belog/features/blog/domain/entities/article_document.dart';
+
 /// Published blog article.
 ///
 /// Pure Dart domain entity: it must stay free of persistence and UI framework
@@ -13,6 +15,11 @@ class Blog {
 
   final String title;
   final String content;
+
+  /// Structured server body for read-only rendering, or null for the
+  /// app's legacy Markdown format. An unsupported document is explicit.
+  final ArticleDocument? document;
+
   final String posterId;
   final String imageUrl;
   final List<String> tags;
@@ -30,6 +37,7 @@ class Blog {
     required this.imageUrl,
     required this.tags,
     required this.updatedAt,
+    this.document,
     this.posterName,
     this.posterAvatar,
   });
