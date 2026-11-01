@@ -5,6 +5,7 @@ import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/utils/retry_on_connection_closed.dart';
+import 'package:belog/features/blog/data/datasources/latest_feed_cursor.dart';
 import 'package:belog/features/blog/data/datasources/nowave_article_codec.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/data/models/deleted_blog_model.dart';
@@ -33,6 +34,10 @@ abstract interface class BlogRemoteDataSource {
   Future<String> uploadBlogImage({required File image, String? mimeType});
 
   Future<List<BlogModel>> getAllBlogs({required int page});
+
+  /// Continues the latest online feed using a local, overlap-aware token.
+  /// A rejected/ignored cursor or an unsafe dense boundary is explicit.
+  Future<LatestFeedSlice> getAllBlogsAfter({required String cursor});
 
   /// Fetches a server-ranked or authenticated following page.
   Future<List<BlogModel>> getOnlineFeed({
@@ -156,6 +161,40 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       return _articleList(data);
     } catch (e) {
       throw mapToServerException(e);
+    }
+  }
+
+  @override
+  Future<LatestFeedSlice> getAllBlogsAfter({required String cursor}) async {
+    final continuation = LatestFeedContinuation.tryDecode(cursor);
+    if (continuation == null) throw const LatestFeedCursorUnavailable();
+    try {
+      final data = await retryOnConnectionClosed(
+        () => client.getJson(
+          '/articles',
+          query: {
+            'limit': '${continuation.requestLimit}',
+            'cursor': continuation.apiCursor,
+            'locale': 'zh-CN',
+          },
+        ),
+      );
+      if (data is! List || data.any((row) => row is! Map<String, dynamic>)) {
+        throw const LatestFeedCursorUnavailable();
+      }
+      return continuation.advance(_articleList(data));
+    } on LatestFeedCursorUnavailable {
+      rethrow;
+    } on LatestFeedCursorTooDense {
+      rethrow;
+    } on NowaveApiException catch (error) {
+      if (error.statusCode == HttpStatus.badRequest &&
+          error.code == 'BAD_USER_INPUT') {
+        throw const LatestFeedCursorUnavailable();
+      }
+      throw mapToServerException(error);
+    } catch (error) {
+      throw mapToServerException(error);
     }
   }
 

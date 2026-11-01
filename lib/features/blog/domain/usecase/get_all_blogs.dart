@@ -11,9 +11,16 @@ class GetAllBlogs implements UseCase<BlogFeedPage, GetAllBlogsParams> {
   @override
   Future<Either<Failure, BlogFeedPage>> call(GetAllBlogsParams params) {
     if (params.kind == BlogFeedKind.latest) {
+      if (params.cursor == null) {
+        return blogRepository.getAllBlogs(
+          page: params.page,
+          source: params.source,
+        );
+      }
       return blogRepository.getAllBlogs(
         page: params.page,
         source: params.source,
+        cursor: params.cursor,
       );
     }
     return blogRepository.getOnlineFeed(
@@ -33,6 +40,9 @@ class GetAllBlogsParams {
   final BlogFeedSource? source;
   final BlogFeedKind kind;
 
+  /// Local continuation from the prior latest network page, if available.
+  final String? cursor;
+
   /// Local identity fence for the following feed, never an authorization
   /// parameter sent to the backend.
   final String? expectedViewerId;
@@ -41,6 +51,7 @@ class GetAllBlogsParams {
     required this.page,
     this.source,
     this.kind = BlogFeedKind.latest,
+    this.cursor,
     this.expectedViewerId,
   });
 }

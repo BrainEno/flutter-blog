@@ -95,6 +95,11 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
             source: result.source,
             page: 1,
             hasReachedMax: result.blogs.length < kBlogPageSize,
+            nextCursor:
+                kind == BlogFeedKind.latest &&
+                    result.source == BlogFeedSource.network
+                ? result.nextCursor
+                : null,
           ),
         );
       },
@@ -147,6 +152,11 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
         source: current.source,
         kind: current.kind,
         expectedViewerId: current.viewerId,
+        cursor:
+            current.kind == BlogFeedKind.latest &&
+                current.source == BlogFeedSource.network
+            ? current.nextCursor
+            : null,
       ),
     );
     if (generation != _generation) return;
@@ -191,6 +201,11 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
             source: latest.source,
             page: nextPage,
             hasReachedMax: blogs.length < kBlogPageSize,
+            nextCursor:
+                latest.kind == BlogFeedKind.latest &&
+                    result.source == BlogFeedSource.network
+                ? result.nextCursor
+                : null,
           ),
         );
       },

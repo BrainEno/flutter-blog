@@ -26,6 +26,8 @@
   "feedCachedEmpty": "本机暂无缓存文章，请联网后重试。",
   "feedCachedNoMore": "已显示全部本机缓存，联网后可刷新查看新内容。",
   "feedSourceChanged": "文章来源已变化，请刷新后重试。",
+  "feedPaginationChanged": "文章分页方式已改变，请刷新后重试。",
+  "feedPaginationDense": "同一时刻的文章过多，暂时无法安全继续加载；请刷新后重试。",
   "feedTabLatest": "最新",
   "feedTabFeatured": "精选",
   "feedTabPopular": "最多收藏",
