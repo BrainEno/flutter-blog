@@ -60,16 +60,20 @@ import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_b
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/data/datasources/author_remote_data_source.dart';
 import 'package:belog/features/user/data/datasources/author_relationship_remote_data_source.dart';
+import 'package:belog/features/user/data/datasources/author_search_remote_data_source.dart';
 import 'package:belog/features/user/data/datasources/user_remote_data_source.dart';
 import 'package:belog/features/user/data/repositories/author_repository_impl.dart';
 import 'package:belog/features/user/data/repositories/author_relationship_repository_impl.dart';
+import 'package:belog/features/user/data/repositories/author_search_repository_impl.dart';
 import 'package:belog/features/user/data/repositories/user_repository_impl.dart';
 import 'package:belog/features/user/domain/repositories/author_repository.dart';
 import 'package:belog/features/user/domain/repositories/author_relationship_repository.dart';
+import 'package:belog/features/user/domain/repositories/author_search_repository.dart';
 import 'package:belog/features/user/domain/repositories/user_repository.dart';
 import 'package:belog/features/user/data/user_data_export.dart';
 import 'package:belog/features/user/domain/usecases/author.dart';
 import 'package:belog/features/user/domain/usecases/get_author_relationships.dart';
+import 'package:belog/features/user/domain/usecases/search_authors.dart';
 import 'package:belog/features/user/domain/usecases/edit_user_usecase.dart';
 import 'package:belog/features/user/domain/usecases/export_user_data.dart';
 import 'package:flutter/foundation.dart';
@@ -326,6 +330,10 @@ void _initAuthors(NowaveApiClient apiClient, Uri apiBaseUrl) {
     ..registerLazySingleton<AuthorRelationshipRemoteDataSource>(
       () => AuthorRelationshipRemoteDataSourceImpl(baseUrl: apiBaseUrl),
     )
+    // Search also uses an anonymous client and retains no result cache.
+    ..registerLazySingleton<AuthorSearchRemoteDataSource>(
+      () => AuthorSearchRemoteDataSourceImpl(baseUrl: apiBaseUrl),
+    )
     // Repository
     ..registerFactory<AuthorRepository>(
       () => AuthorRepositoryImpl(
@@ -343,6 +351,15 @@ void _initAuthors(NowaveApiClient apiClient, Uri apiBaseUrl) {
       () => GetAuthorRelationships(
         serviceLocator<AuthorRelationshipRepository>(),
       ),
+    )
+    ..registerFactory<AuthorSearchRepository>(
+      () => AuthorSearchRepositoryImpl(
+        remote: serviceLocator<AuthorSearchRemoteDataSource>(),
+        connectionChecker: serviceLocator<ConnectionChecker>(),
+      ),
+    )
+    ..registerFactory(
+      () => SearchAuthors(serviceLocator<AuthorSearchRepository>()),
     )
     // Usecases. AuthorCubit is page-scoped and built by the author route
     // with the profile's user id, like BlogViewerCubit.

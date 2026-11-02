@@ -151,6 +151,12 @@
   "draftKeepCurrent": "Keep current content",
   "draftDiscardAction": "Discard draft",
   "draftRestoreAction": "Restore draft",
+  "authorSearchTitle": "Search authors",
+  "authorSearchHint": "Display name or user ID",
+  "authorSearchInitial": "Type a name or user ID to find authors",
+  "authorSearchNoResults": "No matching authors",
+  "authorSearchTooLong": "Search is too long; shorten it and try again",
+  "authorSearchLimitNotice": "Showing up to 100 authors; there may be more. Refine your search.",
   "searchHint": "Search titles…",
   "searchFailed": "Search failed: {error}",
   "@searchFailed": {

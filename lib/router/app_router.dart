@@ -28,6 +28,9 @@ import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/domain/usecases/author.dart';
 import 'package:belog/features/user/domain/entities/author_relationship.dart';
 import 'package:belog/features/user/domain/usecases/get_author_relationships.dart';
+import 'package:belog/features/user/domain/usecases/search_authors.dart';
+import 'package:belog/features/user/presentation/bloc/author_search/author_search_cubit.dart';
+import 'package:belog/features/user/presentation/pages/author_search_page.dart';
 import 'package:belog/features/user/presentation/bloc/author/author_cubit.dart';
 import 'package:belog/features/user/presentation/bloc/author_relationships/author_relationships_cubit.dart';
 import 'package:belog/features/user/presentation/pages/about_page.dart';
@@ -168,7 +171,19 @@ GoRouter createAppRouter({
                   create: (_) => serviceLocator<BlogSearchBloc>(),
                   child: const SearchBlogPage(),
                 ),
-                routes: [viewerRoute(), authorRoute()],
+                routes: [
+                  viewerRoute(),
+                  authorRoute(),
+                  GoRoute(
+                    path: 'authors',
+                    builder: (context, state) => BlocProvider(
+                      create: (_) => AuthorSearchCubit(
+                        searchAuthors: serviceLocator<SearchAuthors>(),
+                      ),
+                      child: const AuthorSearchPage(),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

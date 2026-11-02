@@ -112,7 +112,15 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                       title: l10n.tabSearch,
                       companion: l10n.searchHeadingCompanion,
                     ),
-                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () => context.push('/search/authors'),
+                        icon: const Icon(Icons.person_search_outlined),
+                        label: Text(l10n.authorSearchTitle),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     TextField(
                       controller: _searchController,
                       maxLength: kMaxSearchQueryLength,
