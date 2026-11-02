@@ -386,7 +386,6 @@ class NowaveApiClient {
     Duration? timeout,
     Map<String, String>? extraHeaders,
     NowaveSessionFence? sessionFence,
-    bool followRedirects = true,
   }) async {
     if (sessionFence != null) {
       if (!authenticate) {
