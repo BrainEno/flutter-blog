@@ -247,7 +247,11 @@ void main() {
       await GetIt.instance.reset();
     });
     await harness.pump(tester);
-    await tester.scrollUntilVisible(find.text(l10n.exportMyData), 120);
+    // The export row is the second to last of eight menu rows; on the default
+    // test surface it sits below the fold, so it has to be scrolled fully into
+    // view before the tap can reach it.
+    await tester.ensureVisible(find.text(l10n.exportMyData));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(l10n.exportMyData));
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
