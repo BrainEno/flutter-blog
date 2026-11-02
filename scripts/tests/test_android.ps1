@@ -14,11 +14,11 @@ $engine = (Get-Command powershell.exe).Source
 function Assert-True([bool]$Condition, [string]$Message) {
     if (!$Condition) { throw $Message }
 }
-function Run-Subject([string[]]$ExtraArguments) {
+function Run-Subject([string[]]$ExtraArguments, [string]$ConfigPath = $config) {
     $oldPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
-        $output = (& $engine -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'scripts/run_android.ps1') -Config $config -BootTimeoutSeconds 4 @ExtraArguments 2>&1 | Out-String)
+        $output = (& $engine -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'scripts/run_android.ps1') -Config $ConfigPath -BootTimeoutSeconds 4 @ExtraArguments 2>&1 | Out-String)
         return @{ ExitCode = $LASTEXITCODE; Output = $output }
     } finally { $ErrorActionPreference = $oldPreference }
 }
@@ -86,6 +86,8 @@ public static class FakeEmulator {
     $env:MOCK_FAIL_PUB = ''
     $env:MOCK_FLUTTER_VERSION = '3.47.8'
     $env:MOCK_DART_VERSION = '3.10.4'
+    # Never leave a first-run prompt waiting in a non-interactive test process.
+    $env:BELOG_NO_PROMPT = '1'
     '{"API_BASE_URL":"http://10.0.2.2:8787","WEB_BASE_URL":""}' | Set-Content -LiteralPath $config -Encoding Ascii
 
     $reuse = Run-Subject @('-Avd', 'Demo')
@@ -159,6 +161,41 @@ public static class FakeEmulator {
     $env:BELOG_STRICT_FLUTTER_VERSION = ''
     $env:MOCK_FLUTTER_VERSION = '3.47.8'
 
+    # First run: a missing config is created from -ApiBaseUrl instead of failing.
+    $fresh = Join-Path $temp 'first run env.json'
+    Remove-Item -LiteralPath $log -Force -ErrorAction SilentlyContinue
+    $created = Run-Subject @('-ApiBaseUrl', 'http://10.0.2.2:3000') -ConfigPath $fresh
+    Assert-True ($created.ExitCode -eq 0) "Missing config was not created: $($created.Output)"
+    Assert-True (Test-Path -LiteralPath $fresh) 'The first-run config file was not written.'
+    $bytes = [IO.File]::ReadAllBytes($fresh)
+    Assert-True ($bytes[0] -eq 0x7B) 'The generated config must not start with a UTF-8 BOM.'
+    $written = Get-Content -LiteralPath $fresh -Raw | ConvertFrom-Json
+    Assert-True ($written.API_BASE_URL -eq 'http://10.0.2.2:3000') 'The requested API origin was not written.'
+    Assert-True ($written.WEB_BASE_URL -eq '') 'WEB_BASE_URL should default to an empty string.'
+    $logText = Get-Content -LiteralPath $log -Raw
+    Assert-True ($logText -match '--dart-define-from-file=' -and $logText -match [regex]::Escape('first run env.json')) 'The generated config was not passed to flutter run.'
+
+    # Without an origin and without a console, the hint names both ways out.
+    $missing = Join-Path $temp 'still missing.json'
+    $hint = Run-Subject @() -ConfigPath $missing
+    Assert-True ($hint.ExitCode -ne 0) 'A missing config without an origin should fail.'
+    Assert-True ($hint.Output -match '-ApiBaseUrl' -and $hint.Output -match 'env\.example\.json') 'The hint did not explain how to create the config.'
+    Assert-True (!(Test-Path -LiteralPath $missing)) 'The script wrote a config without an origin.'
+
+    # A credential-bearing origin is rejected before anything reaches the disk.
+    $secretPath = Join-Path $temp 'secret env.json'
+    $secret = Run-Subject @('-ApiBaseUrl', 'https://user:badsecret@api.real-site.dev') -ConfigPath $secretPath
+    Assert-True ($secret.ExitCode -ne 0) 'A credential-bearing origin was accepted for creation.'
+    Assert-True (!$secret.Output.Contains('badsecret')) 'The bootstrap error echoed a credential.'
+    Assert-True (!(Test-Path -LiteralPath $secretPath)) 'An invalid origin was written to disk.'
+
+    # An existing config is never silently replaced by the flag.
+    $existing = Join-Path $temp 'existing env.json'
+    '{"API_BASE_URL":"https://api.real-site.dev","WEB_BASE_URL":""}' | Set-Content -LiteralPath $existing -Encoding Ascii
+    $refused = Run-Subject @('-ApiBaseUrl', 'http://10.0.2.2:3000') -ConfigPath $existing
+    Assert-True ($refused.ExitCode -ne 0 -and $refused.Output -match 'already exists') 'The flag overwrote or ignored an existing config.'
+    Assert-True ((Get-Content -LiteralPath $existing -Raw) -match 'api\.real-site\.dev') 'The existing config was modified.'
+
     Write-Host 'Windows PowerShell mock scenarios passed (no Android SDK/device exercised).'
     # Negative test cases intentionally leave a child process exit code of 1.
     # Do not leak it into the caller/Actions shell after all assertions pass.
@@ -170,7 +207,7 @@ public static class FakeEmulator {
         $proc = Get-Process -Id $id -ErrorAction SilentlyContinue
         if ($proc -and $proc.Path -eq $emulator) { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue }
     }
-    foreach ($name in @('BELOG_TEST_LOG', 'BELOG_TEST_STARTED', 'BELOG_TEST_PID', 'MOCK_NO_EMULATOR', 'MOCK_NEVER_BOOT', 'MOCK_FAIL_PUB', 'MOCK_NATIVE_STDERR', 'MOCK_FAIL_ADB', 'MOCK_FAIL_AVD_LIST', 'MOCK_FLUTTER_VERSION', 'MOCK_DART_VERSION', 'BELOG_STRICT_FLUTTER_VERSION')) {
+    foreach ($name in @('BELOG_TEST_LOG', 'BELOG_TEST_STARTED', 'BELOG_TEST_PID', 'MOCK_NO_EMULATOR', 'MOCK_NEVER_BOOT', 'MOCK_FAIL_PUB', 'MOCK_NATIVE_STDERR', 'MOCK_FAIL_ADB', 'MOCK_FAIL_AVD_LIST', 'MOCK_FLUTTER_VERSION', 'MOCK_DART_VERSION', 'BELOG_STRICT_FLUTTER_VERSION', 'BELOG_NO_PROMPT')) {
         Remove-Item -LiteralPath ('Env:' + $name) -ErrorAction SilentlyContinue
     }
     if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Recurse -Force }

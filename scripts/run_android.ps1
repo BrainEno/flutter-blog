@@ -2,6 +2,9 @@
 param(
     [string]$Avd = '',
     [string]$Config = 'env.json',
+    # Creates the config on first run instead of asking for it interactively.
+    [string]$ApiBaseUrl = '',
+    [string]$WebBaseUrl = '',
     [ValidateRange(1, 1800)][int]$BootTimeoutSeconds = 300,
     [switch]$StrictFlutterVersion
 )
@@ -92,6 +95,30 @@ function Validate-Origin($Value, [string]$Name) {
     return $uri
 }
 
+# Writes the public, Git-ignored dart-define file. `-Encoding UTF8` would add a
+# BOM under Windows PowerShell 5.1, which Flutter's JSON parser rejects.
+function Write-ConfigFile([string]$Path, [string]$ApiUrl, [string]$WebUrl) {
+    $directory = [IO.Path]::GetDirectoryName($Path)
+    if ($directory -and !(Test-Path -LiteralPath $directory -PathType Container)) {
+        throw "Cannot create $([IO.Path]::GetFileName($Path)): its directory does not exist."
+    }
+    $payload = [ordered]@{ API_BASE_URL = $ApiUrl; WEB_BASE_URL = $WebUrl }
+    $json = ($payload | ConvertTo-Json) + [Environment]::NewLine
+    $encoding = New-Object -TypeName System.Text.UTF8Encoding -ArgumentList $false
+    [IO.File]::WriteAllText($Path, $json, $encoding)
+}
+
+function Get-ConfigBootstrapHint([string]$Path) {
+    $name = [IO.Path]::GetFileName($Path)
+    $launcher = [IO.Path]::GetFileName($PSCommandPath)
+    return @(
+        "Config not found: $name"
+        "Create it in one step (the value must be the API origin this emulator can reach):"
+        "  .\scripts\$launcher -ApiBaseUrl http://10.0.2.2:PORT"
+        "Or copy env.example.json to $name and set API_BASE_URL yourself (use http://10.0.2.2:PORT for a host-local API)."
+    ) -join [Environment]::NewLine
+}
+
 function Get-Emulators {
     $lines = Invoke-QuietNative $script:Adb @('devices')
     if ($script:LastNativeExit -ne 0) { throw 'adb devices failed. Check the Android SDK installation.' }
@@ -155,8 +182,42 @@ try {
     }
 
     if (![IO.Path]::IsPathRooted($Config)) { $Config = Join-Path $ProjectRoot $Config }
-    if (!(Test-Path -LiteralPath $Config -PathType Leaf)) {
-        throw 'Config not found. Run `copy env.example.json env.json` in the repository root, then set API_BASE_URL to an origin the emulator can reach (use http://10.0.2.2:PORT for a host-local API).'
+    if ($ApiBaseUrl) { $ApiBaseUrl = $ApiBaseUrl.Trim() }
+    if ($WebBaseUrl) { $WebBaseUrl = $WebBaseUrl.Trim() }
+    $configExists = Test-Path -LiteralPath $Config -PathType Leaf
+    if ($configExists -and ($ApiBaseUrl -or $WebBaseUrl)) {
+        throw "-ApiBaseUrl/-WebBaseUrl only create a missing config; $([IO.Path]::GetFileName($Config)) already exists. Edit it, or pass -Config to use another file."
+    }
+    if (!$configExists) {
+        # First run: ask once instead of sending the user to copy a file by hand.
+        $origin = $ApiBaseUrl
+        # Ask only in an attended console: CI, piped input and
+        # BELOG_NO_PROMPT=1 get the copy-paste hint instead of a hanging prompt.
+        $inputRedirected = $true
+        try { $inputRedirected = [Console]::IsInputRedirected } catch { }
+        $interactive = !$env:CI -and !$env:BELOG_NO_PROMPT -and !$inputRedirected
+        if (!$origin -and $interactive) {
+            Write-Host "No $([IO.Path]::GetFileName($Config)) yet: the app needs the API origin the emulator can reach."
+            Write-Host 'Example: http://10.0.2.2:3000 for an API running on this machine.'
+            # Three tries, so a typo does not force a restart of the script.
+            for ($attempt = 1; $attempt -le 3 -and !$origin; $attempt++) {
+                $answer = Read-Host 'API_BASE_URL (empty cancels)'
+                if (!$answer) { break }
+                $answer = $answer.Trim()
+                try { $null = Validate-Origin $answer 'API_BASE_URL'; $origin = $answer }
+                catch { Write-Host 'Not a plain HTTP(S) origin (no credentials, path, query or fragment). Example: http://10.0.2.2:3000' }
+            }
+        }
+        if (!$origin) { throw (Get-ConfigBootstrapHint $Config) }
+        try { $null = Validate-Origin $origin 'API_BASE_URL' }
+        catch { throw 'API_BASE_URL must be a plain HTTP(S) origin: no credentials, path, query or fragment.' }
+        if ($WebBaseUrl) {
+            try { $null = Validate-Origin $WebBaseUrl 'WEB_BASE_URL' }
+            catch { throw 'WEB_BASE_URL must be a plain HTTP(S) origin: no credentials, path, query or fragment.' }
+        }
+        Write-ConfigFile $Config $origin $WebBaseUrl
+        # The file is Git-ignored and holds only these public origins.
+        Write-Host "Wrote $([IO.Path]::GetFileName($Config)) with API_BASE_URL $origin (public config only, Git-ignored). Edit it to point at another backend."
     }
     $Config = (Resolve-Path -LiteralPath $Config).Path
     try { $data = Get-Content -LiteralPath $Config -Raw -Encoding UTF8 | ConvertFrom-Json }
