@@ -100,6 +100,26 @@ void main() {
     expect(report.contains('user@example.invalid'), isFalse);
   });
 
+  testWidgets('the diagnostics entry is visible, not only a long-press', (
+    tester,
+  ) async {
+    await pumpAbout(tester);
+    AppLogger.request('GET', '/api/v1/articles', 503, 1203);
+
+    final entry = find.text('查看诊断信息');
+    expect(entry, findsOneWidget);
+
+    await tester.tap(entry);
+    await tester.pumpAndSettle();
+
+    // Same dialog as the long-press shortcut, with the record in it.
+    expect(find.text('诊断信息'), findsOneWidget);
+    final reportText = tester.widget<SelectableText>(
+      find.byType(SelectableText).first,
+    );
+    expect(reportText.data, contains('GET /api/v1/articles -> 503'));
+  });
+
   testWidgets('the version row shows the real manifest version', (
     tester,
   ) async {
