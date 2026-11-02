@@ -202,6 +202,12 @@ CocoaPods 以及 Xcode 命令行工具。脚本只检查并使用现有工具，
 地址不要附加 `/api/v1`、路径、查询或
 凭据，客户端会添加 `/api/v1`。模板的 `example.com` 是占位符，不可直接使用。
 
+首次运行 Android 启动脚本时不必手工复制：`scripts\run_android.ps1`（及
+`run_android.cmd`）发现默认 `env.json` 不存在时，会在交互终端里提示输入
+`API_BASE_URL`（非法输入可重试三次）并写好后继续启动；也可以直接传入
+`-ApiBaseUrl http://10.0.2.2:端口`，或设置 `BELOG_NO_PROMPT=1` 让脚本改为只打印
+创建命令而不提问。脚本只写入这两个公开字段，不会猜测或验证你的后端地址。
+
 `env.json` 和根目录下的 `env.*.json` 被 Git 忽略；传给 Flutter 的所有定义会
 编译进应用，**不要放密码、API key、token、证书或其他秘密**，即使文件已忽略。
 脚本只接受上述两个公开配置字段，不会输出文件内容。也可以用 `--config`/
@@ -213,8 +219,13 @@ CocoaPods 以及 Xcode 命令行工具。脚本只检查并使用现有工具，
 
 ```powershell
 .\scripts\run_android.cmd
+.\scripts\run_android.cmd -ApiBaseUrl http://10.0.2.2:3000
 .\scripts\run_android.cmd -Avd Pixel_8_API_35 -Config env.android.json -BootTimeoutSeconds 600
 ```
+
+首次运行且没有 `env.json` 时，脚本会提示输入 API origin 并生成该文件（HTTPS 也可
+直接传 `-ApiBaseUrl`）；已有的 `env.json` 不会被参数覆盖，需要换地址请直接编辑
+文件或用 `-Config` 指向另一份。生成的 JSON 不带 BOM，只含两个公开字段。
 
 脚本优先复用已运行的模拟器；指定 `-Avd` 时只使用该 AVD，否则在未运行时
 选择按名称排序的第一个可用 AVD。它等待 `adb` 报告开机完成，执行
@@ -276,7 +287,8 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
 
 - **启动后白屏**：现在不会再白屏。缺少 `API_BASE_URL`、地址非法或本地存储
   打不开时，首帧显示“无法启动 · Unable to start”，包含原始原因和修复命令
-  （复制 `env.example.json` 为 `env.json`，或用启动脚本运行）。VS Code 的默认
+  （复制 `env.example.json` 为 `env.json`，或用启动脚本运行；启动脚本首次会
+  提示/接受 `-ApiBaseUrl` 并自己生成 `env.json`）。VS Code 的默认
   `belog` 调试配置已带上 `--dart-define-from-file=env.json`。
 - **后端没有启动**：App 仍可正常启动，不会崩溃或卡死。首帧会话恢复最多等待
   3 秒；首页在没有缓存时显示本地化网络错误与“重试”，有缓存时先显示缓存并
