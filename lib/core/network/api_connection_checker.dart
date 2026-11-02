@@ -1,12 +1,16 @@
 import 'package:belog/core/network/connection_checker.dart';
+import 'package:belog/core/utils/app_logger.dart';
 import 'package:http/http.dart' as http;
 
-/// Debug-only connectivity probe for a development backend.
+/// Connectivity probe that asks the configured backend itself, not the
+/// public internet.
 ///
-/// Unlike the public-internet probe this can detect a reachable API on the
-/// host/LAN without internet access. An HTTP error response still means the
-/// server was reached; the real request must surface its own error rather
-/// than disguising it as an offline-cache success.
+/// Unlike [ConnectionCheckerImpl] this can detect a reachable API on the
+/// host/LAN without internet access. It is used by debug builds when
+/// `BELOG_DEV_BACKEND_CHECK` is set and, independently, whenever the API
+/// origin is loopback/private (see [servesPrivateOrigin]). An HTTP error
+/// response still means the server was reached; the real request must surface
+/// its own error rather than disguising it as an offline-cache success.
 class ApiConnectionChecker implements ConnectionChecker {
   ApiConnectionChecker(
     Uri baseUrl, {
@@ -23,6 +27,33 @@ class ApiConnectionChecker implements ConnectionChecker {
   final http.Client Function() _clientFactory;
   final Duration timeout;
 
+  /// True when [url] addresses a loopback, link-local or RFC 1918 host.
+  ///
+  /// Those origins - the Android emulator alias `10.0.2.2`, `localhost`, a
+  /// machine on the LAN, `*.local` - must be judged by probing the API
+  /// itself. The public-internet probe answers a different question and
+  /// reports "offline" whenever it cannot reach its own public endpoints,
+  /// even though the development backend is right there; that mismatch is
+  /// what turns a reachable local API into a bogus "无法连接到网络" on login.
+  static bool servesPrivateOrigin(Uri url) {
+    final host = url.host.toLowerCase();
+    if (host.isEmpty) return false;
+    if (host == 'localhost' || host == '::1' || host == '0.0.0.0') return true;
+    if (host.endsWith('.local')) return true;
+    final octets = host.split('.');
+    if (octets.length != 4) return false;
+    final parts = <int>[];
+    for (final octet in octets) {
+      final value = int.tryParse(octet);
+      if (value == null || value < 0 || value > 255) return false;
+      parts.add(value);
+    }
+    if (parts[0] == 10 || parts[0] == 127) return true;
+    if (parts[0] == 169 && parts[1] == 254) return true;
+    if (parts[0] == 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+    return parts[0] == 192 && parts[1] == 168;
+  }
+
   @override
   Future<bool> get isConnected async {
     http.Client? client;
@@ -30,7 +61,16 @@ class ApiConnectionChecker implements ConnectionChecker {
       client = _clientFactory();
       await client.get(_healthUri).timeout(timeout);
       return true;
-    } catch (_) {
+    } catch (error) {
+      // Every repository turns this false into a user-facing "no network"
+      // message, so the reason (refused, DNS, timeout, blocked cleartext)
+      // must not vanish: record the probe target and the error type.
+      final errorType = '${error.runtimeType}';
+      AppLogger.probeFailed(_healthUri.path, errorType);
+      AppLogger.debug(
+        'connectivity probe ${_healthUri.origin}${_healthUri.path} failed '
+        '($errorType)',
+      );
       return false;
     } finally {
       client?.close();

@@ -38,6 +38,25 @@ void main() {
       expect(buffer.export(), contains('no error object'));
     });
 
+    test('offline and probe records name the gate that failed', () {
+      final buffer = DiagnosticsBuffer();
+
+      buffer.recordOffline();
+      buffer.recordProbe(
+        '/api/v1/health?token=secret-token',
+        'SocketException',
+      );
+
+      final report = buffer.export();
+      expect(report, contains('connectivity offline (public internet probe)'));
+      // The probe path is sanitized like any other request path.
+      expect(
+        report,
+        contains('probe GET /api/v1/health failed (SocketException)'),
+      );
+      expect(report.contains('secret-token'), isFalse);
+    });
+
     test('request records carry method, path, status and duration', () {
       final buffer = DiagnosticsBuffer();
 

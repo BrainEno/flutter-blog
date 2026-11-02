@@ -66,6 +66,16 @@ class AppLogger {
     diagnostics.recordUnreachable(method, path, errorType);
   }
 
+  /// Records a connectivity probe that could not reach the configured API.
+  /// Same privacy rule as the request records: path and error type only.
+  static void probeFailed(String path, String errorType) =>
+      diagnostics.recordProbe(path, errorType);
+
+  /// Records that the public-internet probe reported the device offline.
+  /// This is the other half of the "no network" message: it names the gate
+  /// that fired instead of the API that was never contacted.
+  static void connectivityOffline() => diagnostics.recordOffline();
+
   /// Records a response whose body could not be decoded; [reason] is a
   /// fixed token (`non-utf8`, `non-json`), never body content.
   static void responseMalformed(

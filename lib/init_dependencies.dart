@@ -174,8 +174,15 @@ Future<void> initDependencies() async {
   // Opt in only for debug builds: development APIs can be reachable on a
   // LAN even when the public-internet probe cannot reach its endpoints.
   const useDevBackendProbe = bool.fromEnvironment('BELOG_DEV_BACKEND_CHECK');
+  // A loopback/private API origin (10.0.2.2, 192.168.x, *.local, ...) is
+  // judged by the API itself even without the define: gating it behind the
+  // public-internet probe reported a reachable local backend as offline.
+  // Release/profile builds keep the documented behaviour (no API probe).
+  final probeApiDirectly =
+      kDebugMode &&
+      (useDevBackendProbe || ApiConnectionChecker.servesPrivateOrigin(uri));
   serviceLocator.registerFactory<ConnectionChecker>(
-    () => kDebugMode && useDevBackendProbe
+    () => probeApiDirectly
         ? ApiConnectionChecker(uri)
         : ConnectionCheckerImpl(serviceLocator()),
   );

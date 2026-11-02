@@ -82,6 +82,19 @@ class DiagnosticsBuffer {
     _add('request $method ${_scrubFragment(path)} unreachable ($errorType)');
   }
 
+  /// Records a connectivity probe that failed before any response arrived.
+  /// [path] is the probe target (sanitized like a request path), and
+  /// [errorType] is the thrown error's runtime type.
+  void recordProbe(String path, String errorType) {
+    _add('probe GET ${_scrubFragment(path)} failed ($errorType)');
+  }
+
+  /// Records that the public-internet probe answered "offline".
+  ///
+  /// Without this line a "无法连接到网络" report cannot be told apart from
+  /// an API transport failure: both end in the same message.
+  void recordOffline() => _add('connectivity offline (public internet probe)');
+
   /// Records a response that arrived but could not be decoded. The status
   /// code is kept; [reason] is a fixed token like `non-utf8` or `non-json`,
   /// never part of the body.
