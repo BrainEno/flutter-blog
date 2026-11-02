@@ -45,8 +45,7 @@ void main() {
     },
   );
 
-  test('a failed probe leaves a diagnostics record, never a silent false',
-      () async {
+  test('a failed probe is recorded, never a silent false', () async {
     AppLogger.clearDiagnostics();
     addTearDown(AppLogger.clearDiagnostics);
     final checker = ApiConnectionChecker(

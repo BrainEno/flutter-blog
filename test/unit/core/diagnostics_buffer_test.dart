@@ -43,7 +43,9 @@ void main() {
 
       buffer.recordOffline();
       buffer.recordProbe(
-          '/api/v1/health?token=secret-token', 'SocketException');
+        '/api/v1/health?token=secret-token',
+        'SocketException',
+      );
 
       final report = buffer.export();
       expect(report, contains('connectivity offline (public internet probe)'));

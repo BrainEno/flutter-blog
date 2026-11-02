@@ -178,7 +178,8 @@ Future<void> initDependencies() async {
   // judged by the API itself even without the define: gating it behind the
   // public-internet probe reported a reachable local backend as offline.
   // Release/profile builds keep the documented behaviour (no API probe).
-  final probeApiDirectly = kDebugMode &&
+  final probeApiDirectly =
+      kDebugMode &&
       (useDevBackendProbe || ApiConnectionChecker.servesPrivateOrigin(uri));
   serviceLocator.registerFactory<ConnectionChecker>(
     () => probeApiDirectly
