@@ -79,7 +79,13 @@ dev_dependencies:
 
   # Raw SQLite handle for building pre-migration database fixtures in
   # storage tests (the app itself only talks to Drift).
-  sqlite3: ^3.8.0
+  #
+  # Keep the floor low on purpose. sqlite3 >=3.6.0 depends on hooks ^2.2.0,
+  # which pulls record_use and therefore meta ^1.19.0; an older local Flutter
+  # SDK pins an older meta, so `flutter pub get` fails before anything can
+  # run (the pinned CI SDK keeps the locked 3.8.0). Drift itself accepts
+  # sqlite3 ^3.4.0, so 3.5.2 resolves with the older SDK's meta.
+  sqlite3: ^3.5.2
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
