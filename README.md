@@ -307,6 +307,20 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
   CI 增加了一步用 `--dart-define-from-file=env.json` 运行的
   `test/unit/core/app_secrets_define_test.dart`，防止再次退化成非 const 读取。
   拉取最新代码重新 `flutter run` 即可，不需要改 `env.json` 或启动脚本。
+- **登录/点赞时提示“无法连接到网络”**：这条提示有两个来源，先分清再看。
+  一是**前置探测**（任何请求发出之前）：debug 构建对回环/内网 API origin
+  （`10.0.2.2`、`localhost`、`127.0.0.1`、`192.168.x`、`172.16–31.x`、`169.254.x`、
+  `*.local`）直接用 `GET /api/v1/health` 探测后端本身，不再用公网探测——公网探测
+  在机器或模拟器连不上自己的公共端点时会把可达的本地后端判成离线；公网 origin
+  仍按原来的 `BELOG_DEV_BACKEND_CHECK` 规则处理。二是**真实请求的传输错误**
+  （`SocketException`/`ClientException`），说明配置的 origin 连不上。两种情况都会
+  留下证据：探测失败与请求失败分别写入「关于 → 复制诊断信息」
+  （形如 `probe GET /api/v1/health failed (SocketException)`），debug 控制台里
+  也会打印实际探测的 origin。本机先自查 `curl http://localhost:4000/api/v1/health`；
+  连不上时重点看后端监听地址：Node/Express 里 `listen(4000, 'localhost')` 在 Windows
+  上只绑定 `::1`，而模拟器的 `10.0.2.2` 走 IPv4 回环，会被直接拒绝——改成监听
+  `0.0.0.0`（或 `::`）。不想改绑定时，可 `adb reverse tcp:4000 tcp:4000`，再把
+  `env.json` 的 `API_BASE_URL` 改成本机的 `http://127.0.0.1:4000`。
 - **后端没有启动**：App 仍可正常启动，不会崩溃或卡死。首帧会话恢复最多等待
   3 秒；首页在没有缓存时显示本地化网络错误与“重试”，有缓存时先显示缓存并
   标注来源；登录、发布等操作以同样的本地化错误反馈。启动脚本启用的
