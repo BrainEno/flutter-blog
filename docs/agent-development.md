@@ -30,7 +30,7 @@ Run the relevant checks from `AGENTS.md`. For every command:
 CI jobs currently provide different evidence:
 - Agent contract: repository guidance and workflow guardrails are present.
 - Environment contract: configuration assets are reproducible and secrets are not bundled.
-- Format: Dart formatting has no drift.
+- Format: changed Dart files are a blocking gate; the repository-wide formatter audit is diagnostic and may report existing drift without failing the job.
 - Analyze: analyzer diagnostics.
 - Test: test output and LCOV coverage.
 - Android release: release build output and, when build succeeds, the final APK permission dump.
