@@ -53,7 +53,11 @@ import 'package:belog/features/user/data/datasources/author_remote_data_source.d
 import 'package:belog/features/user/data/models/author_profile_model.dart';
 import 'package:belog/features/user/data/repositories/author_repository_impl.dart';
 import 'package:belog/features/user/domain/usecases/author.dart';
+import 'package:belog/features/user/domain/entities/author_relationship.dart';
+import 'package:belog/features/user/domain/repositories/author_relationship_repository.dart';
+import 'package:belog/features/user/domain/usecases/get_author_relationships.dart';
 import 'package:belog/features/user/presentation/pages/author_page.dart';
+import 'package:belog/features/user/presentation/pages/author_relationships_page.dart';
 import 'package:belog/features/user/presentation/pages/profile_page.dart';
 import 'package:belog/router/app_router.dart';
 import 'package:flutter/material.dart';
@@ -75,6 +79,9 @@ class MockAuthRepository extends Mock implements AuthRepository {}
 class MockCommentRemote extends Mock implements CommentRemoteDataSource {}
 
 class MockAuthorRemote extends Mock implements AuthorRemoteDataSource {}
+
+class MockAuthorRelationships extends Mock
+    implements AuthorRelationshipRepository {}
 
 class MemoryThemeStore implements ThemePreferenceStore {
   ThemeMode mode = ThemeMode.system;
@@ -109,6 +116,7 @@ class Harness {
   final MockBlogRemote remote = MockBlogRemote();
   final MockCommentRemote commentRemote = MockCommentRemote();
   final MockAuthorRemote authorRemote = MockAuthorRemote();
+  final MockAuthorRelationships relationships = MockAuthorRelationships();
   final MockBlogLocal local = MockBlogLocal();
   final MockConnection connection = MockConnection();
   final MockAuthRepository authRepository = MockAuthRepository();
@@ -212,7 +220,8 @@ class Harness {
     sl
       ..registerFactory(() => GetAuthorProfile(authorRepository))
       ..registerFactory(() => FollowAuthor(authorRepository))
-      ..registerFactory(() => UnfollowAuthor(authorRepository));
+      ..registerFactory(() => UnfollowAuthor(authorRepository))
+      ..registerFactory(() => GetAuthorRelationships(relationships));
 
     themeBloc = ThemeBloc(MemoryThemeStore());
     appUserCubit = AppUserCubit();
@@ -434,6 +443,103 @@ void main() {
     expect(find.text('深链作者'), findsOneWidget);
     expect(find.text('还没有发布文章'), findsOneWidget);
     verify(() => harness.authorRemote.getAuthorProfile('author')).called(1);
+  });
+
+  testWidgets(
+    'public follower list opens profiles and preserves the search stack',
+    (tester) async {
+      const readerId = 'reader/with?reserved%';
+      final harness = Harness()
+        ..buildRouter(initialLocation: '/search/author/author');
+      addTearDown(harness.dispose);
+      when(
+        () => harness.relationships.getRelationships(
+          userId: 'author',
+          kind: AuthorRelationshipKind.followers,
+        ),
+      ).thenAnswer(
+        (_) async => right([
+          const AuthorRelationship(userId: readerId, displayName: '读者乙'),
+        ]),
+      );
+      when(() => harness.authorRemote.getAuthorProfile(readerId)).thenAnswer(
+        (_) async => AuthorProfileModel(
+          userId: readerId,
+          displayName: '读者乙的主页',
+          updatedAt: DateTime.utc(2025),
+        ),
+      );
+      when(
+        () => harness.remote.getBlogsByPosterId(readerId),
+      ).thenAnswer((_) async => <BlogModel>[]);
+      await harness.pump(tester);
+      await tester.pumpAndSettle();
+      expect(find.text('查看粉丝'), findsOneWidget);
+      expect(find.text('查看关注'), findsOneWidget);
+      await tester.tap(find.text('查看粉丝'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AuthorRelationshipsPage), findsOneWidget);
+      expect(find.text('读者乙'), findsOneWidget);
+      expect(
+        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+        1,
+      );
+      await tester.tap(find.text('读者乙'));
+      await tester.pumpAndSettle();
+      expect(find.text('读者乙的主页'), findsOneWidget);
+      expect(
+        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+        1,
+      );
+      verify(() => harness.authorRemote.getAuthorProfile(readerId)).called(1);
+      // pageBack() assumes an English tooltip; this app is localized to zh.
+      final backLabel = MaterialLocalizations.of(
+        tester.element(find.byType(AuthorPage)),
+      ).backButtonTooltip;
+      await tester.tap(find.byTooltip(backLabel));
+      await tester.pumpAndSettle();
+      expect(find.text('读者乙'), findsOneWidget);
+      await tester.tap(find.byTooltip(backLabel));
+      await tester.pumpAndSettle();
+      expect(find.text('深链作者'), findsOneWidget);
+    },
+  );
+
+  testWidgets('profile can open its own author page and following list', (
+    tester,
+  ) async {
+    final harness = Harness();
+    harness.appUserCubit.updateUser(sampleUser());
+    harness.buildRouter(initialLocation: '/profile');
+    addTearDown(harness.dispose);
+    when(() => harness.authorRemote.getAuthorProfile('user')).thenAnswer(
+      (_) async => AuthorProfileModel(
+        userId: 'user',
+        displayName: '我的公开主页',
+        updatedAt: DateTime.utc(2025),
+      ),
+    );
+    when(
+      () => harness.remote.getBlogsByPosterId('user'),
+    ).thenAnswer((_) async => <BlogModel>[]);
+    when(
+      () => harness.relationships.getRelationships(
+        userId: 'user',
+        kind: AuthorRelationshipKind.following,
+      ),
+    ).thenAnswer((_) async => right(<AuthorRelationship>[]));
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('查看我的作者主页'));
+    await tester.pumpAndSettle();
+    expect(find.text('我的公开主页'), findsOneWidget);
+    await tester.tap(find.text('查看关注'));
+    await tester.pumpAndSettle();
+    expect(find.text('没有可显示的关注用户'), findsOneWidget);
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      3,
+    );
   });
 
   testWidgets('reader and author navigation stay on the search tab stack', (

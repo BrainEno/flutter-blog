@@ -25,7 +25,7 @@ class AuthorRemoteDataSourceImpl implements AuthorRemoteDataSource {
   Future<AuthorProfileModel> getAuthorProfile(String userId) async {
     try {
       final data = await client.getJson(
-        '/authors/$userId',
+        '/authors/${Uri.encodeComponent(userId)}',
         query: {'locale': 'zh-CN'},
       );
       return _profile(data);
@@ -38,7 +38,7 @@ class AuthorRemoteDataSourceImpl implements AuthorRemoteDataSource {
   Future<AuthorProfileModel> followAuthor(String userId) async {
     try {
       final data = await client.postJson(
-        '/users/$userId/follow',
+        '/users/${Uri.encodeComponent(userId)}/follow',
         null,
         query: {'locale': 'zh-CN'},
       );
@@ -53,7 +53,9 @@ class AuthorRemoteDataSourceImpl implements AuthorRemoteDataSource {
     try {
       // No query: the server's locale parser defaults to zh-CN, and the
       // client's URI builder percent-encodes a '?' embedded in the path.
-      final data = await client.deleteJson('/users/$userId/follow');
+      final data = await client.deleteJson(
+        '/users/${Uri.encodeComponent(userId)}/follow',
+      );
       return _profile(data);
     } catch (e) {
       throw mapToServerException(e);

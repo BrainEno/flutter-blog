@@ -10,6 +10,7 @@ import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:belog/features/user/domain/entities/author_profile.dart';
+import 'package:belog/features/user/domain/entities/author_relationship.dart';
 import 'package:belog/features/user/presentation/bloc/author/author_cubit.dart';
 import 'package:belog/router/shell_branch_location.dart';
 import 'package:flutter/material.dart';
@@ -56,6 +57,15 @@ class _AuthorPageState extends State<AuthorPage> {
     if (!opened && mounted) {
       showSnackBar(context, context.l10n.cannotOpenLink);
     }
+  }
+
+  void _openRelationships(AuthorRelationshipKind kind) {
+    context.push(
+      shellBranchLocation(
+        GoRouterState.of(context).uri,
+        '/author/${Uri.encodeComponent(widget.userId)}/${kind.name}',
+      ),
+    );
   }
 
   void _onFollowTap() {
@@ -130,6 +140,12 @@ class _AuthorPageState extends State<AuthorPage> {
                       _ProfileHeader(
                         profile: profile,
                         onOpenWebsite: _openWebsite,
+                        onOpenFollowers: () => _openRelationships(
+                          AuthorRelationshipKind.followers,
+                        ),
+                        onOpenFollowing: () => _openRelationships(
+                          AuthorRelationshipKind.following,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       _FollowButton(
@@ -217,8 +233,15 @@ class _AuthorPageState extends State<AuthorPage> {
 class _ProfileHeader extends StatelessWidget {
   final AuthorProfile profile;
   final void Function(String url) onOpenWebsite;
+  final VoidCallback onOpenFollowers;
+  final VoidCallback onOpenFollowing;
 
-  const _ProfileHeader({required this.profile, required this.onOpenWebsite});
+  const _ProfileHeader({
+    required this.profile,
+    required this.onOpenWebsite,
+    required this.onOpenFollowers,
+    required this.onOpenFollowing,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -262,6 +285,20 @@ class _ProfileHeader extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 12,
+          children: [
+            TextButton(
+              onPressed: onOpenFollowers,
+              child: Text(l10n.viewFollowers),
+            ),
+            TextButton(
+              onPressed: onOpenFollowing,
+              child: Text(l10n.viewFollowing),
             ),
           ],
         ),

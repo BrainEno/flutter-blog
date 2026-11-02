@@ -59,13 +59,17 @@ import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upl
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/data/datasources/author_remote_data_source.dart';
+import 'package:belog/features/user/data/datasources/author_relationship_remote_data_source.dart';
 import 'package:belog/features/user/data/datasources/user_remote_data_source.dart';
 import 'package:belog/features/user/data/repositories/author_repository_impl.dart';
+import 'package:belog/features/user/data/repositories/author_relationship_repository_impl.dart';
 import 'package:belog/features/user/data/repositories/user_repository_impl.dart';
 import 'package:belog/features/user/domain/repositories/author_repository.dart';
+import 'package:belog/features/user/domain/repositories/author_relationship_repository.dart';
 import 'package:belog/features/user/domain/repositories/user_repository.dart';
 import 'package:belog/features/user/data/user_data_export.dart';
 import 'package:belog/features/user/domain/usecases/author.dart';
+import 'package:belog/features/user/domain/usecases/get_author_relationships.dart';
 import 'package:belog/features/user/domain/usecases/edit_user_usecase.dart';
 import 'package:belog/features/user/domain/usecases/export_user_data.dart';
 import 'package:flutter/foundation.dart';
@@ -129,7 +133,7 @@ Future<void> initDependencies() async {
   _initAuth(sessionManager, apiClient, uri);
   await _initBlog(apiClient);
   _initComments(apiClient);
-  _initAuthors(apiClient);
+  _initAuthors(apiClient, uri);
   _initUser(apiClient, sessionManager);
 
   serviceLocator.registerLazySingleton(() => database);
@@ -312,17 +316,32 @@ void _initComments(NowaveApiClient apiClient) {
   // article's slug, like BlogViewerCubit.
 }
 
-void _initAuthors(NowaveApiClient apiClient) {
+void _initAuthors(NowaveApiClient apiClient, Uri apiBaseUrl) {
   serviceLocator
     // Datasource
     ..registerFactory<AuthorRemoteDataSource>(
       () => AuthorRemoteDataSourceImpl(apiClient),
+    )
+    // A single app-lifetime client without an authenticator for public lists.
+    ..registerLazySingleton<AuthorRelationshipRemoteDataSource>(
+      () => AuthorRelationshipRemoteDataSourceImpl(baseUrl: apiBaseUrl),
     )
     // Repository
     ..registerFactory<AuthorRepository>(
       () => AuthorRepositoryImpl(
         authorRemoteDataSource: serviceLocator<AuthorRemoteDataSource>(),
         connectionChecker: serviceLocator<ConnectionChecker>(),
+      ),
+    )
+    ..registerFactory<AuthorRelationshipRepository>(
+      () => AuthorRelationshipRepositoryImpl(
+        remote: serviceLocator<AuthorRelationshipRemoteDataSource>(),
+        connectionChecker: serviceLocator<ConnectionChecker>(),
+      ),
+    )
+    ..registerFactory(
+      () => GetAuthorRelationships(
+        serviceLocator<AuthorRelationshipRepository>(),
       ),
     )
     // Usecases. AuthorCubit is page-scoped and built by the author route

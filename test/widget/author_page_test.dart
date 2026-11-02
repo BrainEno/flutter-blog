@@ -525,6 +525,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('作者甲'), findsOneWidget);
     await tester.ensureVisible(find.text('Retry'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
     expect(find.text('作者的文章'), findsOneWidget);

@@ -18,6 +18,7 @@ import 'package:belog/features/blog/presentation/pages/blog_editor_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
 import 'package:belog/features/user/presentation/pages/author_page.dart';
+import 'package:belog/features/user/presentation/pages/author_relationships_page.dart';
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/recycle_bin_page.dart';
 import 'package:belog/features/blog/presentation/pages/saved_blogs_page.dart';
@@ -25,7 +26,10 @@ import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/user_blogs_page.dart';
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/domain/usecases/author.dart';
+import 'package:belog/features/user/domain/entities/author_relationship.dart';
+import 'package:belog/features/user/domain/usecases/get_author_relationships.dart';
 import 'package:belog/features/user/presentation/bloc/author/author_cubit.dart';
+import 'package:belog/features/user/presentation/bloc/author_relationships/author_relationships_cubit.dart';
 import 'package:belog/features/user/presentation/pages/about_page.dart';
 import 'package:belog/features/user/presentation/pages/edit_user_info_page.dart';
 import 'package:belog/features/user/presentation/pages/profile_page.dart';
@@ -302,6 +306,20 @@ GoRoute authorRoute() {
         child: AuthorPage(userId: userId),
       );
     },
+    routes: [
+      for (final kind in AuthorRelationshipKind.values)
+        GoRoute(
+          path: kind.name,
+          builder: (context, state) => BlocProvider(
+            create: (_) => AuthorRelationshipsCubit(
+              getRelationships: serviceLocator<GetAuthorRelationships>(),
+              userId: state.pathParameters['userId']!,
+              kind: kind,
+            ),
+            child: AuthorRelationshipsPage(kind: kind),
+          ),
+        ),
+    ],
   );
 }
 

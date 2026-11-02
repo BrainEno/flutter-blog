@@ -304,7 +304,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   Future<List<BlogModel>> getBlogsByPosterId(String posterId) async {
     try {
       final data = await client.getJson(
-        '/authors/$posterId/articles',
+        '/authors/${Uri.encodeComponent(posterId)}/articles',
         query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
       );
       return _articleList(data);
