@@ -1,7 +1,8 @@
 # belog / flutter-blog 全面代码审查报告
 
-> - **审查日期**：2026-11-02
-> - **代码基线**：`9bf57f6cfe9a141fc75f0874cf69b1d2ece8147f`（PR #97 后的 `main`）
+> - **首次审查**：2026-11-02
+> - **最近复核**：2026-11-03
+> - **代码基线**：`9bf57f6cfe9a141fc75f0874cf69b1d2ece8147f`（PR #97 后的 `main`；复核时仍为远端最新 `main`，当前工作区 tracked 源码与其一致）
 > - **审查分支**：`arena/f8c9ef29-flutter-blog`
 > - **审查方式**：当前源码静态审查、脚本测试、GitHub PR/CI 证据复核、现有 Issue 验收对照
 > - **重要边界**：本环境没有 Flutter/Dart SDK；未运行 Flutter analyze/test/build、真实后端、模拟器或真机，也未做生产数据验证。
@@ -30,6 +31,18 @@
 | 安全与隐私 | **工程意识较好，不等于安全审计通过** | 当前树未发现真实 env/私钥；敏感诊断需用户主动查看/分享，release 签名 fail-closed；会话持久化与 refresh 风险仍待修复。 |
 | 测试与 CI | **测试资产较多，当前交付门禁不通过** | `test/` 有 103 个 Dart 文件；但 main format/test 红灯，且仓库内旧 LCOV 不能代表当前覆盖率。 |
 | 发布准备度 | **尚需整理** | Android/iOS/桌面有构建检查；许可证、占位版本、通用 applicationId、资源与构建产物边界仍需明确。 |
+
+### 复核增量（2026-11-03）
+
+- **代码对照**：本地 `HEAD` 仍为 `5c0ef3a`，所以 `git status` 显示的 11 个 tracked 修改是 PR #97 相对旧 `HEAD` 的内容；以远端最新 `main`（`9bf57f6`）为旧端时，tracked diff 为 **0**。这些文件不能被记为 #98 的后续修复或新的工作区候选补丁。
+- **Issue 状态**：#88 与 #59 已于 2026-11-02 关闭；#98–#110 在复核时仍全部开放。原报告中的认证、资料、标签、内容语言与发布债务没有因本次文档复核而自动消除。
+- **CI 状态**：最新 `main` 的 CI 仍为 format/test 失败；审查文档 PR #112 的 format/analyze 等检查通过，但 Flutter test 也失败。不能把“文档 PR 已打开”写成“质量门禁已恢复”。
+
+**新增 P3 观察：登录页固定诊断入口与 README 的直接打开承诺不一致（未单独新建 Issue）。**
+
+- `lib/features/auth/presentation/pages/login_page.dart` 的固定按钮使用 `context.push('/about')`；只有登录失败 SnackBar 的 `_openDiagnostics()` 使用 `/about?diagnostics=1`。
+- `lib/router/app_router.dart` 仅在查询参数 `diagnostics=1` 时向 `AboutPage` 传入 `openDiagnostics: true`，而 `AboutPage` 只在该标志为真时自动打开诊断弹窗。因此固定按钮实际只到 About 页面，README 中两个登录入口“都会打开诊断弹窗”的描述不准确。
+- `test/widget/router_test.dart` 的固定入口测试目前只断言 `AboutPage` 出现，没有断言诊断弹窗出现，所以覆盖不到这个差别。建议固定按钮复用 `_openDiagnostics`，并把测试加强为直接断言报告可见；若产品意图只是进入 About，则应收窄 README 描述。此项不影响探测超时判定逻辑本身，也不能据此宣称 #98 已修复。
 
 ## 2. 代码规模与资产
 
@@ -264,14 +277,14 @@ no-wave REST / Drift SQLite / secure storage / 平台能力
 
 ## 8. 现有开放 Issue：关闭评估
 
-### 8.1 经核验可以关闭
+### 8.1 原建议关闭，现已关闭
 
 | Issue | 结论与证据 | 验证边界 |
 |---|---|---|
-| [#88 本地调试被工具链版本与启动配置卡住](https://github.com/BrainEno/flutter-blog/issues/88) | **可关闭**。PR #89 落地兼容版本策略、strict mode、唯一 pin、启动失败页、VS Code 配置和文档；当前基线脚本测试 30 项通过。[PR CI 41391480345](https://github.com/BrainEno/flutter-blog/actions/runs/41391480345) 的 format/analyze/test/Android 通过，Windows PowerShell mock 和 macOS/iOS 脚本检查也通过。 | 只关闭本地版本/启动范围，不宣称真实模拟器人工验收或当前 main 全绿；#97 的回归由 #98 跟踪。 |
-| [#59 对齐 no-wave 移动视觉系统与核心阅读流](https://github.com/BrainEno/flutter-blog/issues/59) | **可按原书面范围关闭**。PR #60 完成主题、核心页面、复用组件、图像兜底及双语/键盘/语义/窄屏大字测试；[CI 41165662599](https://github.com/BrainEno/flutter-blog/actions/runs/41165662599) 全绿，且文档已列出真机/iOS 未验证项，满足该 Issue“列出未做验证”的验收要求。 | 不宣称真机视觉、VoiceOver/TalkBack 或生产 API 已验收；后续作者/个人中心和完整无障碍仍由 #61/#24 跟踪。 |
+| [#88 本地调试被工具链版本与启动配置卡住](https://github.com/BrainEno/flutter-blog/issues/88) | **已关闭**。PR #89 落地兼容版本策略、strict mode、唯一 pin、启动失败页、VS Code 配置和文档；当前基线脚本测试 30 项通过。[PR CI 41391480345](https://github.com/BrainEno/flutter-blog/actions/runs/41391480345) 的 format/analyze/test/Android 通过，Windows PowerShell mock 和 macOS/iOS 脚本检查也通过。 | 只关闭本地版本/启动范围，不宣称真实模拟器人工验收或当前 main 全绿；#97 的回归由 #98 跟踪。 |
+| [#59 对齐 no-wave 移动视觉系统与核心阅读流](https://github.com/BrainEno/flutter-blog/issues/59) | **已按原书面范围关闭**。PR #60 完成主题、核心页面、复用组件、图像兜底及双语/键盘/语义/窄屏大字测试；[CI 41165662599](https://github.com/BrainEno/flutter-blog/actions/runs/41165662599) 全绿，且文档已列出真机/iOS 未验证项，满足该 Issue“列出未做验证”的验收要求。 | 不宣称真机视觉、VoiceOver/TalkBack 或生产 API 已验收；后续作者/个人中心和完整无障碍仍由 #61/#24 跟踪。 |
 
-**实际状态说明**：以上两个 Issue 本次仍保持 open。对 #88 的实际关闭请求被 GitHub 集成以 `403 Resource not accessible by integration` 拒绝；在相同权限策略下没有继续尝试修改 #59。因此本节是“经核验建议关闭”，不是“已经关闭”。
+**实际状态说明（2026-11-03 复核）**：#88 于 2026-11-02 13:30:04 UTC 关闭，#59 于同日 13:30:28 UTC 关闭，原报告的两项关闭建议均已落实。关闭仍不代表真实模拟器、真机读屏或生产 API 验收已经完成；这些边界继续由对应开放 Issue 跟踪。
 
 ### 8.2 必须保持开放
 
@@ -309,7 +322,7 @@ no-wave REST / Drift SQLite / secure storage / 平台能力
 
 ## 10. 实际验证记录
 
-### 本地已执行并通过
+### 本地已执行并通过（2026-11-03 重跑）
 
 | 命令 | 结果 |
 |---|---|
@@ -328,8 +341,9 @@ no-wave REST / Drift SQLite / secure storage / 平台能力
 - PR #97 的 [CI 41450084311](https://github.com/BrainEno/flutter-blog/actions/runs/41450084311) 已完成：format/test 失败，analyze/config/guardrails/Android 成功。测试评论尾部为 `+732 -1`，列出的失败是 `test/widget/router_test.dart: a network login failure offers the diagnostics report`。
 - 当前 main `9bf57f6` 的 [CI 41450924663](https://github.com/BrainEno/flutter-blog/actions/runs/41450924663) 已完成，整体结论为 **failure**：format/test 失败，analyze/config/guardrails 成功；Android job 成功，其 release/debug 构建、INTERNET、16 KiB 和签名保护步骤均通过。
 - 同一 main 的 [Read-aloud desktop compile checks 41450924643](https://github.com/BrainEno/flutter-blog/actions/runs/41450924643) 与 [Local development scripts and iOS build checks 41450924539](https://github.com/BrainEno/flutter-blog/actions/runs/41450924539) 已成功。
+- 审查文档 PR #112 的 [CI 41454803554](https://github.com/BrainEno/flutter-blog/actions/runs/41454803554) 在复核时仍为 **test 失败**；format、analyze、config、guardrails、Android 构建及桌面/移动脚本检查通过。该结果说明文档分支本身也尚未满足全绿合并条件，而不是把 main 的红灯误记成已恢复。
 
-GitHub 日志/artifact 下载曾返回远端 `EOF`，因此没有把 PR 的失败断言直接当成 main 的完整根因，也没有编造 main 的堆栈。
+GitHub 日志/artifact 下载曾返回远端 `EOF`；本次复核下载 PR #112 失败日志时再次得到相同错误。因此没有把 PR 的失败断言直接当成 main 的完整根因，也没有编造 main 或 PR #112 的堆栈。
 
 ### 未执行或不能宣称完成
 
