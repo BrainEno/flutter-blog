@@ -298,6 +298,15 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
   （复制 `env.example.json` 为 `env.json`，或用启动脚本运行；启动脚本首次会
   提示/接受 `-ApiBaseUrl` 并自己生成 `env.json`）。VS Code 的默认
   `belog` 调试配置已带上 `--dart-define-from-file=env.json`。
+- **env.json 填对了仍提示 API base URL not configured**：旧提交把
+  `String.fromEnvironment('API_BASE_URL')` 写在普通 getter 里，而不是 `const`
+  字段；Dart 只在 const 上下文保证读到 `--dart-define`/`--dart-define-from-file`
+  的值，Android 上会静默回落成空字符串，于是启动脚本已经打印
+  `Public client configuration OK.`，App 首帧仍显示“无法启动”。现在
+  `AppSecrets` 用 `static const` 字段读取，这两个值只在 const 上下文求值；
+  CI 增加了一步用 `--dart-define-from-file=env.json` 运行的
+  `test/unit/core/app_secrets_define_test.dart`，防止再次退化成非 const 读取。
+  拉取最新代码重新 `flutter run` 即可，不需要改 `env.json` 或启动脚本。
 - **后端没有启动**：App 仍可正常启动，不会崩溃或卡死。首帧会话恢复最多等待
   3 秒；首页在没有缓存时显示本地化网络错误与“重试”，有缓存时先显示缓存并
   标注来源；登录、发布等操作以同样的本地化错误反馈。启动脚本启用的
