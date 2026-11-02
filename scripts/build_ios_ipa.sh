@@ -44,7 +44,7 @@ require_macos
 require_command codesign
 require_command ditto
 require_command zip
-check_flutter_version
+require_pinned_flutter_version
 resolve_config "$config"
 # Release/profile builds do not have the debug HTTP exception.
 validate_config ios release

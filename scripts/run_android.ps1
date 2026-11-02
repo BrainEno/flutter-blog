@@ -2,7 +2,8 @@
 param(
     [string]$Avd = '',
     [string]$Config = 'env.json',
-    [ValidateRange(1, 1800)][int]$BootTimeoutSeconds = 300
+    [ValidateRange(1, 1800)][int]$BootTimeoutSeconds = 300,
+    [switch]$StrictFlutterVersion
 )
 
 $ErrorActionPreference = 'Stop'
@@ -34,6 +35,47 @@ function Invoke-QuietNative([string]$Executable, [string[]]$ToolArguments) {
     $ErrorActionPreference = 'Continue'
     & $Executable @ToolArguments 2>$null
     $script:LastNativeExit = $LASTEXITCODE
+}
+
+function Get-VersionParts([string]$Value) {
+    $match = [regex]::Match([string]$Value, '^\s*(\d+(?:\.\d+)*)')
+    if (!$match.Success) { return }
+    $match.Groups[1].Value.Split('.') | ForEach-Object { [int]$_ }
+}
+
+# $null means "cannot tell" so the caller can warn instead of refusing to start.
+function Test-VersionAtLeast([string]$Value, [string]$Minimum) {
+    $actual = @(Get-VersionParts $Value)
+    $floor = @(Get-VersionParts $Minimum)
+    if ($actual.Count -eq 0 -or $floor.Count -eq 0) { return $null }
+    $width = [Math]::Max($actual.Count, $floor.Count)
+    for ($index = 0; $index -lt $width; $index++) {
+        $have = if ($index -lt $actual.Count) { $actual[$index] } else { 0 }
+        $want = if ($index -lt $floor.Count) { $floor[$index] } else { 0 }
+        if ($have -gt $want) { return $true }
+        if ($have -lt $want) { return $false }
+    }
+    return $true
+}
+
+function Get-PinnedDartFloor {
+    $pubspec = Join-Path $ProjectRoot 'pubspec.yaml'
+    if (!(Test-Path -LiteralPath $pubspec -PathType Leaf)) { return '' }
+    $match = [regex]::Match((Get-Content -LiteralPath $pubspec -Raw), 'sdk:\s*"[^"]*>=\s*([0-9][0-9.]*)')
+    if ($match.Success) { return $match.Groups[1].Value }
+    return ''
+}
+
+function Format-FlutterUpgradeHelp([string]$Pinned) {
+    return @(
+        'Upgrade the SDK: flutter upgrade'
+        "If that reports `"upstream branch 'refs/heads/stable' not stored as a remote-tracking branch`","
+        "repair the SDK's own Git clone first, then upgrade:"
+        '  git -C "<path-to-flutter-sdk>" fetch origin stable'
+        '  git -C "<path-to-flutter-sdk>" branch --set-upstream-to=origin/stable stable'
+        '  flutter upgrade'
+        "Or install Flutter $Pinned and put it first on PATH."
+    ) -join [Environment]::NewLine
 }
 
 function Validate-Origin($Value, [string]$Name) {
@@ -74,21 +116,51 @@ function Get-EmulatorAvd([string]$Serial) {
 
 try {
     $flutterCommand = Get-Command flutter -ErrorAction SilentlyContinue
-    if (!$flutterCommand) { throw 'Flutter is not on PATH. Install Flutter 3.47.8 first.' }
+    if (!$flutterCommand) { throw 'Flutter is not on PATH. Install the pinned Flutter SDK (tool/flutter_version.txt) first.' }
     $flutter = $flutterCommand.Source
     $versionText = (& $flutter --version --machine | Out-String)
-    if ($LASTEXITCODE -ne 0) { throw 'Could not query the Flutter SDK.' }
-    try { $flutterVersion = ($versionText | ConvertFrom-Json).frameworkVersion }
+    if ($LASTEXITCODE -ne 0) { throw 'Could not query the Flutter SDK. Run `flutter --version` and `flutter doctor` to see the SDK error.' }
+    $pinFile = Join-Path $ProjectRoot 'tool\flutter_version.txt'
+    if (!(Test-Path -LiteralPath $pinFile -PathType Leaf)) {
+        throw 'Missing tool/flutter_version.txt, which records the pinned Flutter SDK.'
+    }
+    $pinned = (Get-Content -LiteralPath $pinFile -Raw).Trim()
+    try { $machine = $versionText | ConvertFrom-Json }
     catch { throw 'Could not parse flutter --version --machine.' }
-    if ($flutterVersion -ne '3.47.8') { throw "Flutter 3.47.8 is required; found $flutterVersion." }
+    $flutterVersion = [string]$machine.frameworkVersion
+    $dartVersion = [string]$machine.dartSdkVersion
+    $strict = $StrictFlutterVersion -or ($env:BELOG_STRICT_FLUTTER_VERSION -eq '1')
+    if ($flutterVersion -cne $pinned) {
+        $compatible = Test-VersionAtLeast $dartVersion (Get-PinnedDartFloor)
+        $found = if ($dartVersion) { "$flutterVersion (Dart $dartVersion)" } else { $flutterVersion }
+        if ($strict -or $compatible -eq $false) {
+            $reason = if ($compatible -eq $false) {
+                "pubspec.yaml requires Dart $(Get-PinnedDartFloor) or newer; this SDK does not satisfy it."
+            } else { '' }
+            $message = @(
+                "Flutter $pinned is required; found $found."
+                $reason
+                (Format-FlutterUpgradeHelp $pinned)
+            ) | Where-Object { $_ }
+            throw (($message | Out-String).Trim())
+        }
+        # stderr, like the failure path: the launcher wrapper shows both, and
+        # the script's mock tests can assert on a warning they can capture.
+        [Console]::Error.WriteLine("Warning: Flutter $flutterVersion is installed; CI and release builds use $pinned.")
+        if ($null -eq $compatible) {
+            [Console]::Error.WriteLine("Warning: could not compare this SDK with pubspec.yaml's Dart constraint.")
+        }
+        [Console]::Error.WriteLine('Local debug continues; it only needs a compatible Dart SDK.')
+        [Console]::Error.WriteLine('Pass -StrictFlutterVersion (or set BELOG_STRICT_FLUTTER_VERSION=1) to require the pinned SDK.')
+    }
 
     if (![IO.Path]::IsPathRooted($Config)) { $Config = Join-Path $ProjectRoot $Config }
     if (!(Test-Path -LiteralPath $Config -PathType Leaf)) {
-        throw 'Config not found. Copy env.example.json to env.json and edit the public API origin.'
+        throw 'Config not found. Run `copy env.example.json env.json` in the repository root, then set API_BASE_URL to an origin the emulator can reach (use http://10.0.2.2:PORT for a host-local API).'
     }
     $Config = (Resolve-Path -LiteralPath $Config).Path
     try { $data = Get-Content -LiteralPath $Config -Raw -Encoding UTF8 | ConvertFrom-Json }
-    catch { throw 'Cannot read config JSON. Copy env.example.json to env.json and edit the public origins.' }
+    catch { throw 'Cannot read config JSON. Run `copy env.example.json env.json`, then set API_BASE_URL (and optionally WEB_BASE_URL) to real HTTP(S) origins.' }
     if (!$data -or $data -is [array] -or $data -isnot [PSCustomObject]) { throw 'Config must be a JSON object.' }
     foreach ($property in $data.PSObject.Properties) {
         if (-not (@('API_BASE_URL', 'WEB_BASE_URL') -ccontains $property.Name)) {

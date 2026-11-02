@@ -12,7 +12,14 @@
         {
             "name": "belog",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            // Reads the same public origins as the launcher scripts. Copy
+            // env.example.json to env.json first; without it the app now
+            // shows a startup-failure screen instead of a blank window.
+            "toolArgs": [
+                "--dart-define-from-file=env.json",
+                "--dart-define=BELOG_DEV_BACKEND_CHECK=true"
+            ]
         },
         {
             "name": "belog (profile mode)",

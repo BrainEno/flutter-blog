@@ -22,7 +22,7 @@ This file is the repository-wide instruction source for coding agents. Read it b
 
 ## Commands and evidence
 
-Use the versions declared by the repository/CI rather than silently following the latest SDK. The CI currently pins Flutter `3.47.8` and Java `17`; toolchain upgrades must be explicit and tested as a compatible set.
+Use the versions declared by the repository/CI rather than silently following the latest SDK. The CI currently pins Flutter `3.47.8` (recorded in `tool/flutter_version.txt`) and Java `17`; toolchain upgrades must be explicit and tested as a compatible set. Local debug scripts intentionally warn instead of blocking on Flutter drift when the Dart SDK still satisfies `pubspec.yaml`; release packaging and CI require the pin exactly, so do not weaken those checks.
 
 Run the applicable checks before opening or updating a PR:
 

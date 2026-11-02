@@ -4,6 +4,7 @@ import 'dart:ui' show PlatformDispatcher;
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:belog/l10n/app_localizations.dart';
+import 'package:belog/core/startup/startup_failure_app.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/global_snackbar.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
@@ -25,7 +26,16 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   _installGlobalErrorHandlers();
 
-  await initDependencies();
+  try {
+    await initDependencies();
+  } catch (error, stackTrace) {
+    // Configuration and storage failures happen before the first widget
+    // exists. Without this, main ends with an empty window and the developer
+    // has to guess whether the app, the device or env.json is at fault.
+    AppLogger.error('Startup failed', error: error, stackTrace: stackTrace);
+    runApp(StartupFailureApp(message: '$error'));
+    return;
+  }
   // Restore the persisted no-wave session before the first frame so the
   // router's auth redirect and tab visibility see the correct user state
   // instead of a logged-out flash. The wait is bounded: a slow network
