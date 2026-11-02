@@ -110,8 +110,18 @@ void main() {
     repository.requests[1].complete(right([]));
     await tester.pumpAndSettle();
     expect(find.text('No followers to show'), findsOneWidget);
-    expect(find.byTooltip('Refresh list'), findsOneWidget);
+    await tester.tap(find.byTooltip('Refresh list'));
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    repository.requests[2].complete(
+      right([
+        const AuthorRelationship(userId: 'reader', displayName: 'Reader'),
+      ]),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Reader'), findsOneWidget);
     expect(repository.arguments, [
+      ('owner', AuthorRelationshipKind.followers),
       ('owner', AuthorRelationshipKind.followers),
       ('owner', AuthorRelationshipKind.followers),
     ]);
@@ -127,44 +137,49 @@ void main() {
           addTearDown(tester.view.resetPhysicalSize);
           addTearDown(tester.view.resetDevicePixelRatio);
           final semantics = tester.ensureSemantics();
-          addTearDown(semantics.dispose);
-          final repository = ScriptedRepository();
-          final cubit = AuthorRelationshipsCubit(
-            getRelationships: GetAuthorRelationships(repository),
-            userId: 'owner',
-            kind: AuthorRelationshipKind.following,
-          );
-          addTearDown(cubit.close);
-          await _pumpPage(
-            tester,
-            cubit: cubit,
-            kind: AuthorRelationshipKind.following,
-            locale: locale,
-            mode: mode,
-            textScale: 2,
-          );
-          repository.requests[0].complete(
-            right(
-              List.generate(
-                100,
-                (i) => AuthorRelationship(
-                  userId: 'reader-$i',
-                  displayName: i == 0 ? '' : 'Writer $i',
-                  bio: i == 0 ? 'A longer biography for the first person.' : '',
+          try {
+            final repository = ScriptedRepository();
+            final cubit = AuthorRelationshipsCubit(
+              getRelationships: GetAuthorRelationships(repository),
+              userId: 'owner',
+              kind: AuthorRelationshipKind.following,
+            );
+            addTearDown(cubit.close);
+            await _pumpPage(
+              tester,
+              cubit: cubit,
+              kind: AuthorRelationshipKind.following,
+              locale: locale,
+              mode: mode,
+              textScale: 2,
+            );
+            repository.requests[0].complete(
+              right(
+                List.generate(
+                  100,
+                  (i) => AuthorRelationship(
+                    userId: 'reader-$i',
+                    displayName: i == 0 ? '' : 'Writer $i',
+                    bio: i == 0
+                        ? 'A longer biography for the first person.'
+                        : '',
+                  ),
                 ),
               ),
-            ),
-          );
-          await tester.pumpAndSettle();
-          final l10n = lookupAppLocalizations(locale);
-          expect(find.text(l10n.followingTitle), findsOneWidget);
-          expect(find.text(l10n.relationshipLimitNotice), findsOneWidget);
-          expect(find.text(l10n.anonymousAuthor), findsOneWidget);
-          expect(
-            find.bySemanticsLabel(l10n.avatarOf(l10n.anonymousAuthor)),
-            findsOneWidget,
-          );
-          expect(tester.takeException(), isNull);
+            );
+            await tester.pumpAndSettle();
+            final l10n = lookupAppLocalizations(locale);
+            expect(find.text(l10n.followingTitle), findsOneWidget);
+            expect(find.text(l10n.relationshipLimitNotice), findsOneWidget);
+            expect(find.text(l10n.anonymousAuthor), findsOneWidget);
+            expect(
+              find.bySemanticsLabel(l10n.avatarOf(l10n.anonymousAuthor)),
+              findsOneWidget,
+            );
+            expect(tester.takeException(), isNull);
+          } finally {
+            semantics.dispose();
+          }
         },
       );
     }

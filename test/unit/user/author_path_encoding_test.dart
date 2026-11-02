@@ -24,6 +24,7 @@ void main() {
                   : {'userId': id, 'updatedAt': '2026-01-01T00:00:00Z'},
             }),
             200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
           );
         }),
       );

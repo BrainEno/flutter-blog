@@ -492,10 +492,14 @@ void main() {
         1,
       );
       verify(() => harness.authorRemote.getAuthorProfile(readerId)).called(1);
-      await tester.pageBack();
+      // pageBack() assumes an English tooltip; this app is localized to zh.
+      final backLabel = MaterialLocalizations.of(
+        tester.element(find.byType(AuthorPage)),
+      ).backButtonTooltip;
+      await tester.tap(find.byTooltip(backLabel));
       await tester.pumpAndSettle();
       expect(find.text('读者乙'), findsOneWidget);
-      await tester.pageBack();
+      await tester.tap(find.byTooltip(backLabel));
       await tester.pumpAndSettle();
       expect(find.text('深链作者'), findsOneWidget);
     },
