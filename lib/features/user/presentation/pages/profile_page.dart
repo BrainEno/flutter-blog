@@ -57,8 +57,7 @@ class ProfilePage extends StatelessWidget {
                 ? l10n.anonymousAuthor
                 : user.name;
             // A single scrollable keeps the header and every action available
-            // at large system text sizes. Account security remains hidden until
-            // the backend exposes its endpoints.
+            // at large system text sizes.
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -91,6 +90,12 @@ class ProfilePage extends StatelessWidget {
                                     const SizedBox(height: 8),
                                     Text(user.website.trim()),
                                   ],
+                                  TextButton(
+                                    onPressed: () => context.push(
+                                      '/profile/author/${Uri.encodeComponent(user.id)}',
+                                    ),
+                                    child: Text(l10n.viewMyAuthorProfile),
+                                  ),
                                 ],
                               ),
                             ),

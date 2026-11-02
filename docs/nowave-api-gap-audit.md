@@ -1,8 +1,8 @@
 # no-wave API 与 Flutter 客户端差距（2026-11-02）
 
-本表静态核对 no-wave 默认分支快照 [`effeb9a7`](https://github.com/BrainEno/no-wave/tree/effeb9a7016278a385ecfd19d49a26eb7151c58b) 的 [`routes.ts`](https://github.com/BrainEno/no-wave/blob/effeb9a7016278a385ecfd19d49a26eb7151c58b/apps/api/src/transport/rest/routes.ts)、handler、数据校验和 Flutter main `76efc7c` 的实际调用。相对前次审计 `ea276a5e`，后端增加 latest 游标、搜索正文、会话列表/撤销并修复改密的会话语义；`596ca5ae` 到此快照仅有 CI/文档改动。网页也新增本地划线等功能，但不意味着已有服务端同步 API。源码存在不代表某个部署已升级、邮件可投递或移动端联调通过。
+本表静态核对 no-wave 默认分支快照 [`effeb9a7`](https://github.com/BrainEno/no-wave/tree/effeb9a7016278a385ecfd19d49a26eb7151c58b) 的 [`routes.ts`](https://github.com/BrainEno/no-wave/blob/effeb9a7016278a385ecfd19d49a26eb7151c58b/apps/api/src/transport/rest/routes.ts)、handler、数据校验以及 Flutter main `76efc7c` 和本次关系列表变更的实际调用。相对前次审计 `ea276a5e`，后端增加 latest 游标、搜索正文、会话列表/撤销并修复改密的会话语义；`596ca5ae` 到此快照仅有 CI/文档改动。网页也新增本地划线等功能，但不意味着已有服务端同步 API。源码存在不代表某个部署已升级、邮件可投递或移动端联调通过。
 
-本表描述已合并的客户端主线；改密 [#73](https://github.com/BrainEno/flutter-blog/pull/73)、只读会话列表 [#82](https://github.com/BrainEno/flutter-blog/pull/82) 和离线 outbox [#66](https://github.com/BrainEno/flutter-blog/pull/66) 均未合并，不能当作当前功能。
+除标明的本次关系列表变更外，本表描述已合并的客户端主线；改密 [#73](https://github.com/BrainEno/flutter-blog/pull/73)、只读会话列表 [#82](https://github.com/BrainEno/flutter-blog/pull/82) 和离线 outbox [#66](https://github.com/BrainEno/flutter-blog/pull/66) 均未合并，不能当作当前功能。
 
 ## 接口与用户能力
 
@@ -23,7 +23,8 @@
 | 用户数据导出 | 部分实现，非完整备份 | 当前作者列表只请求最多 100 篇 `zh-CN` 已发布作品，正文压平且不保留全部图片/结构，也不含服务端草稿或其他语言。客户端界面和文档已明确提示限制；完整、可恢复导出须另行设计和验证。 |
 | 通知 `GET /me/notifications`、`unread-count`、单条/全部已读 | 未接入 | 需按账号隔离、明确刷新/失败与已读语义；后端尚无移动设备令牌和推送投递，不能宣称实时推送。 |
 | 私信 `conversations*` | 未接入 | 需要受信参与者鉴权、消息游标分页、已读语义、账号隔离；创建会话和发送消息需要稳定的 `Idempotency-Key`，失败/重试不能制造重复消息。 |
-| 用户搜索、粉丝/关注列表 `GET /users*` | 未接入 | 可在独立社交功能中接入；关注/取关本身已存在。 |
+| 粉丝/关注列表 `GET /users/:userId/{followers,following}` | 本次接入只读 | 不需要登录，不附带会话凭据，不持久化列表；服务端最多 100 条、无 offset/cursor/总数，达到上限提示可能还有更多。点击用户可在当前 tab 打开作者主页；站点相对头像仍待 #63。单点 `.` / `..` ID 因 URI 规范化无法安全寻址，会报错而不是访问其他路由。 |
+| 用户搜索 `GET /users?query=…` | 未接入 | 可独立接入；关注/取关本身已存在。 |
 | 分类 `categories*`、编辑角色 `PUT /users/:id/role`、分类维护 | 未接入 | 最新后端规定分类由编辑共同维护；标签仍对登录作者开放。角色和权限由服务器强制，不能只靠隐藏按钮。 |
 | 媒体 `/api/media/:id` 别名 | 不需要改现有上传路径 | 客户端已由资源 id 构造版本化 `/api/v1/media/:id`；新别名主要使网站相对地址可直连 API。媒体上传仍无幂等键/删除接口，不安全地自动重试可能产生孤儿资产。站点相对头像 origin 问题另见 [#63](https://github.com/BrainEno/flutter-blog/issues/63)。 |
 | 新建文章 `Idempotency-Key` | 未接入 | 服务端支持相同 key + 相同请求重放，但自动 slug 碰撞后的重放仍有 [no-wave #137](https://github.com/BrainEno/no-wave/issues/137)；客户端普通发布尚未固化跨重试 key。离线 outbox 的独立草稿 PR 仍待评审，不能声称已可靠离线发布。 |
@@ -36,4 +37,4 @@
 
 后续本地草稿隔离使用 SQLite v6：新草稿按后端、账号和文章隔离；未记录归属的旧 SQLite/Isar 草稿保留但不自动显示或分配。参见[旧草稿说明](unclaimed-drafts.md)。旧版应用回退打开新版数据库并未验证，降级可能再次向错误账号展示旧草稿，升级/降级前应自行备份设备数据。
 
-后续可独立补齐富文本安全往返、账号安全、服务端草稿、通知、私信及社交列表；具体界面和邮件/推送部署能力应分别验证，不将管理接口或未实现的服务器能力伪装成客户端功能。
+后续可独立补齐富文本安全往返、账号安全、服务端草稿、通知、私信及用户搜索；具体界面和邮件/推送部署能力应分别验证，不将管理接口或未实现的服务器能力伪装成客户端功能。
