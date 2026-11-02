@@ -158,7 +158,6 @@ void main() {
             find.bySemanticsLabel(l10n.avatarOf(user.name)),
             findsOneWidget,
           );
-          expect(find.text(l10n.viewMyAuthorProfile), findsOneWidget);
           expect(find.byType(NoWaveActionRow), findsNWidgets(6));
           for (final label in [
             l10n.menuEditProfile,

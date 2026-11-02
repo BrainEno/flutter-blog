@@ -2,7 +2,7 @@
 
 本表静态核对 no-wave 默认分支快照 [`effeb9a7`](https://github.com/BrainEno/no-wave/tree/effeb9a7016278a385ecfd19d49a26eb7151c58b) 的 [`routes.ts`](https://github.com/BrainEno/no-wave/blob/effeb9a7016278a385ecfd19d49a26eb7151c58b/apps/api/src/transport/rest/routes.ts)、handler、数据校验以及 Flutter main `76efc7c` 和本次关系列表变更的实际调用。相对前次审计 `ea276a5e`，后端增加 latest 游标、搜索正文、会话列表/撤销并修复改密的会话语义；`596ca5ae` 到此快照仅有 CI/文档改动。网页也新增本地划线等功能，但不意味着已有服务端同步 API。源码存在不代表某个部署已升级、邮件可投递或移动端联调通过。
 
-除标明的本次关系列表变更外，本表描述已合并的客户端主线；改密 [#73](https://github.com/BrainEno/flutter-blog/pull/73)、只读会话列表 [#82](https://github.com/BrainEno/flutter-blog/pull/82) 和离线 outbox [#66](https://github.com/BrainEno/flutter-blog/pull/66) 均未合并，不能当作当前功能。
+除标明的本次关系列表变更外，本表描述已合并的客户端主线；改密 [#73](https://github.com/BrainEno/flutter-blog/pull/73)、只读会话列表 [#82](https://github.com/BrainEno/flutter-blog/pull/82) 和离线 outbox [#66](https://github.com/BrainEno/flutter-blog/pull/66) 均未合并，不能当作当前功能。 后端已提供登录会话列表与单个/批量撤销；#82 只实现列表，不实现撤销。列表不提供设备名称或位置，旧无 `sid` token 可能无法识别当前会话；请求 IP 仍用于限流。
 
 ## 接口与用户能力
 
@@ -16,7 +16,6 @@
 | 精选 `GET /featured` | 已接入只读 | 登录与否均可查看，按编辑指定顺序分页，最多 20 篇；空列表不回退公共流，不使用公共缓存。编辑端 `PUT /featured` 尚未接入。旧部署没有此接口时会显示请求错误。 |
 | 最多收藏 `GET /articles?sort=popular` | 已接入 | 此快照对**全部已发布作品**按累计收藏数排序；旧部署可能仍使用近 30 天窗口，API 不提供版本协商。客户端避免写死时间范围，网络不可用时不伪造排序。 |
 | 账号：`PUT /me/password`、`PUT /me/email`、`GET /me` 返回邮箱/验证状态 | 未接入 | 改密需当前密码，保留当前会话、撤销其他会话；改邮箱也需当前密码，更换地址后变为未验证。客户端目前仍显示登录时的本地邮箱；#73 改密仍为未合并草稿。**错误当前密码也可能是 401**，接入时需避免将其当作 access token 过期而盲目重复提交。 |
-| 登录会话 `GET /me/sessions`、`DELETE /me/sessions[/:sessionId]` | 主线未接入 | #82 是尚未合并的只读列表，不实现撤销；不提供设备名称或位置，旧无 `sid` token 可能无法识别当前会话。请求 IP 仍用于限流。 |
 | 找回/重置密码、邮箱验证与重发 `auth/*`、`POST /me/email-verification` | 未接入 | 需安全的链接处理、匿名防枚举和邮件状态提示；后端邮件默认关闭，实际投递未验证。 |
 | `contentBlocksVersion: 1` 富文本、结构化 v0、正文多图 | 按当前契约只读支持，编辑未支持 | 阅读与朗读共用 AST，保留标题、引用归属、列表、代码空白、图片/说明及行内样式；未配置可信 `WEB_BASE_URL` 时站点相对资源不可用。未知/损坏正文及迁移前已压平的 no-wave 缓存提示可能不完整；重获的结构化正文随文章缓存保存，图片本身不保证离线。更新前检查新鲜正文及摘要，阻止普通编辑器覆盖不兼容结构并回传摘要；仍不是富文本编辑。服务端未提供条件更新，检查不能防止随后并发修改；客户端重建块 ID，服务端可能重算空摘要。 |
 | `GET /me/articles`（含服务端草稿） | 未接入 | 当前“我的文章”读公开作者列表，不能完整查看服务端草稿；恢复到草稿的作品不能依靠该列表重新发布。本机自动草稿与服务端草稿不是同一数据。 |
