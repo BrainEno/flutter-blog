@@ -222,7 +222,13 @@ class NowaveApiClient {
     }
     final generation = auth.sessionGeneration;
     try {
-      return await _request('GET', path, query: query);
+      return await _request(
+        'GET',
+        path,
+        query: query,
+        // A private read must not carry its bearer token to a redirect target.
+        followRedirects: false,
+      );
     } finally {
       if (auth.sessionGeneration != generation ||
           auth.activeUserId != expectedUserId ||
@@ -273,6 +279,52 @@ class NowaveApiClient {
       authenticate: authenticate,
       sessionFence: sessionFence,
     );
+  }
+
+  /// Sends one sensitive, viewer-scoped PUT, with no 401 replay or redirect.
+  ///
+  /// A 401 can mean the submitted credential was rejected, not an expired
+  /// access token. Replaying the write could consume another rate-limit slot.
+  /// Redirects are disabled so credentials cannot be forwarded elsewhere.
+  /// The caller's captured generation also prevents a form opened by an old
+  /// session from being submitted after even a same-account re-login.
+  Future<dynamic> putJsonForViewerOnce(
+    String path,
+    Object? body, {
+    required String expectedUserId,
+    required int expectedSessionGeneration,
+  }) async {
+    final auth = _authenticator;
+    bool matches() =>
+        auth is NowaveViewerAuthenticator &&
+        expectedUserId.isNotEmpty &&
+        auth.activeUserId == expectedUserId &&
+        auth.sessionGeneration == expectedSessionGeneration &&
+        (auth.accessToken?.isNotEmpty ?? false);
+
+    void ensureSameViewer() {
+      if (!matches()) {
+        throw const NowaveApiException(
+          statusCode: HttpStatus.conflict,
+          code: 'SESSION_CHANGED',
+          message: 'Session changed during a viewer-scoped write.',
+        );
+      }
+    }
+
+    ensureSameViewer();
+    try {
+      return await _request(
+        'PUT',
+        path,
+        body: body,
+        allowRefresh: false,
+        followRedirects: false,
+      );
+    } finally {
+      // The old write may have reached the server even on a transport error.
+      ensureSameViewer();
+    }
   }
 
   /// DELETE an endpoint; returns the unwrapped `data` payload when present.
@@ -330,6 +382,7 @@ class NowaveApiClient {
     Map<String, String>? query,
     bool authenticate = true,
     bool allowRefresh = true,
+    bool followRedirects = true,
     Duration? timeout,
     Map<String, String>? extraHeaders,
     NowaveSessionFence? sessionFence,
@@ -459,8 +512,10 @@ class NowaveApiClient {
     if (!followRedirects &&
         response.statusCode >= 300 &&
         response.statusCode < 400) {
-      // Never treat a redirect body as successful private data, and never
-      // forward this request or its Authorization header to the new target.
+      // Never treat a redirect body as successful private data, never follow
+      // it, and never forward this request or its Authorization header to the
+      // new target. For a write, the outcome is explicitly unknown: the server
+      // may have committed the change before answering with a redirect.
       throw NowaveApiException(
         statusCode: response.statusCode,
         code: 'HTTP_REDIRECT',

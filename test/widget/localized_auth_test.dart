@@ -8,6 +8,7 @@ import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/auth/presentation/pages/login_page.dart';
+import 'package:belog/features/auth/presentation/pages/signup_page.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -18,6 +19,138 @@ import 'package:mocktail/mocktail.dart';
 class _AuthRepository extends Mock implements AuthRepository {}
 
 void main() {
+  testWidgets('login preserves leading and trailing password spaces', (
+    tester,
+  ) async {
+    final repo = _AuthRepository();
+    when(
+      () => repo.currentUser(),
+    ).thenAnswer((_) async => left<Failure, User>(Failure.auth('请登录账户')));
+    when(
+      () => repo.loginWithEmailPassword(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+      ),
+    ).thenAnswer((_) async => left<Failure, User>(Failure.auth('rejected')));
+    final user = AppUserCubit();
+    final auth = AuthBloc(
+      userSignUp: UserSignUp(repo),
+      userLogin: UserLogin(repo),
+      userSignOut: UserSignOut(repo),
+      currentUser: CurrentUser(repo),
+      appUserCubit: user,
+      sessionGeneration: () => 0,
+      hasActiveSession: () => false,
+      isCurrentSessionUser: (_) => true,
+    );
+    addTearDown(auth.close);
+    addTearDown(user.close);
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<AuthBloc>.value(value: auth),
+          BlocProvider<AppUserCubit>.value(value: user),
+        ],
+        child: MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const LoginPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextFormField).first,
+      ' user@example.invalid ',
+    );
+    await tester.enterText(
+      find.byType(TextFormField).last,
+      '  exact password  ',
+    );
+    final l10n = lookupAppLocalizations(const Locale('en'));
+    final button = find.widgetWithText(ElevatedButton, l10n.loginTitle);
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    verify(
+      () => repo.loginWithEmailPassword(
+        email: 'user@example.invalid',
+        password: '  exact password  ',
+      ),
+    ).called(1);
+  });
+
+  testWidgets(
+    'signup counts Unicode code points and preserves password spaces',
+    (tester) async {
+      final repo = _AuthRepository();
+      when(
+        () => repo.signUpWithEmailPassword(
+          name: any(named: 'name'),
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenAnswer((_) async => left<Failure, User>(Failure.auth('rejected')));
+      final user = AppUserCubit();
+      final auth = AuthBloc(
+        userSignUp: UserSignUp(repo),
+        userLogin: UserLogin(repo),
+        userSignOut: UserSignOut(repo),
+        currentUser: CurrentUser(repo),
+        appUserCubit: user,
+        sessionGeneration: () => 0,
+        hasActiveSession: () => false,
+        isCurrentSessionUser: (_) => true,
+      );
+      addTearDown(auth.close);
+      addTearDown(user.close);
+      await tester.pumpWidget(
+        MultiBlocProvider(
+          providers: [
+            BlocProvider<AuthBloc>.value(value: auth),
+            BlocProvider<AppUserCubit>.value(value: user),
+          ],
+          child: MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const SignUpPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final fields = find.byType(TextFormField);
+      await tester.enterText(fields.at(0), ' Name ');
+      await tester.enterText(fields.at(1), ' user@example.invalid ');
+      await tester.enterText(fields.at(2), '😀' * 11);
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      final button = find.widgetWithText(ElevatedButton, l10n.submit);
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pump();
+      expect(find.text(l10n.passwordMinLength), findsOneWidget);
+      verifyNever(
+        () => repo.signUpWithEmailPassword(
+          name: any(named: 'name'),
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      );
+      await tester.enterText(fields.at(2), '  abcdefghij  ');
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      verify(
+        () => repo.signUpWithEmailPassword(
+          name: 'Name',
+          email: 'user@example.invalid',
+          password: '  abcdefghij  ',
+        ),
+      ).called(1);
+    },
+  );
+
   for (final language in ['zh', 'en']) {
     testWidgets(
       '$language login localizes validation and server errors at 2x',

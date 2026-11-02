@@ -65,6 +65,7 @@ class _Harness {
           routes: [
             for (final path in [
               'edit',
+              'change-password',
               'my-articles',
               'history',
               'sessions',
@@ -164,9 +165,9 @@ void main() {
             find.bySemanticsLabel(l10n.avatarOf(user.name)),
             findsOneWidget,
           );
-          expect(find.byType(NoWaveActionRow), findsNWidgets(7));
           for (final label in [
             l10n.menuEditProfile,
+            l10n.menuChangePassword,
             l10n.menuMyArticles,
             l10n.menuReadingHistory,
             l10n.accountSessionsTitle,
@@ -174,9 +175,10 @@ void main() {
             l10n.exportMyData,
             l10n.logout,
           ]) {
+            await tester.scrollUntilVisible(find.text(label), 140);
             expect(find.text(label), findsOneWidget);
           }
-          await tester.scrollUntilVisible(find.text(l10n.logout), 140);
+          expect(find.byType(NoWaveActionRow), findsNWidgets(8));
           expect(tester.takeException(), isNull);
         } finally {
           semantics.dispose();
@@ -209,6 +211,7 @@ void main() {
     await harness.pump(tester);
     for (final entry in <String, String>{
       'Edit profile': 'edit',
+      'Change password': 'change-password',
       'My articles': 'my-articles',
       'Reading history': 'history',
       'Sign-in sessions': 'sessions',

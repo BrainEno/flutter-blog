@@ -108,6 +108,11 @@ class ProfilePage extends StatelessWidget {
                           onTap: () => context.push('/profile/edit'),
                         ),
                         NoWaveActionRow(
+                          icon: Icons.lock_outline,
+                          label: l10n.menuChangePassword,
+                          onTap: () => context.push('/profile/change-password'),
+                        ),
+                        NoWaveActionRow(
                           icon: Icons.article_outlined,
                           label: l10n.menuMyArticles,
                           onTap: () => context.push('/profile/my-articles'),

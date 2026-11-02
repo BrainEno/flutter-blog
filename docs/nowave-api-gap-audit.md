@@ -1,8 +1,8 @@
 # no-wave API 与 Flutter 客户端差距（2026-11-02）
 
-本表静态核对 no-wave 默认分支快照 [`effeb9a7`](https://github.com/BrainEno/no-wave/tree/effeb9a7016278a385ecfd19d49a26eb7151c58b) 的 [`routes.ts`](https://github.com/BrainEno/no-wave/blob/effeb9a7016278a385ecfd19d49a26eb7151c58b/apps/api/src/transport/rest/routes.ts)、handler、数据校验以及 Flutter main `76efc7c` 和表中明确标注的客户端变更。相对前次审计 `ea276a5e`，后端增加 latest 游标、搜索正文、会话列表/撤销并修复改密的会话语义；`596ca5ae` 到此快照仅有 CI/文档改动。网页也新增本地划线等功能，但不意味着已有服务端同步 API。源码存在不代表某个部署已升级、邮件可投递或移动端联调通过。
+本表静态核对 no-wave 默认分支快照 [`effeb9a7`](https://github.com/BrainEno/no-wave/tree/effeb9a7016278a385ecfd19d49a26eb7151c58b) 的 [`routes.ts`](https://github.com/BrainEno/no-wave/blob/effeb9a7016278a385ecfd19d49a26eb7151c58b/apps/api/src/transport/rest/routes.ts)、handler、数据校验以及 Flutter main 和表中明确标注的客户端变更；改密相关的会话语义另复核了 `7590ca98` 与 `58dc3419`。相对前次审计 `ea276a5e`，后端增加 latest 游标、搜索正文、会话列表/撤销并修复改密的会话语义；`596ca5ae` 到此快照仅有 CI/文档改动。网页也新增本地划线等功能，但不意味着已有服务端同步 API。源码存在不代表某个部署已升级、邮件可投递或移动端联调通过。
 
-审计所用的主线 `76efc7c` 尚未包含改密 [#73](https://github.com/BrainEno/flutter-blog/pull/73)、只读会话列表 [#82](https://github.com/BrainEno/flutter-blog/pull/82) 或离线 outbox [#66](https://github.com/BrainEno/flutter-blog/pull/66)；当前合并及发布状态请以各 PR 和实际部署为准。后端已提供登录会话列表与单个/批量撤销；#82 只实现列表，不实现撤销。列表不提供设备名称或位置，旧无 `sid` token 可能无法识别当前会话；请求 IP 仍用于限流。
+本表包含改密 [#73](https://github.com/BrainEno/flutter-blog/pull/73) 与只读会话列表 [#82](https://github.com/BrainEno/flutter-blog/pull/82)；离线 outbox [#66](https://github.com/BrainEno/flutter-blog/pull/66) 仍为草稿。后端已提供登录会话列表与单个/批量撤销；客户端只实现列表，不实现撤销。列表不提供设备名称或位置，旧无 `sid` token 可能无法识别当前会话；请求 IP 仍用于限流。
 
 ## 接口与用户能力
 
@@ -15,8 +15,9 @@
 | 关注流 `GET /me/feed` | 已接入 | 仅登录用户；只含被关注作者的已发布文章，取消关注后刷新消失。无关注或无作品时返回空，不回退到公共流。每页 10 条，使用 offset；网络不可用时明确报错，不把无账号作用域的公共缓存当关注流。 |
 | 精选 `GET /featured` | 已接入只读 | 登录与否均可查看，按编辑指定顺序分页，最多 20 篇；空列表不回退公共流，不使用公共缓存。编辑端 `PUT /featured` 尚未接入。旧部署没有此接口时会显示请求错误。 |
 | 最多收藏 `GET /articles?sort=popular` | 已接入 | 此快照对**全部已发布作品**按累计收藏数排序；旧部署可能仍使用近 30 天窗口，API 不提供版本协商。客户端避免写死时间范围，网络不可用时不伪造排序。 |
-| 账号：`PUT /me/password`、`PUT /me/email`、`GET /me` 返回邮箱/验证状态 | 未接入 | 改密需当前密码，保留当前会话、撤销其他会话；改邮箱也需当前密码，更换地址后变为未验证。客户端目前仍显示登录时的本地邮箱。**错误当前密码也可能是 401**，接入时需避免将其当作 access token 过期而盲目重复提交。 |
-| 登录会话 `GET /me/sessions` | 本次接入只读 | 针对 no-wave [`596ca5ae`](https://github.com/BrainEno/no-wave/blob/596ca5ae09f36789f85d539dc5d268fe1cb9e180/docs/architecture/decisions/0019-device-list-without-device-fingerprints.md) 的补充核对。服务器最多返回 50 项，只有创建、最近令牌刷新和过期时间，列表不包含设备名称、IP 或位置；旧 token 或列表上限可能无法标识当前会话。页面只在内存保存结果，并按账号和 session generation 失效，旧部署返回 404/405 时明确提示不可用。单个/批量 DELETE 未接入，旧无 `sid` token 的批量撤销可能结束当前会话。API 源码存在不证明实际部署已升级。 |
+| 改密 `PUT /me/password` | 已接入登录态界面 | 先用账号围栏安全读取 `GET /me`，再使用当前密码和新密码提交一次，不对敏感 PUT 自动重试或跟随重定向。401 既可能是密码错误也可能是会话失效；超时、连接中断、5xx 或异常响应可能发生在提交后，界面提醒其他设备仍可能登录，提示先验证新密码、不要盲目重试。服务端文档称保留当前会话，但本地真实 SQLite 复现会连当前会话一起撤销（见下方和 [no-wave #129](https://github.com/BrainEno/no-wave/issues/129)），客户端提示可能需重新登录，也不把返回数解释成其他设备数。旧部署可能无该接口。 |
+| 改邮箱 `PUT /me/email`、`GET /me` 的邮箱/验证状态 | 未接入 | 改邮箱需当前密码，更换地址后变为未验证，默认不发送邮件且不会撤销会话；同地址保留原验证状态。客户端目前仍使用登录时的本地邮箱。接入需要安全同步 session 和 AppUser，避免账号切换后旧响应覆盖新账号。 |
+| 登录会话 `GET /me/sessions` | 已接入只读 | 针对 no-wave [`596ca5ae`](https://github.com/BrainEno/no-wave/blob/596ca5ae09f36789f85d539dc5d268fe1cb9e180/docs/architecture/decisions/0019-device-list-without-device-fingerprints.md) 的补充核对。服务器最多返回 50 项，只有创建、最近令牌刷新和过期时间，列表不包含设备名称、IP 或位置；旧 token 或列表上限可能无法标识当前会话。页面只在内存保存结果，并按账号和 session generation 失效，旧部署返回 404/405 时明确提示不可用。单个/批量 DELETE 未接入，旧无 `sid` token 的批量撤销可能结束当前会话。API 源码存在不证明实际部署已升级。 |
 | 找回/重置密码、邮箱验证与重发 `auth/*`、`POST /me/email-verification` | 未接入 | 需安全的链接处理、匿名防枚举和邮件状态提示；后端邮件默认关闭，实际投递未验证。 |
 | `contentBlocksVersion: 1` 富文本、结构化 v0、正文多图 | 按当前契约只读支持，编辑未支持 | 阅读与朗读共用 AST，保留标题、引用归属、列表、代码空白、图片/说明及行内样式；未配置可信 `WEB_BASE_URL` 时站点相对资源不可用。未知/损坏正文及迁移前已压平的 no-wave 缓存提示可能不完整；重获的结构化正文随文章缓存保存，图片本身不保证离线。更新前检查新鲜正文及摘要，阻止普通编辑器覆盖不兼容结构并回传摘要；仍不是富文本编辑。服务端未提供条件更新，检查不能防止随后并发修改；客户端重建块 ID，服务端可能重算空摘要。 |
 | `GET /me/articles`（含服务端草稿） | 未接入 | 当前“我的文章”读公开作者列表，不能完整查看服务端草稿；恢复到草稿的作品不能依靠该列表重新发布。本机自动草稿与服务端草稿不是同一数据。 |
@@ -29,12 +30,18 @@
 | 媒体上传、读取及媒体库 | Flutter 未接入列表/删除 | 补充核对 no-wave [`13271b21`](https://github.com/BrainEno/no-wave/tree/13271b218b5c9194002c48273429db8d75e9b183)：已增加个人媒体库与手动删除，没有定时回收；版本化封面、头像及并发写入存在[误删风险](https://github.com/BrainEno/no-wave/issues/146)，修复前不要使用网页媒体库删除图片。上传仍无幂等键，断流后不安全地重试可能产生孤儿。客户端继续由资源 ID 构造 `/api/v1/media/:id`；站点相对头像 origin 问题另见 [#63](https://github.com/BrainEno/flutter-blog/issues/63)。 |
 | 新建文章 `Idempotency-Key` | 未接入 | 服务端支持相同 key + 相同请求重放，但自动 slug 碰撞后的重放仍有 [no-wave #137](https://github.com/BrainEno/no-wave/issues/137)；客户端普通发布尚未固化跨重试 key。离线 outbox 的独立草稿 PR 仍待评审，不能声称已可靠离线发布。 |
 
+## 改密服务端兼容性风险
+
+使用 no-wave `7590ca98` 和 `58dc3419`、Node 22、本地内存 SQLite 及测试账号，实际调用注册、第二会话登录和改密，两版均复现：`PUT /me/password` 返回 200、撤销数为 2，但之后两个会话的 `GET /me` 均为 401，发起会话的 refresh 也为 401；旧密码登录 401、新密码登录 200。与文档声称的“保留发起会话”不符，复现和可能原因见 [no-wave #129](https://github.com/BrainEno/no-wave/issues/129)。另在同一隔离环境中，注入会话撤销失败后改密返回 500，但旧密码已不能登录、新密码可登录，另一会话的访问和 refresh 均仍为 200；证实密码更新与会话撤销可能部分成功，详见 [no-wave #132](https://github.com/BrainEno/no-wave/issues/132)。PostgreSQL 有相同的静态 ID 比较，但未实测；生产部署状态未知。客户端不能修复服务端事务或撤销策略，只能提前提醒重新登录，并在结果不明时避免制造确定性承诺。
+
+注册、登录和改密均按原样传递密码（包括首尾空格），不保存到应用缓存或诊断；新密码按服务端规则校验 12–128 个 Unicode 码点、最多 512 个 UTF-8 字节。网络上的密码和会话必须通过可信 HTTPS 保护；开发明文 HTTP 仅限隔离测试账号。
+
 ## 验证边界与建议顺序
 
-本次首页及正文适配的请求路径、分页、账号切换、离线和结构化阅读有客户端自动测试；真实后端、数据、图片和设备需独立验收。`latest` 仍保留现有离线缓存策略，精选、收藏榜与关注不写入也不读取这个列表缓存；通过单篇详情接口获取的文章会缓存，从卡片直接打开不会额外预缓存。旧 no-wave 缓存只保留压平后的文本，迁移不会凭空恢复原始结构。offset 翻页时服务端列表变化可能造成位移，客户端去重不能防止所有遗漏，下拉刷新可重新读取。
+本次首页及正文适配的请求路径、分页、账号切换、离线和结构化阅读有客户端自动测试；`58dc3419` 的正文搜索与游标合约在隔离 SQLite 测试各通过一项，游标路由 mock 测试通过，PostgreSQL 未实测。真实后端、数据、图片和设备需独立验收。`latest` 仍保留现有离线缓存策略，精选、收藏榜与关注不写入也不读取这个列表缓存；通过单篇详情接口获取的文章会缓存，从卡片直接打开不会额外预缓存。旧 no-wave 缓存只保留压平后的文本，迁移不会凭空恢复原始结构。offset 翻页时服务端列表变化可能造成位移，客户端去重不能防止所有遗漏，下拉刷新可重新读取。
 
 此轮正文适配的 SQLite v5 仅为文章缓存增添可空 JSON 列，不删除文章、草稿、偏好或阅读历史。旧 no-wave 缓存根据服务端文章 ID 标记为可能不完整，早期本地 Markdown 保留原行为；新版应用重新联网获取后写入新数据。
 
 后续本地草稿隔离使用 SQLite v6：新草稿按后端、账号和文章隔离；未记录归属的旧 SQLite/Isar 草稿保留但不自动显示或分配。参见[旧草稿说明](unclaimed-drafts.md)。旧版应用回退打开新版数据库并未验证，降级可能再次向错误账号展示旧草稿，升级/降级前应自行备份设备数据。
 
-后续可独立补齐富文本安全往返、账号安全、服务端草稿、通知及私信；具体界面和邮件/推送部署能力应分别验证，不将管理接口或未实现的服务器能力伪装成客户端功能。
+接下来优先补齐：① 修复并部署服务端改密会话问题（[#129](https://github.com/BrainEno/no-wave/issues/129)、[#132](https://github.com/BrainEno/no-wave/issues/132)）；② 富文本完整、安全往返与并发更新策略；③ 账号邮箱与邮件验证；④ 服务端草稿；⑤ 通知和私信。分类管理与角色、社交列表可作为独立功能；具体界面和邮件/推送部署能力应分别验证，不将管理接口或未实现的服务器能力伪装成客户端功能。
