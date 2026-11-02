@@ -10,6 +10,7 @@ import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
+import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/user/presentation/pages/author_page.dart';
 import 'package:belog/features/user/domain/entities/author_profile.dart';
@@ -157,8 +158,10 @@ void main() {
     userId: 'author-1',
   );
 
-  BlogByBloc buildBlogByBloc() =>
-      BlogByBloc(getBlogsByPoster: GetBlogsByPoster(blogRepository));
+  BlogByBloc buildBlogByBloc() => BlogByBloc(
+    getBlogsByPoster: GetBlogsByPoster(blogRepository),
+    getMyArticles: GetMyArticles(blogRepository),
+  );
 
   testWidgets('renders the profile and the article list', (tester) async {
     appUserCubit.updateUser(_user());

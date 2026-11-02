@@ -59,6 +59,11 @@ abstract interface class BlogRepository {
 
   Future<Either<Failure, List<Blog>>> getBlogsByUser(String userId);
 
+  /// The viewer's own articles, including server-side drafts, newest update
+  /// first. Online only and never cached: the local cache mirrors the public
+  /// feed, where a draft must not appear. The read is scoped to [userId].
+  Future<Either<Failure, List<Blog>>> getMyArticles({required String userId});
+
   Future<Either<Failure, Blog>> editBlog({
     required String blogId,
     required String title,

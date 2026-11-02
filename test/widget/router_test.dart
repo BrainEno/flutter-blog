@@ -32,6 +32,7 @@ import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
+import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_user_liked_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/is_blog_liked.dart';
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart';
@@ -52,6 +53,7 @@ import 'package:belog/features/blog/presentation/pages/recycle_bin_page.dart';
 import 'package:belog/features/blog/presentation/pages/user_blogs_page.dart';
 import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
+import 'package:belog/features/blog/presentation/widgets/blog_grid_item.dart';
 import 'package:belog/features/user/data/datasources/author_remote_data_source.dart';
 import 'package:belog/features/user/data/models/author_profile_model.dart';
 import 'package:belog/features/user/data/repositories/author_repository_impl.dart';
@@ -100,15 +102,17 @@ class MemoryThemeStore implements ThemePreferenceStore {
   Future<void> save(ThemeMode value) async => mode = value;
 }
 
-BlogModel sampleBlog(String id, String title) => BlogModel(
-  id: id,
-  title: title,
-  content: '正文',
-  posterId: 'author',
-  imageUrl: '',
-  tags: const ['诗歌'],
-  updatedAt: DateTime.utc(2025),
-);
+BlogModel sampleBlog(String id, String title, {bool isDraft = false}) =>
+    BlogModel(
+      id: id,
+      title: title,
+      content: '正文',
+      posterId: 'author',
+      imageUrl: '',
+      tags: const ['诗歌'],
+      updatedAt: DateTime.utc(2025),
+      isDraft: isDraft,
+    );
 
 User sampleUser() => User(
   id: 'user',
@@ -160,6 +164,11 @@ class Harness {
     when(
       () => remote.getBlogsByPosterId('author'),
     ).thenAnswer((_) async => <BlogModel>[]);
+    // "My articles" reads the account-scoped list, so every signed-in test
+    // needs it stubbed even when it only walks past the page.
+    when(
+      () => remote.getMyArticles(userId: any(named: 'userId')),
+    ).thenAnswer((_) async => <BlogModel>[]);
     when(
       () => local.uploadLocalBlogs(blogs: any(named: 'blogs')),
     ).thenAnswer((_) async {});
@@ -190,6 +199,7 @@ class Harness {
       ..registerFactory(() => UpdateBlog(repository))
       ..registerFactory(() => DeleteBlog(repository))
       ..registerFactory(() => GetBlogsByPoster(repository))
+      ..registerFactory(() => GetMyArticles(repository))
       ..registerFactory(() => GetRelatedArticles(repository))
       ..registerFactory(() => BlogBloc(getAllBlogs: sl<GetAllBlogs>()))
       ..registerFactory(() => BlogSearchBloc(searchBlogs: sl<SearchBlogs>()))
@@ -208,7 +218,10 @@ class Harness {
         ),
       )
       ..registerFactory(
-        () => BlogByBloc(getBlogsByPoster: sl<GetBlogsByPoster>()),
+        () => BlogByBloc(
+          getBlogsByPoster: sl<GetBlogsByPoster>(),
+          getMyArticles: sl<GetMyArticles>(),
+        ),
       );
 
     final commentRepository = CommentRepositoryImpl(
@@ -616,7 +629,7 @@ void main() {
     ).copyWith(articleId: 'article-uuid');
     var deleted = false;
     when(
-      () => harness.remote.getBlogsByPosterId('user'),
+      () => harness.remote.getMyArticles(userId: 'user'),
     ).thenAnswer((_) async => deleted ? <BlogModel>[] : [article]);
     when(
       () => harness.remote.getBlogById('editable'),
@@ -657,7 +670,7 @@ void main() {
     final harness = Harness();
     addTearDown(harness.dispose);
     var restored = false;
-    when(() => harness.remote.getBlogsByPosterId('user')).thenAnswer(
+    when(() => harness.remote.getMyArticles(userId: 'user')).thenAnswer(
       (_) async => restored ? [sampleBlog('restored', '恢复的文章')] : <BlogModel>[],
     );
     when(() => harness.remote.getDeletedBlogs()).thenAnswer(
@@ -710,7 +723,35 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(UserBlogsPage), findsOneWidget);
     expect(find.text('恢复的文章'), findsOneWidget);
-    verify(() => harness.remote.getBlogsByPosterId('user')).called(2);
+    verify(() => harness.remote.getMyArticles(userId: 'user')).called(2);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('my articles shows server drafts with a badge and a hint', (
+    tester,
+  ) async {
+    final harness = Harness();
+    addTearDown(harness.dispose);
+    when(() => harness.remote.getMyArticles(userId: 'user')).thenAnswer(
+      (_) async => [
+        sampleBlog('draft', '恢复的草稿', isDraft: true),
+        sampleBlog('live', '已发布的文章'),
+      ],
+    );
+    harness.appUserCubit.updateUser(sampleUser());
+    harness.buildRouter(initialLocation: '/profile/my-articles');
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('恢复的草稿'), findsOneWidget);
+    expect(find.text('已发布的文章'), findsOneWidget);
+    // Exactly one tile carries the draft marker: the badge describes a row,
+    // not the list.
+    expect(
+      find.descendant(of: find.byType(BlogGridItem), matching: find.text('草稿')),
+      findsOneWidget,
+    );
+    expect(find.text('草稿只有你自己能看到；在编辑器中打开并发布后才会公开。'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

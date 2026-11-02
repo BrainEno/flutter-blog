@@ -437,6 +437,95 @@ void main() {
     });
   });
 
+  group('getMyArticles', () {
+    test('reads the account-scoped list and marks drafts', () async {
+      when(
+        () => client.getJsonForViewer(
+          '/me/articles',
+          expectedUserId: 'u1',
+          query: any(named: 'query'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          {..._articleMap(), 'slug': 'a-draft', 'status': 'draft'},
+          {..._articleMap(), 'slug': 'published', 'status': 'published'},
+        ],
+      );
+
+      final blogs = await dataSource.getMyArticles(userId: 'u1');
+
+      expect(blogs.map((blog) => blog.id), ['a-draft', 'published']);
+      expect(blogs.map((blog) => blog.isDraft), [true, false]);
+      verify(
+        () => client.getJsonForViewer(
+          '/me/articles',
+          expectedUserId: 'u1',
+          query: {'limit': '100', 'locale': 'zh-CN'},
+        ),
+      ).called(1);
+    });
+
+    test(
+      'a deployment without the endpoint falls back to the public list',
+      () async {
+        when(
+          () => client.getJsonForViewer(
+            '/me/articles',
+            expectedUserId: any(named: 'expectedUserId'),
+            query: any(named: 'query'),
+          ),
+        ).thenThrow(
+          const NowaveApiException(
+            statusCode: 404,
+            code: 'NOT_FOUND',
+            message: 'Not found.',
+          ),
+        );
+        when(
+          () => client.getJson(
+            '/authors/u1/articles',
+            query: any(named: 'query'),
+          ),
+        ).thenAnswer((_) async => [_articleMap()]);
+
+        final blogs = await dataSource.getMyArticles(userId: 'u1');
+
+        expect(blogs.single.id, _kSlug);
+        expect(blogs.single.isDraft, isFalse);
+      },
+    );
+
+    test(
+      'other failures still surface instead of faking an empty list',
+      () async {
+        when(
+          () => client.getJsonForViewer(
+            '/me/articles',
+            expectedUserId: any(named: 'expectedUserId'),
+            query: any(named: 'query'),
+          ),
+        ).thenThrow(
+          const NowaveApiException(
+            statusCode: 401,
+            code: 'UNAUTHENTICATED',
+            message: 'Sign in required.',
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.getMyArticles(userId: 'u1'),
+          throwsA(isA<ServerException>()),
+        );
+        verifyNever(
+          () => client.getJson(
+            '/authors/u1/articles',
+            query: any(named: 'query'),
+          ),
+        );
+      },
+    );
+  });
+
   group('restoreArticle', () {
     test('POSTs the restore with the locale and parses the draft', () async {
       when(
