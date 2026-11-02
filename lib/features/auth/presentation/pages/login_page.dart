@@ -2,6 +2,7 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/common/widgets/loader.dart';
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/auth/presentation/widgets/auth_field.dart';
@@ -45,6 +46,9 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  /// The diagnostics dialog, opened from the failed-login snackbar.
+  void _openDiagnostics() => context.push('/about?diagnostics=1');
+
   void _openSignUp() {
     final target = Uri.encodeComponent(widget.redirectTo ?? '/');
     context.push('/signup?redirect=$target');
@@ -73,9 +77,22 @@ class _LoginPageState extends State<LoginPage> {
               listener: (context, state) {
                 if (state is AuthFailure) {
                   if (attemptedLogin) {
+                    final failure = state.failure;
+                    // A transport failure is the case where the diagnostics
+                    // report actually answers the question: make it one tap
+                    // away instead of hoping the user finds the About page.
+                    final offerDiagnostics =
+                        failure.kind == FailureKind.network ||
+                        failure.kind == FailureKind.timeout;
                     showSnackBar(
                       context,
-                      localizedFailure(context.l10n, state.failure),
+                      localizedFailure(context.l10n, failure),
+                      action: offerDiagnostics
+                          ? SnackBarAction(
+                              label: context.l10n.diagnosticsEntry,
+                              onPressed: _openDiagnostics,
+                            )
+                          : null,
                     );
                   }
                 }
@@ -146,6 +163,12 @@ class _LoginPageState extends State<LoginPage> {
                       TextButton(
                         onPressed: () => context.go('/'),
                         child: Text(context.l10n.browseWithoutSignIn),
+                      ),
+                      // Public entry: signing in is exactly when the report
+                      // is needed, so it must not hide behind the profile tab.
+                      TextButton(
+                        onPressed: () => context.push('/about'),
+                        child: Text(context.l10n.diagnosticsEntry),
                       ),
                       const SizedBox(height: 60),
                     ],

@@ -120,6 +120,29 @@ void main() {
     expect(reportText.data, contains('GET /api/v1/articles -> 503'));
   });
 
+  testWidgets('openDiagnostics lands on the report directly', (
+    tester,
+  ) async {
+    tester.platformDispatcher.localeTestValue = const Locale('zh');
+    addTearDown(tester.platformDispatcher.clearLocaleTestValue);
+    AppLogger.request('GET', '/api/v1/articles', 503, 1203);
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AboutPage(
+          packageInfoLoader: _fakePackageInfo,
+          openDiagnostics: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('诊断信息'), findsOneWidget);
+    expect(find.textContaining('GET /api/v1/articles -> 503'), findsOneWidget);
+  });
+
   testWidgets('the version row shows the real manifest version', (
     tester,
   ) async {

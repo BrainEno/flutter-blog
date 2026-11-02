@@ -312,11 +312,16 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
   （`10.0.2.2`、`localhost`、`127.0.0.1`、`192.168.x`、`172.16–31.x`、`169.254.x`、
   `*.local`）直接用 `GET /api/v1/health` 探测后端本身，不再用公网探测——公网探测
   在机器或模拟器连不上自己的公共端点时会把可达的本地后端判成离线；公网 origin
-  仍按原来的 `BELOG_DEV_BACKEND_CHECK` 规则处理。二是**真实请求的传输错误**
-  （`SocketException`/`ClientException`），说明配置的 origin 连不上。两种情况都会
-  留下证据：在「我的 → 关于我们」页面底部点「查看诊断信息」（或长按版本号）
-  打开诊断弹窗，探测失败与请求失败都会写进去
-  （形如 `probe GET /api/v1/health failed (SocketException)`），debug 控制台里
+  仍按原来的 `BELOG_DEV_BACKEND_CHECK` 规则处理。探测**只在明确的传输失败**
+  （`SocketException`/`ClientException`：拒绝连接、无路由、明文被拦）时判离线；
+  **探测超时（`TimeoutException`）不再等于离线**——冷启动的开发服务器、断点暂停或
+  慢代理都可能超过 3 秒探测预算却仍能响应真实请求（真实请求的预算长得多），
+  所以超时按“无法判定”处理，交给请求自己报错。二是**真实请求的传输错误**，
+  说明配置的 origin 连不上。两种情况都会留下证据：登录页底部、登录失败提示条上的
+  「查看诊断信息」按钮，以及「我的 → 关于我们」（按钮或长按版本号）都会打开诊断弹窗，
+  也可直接访问 `/about?diagnostics=1`；探测与请求记录形如
+  `probe GET /api/v1/health inconclusive (TimeoutException after 3001ms, budget 3000ms)`
+  或 `request POST /api/v1/auth/login unreachable (SocketException)`，debug 控制台里
   也会打印实际探测的 origin。本机先自查 `curl http://localhost:4000/api/v1/health`；
   连不上时重点看后端监听地址：Node/Express 里 `listen(4000, 'localhost')` 在 Windows
   上只绑定 `::1`，而模拟器的 `10.0.2.2` 走 IPv4 回环，会被直接拒绝——改成监听
@@ -325,9 +330,12 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
 - **后端没有启动**：App 仍可正常启动，不会崩溃或卡死。首帧会话恢复最多等待
   3 秒；首页在没有缓存时显示本地化网络错误与“重试”，有缓存时先显示缓存并
   标注来源；登录、发布等操作以同样的本地化错误反馈。启动脚本启用的
-  `BELOG_DEV_BACKEND_CHECK` 只探测 `/api/v1/health`，因此后端不可达时约 3 秒内
-  就能失败，而不是等 30 秒请求超时。把后端地址改成模拟器可访问的 origin
-  （宿主机本地服务用 `http://10.0.2.2:端口`），或在后端启动后重试即可。
+  `BELOG_DEV_BACKEND_CHECK` 只探测 `/api/v1/health`：拒绝连接会立即判离线并提示，
+  超时则视为无法判定、放行真实请求（最多 30 秒后按请求自身的结果报错，
+  诊断里会留下 `timeout POST /api/v1/auth/login (budget 30000ms)`）。把后端地址改成
+  模拟器可访问的 origin（宿主机本地服务用 `http://10.0.2.2:端口`），或在后端启动后
+  重试即可；模拟器里也可用 `adb shell "toybox wget -O - http://10.0.2.2:4000/api/v1/health"`
+  直接验证连通性。
 
 ### 调试网络与手动命令
 

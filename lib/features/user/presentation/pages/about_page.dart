@@ -15,9 +15,15 @@ class AboutPage extends StatefulWidget {
   /// Injectable for tests; the default reads the real package manifest.
   final Future<PackageInfo> Function() packageInfoLoader;
 
+  /// Opens the diagnostics dialog right away: the login failure snackbar and
+  /// the `/about?diagnostics=1` deep link use it to land on the reason
+  /// instead of asking the user to find a button.
+  final bool openDiagnostics;
+
   const AboutPage({
     super.key,
     this.packageInfoLoader = PackageInfo.fromPlatform,
+    this.openDiagnostics = false,
   });
 
   @override
@@ -25,7 +31,28 @@ class AboutPage extends StatefulWidget {
 }
 
 class _AboutPageState extends State<AboutPage> {
-  late final Future<PackageInfo> _packageInfo = widget.packageInfoLoader();
+  late final Future<PackageInfo?> _packageInfo = _loadPackageInfo();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.openDiagnostics) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showDiagnostics(context);
+      });
+    }
+  }
+
+  /// A missing plugin (widget tests, a stripped build) degrades the version
+  /// row to its placeholder instead of failing the page.
+  Future<PackageInfo?> _loadPackageInfo() async {
+    try {
+      return await widget.packageInfoLoader();
+    } catch (error) {
+      AppLogger.debug('package info unavailable: ${error.runtimeType}');
+      return null;
+    }
+  }
 
   /// Coarse, sanitized context for the diagnostics preamble (issue #49):
   /// app identity, build flavor, OS family and device locale. Never device
@@ -106,7 +133,7 @@ class _AboutPageState extends State<AboutPage> {
               onLongPress: () => _showDiagnostics(context),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                child: FutureBuilder<PackageInfo>(
+                child: FutureBuilder<PackageInfo?>(
                   future: _packageInfo,
                   builder: (context, snapshot) {
                     final info = snapshot.data;

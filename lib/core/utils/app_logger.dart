@@ -71,6 +71,10 @@ class AppLogger {
   static void probeFailed(String path, String errorType) =>
       diagnostics.recordProbe(path, errorType);
 
+  /// Records a connectivity probe that timed out: inconclusive, not offline.
+  static void probeInconclusive(String path, int elapsedMs, int budgetMs) =>
+      diagnostics.recordProbeInconclusive(path, elapsedMs, budgetMs);
+
   /// Records that the public-internet probe reported the device offline.
   /// This is the other half of the "no network" message: it names the gate
   /// that fired instead of the API that was never contacted.

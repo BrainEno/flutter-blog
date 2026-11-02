@@ -89,6 +89,15 @@ class DiagnosticsBuffer {
     _add('probe GET ${_scrubFragment(path)} failed ($errorType)');
   }
 
+  /// Records a probe that ran out of budget without a definite failure.
+  /// [elapsedMs] is the measured wait and [budgetMs] the configured bound.
+  void recordProbeInconclusive(String path, int elapsedMs, int budgetMs) {
+    _add(
+      'probe GET ${_scrubFragment(path)} inconclusive '
+      '(TimeoutException after ${elapsedMs}ms, budget ${budgetMs}ms)',
+    );
+  }
+
   /// Records that the public-internet probe answered "offline".
   ///
   /// Without this line a "无法连接到网络" report cannot be told apart from

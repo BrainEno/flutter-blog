@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:http/http.dart' as http;
@@ -54,17 +56,37 @@ class ApiConnectionChecker implements ConnectionChecker {
     return parts[0] == 192 && parts[1] == 168;
   }
 
+  /// Whether the backend can be reached.
+  ///
+  /// Only a *definite* transport failure (refused, no route, blocked
+  /// cleartext) reports `false`. A probe timeout is **inconclusive**: a cold
+  /// development server, a paused debugger or a slow proxy can exceed the
+  /// short probe budget and still answer the real request, whose own budget
+  /// is far longer. Reporting "offline" there would block a perfectly
+  /// healthy login, so the request gets to decide and surface its own error.
   @override
   Future<bool> get isConnected async {
     http.Client? client;
+    final stopwatch = Stopwatch()..start();
     try {
       client = _clientFactory();
       await client.get(_healthUri).timeout(timeout);
       return true;
+    } on TimeoutException {
+      AppLogger.probeInconclusive(
+        _healthUri.path,
+        stopwatch.elapsedMilliseconds,
+        timeout.inMilliseconds,
+      );
+      AppLogger.debug(
+        'connectivity probe ${_healthUri.origin}${_healthUri.path} '
+        'inconclusive after ${timeout.inMilliseconds}ms; the request decides',
+      );
+      return true;
     } catch (error) {
       // Every repository turns this false into a user-facing "no network"
-      // message, so the reason (refused, DNS, timeout, blocked cleartext)
-      // must not vanish: record the probe target and the error type.
+      // message, so the reason (refused, DNS, blocked cleartext) must not
+      // vanish: record the probe target and the error type.
       final errorType = '${error.runtimeType}';
       AppLogger.probeFailed(_healthUri.path, errorType);
       AppLogger.debug(
