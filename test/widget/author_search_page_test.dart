@@ -80,60 +80,67 @@ void main() {
     'debounces, invalidates old results immediately, and retries failures',
     (tester) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
-      final repository = ScriptedRepository();
-      final cubit = AuthorSearchCubit(searchAuthors: SearchAuthors(repository));
-      addTearDown(cubit.close);
-      await _pumpPage(tester, cubit: cubit);
-      expect(
-        find.text('Type a name or user ID to find authors'),
-        findsOneWidget,
-      );
+      try {
+        final repository = ScriptedRepository();
+        final cubit = AuthorSearchCubit(
+          searchAuthors: SearchAuthors(repository),
+        );
+        addTearDown(cubit.close);
+        await _pumpPage(tester, cubit: cubit);
+        expect(
+          find.text('Type a name or user ID to find authors'),
+          findsOneWidget,
+        );
 
-      await tester.enterText(find.byType(TextField), 'old');
-      await tester.pump(const Duration(milliseconds: 299));
-      expect(repository.queries, isEmpty);
-      await tester.pump(const Duration(milliseconds: 1));
-      expect(repository.queries, ['old']);
-      expect(find.bySemanticsLabel('Searching…'), findsOneWidget);
+        await tester.enterText(find.byType(TextField), 'old');
+        await tester.pump(const Duration(milliseconds: 299));
+        expect(repository.queries, isEmpty);
+        await tester.pump(const Duration(milliseconds: 1));
+        expect(repository.queries, ['old']);
+        expect(find.bySemanticsLabel('Searching…'), findsOneWidget);
 
-      await tester.enterText(find.byType(TextField), 'new');
-      repository.requests[0].complete(
-        right([const AuthorSearchResult(userId: 'old', displayName: 'Stale')]),
-      );
-      await tester.pump();
-      expect(find.text('Stale'), findsNothing);
-      expect(find.bySemanticsLabel('Searching…'), findsOneWidget);
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(repository.queries, ['old', 'new']);
-      repository.requests[1].complete(left(Failure.networkOffline()));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('No network connection'), findsOneWidget);
-      expect(find.text('No matching authors'), findsNothing);
-      await tester.tap(find.text('Retry'));
-      await tester.pump();
-      expect(repository.queries, ['old', 'new', 'new']);
-      repository.requests[2].complete(
-        right([
-          const AuthorSearchResult(
-            userId: 'reader',
-            displayName: 'Reader',
-            bio: 'Bio',
-          ),
-        ]),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Reader'), findsOneWidget);
-      expect(find.text('Bio'), findsOneWidget);
-      expect(find.bySemanticsLabel('Avatar of Reader'), findsOneWidget);
-      await tester.tap(find.byTooltip('Clear search'));
-      await tester.pumpAndSettle();
-      expect(
-        find.text('Type a name or user ID to find authors'),
-        findsOneWidget,
-      );
-      expect(repository.queries, hasLength(3));
-      expect(tester.takeException(), isNull);
+        await tester.enterText(find.byType(TextField), 'new');
+        repository.requests[0].complete(
+          right([
+            const AuthorSearchResult(userId: 'old', displayName: 'Stale'),
+          ]),
+        );
+        await tester.pump();
+        expect(find.text('Stale'), findsNothing);
+        expect(find.bySemanticsLabel('Searching…'), findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(repository.queries, ['old', 'new']);
+        repository.requests[1].complete(left(Failure.networkOffline()));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('No network connection'), findsOneWidget);
+        expect(find.text('No matching authors'), findsNothing);
+        await tester.tap(find.text('Retry'));
+        await tester.pump();
+        expect(repository.queries, ['old', 'new', 'new']);
+        repository.requests[2].complete(
+          right([
+            const AuthorSearchResult(
+              userId: 'reader',
+              displayName: 'Reader',
+              bio: 'Bio',
+            ),
+          ]),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Reader'), findsOneWidget);
+        expect(find.text('Bio'), findsOneWidget);
+        expect(find.bySemanticsLabel('Avatar of Reader'), findsOneWidget);
+        await tester.tap(find.byTooltip('Clear search'));
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Type a name or user ID to find authors'),
+          findsOneWidget,
+        );
+        expect(repository.queries, hasLength(3));
+        expect(tester.takeException(), isNull);
+      } finally {
+        semantics.dispose();
+      }
     },
   );
 
@@ -213,42 +220,45 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
         final semantics = tester.ensureSemantics();
-        addTearDown(semantics.dispose);
-        final repository = ScriptedRepository();
-        final cubit = AuthorSearchCubit(
-          searchAuthors: SearchAuthors(repository),
-        );
-        addTearDown(cubit.close);
-        await _pumpPage(
-          tester,
-          cubit: cubit,
-          locale: locale,
-          mode: mode,
-          textScale: 2,
-        );
-        await tester.enterText(find.byType(TextField), 'writer');
-        await tester.pump(const Duration(milliseconds: 300));
-        repository.requests.single.complete(
-          right(
-            List.generate(
-              100,
-              (i) => AuthorSearchResult(
-                userId: 'writer-$i',
-                displayName: i == 0 ? '' : 'Writer $i',
-                bio: i == 0 ? 'A public biography' : '',
+        try {
+          final repository = ScriptedRepository();
+          final cubit = AuthorSearchCubit(
+            searchAuthors: SearchAuthors(repository),
+          );
+          addTearDown(cubit.close);
+          await _pumpPage(
+            tester,
+            cubit: cubit,
+            locale: locale,
+            mode: mode,
+            textScale: 2,
+          );
+          await tester.enterText(find.byType(TextField), 'writer');
+          await tester.pump(const Duration(milliseconds: 300));
+          repository.requests.single.complete(
+            right(
+              List.generate(
+                100,
+                (i) => AuthorSearchResult(
+                  userId: 'writer-$i',
+                  displayName: i == 0 ? '' : 'Writer $i',
+                  bio: i == 0 ? 'A public biography' : '',
+                ),
               ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
-        final l10n = lookupAppLocalizations(locale);
-        expect(find.text(l10n.authorSearchLimitNotice), findsOneWidget);
-        expect(find.text(l10n.anonymousAuthor), findsOneWidget);
-        expect(
-          find.bySemanticsLabel(l10n.avatarOf(l10n.anonymousAuthor)),
-          findsOneWidget,
-        );
-        expect(tester.takeException(), isNull);
+          );
+          await tester.pumpAndSettle();
+          final l10n = lookupAppLocalizations(locale);
+          expect(find.text(l10n.authorSearchLimitNotice), findsOneWidget);
+          expect(find.text(l10n.anonymousAuthor), findsOneWidget);
+          expect(
+            find.bySemanticsLabel(l10n.avatarOf(l10n.anonymousAuthor)),
+            findsOneWidget,
+          );
+          expect(tester.takeException(), isNull);
+        } finally {
+          semantics.dispose();
+        }
       });
     }
   }
