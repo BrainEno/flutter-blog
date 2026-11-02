@@ -52,7 +52,8 @@ elif name == 'ditto':
         shutil.copytree(args[0], args[1], dirs_exist_ok=True, symlinks=True)
 elif name == 'flutter':
     if args == ['--version', '--machine']:
-        print(json.dumps({'frameworkVersion':os.environ.get('MOCK_FLUTTER_VERSION','3.47.8')}))
+        print(json.dumps({'frameworkVersion':os.environ.get('MOCK_FLUTTER_VERSION','3.47.8'),
+                          'dartSdkVersion':os.environ.get('MOCK_DART_VERSION','3.10.4')}))
     elif args[:2] == ['pub', 'get']:
         if os.environ.get('MOCK_FAIL_PUB'):
             sys.exit(2)
@@ -105,6 +106,8 @@ class MacScriptTests(unittest.TestCase):
         shutil.copy2(ROOT / 'tool/release/verify_ipa.py', self.root / 'tool/release/verify_ipa.py')
         shutil.copytree(ROOT / 'tool/mobile', self.root / 'tool/mobile', ignore=shutil.ignore_patterns('__pycache__'))
         shutil.copy2(ROOT / 'pubspec.yaml', self.root / 'pubspec.yaml')
+        (self.root / 'tool').mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / 'tool/flutter_version.txt', self.root / 'tool/flutter_version.txt')
         self.config = self.root / 'env with spaces.json'
         self.config.write_text(json.dumps({'API_BASE_URL': 'https://api.real-site.dev', 'WEB_BASE_URL': ''}))
         self.bin = Path(self.temp.name) / 'bin'
@@ -188,8 +191,20 @@ class MacScriptTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('HTTPS', result.stdout)
         self.assertFalse(any(call[:2] == ['flutter','build'] for call in self.calls()))
-        result = self.run_script('run_ios.sh', MOCK_FLUTTER_VERSION='3.0.0')
+        result = self.run_script('run_ios.sh', MOCK_FLUTTER_VERSION='3.0.0', MOCK_DART_VERSION='3.4.0')
         self.assertNotEqual(result.returncode, 0)
+        self.assertIn('3.47.8', result.stdout)
+
+    def test_local_debug_tolerates_a_compatible_sdk_but_packaging_does_not(self):
+        result = self.run_script('run_ios.sh', MOCK_FLUTTER_VERSION='3.41.9', MOCK_DART_VERSION='3.10.4')
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn('CI and release builds use 3.47.8', result.stdout)
+        result = self.run_script('run_ios.sh', MOCK_FLUTTER_VERSION='3.41.9', MOCK_DART_VERSION='3.10.4',
+                                 BELOG_STRICT_FLUTTER_VERSION='1')
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn('3.47.8', result.stdout)
+        result = self.run_script('build_ios_ipa.sh', MOCK_FLUTTER_VERSION='3.41.9', MOCK_DART_VERSION='3.10.4')
+        self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn('3.47.8', result.stdout)
 
     def test_signed_mode_checks_new_artifact_and_never_uses_stale_ipa(self):

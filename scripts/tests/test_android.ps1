@@ -28,7 +28,7 @@ try {
     @'
 @echo off
 if "%~1"=="--version" (
-  echo {"frameworkVersion":"3.47.8"}
+  echo {"frameworkVersion":"%MOCK_FLUTTER_VERSION%","dartSdkVersion":"%MOCK_DART_VERSION%"}
   exit /b 0
 )
 echo flutter %*>>"%BELOG_TEST_LOG%"
@@ -84,6 +84,8 @@ public static class FakeEmulator {
     $env:MOCK_NO_EMULATOR = ''
     $env:MOCK_NEVER_BOOT = ''
     $env:MOCK_FAIL_PUB = ''
+    $env:MOCK_FLUTTER_VERSION = '3.47.8'
+    $env:MOCK_DART_VERSION = '3.10.4'
     '{"API_BASE_URL":"http://10.0.2.2:8787","WEB_BASE_URL":""}' | Set-Content -LiteralPath $config -Encoding Ascii
 
     $reuse = Run-Subject @('-Avd', 'Demo')
@@ -136,6 +138,27 @@ public static class FakeEmulator {
     $timeout = Run-Subject @()
     Assert-True ($timeout.ExitCode -ne 0 -and $timeout.Output -match 'timed out') 'Boot timeout was not surfaced.'
 
+    # A different but still compatible SDK must not block local debugging.
+    $env:MOCK_NEVER_BOOT = ''
+    $env:MOCK_FLUTTER_VERSION = '3.41.9'
+    $env:MOCK_DART_VERSION = '3.10.4'
+    $drift = Run-Subject @()
+    Assert-True ($drift.ExitCode -eq 0) "A compatible SDK version was refused: $($drift.Output)"
+    Assert-True ($drift.Output -match 'CI and release builds use 3\.47\.8') 'The version drift warning was not printed.'
+    # Below pubspec.yaml's Dart constraint the run is refused, with the way out.
+    $env:MOCK_DART_VERSION = '3.4.0'
+    $tooOld = Run-Subject @()
+    Assert-True ($tooOld.ExitCode -ne 0) 'An SDK below the Dart constraint was accepted.'
+    Assert-True ($tooOld.Output -match '3\.47\.8' -and $tooOld.Output -match 'flutter upgrade') 'The refusal did not explain how to upgrade.'
+    Assert-True ($tooOld.Output -match 'remote-tracking branch') 'The refusal did not cover the broken-SDK upgrade case.'
+    # Opting into strictness refuses the same compatible SDK.
+    $env:MOCK_DART_VERSION = '3.10.4'
+    $env:BELOG_STRICT_FLUTTER_VERSION = '1'
+    $strictRun = Run-Subject @()
+    Assert-True ($strictRun.ExitCode -ne 0) 'Strict mode accepted a different SDK.'
+    $env:BELOG_STRICT_FLUTTER_VERSION = ''
+    $env:MOCK_FLUTTER_VERSION = '3.47.8'
+
     Write-Host 'Windows PowerShell mock scenarios passed (no Android SDK/device exercised).'
     # Negative test cases intentionally leave a child process exit code of 1.
     # Do not leak it into the caller/Actions shell after all assertions pass.
@@ -147,7 +170,7 @@ public static class FakeEmulator {
         $proc = Get-Process -Id $id -ErrorAction SilentlyContinue
         if ($proc -and $proc.Path -eq $emulator) { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue }
     }
-    foreach ($name in @('BELOG_TEST_LOG', 'BELOG_TEST_STARTED', 'BELOG_TEST_PID', 'MOCK_NO_EMULATOR', 'MOCK_NEVER_BOOT', 'MOCK_FAIL_PUB', 'MOCK_NATIVE_STDERR', 'MOCK_FAIL_ADB', 'MOCK_FAIL_AVD_LIST')) {
+    foreach ($name in @('BELOG_TEST_LOG', 'BELOG_TEST_STARTED', 'BELOG_TEST_PID', 'MOCK_NO_EMULATOR', 'MOCK_NEVER_BOOT', 'MOCK_FAIL_PUB', 'MOCK_NATIVE_STDERR', 'MOCK_FAIL_ADB', 'MOCK_FAIL_AVD_LIST', 'MOCK_FLUTTER_VERSION', 'MOCK_DART_VERSION', 'BELOG_STRICT_FLUTTER_VERSION')) {
         Remove-Item -LiteralPath ('Env:' + $name) -ErrorAction SilentlyContinue
     }
     if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Recurse -Force }

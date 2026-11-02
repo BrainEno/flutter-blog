@@ -182,10 +182,15 @@ iOS 的系统照片权限提示也提供双语资源。文章、评论、作者�
 
 ## 本地开发
 
-本项目使用 **Flutter 3.47.8**（与 CI 一致）；Android 需要 Android Studio、
-Android SDK 的 emulator/platform-tools、已创建的 AVD 和 JDK 17（支持 17–20）。
-iOS 需要 macOS、完整 Xcode、iOS Simulator runtime、CocoaPods 以及 Xcode 命令行工具。
-脚本只检查并使用现有工具，不安装 SDK、修改 AVD、关闭模拟器或清除数据。
+本项目固定使用 **Flutter 3.47.8**（版本写在 `tool/flutter_version.txt`，CI 与
+发布构建严格校验）。本地调试脚本只要求本机 SDK 的 Dart 版本满足 `pubspec.yaml`：
+版本不一致时打印警告后继续启动，版本过低则给出升级步骤。需要精确匹配时可设置
+`BELOG_STRICT_FLUTTER_VERSION=1`（PowerShell 也可加 `-StrictFlutterVersion`）；
+iOS IPA 打包脚本始终要求精确版本。
+Android 需要 Android Studio、Android SDK 的 emulator/platform-tools、已创建的
+AVD 和 JDK 17（支持 17–20）。iOS 需要 macOS、完整 Xcode、iOS Simulator runtime、
+CocoaPods 以及 Xcode 命令行工具。脚本只检查并使用现有工具，不安装 SDK、修改 AVD、
+关闭模拟器或清除数据。
 
 ### 初始配置（每台机器一次）
 
@@ -252,6 +257,33 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
 两种模式均构建 release，要求 API（若配置 Web 也包括 Web）使用有效 HTTPS；
 自签名证书还须被设备信任。仅结构/本地签名检查不代表已在真机安装或验证
 分发资质，发布策略详见 [docs/releasing.md](docs/releasing.md)。
+
+### 本地启动常见阻塞
+
+- **Flutter 版本不符**：脚本会打印实际版本与固定版本。若 Dart 版本仍满足
+  `pubspec.yaml`（当前 `>=3.10.0`），调试会继续，只是与 CI 结果可能有差异。
+  需要与 CI 完全一致时执行 `flutter upgrade`（或安装 3.47.8 并放在 PATH 最前），
+  也可以设置 `BELOG_STRICT_FLUTTER_VERSION=1` 让漂移直接失败。
+- **`flutter upgrade` 报 `upstream branch 'refs/heads/stable' not stored as a
+  remote-tracking branch`**：这是 Flutter SDK 自身 Git 克隆缺少上游跟踪，不是
+  本项目的问题。先修复 SDK，再升级：
+
+  ```bash
+  git -C "<Flutter SDK 目录>" fetch origin stable
+  git -C "<Flutter SDK 目录>" branch --set-upstream-to=origin/stable stable
+  flutter upgrade
+  ```
+
+- **启动后白屏**：现在不会再白屏。缺少 `API_BASE_URL`、地址非法或本地存储
+  打不开时，首帧显示“无法启动 · Unable to start”，包含原始原因和修复命令
+  （复制 `env.example.json` 为 `env.json`，或用启动脚本运行）。VS Code 的默认
+  `belog` 调试配置已带上 `--dart-define-from-file=env.json`。
+- **后端没有启动**：App 仍可正常启动，不会崩溃或卡死。首帧会话恢复最多等待
+  3 秒；首页在没有缓存时显示本地化网络错误与“重试”，有缓存时先显示缓存并
+  标注来源；登录、发布等操作以同样的本地化错误反馈。启动脚本启用的
+  `BELOG_DEV_BACKEND_CHECK` 只探测 `/api/v1/health`，因此后端不可达时约 3 秒内
+  就能失败，而不是等 30 秒请求超时。把后端地址改成模拟器可访问的 origin
+  （宿主机本地服务用 `http://10.0.2.2:端口`），或在后端启动后重试即可。
 
 ### 调试网络与手动命令
 

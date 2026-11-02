@@ -15,7 +15,7 @@
 
 ## Reproducibility
 
-- Flutter SDK is explicitly pinned to `3.47.8`; Java is explicitly pinned to 17. Android builds use Gradle 8.14, AGP 8.11.1, Kotlin 2.2.20, and compile SDK 36. Flutter’s Android dependency validation remains enabled.
+- Flutter SDK is explicitly pinned to `3.47.8` in `tool/flutter_version.txt`; every workflow must use that value (enforced by `scripts/tests/test_flutter_pin.py`), while local debug scripts warn on drift and release packaging requires the exact version. Java is explicitly pinned to 17. Android builds use Gradle 8.14, AGP 8.11.1, Kotlin 2.2.20, and compile SDK 36. Flutter’s Android dependency validation remains enabled.
 - Action references in workflows use full-length commit SHAs with human-readable version comments.
 - Pull-request workflows request `contents: read` only. They use `pull_request`, not `pull_request_target`, and have no production credentials.
 - CI creates a temporary, non-secret `env.json` fixture with a non-routable URL for compilation. This fixture is not a valid backend configuration and must not be used for online smoke-test claims.
