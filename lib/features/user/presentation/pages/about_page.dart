@@ -100,8 +100,8 @@ class _AboutPageState extends State<AboutPage> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
-            // Long-press remains the user-controlled support entry: the
-            // report is still never sent automatically (issue #49).
+            // Long-press remains a shortcut; the report is still never sent
+            // automatically (issue #49).
             InkWell(
               onLongPress: () => _showDiagnostics(context),
               child: Padding(
@@ -116,6 +116,17 @@ class _AboutPageState extends State<AboutPage> {
                     return Text(l10n.appVersionLabel(version));
                   },
                 ),
+              ),
+            ),
+            // A support feature nobody can discover is not a support feature:
+            // the version row keeps the long-press shortcut, and this entry
+            // makes the report reachable without guessing (issue #49).
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => _showDiagnostics(context),
+                icon: const Icon(Icons.bug_report_outlined, size: 18),
+                label: Text(l10n.diagnosticsEntry),
               ),
             ),
           ],

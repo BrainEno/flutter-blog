@@ -314,7 +314,8 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
   在机器或模拟器连不上自己的公共端点时会把可达的本地后端判成离线；公网 origin
   仍按原来的 `BELOG_DEV_BACKEND_CHECK` 规则处理。二是**真实请求的传输错误**
   （`SocketException`/`ClientException`），说明配置的 origin 连不上。两种情况都会
-  留下证据：探测失败与请求失败分别写入「关于 → 复制诊断信息」
+  留下证据：在「我的 → 关于我们」页面底部点「查看诊断信息」（或长按版本号）
+  打开诊断弹窗，探测失败与请求失败都会写进去
   （形如 `probe GET /api/v1/health failed (SocketException)`），debug 控制台里
   也会打印实际探测的 origin。本机先自查 `curl http://localhost:4000/api/v1/health`；
   连不上时重点看后端监听地址：Node/Express 里 `listen(4000, 'localhost')` 在 Windows
