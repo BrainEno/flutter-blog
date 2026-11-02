@@ -25,5 +25,9 @@
 - [Supabase 到 no-wave 的迁移](supabase-to-nowave-migration.md)：历史迁移背景；
   旧快照的接口结论以较新的 API 差距审计和当前源码为准。
 - [代码健壮性审查](code-audit.md)：指定基线的已修复项与剩余风险。
+- [全面代码审查（2026-11-02）](full-code-review-2026-11-02.md)：基于 `5c0ef3a`
+  的规模、架构、API 清单、多维评分、15 个待办 Issue（含可直接预填充的正文）与
+  开放 Issue 可关闭性评估；同名 `.html` 是带一键创建/关闭按钮的交互版本，
+  待 Issue 全部创建后可删。
 - [Agent 开发流程](agent-development.md) 和 [AGENTS.md](../AGENTS.md)：工程约束、
   验证与 PR 证据；会话平台若限定工作分支，应遵守该更高优先级的约束。
