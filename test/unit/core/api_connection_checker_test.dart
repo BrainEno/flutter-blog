@@ -26,24 +26,37 @@ void main() {
     expect(headers.containsKey('authorization'), isFalse);
   });
 
-  test(
-    'connection errors and timeouts report an unavailable backend',
-    () async {
-      final disconnected = ApiConnectionChecker(
-        Uri.parse('http://localhost:3000'),
-        clientFactory: () =>
-            MockClient((_) async => throw const SocketException('lost')),
-      );
-      final delayed = ApiConnectionChecker(
-        Uri.parse('http://localhost:3000'),
-        timeout: const Duration(milliseconds: 1),
-        clientFactory: () =>
-            MockClient((_) => Completer<http.Response>().future),
-      );
-      expect(await disconnected.isConnected, isFalse);
-      expect(await delayed.isConnected, isFalse);
-    },
-  );
+  test('a definite connection error reports an unavailable backend', () async {
+    final disconnected = ApiConnectionChecker(
+      Uri.parse('http://localhost:3000'),
+      clientFactory: () =>
+          MockClient((_) async => throw const SocketException('lost')),
+    );
+
+    expect(await disconnected.isConnected, isFalse);
+  });
+
+  test('a slow probe is inconclusive, never a blocked login', () async {
+    AppLogger.clearDiagnostics();
+    addTearDown(AppLogger.clearDiagnostics);
+    final delayed = ApiConnectionChecker(
+      Uri.parse('http://10.0.2.2:4000'),
+      timeout: const Duration(milliseconds: 1),
+      clientFactory: () => MockClient((_) => Completer<http.Response>().future),
+    );
+
+    // A cold development server can exceed the probe budget and still answer
+    // the real request, whose own budget is far longer.
+    expect(await delayed.isConnected, isTrue);
+    expect(
+      AppLogger.diagnosticsReport(),
+      contains('inconclusive (TimeoutException'),
+    );
+    expect(
+      AppLogger.diagnosticsReport(),
+      contains('/api/v1/health'),
+    );
+  });
 
   test('a failed probe is recorded, never a silent false', () async {
     AppLogger.clearDiagnostics();

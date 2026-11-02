@@ -134,6 +134,16 @@ GoRouter createAppRouter({
       return null;
     },
     routes: [
+      // Public on purpose: the diagnostics report is exactly what a user
+      // needs when signing in fails, and `/profile/about` sits behind the
+      // auth guard (see [_protectedPrefixes]).
+      GoRoute(
+        path: '/about',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => AboutPage(
+          openDiagnostics: state.uri.queryParameters['diagnostics'] == '1',
+        ),
+      ),
       GoRoute(
         path: '/login',
         parentNavigatorKey: rootNavigatorKey,

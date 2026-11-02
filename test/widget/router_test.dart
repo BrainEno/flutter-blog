@@ -16,6 +16,8 @@ import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/auth/presentation/pages/login_page.dart';
+import 'package:belog/features/auth/presentation/widgets/auth_primary_button.dart';
+import 'package:belog/features/user/presentation/pages/about_page.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
@@ -395,6 +397,67 @@ void main() {
     await harness.pump(tester);
     await tester.pumpAndSettle();
     expect(find.byType(LoginPage), findsOneWidget);
+  });
+
+  testWidgets('about and diagnostics stay reachable without an account', (
+    tester,
+  ) async {
+    final harness = Harness()..buildRouter(initialLocation: '/about');
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+
+    // `/profile/about` sits behind the auth guard, so the public route is the
+    // only way to read the report when signing in is what fails.
+    expect(find.byType(LoginPage), findsNothing);
+    expect(find.byType(AboutPage), findsOneWidget);
+  });
+
+  testWidgets('the login page links to the public diagnostics entry', (
+    tester,
+  ) async {
+    final harness = Harness()..buildRouter(initialLocation: '/login');
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('查看诊断信息'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AboutPage), findsOneWidget);
+  });
+
+  testWidgets('a network login failure offers the diagnostics report', (
+    tester,
+  ) async {
+    final harness = Harness()..buildRouter(initialLocation: '/login');
+    when(
+      () => harness.authRepository.loginWithEmailPassword(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+      ),
+    ).thenAnswer((_) async => Left(Failure.networkOffline()));
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byType(TextFormField).first,
+      'reader@example.com',
+    );
+    await tester.enterText(find.byType(TextFormField).last, 'a-long-password');
+    await tester.tap(find.byType(AuthPrimaryButton));
+    await tester.pumpAndSettle();
+
+    final action = find.widgetWithText(SnackBarAction, '查看诊断信息');
+    expect(action, findsOneWidget);
+
+    await tester.tap(action);
+    await tester.pumpAndSettle();
+
+    // Landing on the report itself, not on a menu the user has to explore.
+    expect(find.byType(AboutPage), findsOneWidget);
+    expect(find.text('诊断信息'), findsOneWidget);
   });
 
   testWidgets('deep link /view/:id loads the article by id', (tester) async {
