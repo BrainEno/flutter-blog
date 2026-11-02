@@ -16,6 +16,7 @@ class BlogModel extends Blog {
     required super.updatedAt,
     super.posterName,
     super.posterAvatar,
+    super.isDraft,
     super.document,
     this.documentJson,
     this.articleId = '',
@@ -74,6 +75,7 @@ class BlogModel extends Blog {
       updatedAt: updatedAt ?? this.updatedAt,
       posterName: posterName ?? this.posterName,
       posterAvatar: posterAvatar ?? this.posterAvatar,
+      isDraft: isDraft,
     );
   }
 
@@ -104,6 +106,9 @@ class BlogModel extends Blog {
           rawBlocks.length == blocks.length &&
           supportsPlainEditor(version: version, blocks: blocks),
       serverSummary: map['summary'] is String ? map['summary'] as String : null,
+      // `status` is only present on the author's own rows; the public lists
+      // serialize published work and never carry a draft.
+      isDraft: map['status'] == 'draft',
       id: map['slug'] as String? ?? '',
       articleId: map['id'] as String? ?? '',
       publishedAt: map['publishedAt'] is String

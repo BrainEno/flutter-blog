@@ -29,6 +29,12 @@ class Blog {
   final String? posterName;
   final String? posterAvatar;
 
+  /// True only for the viewer's own server-side draft. Drafts never appear on
+  /// public pages or in the shared cache; they are visible through the
+  /// account-scoped "my articles" list, and saving one from the editor
+  /// publishes it.
+  final bool isDraft;
+
   Blog({
     required this.id,
     required this.title,
@@ -40,5 +46,6 @@ class Blog {
     this.document,
     this.posterName,
     this.posterAvatar,
+    this.isDraft = false,
   });
 }

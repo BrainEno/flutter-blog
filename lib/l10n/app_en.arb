@@ -231,6 +231,8 @@
   "articleDeletedNotice": "Deleted — you can restore it from the recycle bin",
   "noArticlesYet": "No articles published yet",
   "myArticlesLoadFailed": "Could not load articles",
+  "myArticlesDraftBadge": "Draft",
+  "myArticlesDraftsHint": "Drafts are visible only to you. Open one in the editor and publish to make it public.",
   "historyTitle": "Reading history",
   "clearHistoryTitle": "Clear reading history",
   "clearHistoryBody": "This deletes every reading record on this device and cannot be undone. Continue?",

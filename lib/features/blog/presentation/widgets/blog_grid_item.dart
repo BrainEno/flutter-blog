@@ -48,6 +48,7 @@ class BlogGridItem extends StatelessWidget {
         ? blog.posterName!
         : context.l10n.anonymousAuthor;
     final description = extractDescription(blog.content);
+    final scheme = Theme.of(context).colorScheme;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -63,6 +64,31 @@ class BlogGridItem extends StatelessWidget {
                   imageUrl: blog.imageUrl,
                   aspectRatio: 4 / 3,
                 ),
+                if (blog.isDraft)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: scheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        child: Text(
+                          context.l10n.myArticlesDraftBadge,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: scheme.onSecondaryContainer,
+                                letterSpacing: 0.5,
+                              ),
+                        ),
+                      ),
+                    ),
+                  ),
                 if (onLongPress != null)
                   Positioned(
                     top: 0,

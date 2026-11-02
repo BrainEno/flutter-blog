@@ -220,6 +220,25 @@ class BlogRepositoryImpl implements BlogRepository {
   }
 
   @override
+  Future<Either<Failure, List<Blog>>> getMyArticles({
+    required String userId,
+  }) async {
+    if (userId.isEmpty) return left(Failure.auth('请先登录账户'));
+    try {
+      if (!await (connectionChecker.isConnected)) {
+        return left(Failure.networkOffline());
+      }
+      // Deliberately not cached and not retried: a draft is private, and an
+      // automatic retry after a transport error could show one account's
+      // list to another.
+      final blogs = await blogRemoteDataSource.getMyArticles(userId: userId);
+      return right(blogs);
+    } catch (error) {
+      return left(mapErrorToFailure(error));
+    }
+  }
+
+  @override
   Future<Either<Failure, Blog>> getBlogById(String blogId) async {
     try {
       if (!await connectionChecker.isConnected) {

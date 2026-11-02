@@ -1,4 +1,5 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
@@ -42,8 +43,11 @@ class _UserBlogsPageState extends State<UserBlogsPage>
   void _fetchUserBlogs() {
     final appUserState = context.read<AppUserCubit>().state;
     if (appUserState is AppUserLoggedIn) {
+      // `/me/articles` instead of the public author list: a restored or
+      // demoted work is a server-side draft and would otherwise be invisible
+      // here, with no way to publish it again.
       context.read<BlogByBloc>().add(
-        GetBlogByPosterEvent(userId: appUserState.user.id),
+        GetMyArticlesEvent(userId: appUserState.user.id),
       );
     }
   }
@@ -142,8 +146,14 @@ class _UserBlogsPageState extends State<UserBlogsPage>
             } else if (state is GetBlogsByUserSuccess) {
               final blogs = state.blogs;
               if (blogs.isEmpty) {
-                return Center(child: Text(context.l10n.noArticlesYet));
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: NoWaveStatus(message: context.l10n.noArticlesYet),
+                  ),
+                );
               }
+              final hasDrafts = blogs.any((blog) => blog.isDraft);
               return RefreshIndicator(
                 onRefresh: () async {
                   _fetchUserBlogs();
@@ -153,31 +163,47 @@ class _UserBlogsPageState extends State<UserBlogsPage>
                         newState is GetBlogsByUserFailure,
                   );
                 },
-                child: GridView.builder(
-                  gridDelegate: blogGridDelegate(context),
-                  itemCount: blogs.length,
-                  itemBuilder: (context, index) {
-                    final blog = blogs[index];
-                    return BlogGridItem(
-                      blog: blog,
-                      onTap: () => _editBlog(blog),
-                      onLongPress: () => _confirmDelete(blog),
-                    );
-                  },
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    if (hasDrafts)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                          child: Text(
+                            context.l10n.myArticlesDraftsHint,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      ),
+                    SliverPadding(
+                      padding: const EdgeInsets.all(16),
+                      sliver: SliverGrid.builder(
+                        gridDelegate: blogGridDelegate(context),
+                        itemCount: blogs.length,
+                        itemBuilder: (context, index) {
+                          final blog = blogs[index];
+                          return BlogGridItem(
+                            blog: blog,
+                            onTap: () => _editBlog(blog),
+                            onLongPress: () => _confirmDelete(blog),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               );
             }
             if (state is GetBlogsByUserFailure) {
               return Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(localizedFailure(context.l10n, state.failure)),
-                    TextButton(
-                      onPressed: _fetchUserBlogs,
-                      child: Text(context.l10n.actionRetry),
-                    ),
-                  ],
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: NoWaveStatus(
+                    message: localizedFailure(context.l10n, state.failure),
+                    actionLabel: context.l10n.actionRetry,
+                    onAction: _fetchUserBlogs,
+                  ),
                 ),
               );
             }

@@ -142,6 +142,8 @@
   "articleDeletedNotice": "已删除，可在回收站中恢复",
   "noArticlesYet": "您还没有发布任何文章",
   "myArticlesLoadFailed": "无法加载文章",
+  "myArticlesDraftBadge": "草稿",
+  "myArticlesDraftsHint": "草稿只有你自己能看到；在编辑器中打开并发布后才会公开。",
   "historyTitle": "阅读历史",
   "clearHistoryTitle": "清空阅读历史",
   "clearHistoryBody": "将删除这台设备上的全部阅读记录，且无法恢复。确定吗？",

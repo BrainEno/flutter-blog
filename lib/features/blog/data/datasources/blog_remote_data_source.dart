@@ -64,6 +64,16 @@ abstract interface class BlogRemoteDataSource {
   /// (`GET /articles/:slug/related`).
   Future<List<BlogModel>> getRelatedArticles(String slug);
   Future<List<BlogModel>> getBlogsByPosterId(String posterId);
+
+  /// The viewer's own articles, including server-side drafts
+  /// (`GET /me/articles`, newest update first).
+  ///
+  /// Unlike [getBlogsByPosterId] this is an account-scoped read: it is fenced
+  /// to [userId] so a list for another account is never returned, and it does
+  /// not follow redirects, which would forward the bearer token. Drafts are
+  /// private content and are never written to the shared article cache.
+  Future<List<BlogModel>> getMyArticles({required String userId});
+
   Future<List<BlogModel>> getBlogsByTag(String tag);
   Future<List<BlogModel>> searchBlogs(String query);
   Future<BlogModel> editBlog(
@@ -308,6 +318,28 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
       );
       return _articleList(data);
+    } catch (e) {
+      throw mapToServerException(e);
+    }
+  }
+
+  @override
+  Future<List<BlogModel>> getMyArticles({required String userId}) async {
+    try {
+      final data = await client.getJsonForViewer(
+        '/me/articles',
+        expectedUserId: userId,
+        query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
+      );
+      return _articleList(data);
+    } on NowaveApiException catch (error) {
+      // A deployment that predates the account-scoped list still serves the
+      // public author list. "My articles" keeps working there; only server
+      // drafts stay invisible, exactly as before.
+      if (error.statusCode == 404 || error.statusCode == 405) {
+        return getBlogsByPosterId(userId);
+      }
+      throw mapToServerException(error);
     } catch (e) {
       throw mapToServerException(e);
     }
