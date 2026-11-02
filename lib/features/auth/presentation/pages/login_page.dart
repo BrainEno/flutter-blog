@@ -121,7 +121,8 @@ class _LoginPageState extends State<LoginPage> {
                             context.read<AuthBloc>().add(
                               AuthLogin(
                                 email: emailController.text.trim(),
-                                password: passwordController.text.trim(),
+                                // Match no-wave's exact password semantics.
+                                password: passwordController.text,
                               ),
                             );
                           }

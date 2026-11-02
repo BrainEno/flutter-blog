@@ -4,6 +4,9 @@ import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/common/widgets/no_wave_action_row.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
+import 'package:belog/core/nowave/nowave_session.dart';
+import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
+import 'package:belog/features/auth/presentation/pages/change_password_page.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
@@ -75,6 +78,10 @@ class MockBlogLocal extends Mock implements BlogLocalDataSource {}
 class MockConnection extends Mock implements ConnectionChecker {}
 
 class MockAuthRepository extends Mock implements AuthRepository {}
+
+class MockAccountSecurity extends Mock implements AccountSecurityRepository {}
+
+class MockSessionManager extends Mock implements NowaveSessionManager {}
 
 class MockCommentRemote extends Mock implements CommentRemoteDataSource {}
 
@@ -748,6 +755,31 @@ void main() {
       expect(find.byType(BlogPage), findsOneWidget);
     });
   }
+
+  testWidgets('password page is protected and restores after sign-in', (
+    tester,
+  ) async {
+    final harness = Harness()
+      ..buildRouter(initialLocation: '/profile/change-password');
+    final session = MockSessionManager();
+    when(() => session.activeUserId).thenReturn('user');
+    when(() => session.accessToken).thenReturn('fixture-token');
+    when(() => session.sessionGeneration).thenReturn(1);
+    GetIt.instance.registerSingleton<NowaveSessionManager>(session);
+    GetIt.instance.registerSingleton<AccountSecurityRepository>(
+      MockAccountSecurity(),
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginPage), findsOneWidget);
+    expect(find.byType(ChangePasswordPage), findsNothing);
+
+    harness.appUserCubit.updateUser(sampleUser());
+    await tester.pumpAndSettle();
+    expect(find.byType(ChangePasswordPage), findsOneWidget);
+    expect(find.byType(LoginPage), findsNothing);
+  });
 
   testWidgets('the editor is not reachable without an account', (tester) async {
     final harness = Harness()..buildRouter();
