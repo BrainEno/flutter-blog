@@ -252,6 +252,14 @@ jobs:
           EOF
       - name: Resolve dependencies
         run: flutter pub get
+      - name: Verify the dart-define file reaches the app
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p build/reports
+          flutter test test/unit/core/app_secrets_define_test.dart \
+            --dart-define-from-file=env.json \
+            --reporter expanded 2>&1 | tee build/reports/dart-define.log
       - name: Run tests and collect coverage
         shell: bash
         run: |
