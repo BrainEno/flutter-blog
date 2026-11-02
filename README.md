@@ -291,7 +291,8 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
   `sqlite3` 约束已放宽到 `^3.5.2`（应用本身只用 Drift，它接受 `^3.4.0`），pub 会在
   旧 SDK 上解析到 3.5.2；固定版本的 CI 仍按 `pubspec.lock` 使用 3.8.0。若本地 lock
   仍按旧约束卡住，运行一次 `flutter pub upgrade sqlite3` 再启动，不要为了本地调试
-  改回更高的下限。
+  改回更高的下限。注意 CI 只在固定版本上验证，3.5.2 这一组合没有 CI 作业覆盖；
+  出现构建钩子（native assets）错误时仍应升级到固定版本。
 - **启动后白屏**：现在不会再白屏。缺少 `API_BASE_URL`、地址非法或本地存储
   打不开时，首帧显示“无法启动 · Unable to start”，包含原始原因和修复命令
   （复制 `env.example.json` 为 `env.json`，或用启动脚本运行；启动脚本首次会
