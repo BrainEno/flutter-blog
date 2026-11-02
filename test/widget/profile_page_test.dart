@@ -63,7 +63,13 @@ class _Harness {
           path: '/profile',
           builder: (_, _) => const ProfilePage(),
           routes: [
-            for (final path in ['edit', 'my-articles', 'history', 'about'])
+            for (final path in [
+              'edit',
+              'my-articles',
+              'history',
+              'sessions',
+              'about',
+            ])
               GoRoute(
                 path: path,
                 builder: (_, _) => Scaffold(body: Text('destination: $path')),
@@ -158,11 +164,12 @@ void main() {
             find.bySemanticsLabel(l10n.avatarOf(user.name)),
             findsOneWidget,
           );
-          expect(find.byType(NoWaveActionRow), findsNWidgets(6));
+          expect(find.byType(NoWaveActionRow), findsNWidgets(7));
           for (final label in [
             l10n.menuEditProfile,
             l10n.menuMyArticles,
             l10n.menuReadingHistory,
+            l10n.accountSessionsTitle,
             l10n.menuAbout,
             l10n.exportMyData,
             l10n.logout,
@@ -204,6 +211,7 @@ void main() {
       'Edit profile': 'edit',
       'My articles': 'my-articles',
       'Reading history': 'history',
+      'Sign-in sessions': 'sessions',
       'About': 'about',
     }.entries) {
       await tester.scrollUntilVisible(find.text(entry.key), 100);

@@ -62,10 +62,12 @@ import 'package:belog/features/user/data/datasources/author_remote_data_source.d
 import 'package:belog/features/user/data/datasources/author_relationship_remote_data_source.dart';
 import 'package:belog/features/user/data/datasources/author_search_remote_data_source.dart';
 import 'package:belog/features/user/data/datasources/user_remote_data_source.dart';
+import 'package:belog/features/user/data/repositories/account_session_repository_impl.dart';
 import 'package:belog/features/user/data/repositories/author_repository_impl.dart';
 import 'package:belog/features/user/data/repositories/author_relationship_repository_impl.dart';
 import 'package:belog/features/user/data/repositories/author_search_repository_impl.dart';
 import 'package:belog/features/user/data/repositories/user_repository_impl.dart';
+import 'package:belog/features/user/domain/repositories/account_session_repository.dart';
 import 'package:belog/features/user/domain/repositories/author_repository.dart';
 import 'package:belog/features/user/domain/repositories/author_relationship_repository.dart';
 import 'package:belog/features/user/domain/repositories/author_search_repository.dart';
@@ -382,6 +384,9 @@ void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {
         serviceLocator<UserRemoteDataSource>(),
         serviceLocator<ConnectionChecker>(),
       ),
+    )
+    ..registerFactory<AccountSessionRepository>(
+      () => AccountSessionRepositoryImpl(apiClient),
     )
     // Usecases
     ..registerFactory(() => EditUserUseCase(serviceLocator<UserRepository>()))

@@ -183,13 +183,22 @@ class NowaveApiClient {
     );
   }
 
-  /// GET a JSON endpoint and return its unwrapped `data` payload.
+  /// GET a JSON endpoint and return its unwrapped `data` payload. Set
+  /// [followRedirects] to false for private reads that must not forward an
+  /// Authorization header to a redirect target; 3xx then fails closed.
   Future<dynamic> getJson(
     String path, {
     Map<String, String>? query,
     NowaveSessionFence? sessionFence,
+    bool followRedirects = true,
   }) {
-    return _request('GET', path, query: query, sessionFence: sessionFence);
+    return _request(
+      'GET',
+      path,
+      query: query,
+      sessionFence: sessionFence,
+      followRedirects: followRedirects,
+    );
   }
 
   /// Reads account-scoped data only for the identity that initiated the
@@ -324,6 +333,7 @@ class NowaveApiClient {
     Duration? timeout,
     Map<String, String>? extraHeaders,
     NowaveSessionFence? sessionFence,
+    bool followRedirects = true,
   }) async {
     if (sessionFence != null) {
       if (!authenticate) {
@@ -348,6 +358,7 @@ class NowaveApiClient {
         headers,
         rawBody ?? (body == null ? null : jsonEncode(body)),
         timeout: timeout,
+        followRedirects: followRedirects,
       );
     } else {
       final authenticator = _authenticator;
@@ -382,6 +393,7 @@ class NowaveApiClient {
             headers,
             rawBody ?? (body == null ? null : jsonEncode(body)),
             timeout: timeout,
+            followRedirects: followRedirects,
           );
         } finally {
           // Applies to both responses and transport errors.
@@ -444,6 +456,17 @@ class NowaveApiClient {
         }
       }
     }
+    if (!followRedirects &&
+        response.statusCode >= 300 &&
+        response.statusCode < 400) {
+      // Never treat a redirect body as successful private data, and never
+      // forward this request or its Authorization header to the new target.
+      throw NowaveApiException(
+        statusCode: response.statusCode,
+        code: 'HTTP_REDIRECT',
+        message: 'Unexpected redirect from $method ${uri.path}.',
+      );
+    }
     return _decode(method, uri, response);
   }
 
@@ -469,9 +492,12 @@ class NowaveApiClient {
     Map<String, String> headers,
     Object? payload, {
     Duration? timeout,
+    bool followRedirects = true,
   }) async {
     final budget = timeout ?? this.timeout;
-    final request = http.Request(method, uri)..headers.addAll(headers);
+    final request = http.Request(method, uri)
+      ..headers.addAll(headers)
+      ..followRedirects = followRedirects;
     if (payload is Uint8List) {
       request.bodyBytes = payload;
     } else if (payload is String) {

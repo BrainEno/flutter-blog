@@ -87,6 +87,8 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
       return l10n.errorArticleIdRestore;
 
     // Feature-specific failures.
+    case 'sessions.unavailable':
+      return l10n.accountSessionsUnavailable;
     case 'feed.sourceChanged':
       return l10n.feedSourceChanged;
     case 'feed.paginationChanged':

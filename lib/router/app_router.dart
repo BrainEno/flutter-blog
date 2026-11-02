@@ -34,6 +34,7 @@ import 'package:belog/features/user/presentation/pages/author_search_page.dart';
 import 'package:belog/features/user/presentation/bloc/author/author_cubit.dart';
 import 'package:belog/features/user/presentation/bloc/author_relationships/author_relationships_cubit.dart';
 import 'package:belog/features/user/presentation/pages/about_page.dart';
+import 'package:belog/features/user/presentation/pages/account_sessions_page.dart';
 import 'package:belog/features/user/presentation/pages/edit_user_info_page.dart';
 import 'package:belog/features/user/presentation/pages/profile_page.dart';
 import 'package:belog/features/user/presentation/pages/reading_history_page.dart';
@@ -249,6 +250,10 @@ GoRouter createAppRouter({
                   GoRoute(
                     path: 'history',
                     builder: (context, state) => const ReadingHistoryPage(),
+                  ),
+                  GoRoute(
+                    path: 'sessions',
+                    builder: (context, state) => const AccountSessionsPage(),
                   ),
                 ],
               ),
