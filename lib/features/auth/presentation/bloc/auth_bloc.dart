@@ -1,6 +1,7 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/usecase/usecase.dart';
+import 'package:belog/features/auth/domain/auth_intent_gate.dart';
 import 'package:belog/features/auth/domain/usecases/current_user.dart';
 import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
@@ -23,6 +24,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final bool Function() _hasActiveSession;
   final bool Function(User) _isCurrentSessionUser;
 
+  /// Orders sign-in, sign-up, sign-out and restore intents, so a slow older
+  /// response cannot overwrite the account the user chose afterwards (#99).
+  final AuthIntentGate _intentGate;
+
   AuthBloc({
     required UserSignUp userSignUp,
     required UserLogin userLogin,
@@ -32,7 +37,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required int Function() sessionGeneration,
     required bool Function() hasActiveSession,
     required bool Function(User) isCurrentSessionUser,
-  }) : _userSignUp = userSignUp,
+    AuthIntentGate? intentGate,
+  }) : _intentGate = intentGate ?? AuthIntentGate(),
+       _userSignUp = userSignUp,
        _userLogin = userLogin,
        _userSignOut = userSignOut,
        _currentUser = currentUser,
@@ -52,14 +59,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onAuthSignUp(AuthSignUp event, Emitter<AuthState> emit) async {
+    // Every attempt that can adopt a session takes the next intent id. The
+    // id is taken synchronously, before any await, so it cannot be confused
+    // with a newer attempt that starts while this one is in flight.
+    final intent = _intentGate.begin();
     emit(AuthLoading());
     final res = await _userSignUp(
       UserSignUpParams(
         email: event.email,
         name: event.name,
         password: event.password,
+        intent: intent,
       ),
     );
+    // A newer intent owns the session, the cache and the UI now; this result
+    // must not be replayed or reported as "never submitted" - the backend may
+    // still have acted on the request that was sent.
+    if (!_intentGate.isCurrent(intent)) return;
 
     res.fold(
       (failure) => emit(AuthFailure(failure.forPresentation())),
@@ -70,14 +86,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onAuthLogin(AuthLogin event, Emitter<AuthState> emit) async {
+    final intent = _intentGate.begin();
     emit(AuthLoading());
     // The data source resolves the full profile (GET /me + /me/profile)
     // as part of the login exchange, so the returned user is complete -
     // a second fetch here would only add a failure mode that signs the
     // user out of the UI even though the session is valid.
     final res = await _userLogin(
-      UserLoginParams(email: event.email, password: event.password),
+      UserLoginParams(
+        email: event.email,
+        password: event.password,
+        intent: intent,
+      ),
     );
+    // The last attempt the user started wins, whatever the response order.
+    if (!_intentGate.isCurrent(intent)) return;
 
     res.fold(
       (failure) => emit(AuthFailure(failure.forPresentation())),
@@ -89,8 +112,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthIsUserLoggedIn event,
     Emitter<AuthState> emit,
   ) async {
+    // A restore observes the current intent instead of taking a new one: an
+    // explicit sign-in or sign-out that starts while it runs wins, while two
+    // concurrent restores read the same session and cannot contradict each
+    // other.
+    final intent = _intentGate.current;
     final generation = _sessionGeneration();
     final res = await _currentUser(NoParams());
+    if (_intentGate.current != intent) return;
 
     res.fold(
       (failure) {
@@ -108,8 +137,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onAuthLogout(AuthLogout event, Emitter<AuthState> emit) async {
+    final intent = _intentGate.begin();
     emit(AuthLoading());
     final res = await _userSignOut(NoParams());
+    // A sign-in that started after this sign-out owns the UI now; the session
+    // it adopted must not be reported as a logout failure.
+    if (!_intentGate.isCurrent(intent)) return;
 
     res.fold(
       (failure) {

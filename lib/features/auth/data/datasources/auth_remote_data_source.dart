@@ -5,6 +5,7 @@ import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
+import 'package:belog/features/auth/domain/auth_intent_gate.dart';
 
 /// Authentication against the no-wave backend.
 ///
@@ -19,15 +20,19 @@ abstract interface class AuthRemoteDataSource {
   /// Changes when a session is adopted, restored or cleared, not on refresh.
   int get sessionGeneration;
 
+  /// [intent] is the id from [AuthIntentGate.begin]. A response whose intent
+  /// is no longer the newest must not adopt its session.
   Future<UserModel> signUpWithEmailPassword({
     required String name,
     required String email,
     required String password,
+    int? intent,
   });
 
   Future<UserModel> loginWithEmailPassword({
     required String email,
     required String password,
+    int? intent,
   });
 
   /// The signed-in user, or null when there is no usable session.
@@ -41,7 +46,15 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final NowaveApiClient client;
   final NowaveSessionManager sessionManager;
 
-  AuthRemoteDataSourceImpl(this.client, this.sessionManager);
+  /// Orders authentication intents so a slow, older response cannot replace
+  /// the account a newer attempt adopted (issue #99).
+  final AuthIntentGate intentGate;
+
+  AuthRemoteDataSourceImpl(
+    this.client,
+    this.sessionManager, {
+    AuthIntentGate? intentGate,
+  }) : intentGate = intentGate ?? AuthIntentGate();
 
   @override
   NowaveSessionData? get currentSession => sessionManager.currentSession;
@@ -54,6 +67,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String name,
     required String email,
     required String password,
+    int? intent,
   }) async {
     // Registration is immediate: the backend returns a session without an
     // e-mail confirmation step, so the user is signed in right away.
@@ -63,22 +77,25 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'password': password,
       }, authenticate: false),
     );
+    // A newer sign-in/sign-up may have started while these tokens were in
+    // flight; its session must not be replaced by this older attempt.
+    _requireIntent(intent);
     // Capture the generation immediately: adoptSession changes it before
     // awaiting persistence, during which another account may be adopted.
     final adopting = sessionManager.adoptSession(tokens, email: email);
     final generation = sessionManager.sessionGeneration;
     await adopting;
-    _requireGeneration(generation);
+    _requireSession(generation, intent);
     try {
       await _resolveUserIdentity(generation);
-      _requireGeneration(generation);
+      _requireSession(generation, intent);
       // The backend has no name field at registration: the display name is
       // written to the profile right after the account exists.
       await client.putJson('/me/profile', {'displayName': name});
-      _requireGeneration(generation);
+      _requireSession(generation, intent);
     } catch (e, stackTrace) {
       // A replacement session is not a recoverable profile-write failure.
-      _requireGeneration(generation);
+      _requireSession(generation, intent);
       // The account exists and the session is valid; a failed profile
       // write must not fail the whole sign-up. The name can be edited
       // later in the profile page - but the failure must leave a trace,
@@ -89,10 +106,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         stackTrace: stackTrace,
       );
     }
-    _requireGeneration(generation);
+    _requireSession(generation, intent);
     final user = await _loadCurrentUser(email: email);
     await _recordProfileIdentityIfMissing(user, generation);
-    _requireGeneration(generation);
+    _requireSession(generation, intent);
     sessionManager.notifySignedIn();
     return user;
   }
@@ -101,6 +118,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<UserModel> loginWithEmailPassword({
     required String email,
     required String password,
+    int? intent,
   }) async {
     final tokens = await _exchangeTokens(
       () => client.postJson('/auth/login', {
@@ -108,13 +126,15 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'password': password,
       }, authenticate: false),
     );
+    // A newer intent owns the session: drop these tokens unsaved.
+    _requireIntent(intent);
     final adopting = sessionManager.adoptSession(tokens, email: email);
     final generation = sessionManager.sessionGeneration;
     await adopting;
-    _requireGeneration(generation);
+    _requireSession(generation, intent);
     await _resolveUserIdentity(generation);
     final user = await _loadCurrentUser(email: email);
-    _requireGeneration(generation);
+    _requireSession(generation, intent);
     sessionManager.notifySignedIn();
     return user;
   }
@@ -179,6 +199,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw ServerException('登录响应格式错误', code: 'auth.parse', cause: data);
     }
     return NowaveTokenPair.fromDataMap(data.cast<String, dynamic>());
+  }
+
+  /// Throws when [intent] is no longer the newest authentication intent.
+  void _requireIntent(int? intent) {
+    if (intentGate.allows(intent)) return;
+    throw const NowaveApiException(
+      statusCode: HttpStatus.conflict,
+      code: 'SESSION_SUPERSEDED',
+      message: 'A newer authentication intent superseded this one.',
+    );
+  }
+
+  /// Both fences at once: no newer intent, and no replaced session.
+  void _requireSession(int generation, int? intent) {
+    _requireIntent(intent);
+    _requireGeneration(generation);
   }
 
   void _requireGeneration(int generation) {

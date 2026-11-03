@@ -14,6 +14,7 @@ class UserSignUp implements UseCase<User, UserSignUpParams> {
       name: params.name,
       email: params.email,
       password: params.password,
+      intent: params.intent,
     );
   }
 }
@@ -23,9 +24,13 @@ class UserSignUpParams {
   final String email;
   final String password;
 
+  /// Ordering id from `AuthIntentGate`; only the newest intent may win.
+  final int? intent;
+
   UserSignUpParams({
     required this.email,
     required this.name,
     required this.password,
+    this.intent,
   });
 }

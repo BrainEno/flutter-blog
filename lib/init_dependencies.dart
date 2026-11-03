@@ -22,6 +22,7 @@ import 'package:belog/features/auth/data/datasources/profile_cache_store.dart';
 import 'package:belog/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:belog/features/auth/data/repositories/account_security_repository_impl.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
+import 'package:belog/features/auth/domain/auth_intent_gate.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
 import 'package:belog/features/auth/domain/usecases/current_user.dart';
 import 'package:belog/features/auth/domain/usecases/user_login.dart';
@@ -184,10 +185,17 @@ void _initAuth(
   NowaveApiClient apiClient,
   Uri apiBaseUrl,
 ) {
+  // One intent gate for the whole app: the data source fences session
+  // adoption with it, and the bloc fences the UI and cache with the same ids.
+  final intentGate = AuthIntentGate();
   // Datasource
   serviceLocator
     ..registerFactory<AuthRemoteDataSource>(
-      () => AuthRemoteDataSourceImpl(apiClient, sessionManager),
+      () => AuthRemoteDataSourceImpl(
+        apiClient,
+        sessionManager,
+        intentGate: intentGate,
+      ),
     )
     // Repository
     ..registerFactory<AuthRepository>(
@@ -222,6 +230,7 @@ void _initAuth(
         userSignOut: serviceLocator(),
         currentUser: serviceLocator(),
         appUserCubit: serviceLocator(),
+        intentGate: intentGate,
         sessionGeneration: () => sessionManager.sessionGeneration,
         hasActiveSession: () => sessionManager.currentSession != null,
         isCurrentSessionUser: (user) {

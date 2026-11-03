@@ -98,6 +98,7 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, User>> loginWithEmailPassword({
     required String email,
     required String password,
+    int? intent,
   }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
@@ -106,6 +107,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final user = await remoteDataSource.loginWithEmailPassword(
         email: email,
         password: password,
+        intent: intent,
       );
       final generation = remoteDataSource.sessionGeneration;
       if (!_matchesCurrentSession(user)) return left(_changedSessionFailure());
@@ -127,6 +129,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String name,
     required String email,
     required String password,
+    int? intent,
   }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
@@ -138,6 +141,7 @@ class AuthRepositoryImpl implements AuthRepository {
         name: name,
         email: email,
         password: password,
+        intent: intent,
       );
       final generation = remoteDataSource.sessionGeneration;
       if (!_matchesCurrentSession(user)) return left(_changedSessionFailure());

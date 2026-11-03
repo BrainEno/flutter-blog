@@ -13,7 +13,10 @@ class UserLogin implements UseCase<User, UserLoginParams> {
   @override
   Future<Either<Failure, User>> call(UserLoginParams params) async {
     return await authRepository.loginWithEmailPassword(
-        email: params.email, password: params.password);
+      email: params.email,
+      password: params.password,
+      intent: params.intent,
+    );
   }
 }
 
@@ -21,5 +24,12 @@ class UserLoginParams {
   final String email;
   final String password;
 
-  UserLoginParams({required this.email, required this.password});
+  /// Ordering id from `AuthIntentGate`; only the newest intent may win.
+  final int? intent;
+
+  UserLoginParams({
+    required this.email,
+    required this.password,
+    this.intent,
+  });
 }
