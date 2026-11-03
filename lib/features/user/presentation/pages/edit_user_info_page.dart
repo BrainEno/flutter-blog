@@ -19,6 +19,7 @@ class EditUserInfoPage extends StatefulWidget {
 
 class _EditUserInfoPageState extends State<EditUserInfoPage> {
   final _nameController = TextEditingController();
+  final _bioController = TextEditingController();
   final _websiteController = TextEditingController();
   File? image;
   bool isNewImageSelected = false;
@@ -39,6 +40,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
       if (!_isDisposed) {
         _initialized = true;
         _nameController.text = state.user.name;
+        _bioController.text = state.user.bio;
         _websiteController.text = state.user.website;
         avatarUrl = state.user.avatarUrl;
         email = state.user.email;
@@ -70,9 +72,16 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
   }
 
   void _submit() {
+    if (!_hasValidWebsite()) {
+      showSnackBar(context, context.l10n.errorWebsiteUrl);
+      return;
+    }
     context.read<UserEditBloc>().add(
       UserEditSubmitted(
         name: _nameController.text,
+        // Always forwarded: the backend treats a missing bio as an empty one,
+        // so the pre-filled current value must survive an unrelated edit.
+        bio: _bioController.text,
         website: _websiteController.text,
         avatar: isNewImageSelected ? image : null,
         avatarMimeType: isNewImageSelected ? avatarMimeType : null,
@@ -80,10 +89,23 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
     );
   }
 
+  /// Mirrors the backend rule for `websiteUrl`: empty is fine (clearing the
+  /// field), anything else must be an absolute http(s) URL - relative paths
+  /// are only accepted for the avatar.
+  bool _hasValidWebsite() {
+    final raw = _websiteController.text.trim();
+    if (raw.isEmpty) return true;
+    final uri = Uri.tryParse(raw);
+    if (uri == null) return false;
+    if (uri.scheme != 'http' && uri.scheme != 'https') return false;
+    return uri.host.isNotEmpty;
+  }
+
   @override
   void dispose() {
     _isDisposed = true; // Set the flag
     _nameController.dispose();
+    _bioController.dispose();
     _websiteController.dispose();
     super.dispose();
   }
@@ -191,15 +213,32 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                   keyboardType: TextInputType.text,
                 ),
                 const SizedBox(height: 16),
+                // Public introduction: stored as the profile `bio`
+                // (max 5000 chars) and shown on the author page.
+                TextFormField(
+                  controller: _bioController,
+                  autofocus: false,
+                  maxLines: 4,
+                  minLines: 2,
+                  maxLength: 5000,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.labelBio,
+                    prefixIcon: const Icon(Icons.notes_outlined),
+                    alignLabelWithHint: true,
+                  ),
+                  keyboardType: TextInputType.multiline,
+                ),
+                const SizedBox(height: 16),
+                // Homepage: a clearable field, so an empty value is valid.
                 TextFormField(
                   controller: _websiteController,
                   autofocus: false,
-                  maxLines: 3,
                   decoration: InputDecoration(
-                    labelText: context.l10n.labelBio,
-                    prefixIcon: const Icon(Icons.person_outline),
+                    labelText: context.l10n.labelWebsite,
+                    prefixIcon: const Icon(Icons.link),
                   ),
                   keyboardType: TextInputType.url,
+                  autocorrect: false,
                 ),
                 const SizedBox(height: 16),
                 // Read-only e-mail row: the backend offers no e-mail

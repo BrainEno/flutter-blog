@@ -64,6 +64,7 @@ class AuthRepositoryImpl implements AuthRepository {
             email: session.email,
             name: cached?.displayName ?? '',
             avatarUrl: cached?.avatarUrl ?? '',
+            bio: cached?.bio ?? '',
             website: cached?.website ?? '',
             updatedAt: DateTime.now(),
           ),
@@ -242,6 +243,7 @@ class AuthRepositoryImpl implements AuthRepository {
         profile: CachedProfile(
           displayName: user.name,
           avatarUrl: user.avatarUrl,
+          bio: user.bio,
           website: user.website,
           updatedAt: user.updatedAt,
         ),

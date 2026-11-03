@@ -12,6 +12,7 @@ abstract class UserEditEvent extends Equatable {
 /// docs/supabase-to-nowave-migration.md).
 class UserEditSubmitted extends UserEditEvent {
   final String name;
+  final String? bio;
   final String? website;
   final File? avatar;
 
@@ -21,11 +22,12 @@ class UserEditSubmitted extends UserEditEvent {
 
   const UserEditSubmitted({
     required this.name,
+    this.bio,
     this.website,
     this.avatar,
     this.avatarMimeType,
   });
 
   @override
-  List<Object> get props => [name, avatar ?? '', website ?? ''];
+  List<Object> get props => [name, avatar ?? '', bio ?? '', website ?? ''];
 }
