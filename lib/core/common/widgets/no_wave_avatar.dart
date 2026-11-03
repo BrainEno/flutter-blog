@@ -1,4 +1,5 @@
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/utils/avatar_url.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -7,27 +8,32 @@ import 'package:flutter/material.dart';
 /// The name is supplied by the caller (including its localized anonymous
 /// fallback). A missing, invalid, loading or failed image remains a neutral
 /// portrait, not invented author content.
+///
+/// [imageUrl] may be an absolute HTTP(S) URL or - like the backend allows - a
+/// site-relative path such as `/avatars/me.webp`. Relative avatars resolve
+/// against the configured `WEB_BASE_URL` only (never the API origin); without
+/// one they stay neutral. [webBaseUrl] overrides that configuration, which is
+/// what the tests use.
 class NoWaveAvatar extends StatelessWidget {
   const NoWaveAvatar({
     super.key,
     required this.name,
     this.imageUrl = '',
     this.size = 80,
+    this.webBaseUrl,
   });
 
   final String name;
   final String imageUrl;
   final double size;
+  final String? webBaseUrl;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final url = imageUrl.trim();
-    final uri = Uri.tryParse(url);
-    final isNetworkImage =
-        uri != null &&
-        (uri.scheme == 'http' || uri.scheme == 'https') &&
-        uri.host.isNotEmpty;
+    // Null means "not safely renderable": keep the neutral portrait rather
+    // than loading an unverified host.
+    final url = resolveAvatarUrl(imageUrl, webBaseUrl: webBaseUrl);
 
     Widget fallback() => Center(
       child: Icon(
@@ -47,7 +53,7 @@ class NoWaveAvatar extends StatelessWidget {
           child: ColoredBox(
             color: scheme.surfaceContainerHighest,
             child: ClipRect(
-              child: isNetworkImage
+              child: url != null
                   ? CachedNetworkImage(
                       imageUrl: url,
                       fit: BoxFit.cover,

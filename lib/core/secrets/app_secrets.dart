@@ -18,6 +18,8 @@ class AppSecrets {
   /// Origin of the no-wave `apps/web` deployment that serves the public
   /// article pages (issue #21). The web app is a separate origin from the
   /// API, so the canonical share URL cannot be derived from [apiBaseUrl].
+  /// It is also the only origin site-relative article resources and avatars
+  /// (`/avatars/me.webp`, issue #63) may be resolved against.
   /// Empty until the deployment configures it; the share entry stays
   /// hidden rather than sharing a link that cannot open.
   static String? get webBaseUrl => _webBaseUrl.isEmpty ? null : _webBaseUrl;
