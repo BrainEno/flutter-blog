@@ -177,8 +177,7 @@ void main() {
   });
 
   test('a spent token keeps a still-valid access token alive', () async {
-    final store = _MemoryStore()
-      ..stored = _session(refreshTokenSpent: true);
+    final store = _MemoryStore()..stored = _session(refreshTokenSpent: true);
     final built = _manager(store, handler: () => http.Response('', 500));
     await built.manager.restore();
 
