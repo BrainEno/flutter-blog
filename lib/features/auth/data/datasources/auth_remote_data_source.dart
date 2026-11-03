@@ -84,34 +84,66 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     // awaiting persistence, during which another account may be adopted.
     final adopting = sessionManager.adoptSession(tokens, email: email);
     final generation = sessionManager.sessionGeneration;
-    await adopting;
-    _requireSession(generation, intent);
     try {
+      if (!await adopting) {
+        throw const ServerException(
+          '账号已创建，但无法保存登录状态，请直接登录',
+          kind: FailureKind.storage,
+          code: 'auth.sessionNotPersisted',
+        );
+      }
+      _requireSession(generation, intent);
       await _resolveUserIdentity(generation);
       _requireSession(generation, intent);
+      await _writeRegistrationName(name, generation, intent);
+      final user = await _loadCurrentUser(email: email);
+      await _recordProfileIdentityIfMissing(user, generation);
+      _requireSession(generation, intent);
+      sessionManager.notifySignedIn();
+      return user;
+    } catch (error) {
+      // Never leave a session this attempt adopted behind after reporting a
+      // failure: the next start would restore an account the user was told
+      // they had not signed in to (#100).
+      await _abandonAdoptedSession(generation, intent);
+      if (error is NowaveApiException && _isSessionFence(error.code)) {
+        // A superseded or replaced session keeps its own meaning.
+        rethrow;
+      }
+      throw ServerException(
+        '账号已创建，但登录没有完成，请直接登录',
+        kind: FailureKind.auth,
+        code: 'auth.signedUpButSignedOut',
+        cause: error,
+      );
+    }
+  }
+
+  /// Writes the display name collected at registration.
+  ///
+  /// The account exists and the session is valid by the time this runs, so a
+  /// failed write must not fail the whole sign-up: the name can be edited
+  /// later - but the failure must leave a trace, or support has nothing to
+  /// work with.
+  Future<void> _writeRegistrationName(
+    String name,
+    int generation,
+    int? intent,
+  ) async {
+    try {
       // The backend has no name field at registration: the display name is
       // written to the profile right after the account exists.
       await client.putJson('/me/profile', {'displayName': name});
       _requireSession(generation, intent);
-    } catch (e, stackTrace) {
+    } catch (error, stackTrace) {
       // A replacement session is not a recoverable profile-write failure.
       _requireSession(generation, intent);
-      // The account exists and the session is valid; a failed profile
-      // write must not fail the whole sign-up. The name can be edited
-      // later in the profile page - but the failure must leave a trace,
-      // or support has nothing to work with.
       AppLogger.error(
         'writing the display name during sign-up failed',
-        error: e,
+        error: error,
         stackTrace: stackTrace,
       );
     }
-    _requireSession(generation, intent);
-    final user = await _loadCurrentUser(email: email);
-    await _recordProfileIdentityIfMissing(user, generation);
-    _requireSession(generation, intent);
-    sessionManager.notifySignedIn();
-    return user;
   }
 
   @override
@@ -130,13 +162,30 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     _requireIntent(intent);
     final adopting = sessionManager.adoptSession(tokens, email: email);
     final generation = sessionManager.sessionGeneration;
-    await adopting;
-    _requireSession(generation, intent);
-    await _resolveUserIdentity(generation);
-    final user = await _loadCurrentUser(email: email);
-    _requireSession(generation, intent);
-    sessionManager.notifySignedIn();
-    return user;
+    try {
+      if (!await adopting) {
+        // The credentials were accepted, but the pair did not reach the
+        // platform store. Reporting success would sign the user out again on
+        // the next start, so this attempt is abandoned instead (#100).
+        throw const ServerException(
+          '无法保存登录状态，请重试',
+          kind: FailureKind.storage,
+          code: 'auth.sessionNotPersisted',
+        );
+      }
+      _requireSession(generation, intent);
+      await _resolveUserIdentity(generation);
+      final user = await _loadCurrentUser(email: email);
+      _requireSession(generation, intent);
+      sessionManager.notifySignedIn();
+      return user;
+    } catch (_) {
+      // The session was adopted but never handed to the UI: leaving it behind
+      // shows "sign-in failed" and then restores the account on the next
+      // start. Drop it (only this generation) and report the real failure.
+      await _abandonAdoptedSession(generation, intent);
+      rethrow;
+    }
   }
 
   @override
@@ -198,7 +247,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     if (data is! Map) {
       throw ServerException('登录响应格式错误', code: 'auth.parse', cause: data);
     }
-    return NowaveTokenPair.fromDataMap(data.cast<String, dynamic>());
+    final tokens = NowaveTokenPair.fromDataMap(data.cast<String, dynamic>());
+    // Never adopt an unusable pair: an empty token or an unparsable expiry
+    // would create a session that can never authenticate (issue #100).
+    final epoch = DateTime.fromMillisecondsSinceEpoch(0);
+    if (tokens.accessToken.isEmpty ||
+        tokens.refreshToken.isEmpty ||
+        !tokens.accessExpiresAt.isAfter(epoch) ||
+        !tokens.refreshExpiresAt.isAfter(epoch)) {
+      throw ServerException(
+        '登录响应缺少有效的令牌',
+        kind: FailureKind.server,
+        code: 'auth.parse.invalidTokens',
+        cause: data,
+      );
+    }
+    return tokens;
   }
 
   /// Throws when [intent] is no longer the newest authentication intent.
@@ -215,6 +279,33 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   void _requireSession(int generation, int? intent) {
     _requireIntent(intent);
     _requireGeneration(generation);
+  }
+
+  /// The codes that mean "another session owns this one now".
+  bool _isSessionFence(String? code) =>
+      code == 'SESSION_CHANGED' || code == 'SESSION_SUPERSEDED';
+
+  /// Drops a session this attempt adopted but could not finish.
+  ///
+  /// Waiting to leave it behind would present "sign-in failed" and then
+  /// restore the account on the next start. Only the session this attempt
+  /// created is touched: a newer sign-in may already own the store, and a
+  /// late failure must never clear it (issue #100).
+  Future<void> _abandonAdoptedSession(int generation, int? intent) async {
+    if (sessionManager.sessionGeneration != generation) return;
+    if (!intentGate.allows(intent)) return;
+    try {
+      // Best-effort revocation: these tokens are valid even though this
+      // client could not finish the sign-in.
+      await client.deleteJson('/me/session');
+    } catch (error) {
+      AppLogger.debug(
+        'revoking the abandoned session failed (${error.runtimeType})',
+      );
+    }
+    if (sessionManager.sessionGeneration != generation) return;
+    if (!intentGate.allows(intent)) return;
+    await sessionManager.clear();
   }
 
   void _requireGeneration(int generation) {

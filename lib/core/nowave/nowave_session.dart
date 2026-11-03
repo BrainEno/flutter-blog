@@ -227,7 +227,11 @@ class NowaveSessionManager
   ///
   /// The response carries no user id, so [userId] starts empty and is
   /// filled by [updateUserId] after `GET /me`.
-  Future<void> adoptSession(
+  ///
+  /// Returns whether the pair reached the platform store. A sign-in that
+  /// cannot be persisted is not durable - the caller must not present it as a
+  /// success, because the next start would find an empty store (#100).
+  Future<bool> adoptSession(
     NowaveTokenPair tokens, {
     required String email,
   }) async {
@@ -241,7 +245,7 @@ class NowaveSessionManager
       refreshExpiresAt: tokens.refreshExpiresAt,
     );
     _identityChanges.add(null);
-    await _persist();
+    return _persist();
   }
 
   /// Records the user id resolved via `GET /me`.
@@ -394,17 +398,24 @@ class NowaveSessionManager
     }
   }
 
-  Future<void> _persist() async {
+  /// Writes the current session and reports whether that worked.
+  ///
+  /// The in-memory session is kept either way: a storage hiccup must not sign
+  /// a working session out mid-use. Callers that create a *new* session (see
+  /// [adoptSession]) treat a `false` as "not durable" instead.
+  Future<bool> _persist() async {
     final session = _session;
-    if (session == null) return;
+    if (session == null) return true;
     try {
       await _withStore(() => _store.write(session));
+      return true;
     } catch (e, stackTrace) {
       AppLogger.error(
         'persisting the session failed',
         error: e,
         stackTrace: stackTrace,
       );
+      return false;
     }
   }
 
