@@ -56,10 +56,7 @@ void main() {
   ) async {
     final built = await buildAvatar(
       tester,
-      const InspectableAvatar(
-        name: '无浪',
-        imageUrl: 'https://cdn.test/a.webp',
-      ),
+      const InspectableAvatar(name: '无浪', imageUrl: 'https://cdn.test/a.webp'),
     );
 
     final image = portraitOf(built) as CachedNetworkImage;
