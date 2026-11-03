@@ -23,8 +23,6 @@ http.Response _tokens(String id) => _json({
 });
 
 class _MemoryStore implements NowaveSessionStore {
-  _MemoryStore([this.stored]);
-
   NowaveSessionData? stored;
 
   @override
@@ -50,7 +48,7 @@ void main() {
 
   /// Rebuilds the wiring with [hold] returning a future that delays the
   /// `/auth/login` reply for the given account.
-  void build({Future<void> Function(String account)? hold}) {
+  void build({Future<void>? Function(String account)? hold}) {
     gate = AuthIntentGate();
     store = _MemoryStore();
     activeAccount = '';

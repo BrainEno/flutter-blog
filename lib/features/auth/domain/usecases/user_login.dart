@@ -27,9 +27,5 @@ class UserLoginParams {
   /// Ordering id from `AuthIntentGate`; only the newest intent may win.
   final int? intent;
 
-  UserLoginParams({
-    required this.email,
-    required this.password,
-    this.intent,
-  });
+  UserLoginParams({required this.email, required this.password, this.intent});
 }
