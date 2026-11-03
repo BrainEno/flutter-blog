@@ -17,6 +17,7 @@ class NowaveSessionData {
     required this.refreshToken,
     required this.accessExpiresAt,
     required this.refreshExpiresAt,
+    this.refreshTokenSpent = false,
   });
 
   final String userId;
@@ -26,6 +27,16 @@ class NowaveSessionData {
   final DateTime accessExpiresAt;
   final DateTime refreshExpiresAt;
 
+  /// Whether [refreshToken] may already have been rotated server-side.
+  ///
+  /// A rotation whose response never arrived (timeout, dropped connection,
+  /// 5xx) cannot be told apart from a rotation that committed, and the
+  /// backend revokes the whole session family when a rotated token is
+  /// replayed. Once this is true the token is never sent again - not even
+  /// after a restart - and the session can only continue on its access token
+  /// until the user signs in again (#101).
+  final bool refreshTokenSpent;
+
   /// Copy with the fields that change over a session's lifetime.
   NowaveSessionData copyWith({
     String? userId,
@@ -34,6 +45,7 @@ class NowaveSessionData {
     String? refreshToken,
     DateTime? accessExpiresAt,
     DateTime? refreshExpiresAt,
+    bool? refreshTokenSpent,
   }) {
     return NowaveSessionData(
       userId: userId ?? this.userId,
@@ -42,6 +54,7 @@ class NowaveSessionData {
       refreshToken: refreshToken ?? this.refreshToken,
       accessExpiresAt: accessExpiresAt ?? this.accessExpiresAt,
       refreshExpiresAt: refreshExpiresAt ?? this.refreshExpiresAt,
+      refreshTokenSpent: refreshTokenSpent ?? this.refreshTokenSpent,
     );
   }
 
@@ -52,6 +65,7 @@ class NowaveSessionData {
     'refreshToken': refreshToken,
     'accessExpiresAt': accessExpiresAt.toIso8601String(),
     'refreshExpiresAt': refreshExpiresAt.toIso8601String(),
+    'refreshTokenSpent': refreshTokenSpent,
   };
 
   static NowaveSessionData fromJson(Map<String, dynamic> map) =>
@@ -66,6 +80,7 @@ class NowaveSessionData {
         refreshExpiresAt:
             DateTime.tryParse(map['refreshExpiresAt'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0),
+        refreshTokenSpent: map['refreshTokenSpent'] as bool? ?? false,
       );
 }
 
@@ -261,7 +276,10 @@ class NowaveSessionManager
   ///
   /// Single-flight per active session: concurrent callers share one
   /// rotation and the slot is released on completion. An authorization
-  /// rejection clears that same session; transient failures leave it intact.
+  /// rejection clears that same session. A failure whose outcome is unknown
+  /// (timeout, dropped connection, 5xx) keeps the session but marks the
+  /// refresh token spent, so it is never sent again; asking for another
+  /// rotation after that ends the session locally instead (#101).
   /// Responses belonging to a replaced session are ignored.
   @override
   Future<bool> refresh() {
@@ -288,8 +306,9 @@ class NowaveSessionManager
   /// Failure policy differs from [refresh] on purpose: a transport or
   /// server error leaves the session alone (the still-valid access token
   /// is used and the 401 path stays the authority for unrecoverable
-  /// sessions). A refresh token that has already expired ends the session
-  /// locally without any network call.
+  /// sessions). A refresh token that has already expired - or that a
+  /// previous unknown outcome retired - never triggers a network call; the
+  /// session lives on its access token and ends locally once that expires.
   @override
   Future<bool> ensureFreshAccess() async {
     final session = _session;
@@ -306,12 +325,36 @@ class NowaveSessionManager
       await clear();
       return false;
     }
+    if (session.refreshTokenSpent) {
+      // There is no token left that may be sent safely: the access token is
+      // the only thing keeping this session alive, and only until it expires.
+      if (!session.accessExpiresAt.isAfter(currentTime)) {
+        AppLogger.debug(
+          'access token expired and the refresh token is spent; '
+          'ending the session locally',
+        );
+        await clear();
+      }
+      return false;
+    }
     return refresh();
   }
 
   Future<bool> _refreshLocked(int generation) async {
     final session = _session;
     if (session == null) return false;
+    if (session.refreshTokenSpent) {
+      // This token may already have been rotated server-side, and replaying a
+      // rotated token revokes the whole family. A caller only asks for a
+      // rotation when the access token cannot carry the session (the 401 path)
+      // or the proactive path skips spent sessions - so end it locally and
+      // let the user authenticate again.
+      AppLogger.debug(
+        'refresh token already spent; ending the session instead of resending',
+      );
+      await clear();
+      return false;
+    }
     try {
       final data = await _client.postJson('/auth/refresh', {
         'refreshToken': session.refreshToken,
@@ -332,7 +375,26 @@ class NowaveSessionManager
         accessExpiresAt: pair.accessExpiresAt,
         refreshExpiresAt: pair.refreshExpiresAt,
       );
-      await _persist();
+      if (!await _persist()) {
+        // The rotated pair lives only in memory while the store still holds
+        // the token the server just spent. Removing that copy is the only way
+        // a restart cannot replay it; the in-memory session keeps working
+        // until it is closed, then the user signs in again.
+        AppLogger.error(
+          'the rotated session could not be persisted; dropping the stored '
+          'copy so a restart cannot replay the spent token',
+        );
+        try {
+          await _withStore(_store.clear);
+        } catch (e, stackTrace) {
+          AppLogger.error(
+            'removing the stale stored session failed; a restart may replay '
+            'the spent refresh token',
+            error: e,
+            stackTrace: stackTrace,
+          );
+        }
+      }
       return generation == _sessionGeneration;
     } catch (e, stackTrace) {
       if (generation != _sessionGeneration) return false;
@@ -347,16 +409,30 @@ class NowaveSessionManager
         );
         await clear();
       } else {
-        // Transport or server error: keep the session and let callers
-        // retry with the current access token.
+        // Transport or server error: the server may already have rotated the
+        // token before answering. Keep the session (its access token may
+        // still be good) but retire the refresh token, or the next attempt
+        // would look like a replay and revoke the family.
         AppLogger.error(
-          'refreshing the session failed; keeping the session',
+          'refreshing the session failed with an unknown outcome; the refresh '
+          'token will not be reused',
           error: e,
           stackTrace: stackTrace,
         );
+        await _markRefreshTokenSpent(generation);
       }
       return false;
     }
+  }
+
+  /// Retires the current refresh token after a rotation with an unknown
+  /// outcome and persists that decision, so a restart cannot replay it.
+  Future<void> _markRefreshTokenSpent(int generation) async {
+    final session = _session;
+    if (generation != _sessionGeneration || session == null) return;
+    if (session.refreshTokenSpent) return;
+    _session = session.copyWith(refreshTokenSpent: true);
+    await _persist();
   }
 
   /// Whether [error] is the backend rejecting the refresh token (revoked
