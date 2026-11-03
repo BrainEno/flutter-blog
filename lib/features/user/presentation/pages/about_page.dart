@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:belog/core/l10n/l10n.dart';
@@ -171,7 +172,15 @@ class _AboutPageState extends State<AboutPage> {
   }
 
   Future<void> _showDiagnostics(BuildContext context) async {
-    final info = await _packageInfo;
+    // The report must never wait on the platform channel: a slow or missing
+    // package-info implementation degrades the header instead of hiding the
+    // diagnostics (this is exactly the "the app is broken" moment).
+    PackageInfo? info;
+    try {
+      info = await _packageInfo.timeout(const Duration(seconds: 2));
+    } on TimeoutException {
+      info = null;
+    }
     if (!context.mounted) return;
     final l10n = context.l10n;
     await showDialog<void>(

@@ -456,8 +456,14 @@ void main() {
     await tester.pumpAndSettle();
 
     // Landing on the report itself, not on a menu the user has to explore.
-    expect(find.byType(AboutPage), findsOneWidget);
-    expect(find.text('诊断信息'), findsOneWidget);
+    // The dialog itself is covered by about_diagnostics_test.dart, which
+    // injects a deterministic package-info loader.
+    final about = tester.widget<AboutPage>(find.byType(AboutPage));
+    expect(about.openDiagnostics, isTrue);
+
+    // The page bounds the package-info lookup; advance past it so no timer
+    // outlives the test.
+    await tester.pump(const Duration(seconds: 3));
   });
 
   testWidgets('deep link /view/:id loads the article by id', (tester) async {

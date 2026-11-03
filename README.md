@@ -1,4 +1,4 @@
-# belog
+# No Wave
 
 Flutter 编写的移动博客客户端，正逐步向 no-wave 移动端体验靠拢；后端使用自托管
 [no-wave](https://github.com/BrainEno/no-wave) `apps/api`（Node + TypeScript，
@@ -8,6 +8,12 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
 阅读历史、本地草稿和缓存不会自动同步；主动发布文章会将当时编辑的内容发送
 到后端，用户主动导出或分享则交由系统分享面板处理。外部图片和系统语音引擎
 也可能访问网络，详见 [隐私政策草案](docs/privacy-policy-draft.md)。
+
+> **命名说明**：产品名统一为 **No Wave**（中文「无浪潮」），Android/iOS 的应用名、
+> 应用内文案与文档都已按此改名。仓库内仍保留 `belog` 的地方都是兼容性标识，
+> 改动会破坏构建或丢失本地数据：Dart 包名 `belog` 与 `package:belog/...` 导入、
+> `BELOG_*` 构建变量、`belog.sqlite` 数据文件、`com.example.belog` /
+> `com.nodeman24.belog` 包名、`belog.exe` 与发布流水线的产物文件名。
 
 后端迁移背景与逐接口核对结论见
 [docs/supabase-to-nowave-migration.md](docs/supabase-to-nowave-migration.md)
@@ -297,7 +303,7 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
   打不开时，首帧显示“无法启动 · Unable to start”，包含原始原因和修复命令
   （复制 `env.example.json` 为 `env.json`，或用启动脚本运行；启动脚本首次会
   提示/接受 `-ApiBaseUrl` 并自己生成 `env.json`）。VS Code 的默认
-  `belog` 调试配置已带上 `--dart-define-from-file=env.json`。
+  `No Wave` 调试配置已带上 `--dart-define-from-file=env.json`。
 - **env.json 填对了仍提示 API base URL not configured**：旧提交把
   `String.fromEnvironment('API_BASE_URL')` 写在普通 getter 里，而不是 `const`
   字段；Dart 只在 const 上下文保证读到 `--dart-define`/`--dart-define-from-file`

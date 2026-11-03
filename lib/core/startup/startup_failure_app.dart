@@ -24,7 +24,7 @@ class StartupFailureApp extends StatelessWidget {
       useMaterial3: true,
     );
     return MaterialApp(
-      title: 'Bottom Think',
+      title: 'No Wave',
       debugShowCheckedModeBanner: false,
       theme: theme,
       home: Scaffold(
