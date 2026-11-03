@@ -13,12 +13,13 @@ class User {
   final String website;
   final DateTime updatedAt;
 
-  User(
-      {required this.id,
-      required this.email,
-      required this.name,
-      required this.updatedAt,
-      this.bio = "",
-      this.avatarUrl = "",
-      this.website = ""});
+  User({
+    required this.id,
+    required this.email,
+    required this.name,
+    required this.updatedAt,
+    this.bio = "",
+    this.avatarUrl = "",
+    this.website = "",
+  });
 }

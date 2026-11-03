@@ -20,13 +20,11 @@ UserRemoteDataSourceImpl _dataSource(http.Client inner) =>
     UserRemoteDataSourceImpl(_client(inner), MockSessionManager());
 
 /// A client that records every request and always answers with [response].
-MockClient _recorder(
-  List<http.Request> requests,
-  http.Response response,
-) => MockClient((request) async {
-  requests.add(request);
-  return response;
-});
+MockClient _recorder(List<http.Request> requests, http.Response response) =>
+    MockClient((request) async {
+      requests.add(request);
+      return response;
+    });
 
 /// The `PUT /me/profile` reply: the stored profile read back.
 http.Response _profileResponse({

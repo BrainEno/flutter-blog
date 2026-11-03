@@ -62,7 +62,7 @@ void main() {
           userId: 'u1',
           name: 'n',
           bio: '旧简介',
-        website: '',
+          website: '',
           avatar: File('/nonexistent.png'),
         );
         result.fold(
@@ -166,7 +166,7 @@ void main() {
           userId: 'u1',
           name: '新名字',
           bio: '旧简介',
-        website: '',
+          website: '',
           avatar: File('/nonexistent.jpg'),
           avatarMimeType: 'image/jpeg',
         );
