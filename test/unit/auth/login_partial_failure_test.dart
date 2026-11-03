@@ -129,7 +129,8 @@ void main() {
   test('a failed identity lookup leaves no session behind', () async {
     build(
       handler: (request) async {
-        if (request.url.path == '/api/v1/me') {
+        // Both endpoints are down: the id cannot be recovered from either.
+        if (request.url.path.startsWith('/api/v1/me')) {
           return _json({'error': 'boom'}, 500);
         }
         return identity(request);
@@ -148,6 +149,29 @@ void main() {
     expect(manager.currentSession, isNull);
     expect(store.stored, isNull);
     expect(requests, contains('DELETE /api/v1/me/session'));
+  });
+
+  test('a failed /me falls back to the profile id', () async {
+    build(
+      handler: (request) async {
+        if (request.url.path == '/api/v1/me') {
+          return _json({'error': 'boom'}, 500);
+        }
+        return identity(request);
+      },
+    );
+
+    final user = await source.loginWithEmailPassword(
+      email: 'a@example.invalid',
+      password: 'secret',
+    );
+
+    // The profile answered, so this sign-in did happen - and the identity it
+    // recorded is the one a restart restores.
+    expect(user.id, 'user-a');
+    expect(manager.currentSession?.userId, 'user-a');
+    expect(store.stored?.userId, 'user-a');
+    expect(requests, isNot(contains('DELETE /api/v1/me/session')));
   });
 
   test('a failed profile lookup leaves no session behind', () async {
@@ -311,7 +335,7 @@ void main() {
   test('the repository failure and the session store agree', () async {
     build(
       handler: (request) async {
-        if (request.url.path == '/api/v1/me') {
+        if (request.url.path.startsWith('/api/v1/me')) {
           return _json({'error': 'boom'}, 500);
         }
         return identity(request);

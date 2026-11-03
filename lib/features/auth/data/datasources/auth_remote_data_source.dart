@@ -94,8 +94,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         );
       }
       _requireSession(generation, intent);
-      await _resolveUserIdentity(generation);
-      _requireSession(generation, intent);
+      await _resolveUserIdentityIfPossible(generation, intent);
       await _writeRegistrationName(name, generation, intent);
       final user = await _loadCurrentUser(email: email);
       await _recordProfileIdentityIfMissing(user, generation);
@@ -175,8 +174,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         );
       }
       _requireSession(generation, intent);
-      await _resolveUserIdentity(generation);
+      await _resolveUserIdentityIfPossible(generation, intent);
       final user = await _loadCurrentUser(email: email);
+      await _recordProfileIdentityIfMissing(user, generation);
       _requireSession(generation, intent);
       sessionManager.notifySignedIn();
       return user;
@@ -320,6 +320,28 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   /// Fetches the user id via `GET /me` and records it only on that session.
+  /// Resolves the account id from `GET /me`, tolerating a failed lookup.
+  ///
+  /// The profile carries the same id, so a sign-in can still finish while
+  /// `/me` is unavailable: [_recordProfileIdentityIfMissing] fills the id in
+  /// from the profile afterwards. Only a session fence is rethrown, because
+  /// that means this attempt no longer owns the session at all.
+  Future<void> _resolveUserIdentityIfPossible(
+    int generation,
+    int? intent,
+  ) async {
+    try {
+      await _resolveUserIdentity(generation);
+    } catch (error, stackTrace) {
+      _requireSession(generation, intent);
+      AppLogger.error(
+        'resolving the account id failed; using the profile instead',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
   Future<void> _resolveUserIdentity(int generation) async {
     _requireGeneration(generation);
     final data = await client.getJson('/me');
