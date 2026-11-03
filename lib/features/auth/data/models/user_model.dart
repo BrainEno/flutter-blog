@@ -7,6 +7,7 @@ class UserModel extends User {
     required super.name,
     required super.updatedAt,
     super.avatarUrl = '',
+    super.bio = '',
     super.website = '',
   });
 
@@ -24,6 +25,7 @@ class UserModel extends User {
       email: email,
       name: map['displayName'] as String? ?? '',
       avatarUrl: map['avatarUrl'] as String? ?? '',
+      bio: map['bio'] as String? ?? '',
       website: map['websiteUrl'] as String? ?? '',
       updatedAt:
           DateTime.tryParse(map['updatedAt'] as String? ?? '') ??
@@ -36,6 +38,7 @@ class UserModel extends User {
     String? email,
     String? name,
     String? avatarUrl,
+    String? bio,
     String? website,
     DateTime? updatedAt,
   }) {
@@ -44,6 +47,7 @@ class UserModel extends User {
       email: email ?? this.email,
       name: name ?? this.name,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      bio: bio ?? this.bio,
       website: website ?? this.website,
       updatedAt: updatedAt ?? this.updatedAt,
     );

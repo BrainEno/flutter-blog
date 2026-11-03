@@ -42,6 +42,8 @@ class UserRepositoryImpl implements UserRepository {
         );
         userToUpdate = userToUpdate.copyWith(avatarUrl: newAvatarUrl);
       }
+      // The profile PUT also replaces bio. Keep the value from the fresh
+      // server read above because this form only edits name/website/avatar.
       userToUpdate = userToUpdate.copyWith(
         id: userId,
         name: name,

@@ -218,6 +218,7 @@
   "profileUpdated": "个人资料更新成功!",
   "labelName": "姓名",
   "labelBio": "简介",
+  "labelWebsite": "网站",
   "labelEmail": "邮箱",
   "emailReadOnly": "邮箱暂不支持修改",
   "notSet": "未设置",

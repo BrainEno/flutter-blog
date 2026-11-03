@@ -47,6 +47,7 @@ import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
 import 'package:belog/features/blog/domain/usecase/get_deleted_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
+import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_user_liked_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/is_blog_liked.dart';
 import 'package:belog/features/blog/domain/usecase/restore_deleted_blog.dart';
@@ -275,6 +276,9 @@ Future<void> _initBlog(NowaveApiClient apiClient) async {
     ..registerFactory(() => UploadBlog(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetAllBlogs(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetBlogById(serviceLocator<BlogRepository>()))
+    ..registerFactory(
+      () => GetRelatedArticles(serviceLocator<BlogRepository>()),
+    )
     ..registerFactory(() => SearchBlogs(serviceLocator<BlogRepository>()))
     ..registerFactory(() => ToggleLikeBlog(serviceLocator<BlogRepository>()))
     ..registerFactory(() => IsBlogLiked(serviceLocator<BlogRepository>()))

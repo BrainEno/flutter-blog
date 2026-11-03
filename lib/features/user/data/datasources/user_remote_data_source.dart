@@ -61,11 +61,13 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
   @override
   Future<UserModel> editUserInfo(UserModel user) async {
     try {
-      // The write body is a strict whitelist: only fields with a value are
-      // sent (empty strings are rejected for the URL fields server-side).
+      // Profile PUT replaces the translated display name and bio, even when
+      // bio is omitted. Always round-trip the bio read from the server so an
+      // unrelated name/avatar/website edit cannot erase it. Empty URL values
+      // are omitted because the API requires URL strings to be non-empty.
       final data = await client.putJson('/me/profile', <String, dynamic>{
         'displayName': user.name,
-        'bio': '',
+        'bio': user.bio,
         if (user.avatarUrl.isNotEmpty) 'avatarUrl': user.avatarUrl,
         if (user.website.isNotEmpty) 'websiteUrl': user.website,
       });

@@ -76,6 +76,7 @@ void main() {
         id: 'u1',
         email: 'original@example.invalid',
         name: '旧名字',
+        bio: '既有简介',
         updatedAt: DateTime.utc(2024),
       );
       when(() => remote.getUserById('u1')).thenAnswer((_) async => stored);
@@ -95,7 +96,38 @@ void main() {
               as UserModel;
       expect(captured.id, 'u1');
       expect(captured.name, '新名字');
+      expect(captured.bio, '既有简介');
       expect(captured.website, 'https://example.invalid');
+    });
+
+    test('a name-only edit retains the stored bio and website', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      final stored = UserModel(
+        id: 'u1',
+        email: 'original@example.invalid',
+        name: '旧名字',
+        bio: '既有简介',
+        website: 'https://example.invalid',
+        updatedAt: DateTime.utc(2024),
+      );
+      when(() => remote.getUserById('u1')).thenAnswer((_) async => stored);
+      when(() => remote.editUserInfo(any())).thenAnswer(
+        (invocation) async => (invocation.positionalArguments[0] as UserModel),
+      );
+
+      await repository.editUserInfo(
+        userId: 'u1',
+        name: '新名字',
+        website: stored.website,
+        avatar: null,
+      );
+
+      final captured =
+          verify(() => remote.editUserInfo(captureAny())).captured.single
+              as UserModel;
+      expect(captured.name, '新名字');
+      expect(captured.bio, '既有简介');
+      expect(captured.website, stored.website);
     });
 
     test(

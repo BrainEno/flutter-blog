@@ -194,10 +194,10 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                 TextFormField(
                   controller: _websiteController,
                   autofocus: false,
-                  maxLines: 3,
+                  maxLines: 1,
                   decoration: InputDecoration(
-                    labelText: context.l10n.labelBio,
-                    prefixIcon: const Icon(Icons.person_outline),
+                    labelText: context.l10n.labelWebsite,
+                    prefixIcon: const Icon(Icons.link_outlined),
                   ),
                   keyboardType: TextInputType.url,
                 ),

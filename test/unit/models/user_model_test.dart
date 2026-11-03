@@ -7,7 +7,7 @@ void main() {
       final model = UserModel.fromNowaveProfile(<String, dynamic>{
         'userId': 'u1',
         'displayName': '名字',
-        'bio': '',
+        'bio': '既有简介',
         'avatarUrl': 'https://api.example.invalid/api/v1/media/a',
         'websiteUrl': 'https://example.invalid',
         'locale': 'zh-CN',
@@ -17,7 +17,9 @@ void main() {
       expect(model.id, 'u1');
       expect(model.name, '名字');
       expect(model.avatarUrl, 'https://api.example.invalid/api/v1/media/a');
+      expect(model.bio, '既有简介');
       expect(model.website, 'https://example.invalid');
+      expect(model.copyWith(name: '新名字').bio, '既有简介');
       expect(model.email, 'user@example.invalid');
       expect(model.updatedAt, DateTime.utc(2024, 1, 1));
     });
@@ -40,6 +42,7 @@ void main() {
       }, email: '');
 
       expect(model.avatarUrl, '');
+      expect(model.bio, '');
       expect(model.website, '');
       expect(model.updatedAt, isNotNull);
     });

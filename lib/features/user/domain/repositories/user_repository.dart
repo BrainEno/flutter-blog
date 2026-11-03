@@ -7,8 +7,9 @@ import 'package:fpdart/fpdart.dart';
 abstract class UserRepository {
   /// Edits profile display data (name, website, avatar).
   ///
-  /// The e-mail address is not part of the editable profile: the backend
-  /// offers no e-mail or password change endpoint yet (gap G2, see
+  /// The existing server bio is read and preserved; this form does not edit
+  /// biographies. The e-mail address is not part of the editable profile: the
+  /// backend offers no e-mail or password change endpoint yet (gap G2, see
   /// docs/supabase-to-nowave-migration.md), so those operations are not
   /// offered at all.
   Future<Either<Failure, User>> editUserInfo({

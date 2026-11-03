@@ -324,6 +324,7 @@
   "profileUpdated": "Profile updated!",
   "labelName": "Name",
   "labelBio": "Bio",
+  "labelWebsite": "Website",
   "labelEmail": "E-mail",
   "emailReadOnly": "E-mail cannot be changed yet",
   "notSet": "Not set",
