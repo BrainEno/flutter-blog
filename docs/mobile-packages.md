@@ -4,7 +4,7 @@
 
 ## 先准备后端
 
-客户端需要已部署且设备能够访问的 **no-wave API HTTPS origin**，例如 `https://api.your-domain.tld`（示例并非可用后端）。不能填 `/api/v1`、路径、用户名密码、查询参数、token、`localhost` 或模板地址。可选的 `WEB_BASE_URL` 是独立的网页 origin；不设置时文章分享入口保持隐藏。两者可直接在 Actions 表单中输入，或者作为仓库级 Actions Variables `API_BASE_URL` / `WEB_BASE_URL` 预先配置；表单优先。两个平台使用同一次验证得到的相同配置。
+客户端需要已部署且设备能够访问的 **no-wave API HTTPS origin**，例如 `https://api.your-domain.tld`（示例并非可用后端）。不能填 `/api/v1`、路径、用户名密码、查询参数、token、`localhost` 或模板地址。可选的 `WEB_BASE_URL` 是独立的网页 origin；不设置时文章分享入口保持隐藏，站点相对的正文资源与头像也不会加载（保留中性占位）。两者可直接在 Actions 表单中输入，或者作为仓库级 Actions Variables `API_BASE_URL` / `WEB_BASE_URL` 预先配置；表单优先。两个平台使用同一次验证得到的相同配置。
 
 这些地址会编译进应用，也可能对能下载 artifact 的人可见，**不能是秘密**；不要放任何 API key、密码、证书、Apple ID、用户 token 或真实用户数据。流程检查 HTTPS 和格式，**不证明**域名可解析、TLS 被设备信任、no-wave 服务已经部署、API 协议兼容或后端可用。没有真实可访问的 API 就不能产出可联网使用的个人包。PR 验证固定使用不可访问的测试地址和临时密钥，不会上传供个人安装的包。PR 的 Android personal 和 debug 验证各用独立 runner，避免同一工作区累积两套构建中间产物；日志记录磁盘余量，但不能保证 runner 永远不会耗尽空间。手动打包路径不变。
 

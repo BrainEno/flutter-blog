@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/utils/avatar_url.dart';
 import 'package:belog/core/utils/pick_image.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -110,8 +111,27 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
     super.dispose();
   }
 
+  /// Cache-busting parameter for the stored avatar: media assets are
+  /// immutable, but a re-upload can keep the same path.
+  String _versionedAvatar(String resolvedUrl) {
+    final uri = Uri.tryParse(resolvedUrl);
+    if (uri == null) return resolvedUrl;
+    final params = <String, String>{
+      ...uri.queryParameters,
+      'v': '${updatedAt?.millisecondsSinceEpoch ?? ''}',
+    };
+    return uri.replace(queryParameters: params).toString();
+  }
+
   @override
   Widget build(BuildContext context) {
+    // A site-relative avatar (`/avatars/me.webp`) needs the configured web
+    // origin; without one the neutral portrait stays.
+    final resolvedAvatarUrl = resolveAvatarUrl(avatarUrl);
+    final ImageProvider<Object>? storedAvatarImage = resolvedAvatarUrl == null
+        ? null
+        : CachedNetworkImageProvider(_versionedAvatar(resolvedAvatarUrl));
+    final hasStoredAvatar = !isNewImageSelected && storedAvatarImage != null;
     return Scaffold(
       appBar: AppBar(
         title: Text(context.l10n.editProfileTitle),
@@ -169,12 +189,8 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                                       ? FileImage(image!)
                                             as ImageProvider<Object>?
                                       : null) // Added null check
-                                : avatarUrl != null && avatarUrl!.isNotEmpty
-                                ? CachedNetworkImageProvider(
-                                    '$avatarUrl?v=${updatedAt?.millisecondsSinceEpoch ?? ''}',
-                                  )
-                                : null,
-                            child: isNewImageSelected || avatarUrl != null
+                                : storedAvatarImage,
+                            child: hasStoredAvatar
                                 ? null
                                 : Icon(
                                     Icons.person,

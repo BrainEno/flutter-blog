@@ -139,7 +139,9 @@ lib/
 - **正文模型**：普通编辑器写入 no-wave `contentBlocks` v0 纯文本块（首张图
   视为封面）；只读的结构化 v0/v1 解析器保留块、行内样式与媒体顺序，转换为
   阅读和朗读共用的惰性 AST，不构造 HTML。未知/损坏格式明确警告。站点相对
-  资源仅按 `WEB_BASE_URL` 解析，不猜测 API origin；不安全的 URL 不可交互。
+  资源与头像（`/avatars/me.webp`，no-wave `validateProfileUrl` 允许的格式）
+  仅按 `WEB_BASE_URL` 解析，不猜测 API origin；未配置时保留中性占位；
+  不安全的 URL 不可交互、也不会被加载。
 - **Failure 契约**（`core/error/failures.dart`）：`kind`
   （network/timeout/auth/permission/validation/storage/server/unknown）+
   面向用户的中文兜底 `message` + 稳定 `code` + 可选本地化标识 `l10nKey` +
@@ -204,7 +206,8 @@ CocoaPods 以及 Xcode 命令行工具。脚本只检查并使用现有工具，
 `copy env.example.json env.json`，macOS 用 `cp env.example.json env.json`），
 将 `API_BASE_URL` 改成 **设备/模拟器可访问的真实 no-wave API origin**。
 `WEB_BASE_URL` 是可选的 no-wave Web origin，未使用时保持空字符串，分享入口
-会隐藏，站点相对的正文图片和链接也无法加载或打开；它与 API origin 不能互相推导。
+会隐藏，站点相对的正文图片、链接和头像（`/avatars/...`）也无法加载或打开；
+它与 API origin 不能互相推导。
 地址不要附加 `/api/v1`、路径、查询或
 凭据，客户端会添加 `/api/v1`。模板的 `example.com` 是占位符，不可直接使用。
 
