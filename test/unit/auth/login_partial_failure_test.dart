@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:belog/core/error/exceptions.dart';
-import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
@@ -175,10 +174,7 @@ void main() {
   });
 
   test('a session that cannot be stored is not reported as success', () async {
-    build(
-      handler: identity,
-      sessionStore: _MemoryStore(failWrites: true),
-    );
+    build(handler: identity, sessionStore: _MemoryStore(failWrites: true));
 
     await expectLater(
       source.loginWithEmailPassword(
@@ -335,10 +331,7 @@ void main() {
 
     // What the UI is told (a failure) and what a restart would restore (no
     // session) cannot disagree.
-    expect(
-      result.getLeft().toNullable()?.kind,
-      isNotNull,
-    );
+    expect(result.getLeft().toNullable()?.kind, isNotNull);
     expect(manager.currentSession, isNull);
     expect(store.stored, isNull);
   });

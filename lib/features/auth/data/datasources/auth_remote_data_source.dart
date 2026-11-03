@@ -1,4 +1,5 @@
 import 'package:belog/core/error/exceptions.dart';
+import 'package:belog/core/error/failures.dart';
 import 'dart:io';
 
 import 'package:belog/core/nowave/nowave_api_client.dart';
