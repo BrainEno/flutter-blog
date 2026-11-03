@@ -111,7 +111,7 @@ void main() {
     expect((bloc.state as AuthSuccess).user.id, 'b');
   });
 
-  test('a newer sign-in replaces an earlier one that answered first', () async {
+  test('an earlier sign-in cannot win even when it answers first', () async {
     final first = _Pending();
     final second = _Pending();
     var calls = 0;
@@ -125,10 +125,12 @@ void main() {
     bloc.add(AuthLogin(email: 'b@example.invalid', password: 'second'));
     await pumpEventQueue();
 
+    // A newer intent is pending, so the older attempt may not touch the UI
+    // even transiently: the user's last choice is what will be shown.
     currentSessionUserId = 'a';
     first.succeed('a');
     await pumpEventQueue();
-    expect(signedInId(), 'a');
+    expect(signedInId(), isNull);
 
     currentSessionUserId = 'b';
     second.succeed('b');

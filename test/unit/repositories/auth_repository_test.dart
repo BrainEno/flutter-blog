@@ -306,6 +306,7 @@ void main() {
             name: any(named: 'name'),
             email: any(named: 'email'),
             password: any(named: 'password'),
+            intent: any(named: 'intent'),
           ),
         ).thenAnswer((_) async => _user());
 
@@ -336,6 +337,7 @@ void main() {
           name: any(named: 'name'),
           email: any(named: 'email'),
           password: any(named: 'password'),
+          intent: any(named: 'intent'),
         ),
       );
     });
@@ -347,6 +349,7 @@ void main() {
           name: any(named: 'name'),
           email: any(named: 'email'),
           password: any(named: 'password'),
+          intent: any(named: 'intent'),
         ),
       ).thenThrow(
         const NowaveApiException(
@@ -377,6 +380,7 @@ void main() {
         () => remote.loginWithEmailPassword(
           email: any(named: 'email'),
           password: any(named: 'password'),
+          intent: any(named: 'intent'),
         ),
       ).thenAnswer((_) async => _user());
 
@@ -410,6 +414,7 @@ void main() {
           () => remote.loginWithEmailPassword(
             email: any(named: 'email'),
             password: any(named: 'password'),
+            intent: any(named: 'intent'),
           ),
         ).thenAnswer((_) async => _user());
         when(
@@ -450,6 +455,7 @@ void main() {
         () => remote.loginWithEmailPassword(
           email: any(named: 'email'),
           password: any(named: 'password'),
+          intent: any(named: 'intent'),
         ),
       ).thenThrow(
         const NowaveApiException(
@@ -476,6 +482,7 @@ void main() {
         () => remote.loginWithEmailPassword(
           email: any(named: 'email'),
           password: any(named: 'password'),
+          intent: any(named: 'intent'),
         ),
       ).thenThrow(
         const NowaveApiException(
