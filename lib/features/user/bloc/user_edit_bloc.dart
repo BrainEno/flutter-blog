@@ -44,6 +44,7 @@ class UserEditBloc extends Bloc<UserEditEvent, UserEditState> {
       name: event.name,
       avatar: event.avatar,
       avatarMimeType: event.avatarMimeType,
+      bio: event.bio ?? '',
       website: event.website ?? '',
     );
 

@@ -61,13 +61,17 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
   @override
   Future<UserModel> editUserInfo(UserModel user) async {
     try {
-      // The write body is a strict whitelist: only fields with a value are
-      // sent (empty strings are rejected for the URL fields server-side).
+      // The write body is a strict whitelist (no-wave
+      // `normalizeProfileWriteBody`): `displayName` is required, `bio`
+      // defaults to '' when absent, and the URL fields keep their stored value
+      // when absent but reject '' - clearing them requires null.
+      final website = user.website.trim();
       final data = await client.putJson('/me/profile', <String, dynamic>{
         'displayName': user.name,
-        'bio': '',
+        // Always sent: omitting it would silently wipe the public bio.
+        'bio': user.bio,
         if (user.avatarUrl.isNotEmpty) 'avatarUrl': user.avatarUrl,
-        if (user.website.isNotEmpty) 'websiteUrl': user.website,
+        'websiteUrl': website.isEmpty ? null : website,
       });
       return UserModel.fromNowaveProfile(
         _profileMap(data),

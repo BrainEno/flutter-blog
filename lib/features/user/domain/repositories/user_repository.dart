@@ -5,7 +5,7 @@ import 'package:belog/core/error/failures.dart';
 import 'package:fpdart/fpdart.dart';
 
 abstract class UserRepository {
-  /// Edits profile display data (name, website, avatar).
+  /// Edits profile display data (name, bio, website, avatar).
   ///
   /// The e-mail address is not part of the editable profile: the backend
   /// offers no e-mail or password change endpoint yet (gap G2, see
@@ -16,6 +16,7 @@ abstract class UserRepository {
     required String name,
     required File? avatar,
     String? avatarMimeType,
+    required String bio,
     required String website,
   });
 }

@@ -7,12 +7,14 @@ import 'package:belog/core/storage/app_database.dart';
 /// part in any authorization decision.
 class CachedProfile {
   final String displayName;
+  final String bio;
   final String avatarUrl;
   final String website;
   final DateTime updatedAt;
 
   const CachedProfile({
     required this.displayName,
+    this.bio = '',
     required this.avatarUrl,
     required this.website,
     required this.updatedAt,
@@ -20,6 +22,7 @@ class CachedProfile {
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'displayName': displayName,
+    'bio': bio,
     'avatarUrl': avatarUrl,
     'website': website,
     'updatedAt': updatedAt.toIso8601String(),
@@ -30,6 +33,8 @@ class CachedProfile {
     if (updatedAt == null) return null;
     return CachedProfile(
       displayName: map['displayName'] as String? ?? '',
+      // Rows written before the bio existed simply have no key.
+      bio: map['bio'] as String? ?? '',
       avatarUrl: map['avatarUrl'] as String? ?? '',
       website: map['website'] as String? ?? '',
       updatedAt: updatedAt,

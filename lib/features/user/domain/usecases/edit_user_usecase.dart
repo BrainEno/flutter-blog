@@ -18,6 +18,7 @@ class EditUserUseCase implements UseCase<User, EditUserParams> {
       name: params.name,
       avatar: params.avatar,
       avatarMimeType: params.avatarMimeType,
+      bio: params.bio,
       website: params.website,
     );
   }
@@ -31,11 +32,15 @@ class EditUserParams {
   /// MIME type reported by the picker; uploaded as the object's
   /// contentType.
   final String? avatarMimeType;
+
+  /// Public introduction; sent as-is so the backend never has to guess.
+  final String bio;
   final String website;
 
   EditUserParams({
     required this.userId,
     required this.name,
+    required this.bio,
     required this.website,
     this.avatar,
     this.avatarMimeType,

@@ -22,6 +22,7 @@ class UserRepositoryImpl implements UserRepository {
     required String name,
     required File? avatar,
     String? avatarMimeType,
+    required String bio,
     required String website,
   }) async {
     try {
@@ -45,7 +46,8 @@ class UserRepositoryImpl implements UserRepository {
       userToUpdate = userToUpdate.copyWith(
         id: userId,
         name: name,
-        website: website,
+        bio: bio,
+        website: website.trim(),
         updatedAt: DateTime.now(),
       );
 

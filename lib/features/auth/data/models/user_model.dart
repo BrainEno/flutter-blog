@@ -6,6 +6,7 @@ class UserModel extends User {
     required super.email,
     required super.name,
     required super.updatedAt,
+    super.bio = '',
     super.avatarUrl = '',
     super.website = '',
   });
@@ -23,6 +24,7 @@ class UserModel extends User {
       id: map['userId'] as String? ?? '',
       email: email,
       name: map['displayName'] as String? ?? '',
+      bio: map['bio'] as String? ?? '',
       avatarUrl: map['avatarUrl'] as String? ?? '',
       website: map['websiteUrl'] as String? ?? '',
       updatedAt:
@@ -35,6 +37,7 @@ class UserModel extends User {
     String? id,
     String? email,
     String? name,
+    String? bio,
     String? avatarUrl,
     String? website,
     DateTime? updatedAt,
@@ -43,6 +46,7 @@ class UserModel extends User {
       id: id ?? this.id,
       email: email ?? this.email,
       name: name ?? this.name,
+      bio: bio ?? this.bio,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       website: website ?? this.website,
       updatedAt: updatedAt ?? this.updatedAt,

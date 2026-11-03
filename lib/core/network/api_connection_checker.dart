@@ -7,12 +7,13 @@ import 'package:http/http.dart' as http;
 /// Connectivity probe that asks the configured backend itself, not the
 /// public internet.
 ///
-/// Unlike [ConnectionCheckerImpl] this can detect a reachable API on the
-/// host/LAN without internet access. It is used by debug builds when
-/// `BELOG_DEV_BACKEND_CHECK` is set and, independently, whenever the API
-/// origin is loopback/private (see [servesPrivateOrigin]). An HTTP error
-/// response still means the server was reached; the real request must surface
-/// its own error rather than disguising it as an offline-cache success.
+/// This is the only probe wired into the app's request path, in every build
+/// mode and for every origin class (see [buildConnectionChecker]): a backend
+/// on the host/LAN, behind a blocked public internet, or in an offline demo
+/// environment is exactly the case the public-internet probe got wrong. An
+/// HTTP error response still means the server was reached; the real request
+/// must surface its own error rather than disguising it as an offline-cache
+/// success.
 class ApiConnectionChecker implements ConnectionChecker {
   ApiConnectionChecker(
     Uri baseUrl, {
@@ -99,3 +100,14 @@ class ApiConnectionChecker implements ConnectionChecker {
     }
   }
 }
+
+/// Builds the [ConnectionChecker] every repository gates its requests on.
+///
+/// Deliberately unconditional: build mode, origin class and the
+/// `BELOG_DEV_BACKEND_CHECK` define no longer decide it. A public-internet
+/// probe is not consulted at all, so a reachable API is never reported as
+/// offline before the request is sent (issue #105).
+ConnectionChecker buildConnectionChecker(
+  Uri apiBaseUrl, {
+  http.Client Function()? clientFactory,
+}) => ApiConnectionChecker(apiBaseUrl, clientFactory: clientFactory);

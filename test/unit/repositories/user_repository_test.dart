@@ -44,6 +44,7 @@ void main() {
       final result = await repository.editUserInfo(
         userId: 'u1',
         name: 'n',
+        bio: '旧简介',
         website: '',
         avatar: null,
       );
@@ -60,6 +61,7 @@ void main() {
         final result = await repository.editUserInfo(
           userId: 'u1',
           name: 'n',
+          bio: '旧简介',
           website: '',
           avatar: File('/nonexistent.png'),
         );
@@ -86,6 +88,7 @@ void main() {
       await repository.editUserInfo(
         userId: 'u1',
         name: '新名字',
+        bio: '新的简介',
         website: 'https://example.invalid',
         avatar: null,
       );
@@ -95,6 +98,42 @@ void main() {
               as UserModel;
       expect(captured.id, 'u1');
       expect(captured.name, '新名字');
+      expect(captured.bio, '新的简介');
+      expect(captured.website, 'https://example.invalid');
+    });
+
+    test('the stored bio survives an unrelated name edit', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      final stored = UserModel(
+        id: 'u1',
+        email: 'original@example.invalid',
+        name: '旧名字',
+        bio: '写诗的人',
+        website: 'https://example.invalid',
+        updatedAt: DateTime.utc(2024),
+      );
+      when(() => remote.getUserById('u1')).thenAnswer((_) async => stored);
+      when(() => remote.editUserInfo(any())).thenAnswer(
+        (invocation) async => (invocation.positionalArguments[0] as UserModel),
+      );
+
+      // The form forwards whatever it was pre-filled with: an untouched bio
+      // and website must reach the write body unchanged, because the backend
+      // stores a missing bio as ''.
+      final result = await repository.editUserInfo(
+        userId: 'u1',
+        name: '新名字',
+        bio: stored.bio,
+        website: stored.website,
+        avatar: null,
+      );
+
+      expect(result.isRight(), isTrue);
+      final captured =
+          verify(() => remote.editUserInfo(captureAny())).captured.single
+              as UserModel;
+      expect(captured.name, '新名字');
+      expect(captured.bio, '写诗的人');
       expect(captured.website, 'https://example.invalid');
     });
 
@@ -126,6 +165,7 @@ void main() {
         final result = await repository.editUserInfo(
           userId: 'u1',
           name: '新名字',
+          bio: '旧简介',
           website: '',
           avatar: File('/nonexistent.jpg'),
           avatarMimeType: 'image/jpeg',
@@ -163,6 +203,7 @@ void main() {
       final result = await repository.editUserInfo(
         userId: 'u1',
         name: '新名字',
+        bio: '旧简介',
         website: '',
         avatar: null,
       );
@@ -176,6 +217,7 @@ void main() {
       final result = await repository.editUserInfo(
         userId: 'u1',
         name: '新名字',
+        bio: '旧简介',
         website: '',
         avatar: null,
       );

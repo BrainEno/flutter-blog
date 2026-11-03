@@ -314,11 +314,12 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
   `test/unit/core/app_secrets_define_test.dart`，防止再次退化成非 const 读取。
   拉取最新代码重新 `flutter run` 即可，不需要改 `env.json` 或启动脚本。
 - **登录/点赞时提示“无法连接到网络”**：这条提示有两个来源，先分清再看。
-  一是**前置探测**（任何请求发出之前）：debug 构建对回环/内网 API origin
-  （`10.0.2.2`、`localhost`、`127.0.0.1`、`192.168.x`、`172.16–31.x`、`169.254.x`、
-  `*.local`）直接用 `GET /api/v1/health` 探测后端本身，不再用公网探测——公网探测
-  在机器或模拟器连不上自己的公共端点时会把可达的本地后端判成离线；公网 origin
-  仍按原来的 `BELOG_DEV_BACKEND_CHECK` 规则处理。探测**只在明确的传输失败**
+  一是**前置探测**（任何请求发出之前）：**所有构建模式、所有 origin** 都直接用
+  `GET /api/v1/health` 探测配置的后端本身（不带 Authorization/Cookie），公网探测
+  不参与任何判定——公网探测在机器或模拟器连不上自己的公共端点时会把可达的后端
+  判成离线，release/profile 里甚至会让真实请求一次都没发出（#105：私网部署、
+  离线演示、公网受限但 API 可达的网络）。`BELOG_DEV_BACKEND_CHECK` 启动脚本仍会
+  传，但已不改变行为。探测**只在明确的传输失败**
   （`SocketException`/`ClientException`：拒绝连接、无路由、明文被拦）时判离线；
   **探测超时（`TimeoutException`）不再等于离线**——冷启动的开发服务器、断点暂停或
   慢代理都可能超过 3 秒探测预算却仍能响应真实请求（真实请求的预算长得多），
@@ -335,8 +336,8 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
   `env.json` 的 `API_BASE_URL` 改成本机的 `http://127.0.0.1:4000`。
 - **后端没有启动**：App 仍可正常启动，不会崩溃或卡死。首帧会话恢复最多等待
   3 秒；首页在没有缓存时显示本地化网络错误与“重试”，有缓存时先显示缓存并
-  标注来源；登录、发布等操作以同样的本地化错误反馈。启动脚本启用的
-  `BELOG_DEV_BACKEND_CHECK` 只探测 `/api/v1/health`：拒绝连接会立即判离线并提示，
+  标注来源；登录、发布等操作以同样的本地化错误反馈。前置探测（所有构建模式）
+  只请求配置后端的 `/api/v1/health`：拒绝连接会立即判离线并提示，
   超时则视为无法判定、放行真实请求（最多 30 秒后按请求自身的结果报错，
   诊断里会留下 `timeout POST /api/v1/auth/login (budget 30000ms)`）。把后端地址改成
   模拟器可访问的 origin（宿主机本地服务用 `http://10.0.2.2:端口`），或在后端启动后
@@ -347,10 +348,11 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
 
 Android `debug` 和 iOS `Debug` **仅开发构建**允许明文 HTTP（包括非本地地址）；
 profile/release 不放宽平台安全策略。HTTP 会明文传输密码和会话，请仅在受信任
-的隔离开发环境使用测试账号，生产及 IPA 使用 HTTPS。脚本的 debug 构建启用
-`BELOG_DEV_BACKEND_CHECK`，探测配置的 `/api/v1/health`，使没有公网的本地后端
-仍可使用；HTTP 错误响应表示服务器可达，具体错误由真实 API 请求报告。每次
-检查多一次短请求；release/profile 不启用该探测，仍使用原有公网连接检查。
+的隔离开发环境使用测试账号，生产及 IPA 使用 HTTPS。前置探测在所有构建模式
+都请求配置后端的 `/api/v1/health`（无凭据），使没有公网的本地后端、私网部署和
+离线演示环境仍可使用；HTTP 错误响应表示服务器可达，具体错误由真实 API 请求
+报告。每次检查多一次短请求，不做任何公网探测；`BELOG_DEV_BACKEND_CHECK`
+仍可传入但已无作用。
 
 ```bash
 flutter pub get
