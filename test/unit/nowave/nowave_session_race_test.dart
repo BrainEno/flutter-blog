@@ -363,7 +363,9 @@ void main() {
       expect(user.id, 'user-A');
       expect(manager.currentSession?.userId, 'user-A');
       expect(store.stored?.userId, 'user-A');
-      expect(profileWrites, 0);
+      // The display name is written through the bearer token, not the locally
+      // known id, so the write still happens while the id is unknown.
+      expect(profileWrites, 1);
     },
   );
 
