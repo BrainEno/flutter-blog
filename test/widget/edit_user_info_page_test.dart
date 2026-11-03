@@ -44,6 +44,12 @@ void main() {
   });
 
   Future<void> pumpPage(WidgetTester tester) async {
+    // The form is taller than the default 800x600 surface; a save button below
+    // the fold makes tap() miss without failing loudly.
+    tester.view.physicalSize = const Size(1000, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       MultiBlocProvider(
         providers: [
