@@ -22,7 +22,7 @@
     </queries>
 
     <application
-        android:label="Bottom Think"
+        android:label="No Wave"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

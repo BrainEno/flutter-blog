@@ -10,7 +10,7 @@
         "request": "attach"
     },
         {
-            "name": "belog",
+            "name": "No Wave",
             "request": "launch",
             "type": "dart",
             // Reads the same public origins as the launcher scripts. Copy
@@ -22,13 +22,13 @@
             ]
         },
         {
-            "name": "belog (profile mode)",
+            "name": "No Wave (profile mode)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile"
         },
         {
-            "name": "belog (release mode)",
+            "name": "No Wave (release mode)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"

@@ -531,7 +531,7 @@ class NowaveApiClient {
     String? token,
   }) {
     return <String, String>{
-      'user-agent': 'belog-app/1.0',
+      'user-agent': 'no-wave-app/1.0',
       if (rawBody != null)
         'content-type': contentType ?? 'application/octet-stream'
       else if (body != null)

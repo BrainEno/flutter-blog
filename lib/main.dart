@@ -65,7 +65,7 @@ void main() async {
         BlocProvider(create: (_) => serviceLocator<AuthBloc>()),
         BlocProvider(create: (_) => serviceLocator<AppUserCubit>()),
       ],
-      child: const BelogApp(),
+      child: const NoWaveApp(),
     ),
   );
 }
@@ -106,14 +106,14 @@ void _installGlobalErrorHandlers() {
 /// and English ARB catalogs. `supportedLocales` lists Chinese first on
 /// purpose - an unmatched device locale (say Japanese) falls back to
 /// Chinese, the product's primary language, not to English.
-class BelogApp extends StatefulWidget {
-  const BelogApp({super.key});
+class NoWaveApp extends StatefulWidget {
+  const NoWaveApp({super.key});
 
   @override
-  State<BelogApp> createState() => _BelogAppState();
+  State<NoWaveApp> createState() => _NoWaveAppState();
 }
 
-class _BelogAppState extends State<BelogApp> {
+class _NoWaveAppState extends State<NoWaveApp> {
   late final GoRouter _router = createAppRouter(
     appUserCubit: serviceLocator<AppUserCubit>(),
   );
