@@ -141,7 +141,7 @@ void main() {
         email: 'a@example.invalid',
         password: 'secret',
       ),
-      throwsA(isA<ServerException>()),
+      throwsA(isA<NowaveApiException>()),
     );
 
     // Memory, disk and the UI agree: this sign-in did not happen.
@@ -165,7 +165,7 @@ void main() {
         email: 'a@example.invalid',
         password: 'secret',
       ),
-      throwsA(isA<ServerException>()),
+      throwsA(isA<NowaveApiException>()),
     );
 
     expect(manager.currentSession, isNull);
@@ -254,7 +254,7 @@ void main() {
     expect(manager.currentSession?.email, 'b@example.invalid');
 
     releaseIdentity.complete();
-    await expectLater(slow, throwsA(isA<ServerException>()));
+    await expectLater(slow, throwsA(isA<NowaveApiException>()));
 
     expect(manager.currentSession?.email, 'b@example.invalid');
     expect(store.stored?.email, 'b@example.invalid');
