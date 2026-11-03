@@ -435,6 +435,7 @@ void main() {
       () => harness.authRepository.loginWithEmailPassword(
         email: any(named: 'email'),
         password: any(named: 'password'),
+        intent: any(named: 'intent'),
       ),
     ).thenAnswer((_) async => Left(Failure.networkOffline()));
     addTearDown(harness.dispose);

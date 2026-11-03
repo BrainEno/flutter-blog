@@ -30,6 +30,7 @@ void main() {
       () => repo.loginWithEmailPassword(
         email: any(named: 'email'),
         password: any(named: 'password'),
+        intent: any(named: 'intent'),
       ),
     ).thenAnswer((_) async => left<Failure, User>(Failure.auth('rejected')));
     final user = AppUserCubit();
@@ -77,6 +78,7 @@ void main() {
       () => repo.loginWithEmailPassword(
         email: 'user@example.invalid',
         password: '  exact password  ',
+        intent: any(named: 'intent'),
       ),
     ).called(1);
   });
@@ -90,6 +92,7 @@ void main() {
           name: any(named: 'name'),
           email: any(named: 'email'),
           password: any(named: 'password'),
+          intent: any(named: 'intent'),
         ),
       ).thenAnswer((_) async => left<Failure, User>(Failure.auth('rejected')));
       final user = AppUserCubit();
@@ -135,6 +138,7 @@ void main() {
           name: any(named: 'name'),
           email: any(named: 'email'),
           password: any(named: 'password'),
+          intent: any(named: 'intent'),
         ),
       );
       await tester.enterText(fields.at(2), '  abcdefghij  ');
@@ -146,6 +150,7 @@ void main() {
           name: 'Name',
           email: 'user@example.invalid',
           password: '  abcdefghij  ',
+          intent: any(named: 'intent'),
         ),
       ).called(1);
     },
@@ -170,6 +175,7 @@ void main() {
             () => repo.loginWithEmailPassword(
               email: any(named: 'email'),
               password: any(named: 'password'),
+              intent: any(named: 'intent'),
             ),
           ).thenAnswer(
             (_) async => left<Failure, User>(
