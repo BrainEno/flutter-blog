@@ -98,12 +98,6 @@ class DiagnosticsBuffer {
     );
   }
 
-  /// Records that the public-internet probe answered "offline".
-  ///
-  /// Without this line a "无法连接到网络" report cannot be told apart from
-  /// an API transport failure: both end in the same message.
-  void recordOffline() => _add('connectivity offline (public internet probe)');
-
   /// Records a response that arrived but could not be decoded. The status
   /// code is kept; [reason] is a fixed token like `non-utf8` or `non-json`,
   /// never part of the body.

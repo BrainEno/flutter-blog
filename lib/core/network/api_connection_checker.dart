@@ -30,33 +30,6 @@ class ApiConnectionChecker implements ConnectionChecker {
   final http.Client Function() _clientFactory;
   final Duration timeout;
 
-  /// True when [url] addresses a loopback, link-local or RFC 1918 host.
-  ///
-  /// Those origins - the Android emulator alias `10.0.2.2`, `localhost`, a
-  /// machine on the LAN, `*.local` - must be judged by probing the API
-  /// itself. The public-internet probe answers a different question and
-  /// reports "offline" whenever it cannot reach its own public endpoints,
-  /// even though the development backend is right there; that mismatch is
-  /// what turns a reachable local API into a bogus "无法连接到网络" on login.
-  static bool servesPrivateOrigin(Uri url) {
-    final host = url.host.toLowerCase();
-    if (host.isEmpty) return false;
-    if (host == 'localhost' || host == '::1' || host == '0.0.0.0') return true;
-    if (host.endsWith('.local')) return true;
-    final octets = host.split('.');
-    if (octets.length != 4) return false;
-    final parts = <int>[];
-    for (final octet in octets) {
-      final value = int.tryParse(octet);
-      if (value == null || value < 0 || value > 255) return false;
-      parts.add(value);
-    }
-    if (parts[0] == 10 || parts[0] == 127) return true;
-    if (parts[0] == 169 && parts[1] == 254) return true;
-    if (parts[0] == 172 && parts[1] >= 16 && parts[1] <= 31) return true;
-    return parts[0] == 192 && parts[1] == 168;
-  }
-
   /// Whether the backend can be reached.
   ///
   /// Only a *definite* transport failure (refused, no route, blocked
