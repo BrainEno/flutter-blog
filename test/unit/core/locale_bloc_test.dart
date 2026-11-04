@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belog/core/l10n/app_language.dart';
+import 'package:belog/core/l10n/content_language.dart';
 import 'package:belog/core/l10n/locale_bloc.dart';
 import 'package:belog/core/l10n/locale_preference_store.dart';
 import 'package:belog/core/utils/app_logger.dart';
@@ -32,31 +33,38 @@ class _MemoryStore implements LocalePreferenceStore {
   }
 }
 
+/// The device locale is read only while following the system; these are plain
+/// unit tests, so it is pinned instead of touching a widget binding.
+LocaleBloc _bloc(LocalePreferenceStore store) =>
+    LocaleBloc(store, deviceLocale: () => const Locale('zh'));
+
 void main() {
   setUp(AppLogger.clearDiagnostics);
 
   test('the stored choice is applied once the bloc initializes', () async {
-    final bloc = LocaleBloc(_MemoryStore(AppLanguage.en));
+    final bloc = _bloc(_MemoryStore(AppLanguage.en));
     addTearDown(bloc.close);
     expect(bloc.state.language, AppLanguage.system);
 
     await pumpEventQueue();
     expect(bloc.state.language, AppLanguage.en);
     expect(bloc.state.locale, const Locale('en'));
+    expect(bloc.state.content, ContentLanguage.en);
   });
 
   test('without a stored choice the app keeps following the system', () async {
-    final bloc = LocaleBloc(_MemoryStore());
+    final bloc = _bloc(_MemoryStore());
     addTearDown(bloc.close);
 
     await pumpEventQueue();
     expect(bloc.state.language, AppLanguage.system);
     expect(bloc.state.locale, isNull);
+    expect(bloc.state.content, ContentLanguage.zh);
   });
 
   test('a choice is persisted before it is emitted', () async {
     final store = _MemoryStore();
-    final bloc = LocaleBloc(store);
+    final bloc = _bloc(store);
     addTearDown(bloc.close);
     await pumpEventQueue();
 
@@ -75,7 +83,7 @@ void main() {
 
   test('rapid changes land in order', () async {
     final store = _MemoryStore();
-    final bloc = LocaleBloc(store);
+    final bloc = _bloc(store);
     addTearDown(bloc.close);
     await pumpEventQueue();
 
@@ -95,7 +103,7 @@ void main() {
 
   test('a failed save still switches the interface', () async {
     final store = _MemoryStore()..saveError = StateError('disk full');
-    final bloc = LocaleBloc(store);
+    final bloc = _bloc(store);
     addTearDown(bloc.close);
     await pumpEventQueue();
 
@@ -103,6 +111,7 @@ void main() {
     await pumpEventQueue();
     expect(bloc.state.language, AppLanguage.en);
     expect(bloc.state.locale, const Locale('en'));
+    expect(bloc.state.content, ContentLanguage.en);
     expect(
       AppLogger.diagnosticsReport(),
       contains('saving the language preference failed'),
@@ -111,7 +120,7 @@ void main() {
 
   test('a failed load degrades to following the system', () async {
     final store = _MemoryStore()..loadError = StateError('corrupt database');
-    final bloc = LocaleBloc(store);
+    final bloc = _bloc(store);
     addTearDown(bloc.close);
 
     await pumpEventQueue();
