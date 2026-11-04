@@ -59,7 +59,7 @@ void main() {
     expect(find.text('中文'), findsOneWidget);
     expect(find.text('English'), findsOneWidget);
     // The active choice is ticked.
-    expect(find.byIcon(Icons.check), findsOneWidget);
+    expect(find.byIcon(Icons.done), findsOneWidget);
   });
 
   testWidgets('picking English switches the bloc and persists the choice', (

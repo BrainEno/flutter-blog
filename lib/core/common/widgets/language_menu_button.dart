@@ -24,19 +24,10 @@ class LanguageMenuButton extends StatelessWidget {
         final current = context.read<LocaleBloc>().state.language;
         return [
           for (final language in AppLanguage.values)
-            PopupMenuItem<AppLanguage>(
+            CheckedPopupMenuItem<AppLanguage>(
               value: language,
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 28,
-                    child: current == language
-                        ? const Icon(Icons.check, size: 18)
-                        : null,
-                  ),
-                  Text(languageLabel(context, language)),
-                ],
-              ),
+              checked: current == language,
+              child: Text(languageLabel(context, language)),
             ),
         ];
       },
