@@ -27,11 +27,7 @@ void main() {
     final data = tester
         .getSemantics(find.byType(ArticleTagLabel))
         .getSemanticsData();
-    expect(
-      data.flagsCollection.isButton,
-      isFalse,
-      reason: '不可点的标签不该被读屏当成按钮',
-    );
+    expect(data.flagsCollection.isButton, isFalse, reason: '不可点的标签不该被读屏当成按钮');
     handle.dispose();
   });
 

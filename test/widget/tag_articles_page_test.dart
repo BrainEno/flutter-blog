@@ -56,10 +56,8 @@ String screenText(WidgetTester tester) => tester
     .join(' | ');
 
 /// What is actually on screen, for failure messages.
-String diagnostics(
-  WidgetTester tester,
-  TagArticlesBloc bloc,
-) => 'state=${bloc.state.runtimeType} screen=${screenText(tester)}';
+String diagnostics(WidgetTester tester, TagArticlesBloc bloc) =>
+    'state=${bloc.state.runtimeType} screen=${screenText(tester)}';
 
 void main() {
   late _MockResolveTag resolveTag;
@@ -114,9 +112,7 @@ void main() {
     final bloc = newBloc();
     when(
       () => getArticlesByTag(any()),
-    ).thenAnswer(
-      (_) async => right([_blog('a', '夜航手记'), _blog('b', '第二篇')]),
-    );
+    ).thenAnswer((_) async => right([_blog('a', '夜航手记'), _blog('b', '第二篇')]));
 
     await pumpPage(tester, bloc);
 
@@ -131,11 +127,7 @@ void main() {
       findsOneWidget,
       reason: diagnostics(tester, bloc),
     );
-    expect(
-      find.text('第二篇'),
-      findsOneWidget,
-      reason: diagnostics(tester, bloc),
-    );
+    expect(find.text('第二篇'), findsOneWidget, reason: diagnostics(tester, bloc));
     verify(() => getArticlesByTag(any())).called(1);
   });
 
