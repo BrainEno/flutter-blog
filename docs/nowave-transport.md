@@ -88,6 +88,7 @@ rejection), `api_envelope_test` (payload, error envelope, non-JSON, non-UTF-8,
 
 ## Still open in #107
 
-The client is ~555 lines and still holds `_request`/`_send`. Page-level splits
-(`blog_detail_page.dart`, `edit_blog_page.dart`, `no_wave.dart`) and the domain
-attachment interface that exposes `dart:io File` are separate steps.
+The client is ~551 lines and still holds `_request`/`_send`. The remaining
+steps are the page-level splits (`blog_editor_page.dart`, `blog_viewer_page.dart`,
+`markdown_body.dart`) and the domain attachment interface that exposes
+`dart:io File`.

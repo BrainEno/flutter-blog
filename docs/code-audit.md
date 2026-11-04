@@ -33,6 +33,15 @@
 > `NowaveMediaAsset`，各自带单测；`nowave_api_client.dart` 由 682 行降到约 555
 > 行并保留两个 `export` 兼容层，公开 API 与行为不变。规则与改动守则见
 > [no-wave transport](nowave-transport.md)。
+>
+> 2026-11-04 更新（#107 第五步）：编辑器页 `blog_editor_page.dart` 由 853 行降到
+> 487 行，视图拆到 `features/blog/presentation/editor/`——`EditorAppBar`
+> （发布/存草稿/取消，菜单项改为 `EditorMenuAction` 枚举而非字符串比较）、
+> `EditorForm`（无状态表单，只报告意图）、`EditorCoverField`（新选文件 / 已发布
+> 封面 / 虚线占位，三个分支改为显式 return）、`EditorTagSelector`（固定 canonical
+> 标签 + `localizedTag` 显示）、`EditorBodyField`（Markdown 预览开关，状态与控件
+> 放在一起）、`AutoSaveBanner`（`AutoSaveStatus`）。页面仍保留控制器、账号 fence
+> 与草稿持久化流程，公开 API、行为与 l10n 键不变。
 
 ## 本轮修复
 
@@ -78,7 +87,7 @@
 | 已缓解 | ~~安全存储迁移失败会回退 SQLite；清除失败只记录日志，重启可能重新读到旧会话~~ —— #102 已收敛：`ResilientNowaveSessionStore` 用 SQLite `metadata` 里**不含令牌的标记**（`nowave_session_authority_v1`）记录哪一份副本有效。安全存储启动探针（写/读/删，独立 key）失败即写 SQLite；迁移先写入再读回校验，校验不过就保留 SQLite 副本；退出**先写「无会话」标记**再清两处副本，因此删除失败也不会在重启后复活账号，并把 `cleared / disowned / failed` 作为退出结果向上传播（`AuthLogoutFailure` + `auth.localSignOutIncomplete`）。 | 仍未验证真实平台的 Keychain/Keystore 故障注入、系统备份恢复与越狱/root 场景；标记本身写在 SQLite，若 SQLite 整体不可用，退出会明确报 `failed`，此时不能承诺重启后不复活。字段置空不等于物理擦除。 |
 | 中 | 阅读历史只按用户 ID 而非后端隔离；退出清理与在途写入或同账号重新登录尚未完全串行。 | 后续设计后端归属、迁移和写入/清理协调，不能承诺所有旧记录或副本都已擦除。 |
 | 高 | 文章/媒体写入超时后的结果可能未知。线上服务的文章幂等能力、媒体去重/孤儿清理尚未验证；当前分支没有持久 outbox。 | #23 虽已关闭，#66 尚未合并且验收有缺口；需要服务端部署能力证据、持久账号隔离、状态/退避及媒体补偿，不能盲重试或凭客户端代码宣称端到端幂等。 |
-| 已缓解（部分） | ~~`lib/core/storage/app_database.dart` 和 `sqlite_blog_cache.dart` 仍依赖 feature data 模型，`core/storage` 中也有带 Flutter 类型/具体存储的实现~~ —— #107 第一步已收敛：`lib/core` 不再导入 `lib/features`（`SqliteBlogCache`、`SqliteBlogDraftStore`、阅读历史实现移入 `features/blog`），`AppDatabase` 只接受原始类型（`setTheme(String)`、`upsertBlogRow(...)`），主题偏好实现移到 `core/theme`；`tool/ci/check_core_dependencies.py` 加上 `flutter test` 之外的 unittest 守护这两条规则。仍开放：domain 的附件接口使用 `dart:io File`，`blog_detail_page.dart` / `edit_blog_page.dart` / `no_wave.dart` 等大页面尚未按职责拆分（`nowave_session.dart`、`nowave_api_client.dart` 已分别于第三步、第四步拆分）。 | 后续继续保持规则零违规，并按「认证拆分 session 状态机 / refresh 单飞 / 账号 fence」逐步拆单元；保留现有 SQLite 表与数据/迁移测试，不宜为分层一次性迁移数据库；Isar 依赖已按「不维护即移除」原则在 #107 第二步彻底删除（见 docs/sqlite-storage.md）。 |
+| 已缓解（部分） | ~~`lib/core/storage/app_database.dart` 和 `sqlite_blog_cache.dart` 仍依赖 feature data 模型，`core/storage` 中也有带 Flutter 类型/具体存储的实现~~ —— #107 第一步已收敛：`lib/core` 不再导入 `lib/features`（`SqliteBlogCache`、`SqliteBlogDraftStore`、阅读历史实现移入 `features/blog`），`AppDatabase` 只接受原始类型（`setTheme(String)`、`upsertBlogRow(...)`），主题偏好实现移到 `core/theme`；`tool/ci/check_core_dependencies.py` 加上 `flutter test` 之外的 unittest 守护这两条规则。仍开放：domain 的附件接口使用 `dart:io File`；`blog_viewer_page.dart`（514 行）、`markdown_body.dart`（580 行）、`comments_section.dart`（480 行）、`blog_remote_data_source.dart`（798 行）等文件仍偏大（`nowave_session.dart`、`nowave_api_client.dart`、`blog_editor_page.dart` 已分别于第三、四、五步拆分）。 | 后续继续保持规则零违规，并按「认证拆分 session 状态机 / refresh 单飞 / 账号 fence」逐步拆单元；保留现有 SQLite 表与数据/迁移测试，不宜为分层一次性迁移数据库；Isar 依赖已按「不维护即移除」原则在 #107 第二步彻底删除（见 docs/sqlite-storage.md）。 |
 | 中 | 部分 repository 将未分类异常转为 feature-specific 的通用失败，可能丢失网络/超时分类。 | 按操作逐项梳理可重试性、结果未知、日志脱敏和本地化，而不是对所有异常一律重试或返回成功。 |
 
 本次新增自动化测试覆盖上述**已修复**路径；mock 测试不能代替真实 Android/iOS
