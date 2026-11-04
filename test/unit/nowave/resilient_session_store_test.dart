@@ -7,16 +7,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// A session medium whose failures can be switched on per test.
 class _FakeStore implements NowaveSessionStore {
-  _FakeStore({
-    this.failRead = false,
-    this.failWrite = false,
-    this.failClear = false,
-  });
+  _FakeStore({this.failWrite = false});
 
   NowaveSessionData? stored;
-  bool failRead;
+  bool failRead = false;
   bool failWrite;
-  bool failClear;
+  bool failClear = false;
   int writes = 0;
   int clears = 0;
 
@@ -43,11 +39,11 @@ class _FakeStore implements NowaveSessionStore {
 
 /// The always-writable side-channel; can also be made to fail.
 class _FakeAuthority implements SessionAuthorityStore {
-  _FakeAuthority({this.failRead = false, this.failWrite = false});
+  _FakeAuthority();
 
   String? marker;
-  bool failRead;
-  bool failWrite;
+  bool failRead = false;
+  bool failWrite = false;
 
   Map<String, dynamic>? get decoded =>
       marker == null ? null : jsonDecode(marker!) as Map<String, dynamic>;
@@ -285,7 +281,8 @@ void main() {
       media.authority.marker = null;
       await media.store.clearForSignOut();
 
-      final raw = (media.authority.marker ?? '') +
+      final raw =
+          (media.authority.marker ?? '') +
           (jsonEncode(media.authority.decoded ?? const {}));
       expect(raw, isNot(contains('access-1')));
       expect(raw, isNot(contains('refresh-1')));

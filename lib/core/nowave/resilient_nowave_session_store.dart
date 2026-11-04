@@ -123,7 +123,7 @@ class ResilientNowaveSessionStore
 
   /// Whether the secure medium passed the startup probe. It stays readable
   /// either way: an existing keychain copy is still the best copy there is.
-  bool _secureWritesAllowed;
+  final bool _secureWritesAllowed;
 
   /// Opens the session store for this launch.
   ///

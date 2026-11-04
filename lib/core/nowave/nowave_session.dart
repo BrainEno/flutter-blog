@@ -145,7 +145,8 @@ enum SessionClearResult {
 ///
 /// Kept separate from [NowaveSessionStore] so existing stores and test
 /// doubles stay valid; the session manager asks for it when available.
-abstract interface class NowaveSessionSignOutStore {
+abstract interface class NowaveSessionSignOutStore
+    implements NowaveSessionStore {
   Future<SessionClearResult> clearForSignOut();
 }
 
