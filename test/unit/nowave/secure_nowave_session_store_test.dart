@@ -21,7 +21,7 @@ void main() {
       final storage = MockFlutterSecureStorage();
       when(
         () => storage.read(key: 'nowave_session_v1'),
-      ).thenAnswer((_) async => NowaveSessionManager.encodeSession(_session()));
+      ).thenAnswer((_) async => encodeNowaveSession(_session()));
       final store = SecureNowaveSessionStore(storage: storage);
 
       final session = await store.read();

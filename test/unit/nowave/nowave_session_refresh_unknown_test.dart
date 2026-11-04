@@ -154,8 +154,8 @@ void main() {
   });
 
   test('the retirement survives a restart', () async {
-    final stored = NowaveSessionManager.decodeSession(
-      NowaveSessionManager.encodeSession(
+    final stored = decodeNowaveSession(
+      encodeNowaveSession(
         _session(
           accessExpiresAt: now.subtract(const Duration(minutes: 1)),
           refreshTokenSpent: true,

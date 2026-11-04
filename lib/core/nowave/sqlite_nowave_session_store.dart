@@ -1,4 +1,5 @@
-import 'package:belog/core/nowave/nowave_session.dart';
+import 'package:belog/core/nowave/session/session_data.dart';
+import 'package:belog/core/nowave/session/session_store.dart';
 import 'package:belog/core/storage/app_database.dart';
 
 /// [NowaveSessionStore] on the app's SQLite `metadata` table.
@@ -15,15 +16,12 @@ class SqliteNowaveSessionStore implements NowaveSessionStore {
   @override
   Future<NowaveSessionData?> read() async {
     final raw = await database.readMetadata(_kMetadataKey);
-    return NowaveSessionManager.decodeSession(raw);
+    return decodeNowaveSession(raw);
   }
 
   @override
   Future<void> write(NowaveSessionData session) {
-    return database.writeMetadata(
-      _kMetadataKey,
-      NowaveSessionManager.encodeSession(session),
-    );
+    return database.writeMetadata(_kMetadataKey, encodeNowaveSession(session));
   }
 
   @override

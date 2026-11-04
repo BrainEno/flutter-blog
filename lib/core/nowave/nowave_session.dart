@@ -1,183 +1,33 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:belog/core/nowave/nowave_api_client.dart';
+import 'package:belog/core/nowave/session/auth_status.dart';
+import 'package:belog/core/nowave/session/serial_queue.dart';
+import 'package:belog/core/nowave/session/session_data.dart';
+import 'package:belog/core/nowave/session/session_expiry.dart';
+import 'package:belog/core/nowave/session/session_generation.dart';
+import 'package:belog/core/nowave/session/session_identity.dart';
+import 'package:belog/core/nowave/session/session_store.dart';
+import 'package:belog/core/nowave/session/single_flight.dart';
 import 'package:belog/core/utils/app_logger.dart';
 
-/// A persisted no-wave session: the rotated token pair plus the identity
-/// the app caches locally. The current backend can return an e-mail and
-/// verification status in `GET /me`, but this client only reads the id;
-/// the UI still uses the address entered at sign-in.
-class NowaveSessionData {
-  const NowaveSessionData({
-    required this.userId,
-    required this.email,
-    required this.accessToken,
-    required this.refreshToken,
-    required this.accessExpiresAt,
-    required this.refreshExpiresAt,
-    this.refreshTokenSpent = false,
-  });
-
-  final String userId;
-  final String email;
-  final String accessToken;
-  final String refreshToken;
-  final DateTime accessExpiresAt;
-  final DateTime refreshExpiresAt;
-
-  /// Whether [refreshToken] may already have been rotated server-side.
-  ///
-  /// A rotation whose response never arrived (timeout, dropped connection,
-  /// 5xx) cannot be told apart from a rotation that committed, and the
-  /// backend revokes the whole session family when a rotated token is
-  /// replayed. Once this is true the token is never sent again - not even
-  /// after a restart - and the session can only continue on its access token
-  /// until the user signs in again (#101).
-  final bool refreshTokenSpent;
-
-  /// Copy with the fields that change over a session's lifetime.
-  NowaveSessionData copyWith({
-    String? userId,
-    String? email,
-    String? accessToken,
-    String? refreshToken,
-    DateTime? accessExpiresAt,
-    DateTime? refreshExpiresAt,
-    bool? refreshTokenSpent,
-  }) {
-    return NowaveSessionData(
-      userId: userId ?? this.userId,
-      email: email ?? this.email,
-      accessToken: accessToken ?? this.accessToken,
-      refreshToken: refreshToken ?? this.refreshToken,
-      accessExpiresAt: accessExpiresAt ?? this.accessExpiresAt,
-      refreshExpiresAt: refreshExpiresAt ?? this.refreshExpiresAt,
-      refreshTokenSpent: refreshTokenSpent ?? this.refreshTokenSpent,
-    );
-  }
-
-  Map<String, dynamic> toJson() => <String, dynamic>{
-    'userId': userId,
-    'email': email,
-    'accessToken': accessToken,
-    'refreshToken': refreshToken,
-    'accessExpiresAt': accessExpiresAt.toIso8601String(),
-    'refreshExpiresAt': refreshExpiresAt.toIso8601String(),
-    'refreshTokenSpent': refreshTokenSpent,
-  };
-
-  static NowaveSessionData fromJson(Map<String, dynamic> map) =>
-      NowaveSessionData(
-        userId: map['userId'] as String? ?? '',
-        email: map['email'] as String? ?? '',
-        accessToken: map['accessToken'] as String? ?? '',
-        refreshToken: map['refreshToken'] as String? ?? '',
-        accessExpiresAt:
-            DateTime.tryParse(map['accessExpiresAt'] as String? ?? '') ??
-            DateTime.fromMillisecondsSinceEpoch(0),
-        refreshExpiresAt:
-            DateTime.tryParse(map['refreshExpiresAt'] as String? ?? '') ??
-            DateTime.fromMillisecondsSinceEpoch(0),
-        refreshTokenSpent: map['refreshTokenSpent'] as bool? ?? false,
-      );
-}
-
-/// The token pair returned by `POST /auth/{register,login,refresh}`.
-class NowaveTokenPair {
-  const NowaveTokenPair({
-    required this.accessToken,
-    required this.refreshToken,
-    required this.accessExpiresAt,
-    required this.refreshExpiresAt,
-  });
-
-  final String accessToken;
-  final String refreshToken;
-  final DateTime accessExpiresAt;
-  final DateTime refreshExpiresAt;
-
-  static NowaveTokenPair fromDataMap(Map<String, dynamic> map) {
-    DateTime parse(String key) =>
-        DateTime.tryParse(map[key] as String? ?? '') ??
-        DateTime.fromMillisecondsSinceEpoch(0);
-    return NowaveTokenPair(
-      accessToken: map['accessToken'] as String? ?? '',
-      refreshToken: map['refreshToken'] as String? ?? '',
-      accessExpiresAt: parse('accessExpiresAt'),
-      refreshExpiresAt: parse('refreshExpiresAt'),
-    );
-  }
-}
-
-/// Auth status broadcast by [NowaveSessionManager].
-sealed class NowaveAuthStatus {
-  const NowaveAuthStatus();
-}
-
-final class NowaveAuthSignedIn extends NowaveAuthStatus {
-  const NowaveAuthSignedIn(this.userId);
-
-  final String userId;
-}
-
-final class NowaveAuthSignedOut extends NowaveAuthStatus {
-  const NowaveAuthSignedOut();
-}
-
-/// Durable storage for the session. The app normally uses platform secure
-/// storage; a legacy SQLite store remains a migration source and fallback
-/// when secure storage is unavailable. See the audit for failure limitations.
-abstract class NowaveSessionStore {
-  Future<NowaveSessionData?> read();
-  Future<void> write(NowaveSessionData session);
-  Future<void> clear();
-}
-
-/// How much of a sign-out actually reached durable storage.
-///
-/// Signing out has two halves: the server-side revocation (best-effort) and
-/// the local clear. The local clear is the one that decides whether the
-/// account can come back on the next launch, so its result must not be
-/// reduced to a log line (#102).
-enum SessionClearResult {
-  /// No copy of the session remains and no restart can restore it.
-  cleared,
-
-  /// The app can no longer restore the session, but a copy survived in a
-  /// medium that is currently unwritable. The surviving copy is disowned, so
-  /// it is residue rather than a session - still not the same as a clean
-  /// clear, and the user is told so.
-  disowned,
-
-  /// Not even the record that disowns the copies could be written: a restart
-  /// may restore the account.
-  failed,
-}
-
-/// A store that can report *how* durable a sign-out was.
-///
-/// Kept separate from [NowaveSessionStore] so existing stores and test
-/// doubles stay valid; the session manager asks for it when available.
-abstract interface class NowaveSessionSignOutStore
-    implements NowaveSessionStore {
-  Future<SessionClearResult> clearForSignOut();
-}
-
-/// The immediate identity signal used by sensitive UI. It changes before
-/// storage or network work can delay the ordinary signed-in/out events.
-abstract interface class NowaveSessionIdentity {
-  String? get activeUserId;
-  String? get accessToken;
-  int get sessionGeneration;
-  Stream<void> get identityChanges;
-}
+export 'package:belog/core/nowave/session/auth_status.dart';
+export 'package:belog/core/nowave/session/session_data.dart';
+export 'package:belog/core/nowave/session/session_identity.dart';
+export 'package:belog/core/nowave/session/session_store.dart';
 
 /// Owns the no-wave session lifecycle: adopting token pairs from
 /// login/register, rotating the refresh token, and broadcasting
 /// sign-in/sign-out to the rest of the app (the replacement for
 /// Supabase's `onAuthStateChange`).
+///
+/// The timing rules live in separate, unit-tested units instead of in this
+/// class: [SessionGeneration] is the account fence, [SerialQueue] orders
+/// persistence, [KeyedSingleFlight] keeps one rotation per session, and
+/// [decideSessionExpiry] is the expiry policy. What stays here is the part
+/// that needs all of them at once - binding those decisions to one
+/// in-memory session, the token endpoint and the sign-out result.
 ///
 /// The refresh token rotates on every use and reusing a rotated token
 /// revokes the whole session family server-side, so [refresh] is strictly
@@ -213,30 +63,27 @@ class NowaveSessionManager
   final StreamController<void> _identityChanges =
       StreamController<void>.broadcast(sync: true);
 
-  @override
-  Stream<void> get identityChanges => _identityChanges.stream;
+  /// Account fence: advanced before any identity change, checked after each
+  /// await so an answer that belongs to a replaced session is dropped.
+  final SessionGeneration _generation = SessionGeneration();
+
+  /// Persistence is serialized so an old write cannot finish after sign-out or
+  /// after a newer account has been written to the same platform store.
+  final SerialQueue _storeQueue = SerialQueue();
+
+  /// One rotation per session generation; a newer session never joins the
+  /// previous session's flight.
+  final KeyedSingleFlight<bool> _refreshFlights = KeyedSingleFlight<bool>();
 
   NowaveSessionData? _session;
-  Future<bool>? _refreshInFlight;
-  int? _refreshGeneration;
-  int _sessionGeneration = 0;
-  Future<void> _storeTail = Future<void>.value();
+
+  @override
+  Stream<void> get identityChanges => _identityChanges.stream;
 
   /// Changes whenever the active identity is replaced or cleared, but not
   /// when a token is refreshed for the same session.
   @override
-  int get sessionGeneration => _sessionGeneration;
-
-  /// Serializes persistence so an old write cannot finish after sign-out or
-  /// after a newer account has been written to the same platform store.
-  Future<T> _withStore<T>(Future<T> Function() operation) {
-    final result = _storeTail.then((_) => operation());
-    _storeTail = result.then<void>(
-      (_) {},
-      onError: (Object _, StackTrace __) {},
-    );
-    return result;
-  }
+  int get sessionGeneration => _generation.value;
 
   /// Broadcast stream of sign-in / sign-out transitions.
   Stream<NowaveAuthStatus> get statusStream => _status.stream;
@@ -253,18 +100,18 @@ class NowaveSessionManager
   /// Loads a previously persisted session into memory. Network-free; the
   /// access token is validated lazily by the first authenticated request.
   Future<void> restore() async {
-    final generation = ++_sessionGeneration;
+    final generation = _generation.advance();
     _identityChanges.add(null);
     try {
-      final restored = await _withStore(_store.read);
-      if (generation == _sessionGeneration) _session = restored;
+      final restored = await _storeQueue.run(_store.read);
+      if (_generation.isCurrent(generation)) _session = restored;
     } catch (e, stackTrace) {
       AppLogger.error(
         'restoring the persisted session failed',
         error: e,
         stackTrace: stackTrace,
       );
-      if (generation == _sessionGeneration) _session = null;
+      if (_generation.isCurrent(generation)) _session = null;
     }
   }
 
@@ -280,7 +127,7 @@ class NowaveSessionManager
     NowaveTokenPair tokens, {
     required String email,
   }) async {
-    _sessionGeneration++;
+    _generation.advance();
     _session = NowaveSessionData(
       userId: '',
       email: email,
@@ -313,21 +160,8 @@ class NowaveSessionManager
   /// Responses belonging to a replaced session are ignored.
   @override
   Future<bool> refresh() {
-    final generation = _sessionGeneration;
-    final inFlight = _refreshInFlight;
-    if (inFlight != null && _refreshGeneration == generation) {
-      return inFlight;
-    }
-    late final Future<bool> flight;
-    flight = _refreshLocked(generation).whenComplete(() {
-      if (identical(_refreshInFlight, flight)) {
-        _refreshInFlight = null;
-        _refreshGeneration = null;
-      }
-    });
-    _refreshGeneration = generation;
-    _refreshInFlight = flight;
-    return flight;
+    final generation = _generation.value;
+    return _refreshFlights.run(generation, () => _refreshLocked(generation));
   }
 
   /// Proactively rotates the access token when it is about to expire,
@@ -339,35 +173,40 @@ class NowaveSessionManager
   /// sessions). A refresh token that has already expired - or that a
   /// previous unknown outcome retired - never triggers a network call; the
   /// session lives on its access token and ends locally once that expires.
+  ///
+  /// The decision itself is [decideSessionExpiry]; this method only carries
+  /// out its answer.
   @override
   Future<bool> ensureFreshAccess() async {
     final session = _session;
     if (session == null) return false;
-    final currentTime = _now();
-    if (session.accessToken.isNotEmpty &&
-        session.accessExpiresAt.isAfter(currentTime.add(refreshLeadTime))) {
-      return false;
-    }
-    if (!session.refreshExpiresAt.isAfter(currentTime)) {
-      AppLogger.debug(
-        'refresh token already expired; ending the session locally',
-      );
-      await clear();
-      return false;
-    }
-    if (session.refreshTokenSpent) {
-      // There is no token left that may be sent safely: the access token is
-      // the only thing keeping this session alive, and only until it expires.
-      if (!session.accessExpiresAt.isAfter(currentTime)) {
+    final action = decideSessionExpiry(
+      session: session,
+      now: _now(),
+      leadTime: refreshLeadTime,
+    );
+    switch (action) {
+      case SessionExpiryAction.reuseAccessToken:
+      case SessionExpiryAction.keepAccessTokenOnly:
+        return false;
+      case SessionExpiryAction.endWithExpiredRefreshToken:
+        AppLogger.debug(
+          'refresh token already expired; ending the session locally',
+        );
+        await clear();
+        return false;
+      case SessionExpiryAction.endWithSpentRefreshToken:
+        // There is no token left that may be sent safely: the access token is
+        // the only thing keeping this session alive, and it is gone.
         AppLogger.debug(
           'access token expired and the refresh token is spent; '
           'ending the session locally',
         );
         await clear();
-      }
-      return false;
+        return false;
+      case SessionExpiryAction.rotate:
+        return refresh();
     }
-    return refresh();
   }
 
   Future<bool> _refreshLocked(int generation) async {
@@ -393,7 +232,7 @@ class NowaveSessionManager
         (data as Map).cast<String, dynamic>(),
       );
       final current = _session;
-      if (generation != _sessionGeneration ||
+      if (!_generation.isCurrent(generation) ||
           current == null ||
           current.refreshToken != session.refreshToken) {
         return false;
@@ -415,7 +254,7 @@ class NowaveSessionManager
           'copy so a restart cannot replay the spent token',
         );
         try {
-          await _withStore(_store.clear);
+          await _storeQueue.run(_store.clear);
         } catch (e, stackTrace) {
           AppLogger.error(
             'removing the stale stored session failed; a restart may replay '
@@ -425,9 +264,9 @@ class NowaveSessionManager
           );
         }
       }
-      return generation == _sessionGeneration;
+      return _generation.isCurrent(generation);
     } catch (e, stackTrace) {
-      if (generation != _sessionGeneration) return false;
+      if (!_generation.isCurrent(generation)) return false;
       if (_isAuthRejection(e)) {
         // The backend rejected the rotated refresh token: the session
         // family is revoked server-side, the app must stop acting
@@ -459,7 +298,7 @@ class NowaveSessionManager
   /// outcome and persists that decision, so a restart cannot replay it.
   Future<void> _markRefreshTokenSpent(int generation) async {
     final session = _session;
-    if (generation != _sessionGeneration || session == null) return;
+    if (!_generation.isCurrent(generation) || session == null) return;
     if (session.refreshTokenSpent) return;
     _session = session.copyWith(refreshTokenSpent: true);
     await _persist();
@@ -487,16 +326,16 @@ class NowaveSessionManager
   /// (#102).
   Future<SessionClearResult> clearForSignOut() async {
     final hadSession = _session != null;
-    final generation = ++_sessionGeneration;
+    final generation = _generation.advance();
     _session = null;
     _identityChanges.add(null);
     var result = SessionClearResult.failed;
     final store = _store;
     try {
       if (store is NowaveSessionSignOutStore) {
-        result = await _withStore(store.clearForSignOut);
+        result = await _storeQueue.run(store.clearForSignOut);
       } else {
-        await _withStore(store.clear);
+        await _storeQueue.run(store.clear);
         result = SessionClearResult.cleared;
       }
     } catch (e, stackTrace) {
@@ -513,7 +352,7 @@ class NowaveSessionManager
         'restore the account',
       );
     }
-    if (hadSession && generation == _sessionGeneration && _session == null) {
+    if (hadSession && _generation.isCurrent(generation) && _session == null) {
       _status.add(const NowaveAuthSignedOut());
     }
     return result;
@@ -539,7 +378,7 @@ class NowaveSessionManager
     final session = _session;
     if (session == null) return true;
     try {
-      await _withStore(() => _store.write(session));
+      await _storeQueue.run(() => _store.write(session));
       return true;
     } catch (e, stackTrace) {
       AppLogger.error(
@@ -548,23 +387,6 @@ class NowaveSessionManager
         stackTrace: stackTrace,
       );
       return false;
-    }
-  }
-
-  /// JSON encoding helper exposed for the SQLite-backed store.
-  static String encodeSession(NowaveSessionData session) =>
-      jsonEncode(session.toJson());
-
-  static NowaveSessionData? decodeSession(String? raw) {
-    if (raw == null || raw.isEmpty) return null;
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map<String, dynamic>) return null;
-      return NowaveSessionData.fromJson(decoded);
-    } on FormatException {
-      // A corrupt payload (bad JSON, unparsable dates) reads as "no
-      // session" rather than crashing every launch.
-      return null;
     }
   }
 }
