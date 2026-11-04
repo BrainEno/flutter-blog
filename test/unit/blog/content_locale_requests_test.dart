@@ -88,10 +88,10 @@ void main() {
         MockClient((request) async {
           requested.add(request.url);
           return http.Response(
-          jsonEncode({'data': <dynamic>[]}),
-          200,
-          headers: {'content-type': 'application/json'},
-        );
+            jsonEncode({'data': <dynamic>[]}),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
         }),
       );
 
