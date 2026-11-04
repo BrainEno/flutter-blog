@@ -4,10 +4,8 @@ import 'dart:io';
 import 'package:belog/core/storage/legacy/blog.dart' as legacy;
 import 'package:belog/core/storage/legacy/blog_draft.dart' as legacy;
 import 'package:belog/core/storage/legacy/theme_preference.dart' as legacy;
-import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart' show ThemeMode;
 import 'package:isar_community/isar.dart' as legacy;
 
 /// SQLite is the live store. Isar is opened only for the one-time import.
@@ -167,7 +165,7 @@ class AppDatabase extends GeneratedDatabase {
       await transaction(() async {
         if (preferences.isNotEmpty) {
           final latest = preferences.reduce((a, b) => a.id > b.id ? a : b);
-          await setTheme(latest.themeMode);
+          await setTheme(latest.themeMode.name);
         }
         for (final draft in drafts) {
           await customStatement(
@@ -183,18 +181,16 @@ class AppDatabase extends GeneratedDatabase {
           );
         }
         for (final blog in blogs) {
-          await upsertBlog(
-            BlogModel(
-              id: blog.id,
-              title: blog.title,
-              content: blog.content,
-              posterId: blog.posterId,
-              imageUrl: blog.imageUrl,
-              tags: blog.tags,
-              updatedAt: blog.updatedAt,
-              posterName: blog.posterName,
-              posterAvatar: blog.posterAvatar,
-            ),
+          await upsertBlogRow(
+            id: blog.id,
+            title: blog.title,
+            content: blog.content,
+            posterId: blog.posterId,
+            imageUrl: blog.imageUrl,
+            tags: blog.tags,
+            updatedAt: blog.updatedAt,
+            posterName: blog.posterName,
+            posterAvatar: blog.posterAvatar,
           );
         }
         await customStatement(
@@ -212,9 +208,11 @@ class AppDatabase extends GeneratedDatabase {
     }
   }
 
-  Future<void> setTheme(ThemeMode mode) => customStatement(
+  /// Stores the theme by name. The preference model is the theme layer's
+  /// business; storage only keeps the string (#107).
+  Future<void> setTheme(String mode) => customStatement(
     'INSERT INTO theme(id, mode) VALUES (0, ?) ON CONFLICT(id) DO UPDATE SET mode = excluded.mode',
-    [mode.name],
+    [mode],
   );
 
   /// Reads a `metadata` value, or null when the key is absent.
@@ -239,7 +237,23 @@ class AppDatabase extends GeneratedDatabase {
   Future<void> deleteBlogCacheRow(String id) =>
       customStatement('DELETE FROM blog_cache WHERE id = ?', [id]);
 
-  Future<void> upsertBlog(BlogModel blog) => customStatement(
+  /// Writes one cached article row from primitives.
+  ///
+  /// The mapping to and from the feature's article model lives with the cache
+  /// adapter in that feature, so storage never imports it (#107).
+  Future<void> upsertBlogRow({
+    required String id,
+    required String title,
+    required String content,
+    required String posterId,
+    required String imageUrl,
+    required List<String> tags,
+    required DateTime updatedAt,
+    String articleId = '',
+    String? posterName,
+    String? posterAvatar,
+    String? documentJson,
+  }) => customStatement(
     '''
     INSERT INTO blog_cache(id, article_id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar, document_json)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -249,17 +263,17 @@ class AppDatabase extends GeneratedDatabase {
       document_json = excluded.document_json
     ''',
     [
-      blog.id,
-      blog.articleId,
-      blog.title,
-      blog.content,
-      blog.posterId,
-      blog.imageUrl,
-      jsonEncode(blog.tags),
-      blog.updatedAt.microsecondsSinceEpoch,
-      blog.posterName,
-      blog.posterAvatar,
-      blog.documentJson,
+      id,
+      articleId,
+      title,
+      content,
+      posterId,
+      imageUrl,
+      jsonEncode(tags),
+      updatedAt.microsecondsSinceEpoch,
+      posterName,
+      posterAvatar,
+      documentJson,
     ],
   );
 }

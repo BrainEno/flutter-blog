@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/l10n.dart';
-import 'package:belog/core/storage/reading_history_store.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/router/app_router.dart';
+import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

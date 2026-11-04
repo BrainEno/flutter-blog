@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:belog/core/storage/app_database.dart';
-import 'package:belog/core/storage/reading_history_store.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/data/datasources/sqlite_reading_history_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart' as raw;
