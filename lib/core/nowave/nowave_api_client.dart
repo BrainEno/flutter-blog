@@ -4,55 +4,16 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/core/nowave/transport/api_base_url.dart';
+import 'package:belog/core/nowave/transport/api_envelope.dart';
+import 'package:belog/core/nowave/transport/api_error.dart';
+import 'package:belog/core/nowave/transport/media_asset.dart';
+import 'package:belog/core/nowave/transport/unauthorized_replay.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:http/http.dart' as http;
 
-/// Error returned by the no-wave REST API.
-///
-/// The backend answers every failure with
-/// `{\"error\": {\"code\": \"...\", \"message\": \"...\"}}`; [code] is the stable
-/// machine-readable identifier (e.g. `BAD_USER_INPUT`, `UNAUTHENTICATED`,
-/// `RATE_LIMITED`) and [statusCode] the HTTP status. The message may be
-/// English/technical: it is never rendered directly in the UI - it travels
-/// in `cause` after [mapToServerException] converts this into a
-/// display-safe [ServerException].
-class NowaveApiException implements Exception {
-  final int statusCode;
-  final String code;
-  final String message;
-
-  /// Parsed `Retry-After` header, only set for `RATE_LIMITED` responses.
-  final int? retryAfterSeconds;
-
-  const NowaveApiException({
-    required this.statusCode,
-    required this.code,
-    required this.message,
-    this.retryAfterSeconds,
-  });
-
-  @override
-  String toString() =>
-      'NowaveApiException($statusCode $code: $message'
-      '${retryAfterSeconds == null ? '' : ', retry after ${retryAfterSeconds}s'})';
-}
-
-/// A media asset created by `POST /me/media`.
-class NowaveMediaAsset {
-  const NowaveMediaAsset({
-    required this.id,
-    required this.contentType,
-    required this.byteSize,
-    required this.width,
-    required this.height,
-  });
-
-  final String id;
-  final String contentType;
-  final int byteSize;
-  final int width;
-  final int height;
-}
+export 'package:belog/core/nowave/transport/api_error.dart';
+export 'package:belog/core/nowave/transport/media_asset.dart';
 
 /// Supplies and rotates the bearer token attached to authenticated
 /// requests. Implemented by [NowaveSessionManager]; the client only ever
@@ -122,66 +83,25 @@ class NowaveApiClient {
     NowaveAuthenticator? authenticator,
     http.Client? httpClient,
     this.timeout = const Duration(seconds: 30),
-  }) : _baseUrl = _sanitizeBase(baseUrl),
-       _basePrefix = _basePrefixOf(baseUrl),
+  }) : _base = ApiBaseUrl.parse(baseUrl),
        _authenticator = authenticator,
-       _httpClient = httpClient ?? http.Client() {
-    if (_basePrefix.endsWith(_kApiPrefix)) {
-      // A base URL that already contains the versioned prefix would make
-      // every request hit `/api/v1/api/v1/...` - a silent, total outage.
-      // Fail fast with an actionable message instead.
-      throw ArgumentError(
-        'API_BASE_URL must not end with "$_kApiPrefix"; the client adds '
-        'it itself. Got: $_baseUrl',
-      );
-    }
-  }
-
-  static const String _kApiPrefix = '/api/v1';
+       _httpClient = httpClient ?? http.Client();
 
   /// Timeout applied to each phase of an exchange (send, body read) for
   /// JSON requests. Media uploads pass their own, longer budget.
   final Duration timeout;
 
-  final Uri _baseUrl;
-  final String _basePrefix;
+  /// Origin, path prefix and URL composition rules ([ApiBaseUrl]): the
+  /// versioned `/api/v1` segment is added in exactly one place, and a base URL
+  /// that already ends with it is rejected there, so this client can never
+  /// build `/api/v1/api/v1/...`.
+  final ApiBaseUrl _base;
+
   final NowaveAuthenticator? _authenticator;
   final http.Client _httpClient;
 
-  /// Drops any query or fragment a configured base URL may carry; request
-  /// queries are composed per call and a stray fragment would corrupt them.
-  ///
-  /// Rebuilding via string surgery + reparse (instead of the Uri
-  /// constructor) keeps the exact original authority: an implicit default
-  /// port stays implicit and an explicit one survives verbatim.
-  static Uri _sanitizeBase(Uri url) {
-    if (!url.hasQuery && !url.hasFragment) return url;
-    var cleaned = url.toString();
-    final queryAt = cleaned.indexOf('?');
-    if (queryAt >= 0) cleaned = cleaned.substring(0, queryAt);
-    final fragmentAt = cleaned.indexOf('#');
-    if (fragmentAt >= 0) cleaned = cleaned.substring(0, fragmentAt);
-    return Uri.parse(cleaned);
-  }
-
-  static String _basePrefixOf(Uri url) {
-    final path = url.path;
-    return path.endsWith('/') ? path.substring(0, path.length - 1) : path;
-  }
-
   /// Immutable public URL of an uploaded media asset.
-  ///
-  /// Built from the verified route `GET /api/v1/media/:id`. (The `src`
-  /// field returned by the upload endpoint misses the `/v1` segment - an
-  /// upstream inconsistency - so the URL is always constructed here.)
-  Uri mediaUri(String id) => _resolveUri('$_kApiPrefix/media/$id');
-
-  Uri _resolveUri(String path, [Map<String, String>? query]) {
-    return _baseUrl.replace(
-      path: '$_basePrefix$path',
-      queryParameters: query == null || query.isEmpty ? null : query,
-    );
-  }
+  Uri mediaUri(String id) => _base.mediaUri(id);
 
   /// GET a JSON endpoint and return its unwrapped `data` payload. Set
   /// [followRedirects] to false for private reads that must not forward an
@@ -343,20 +263,13 @@ class NowaveApiClient {
   }) async {
     final data = await _request(
       'POST',
-      '$_kApiPrefix/me/media',
+      '/me/media',
       rawBody: bytes,
       contentType: contentType,
       timeout: const Duration(seconds: 90),
       sessionFence: sessionFence,
     );
-    final map = _asMap(data, 'media asset');
-    return NowaveMediaAsset(
-      id: map['id'] as String,
-      contentType: map['contentType'] as String? ?? 'image/webp',
-      byteSize: (map['byteSize'] as num?)?.toInt() ?? 0,
-      width: (map['width'] as num?)?.toInt() ?? 0,
-      height: (map['height'] as num?)?.toInt() ?? 0,
-    );
+    return NowaveMediaAsset.fromDataMap(requireJsonMap(data, 'media asset'));
   }
 
   void _requireSessionFence(NowaveSessionFence fence) {
@@ -394,9 +307,7 @@ class NowaveApiClient {
       }
       _requireSessionFence(sessionFence);
     }
-    final uri = path.startsWith(_kApiPrefix)
-        ? _resolveUri(path, query)
-        : _resolveUri('$_kApiPrefix$path', query);
+    final uri = _base.resolve(path, query);
 
     http.Response response;
     if (!authenticate || _authenticator == null) {
@@ -475,25 +386,28 @@ class NowaveApiClient {
         token: sentToken,
       )..addAll(extraHeaders ?? const {});
       response = await sendForSession(headers);
-      if (response.statusCode == HttpStatus.unauthorized &&
-          allowRefresh &&
-          sentToken != null) {
-        // Another request may already have refreshed the same session while
-        // this response was in flight. Reuse that token instead of rotating
-        // the same family again. Without an identity fence, fail closed if
-        // the token changed because it might belong to a different account.
-        var refreshed =
-            bound != null &&
-            authenticator.accessToken != null &&
-            authenticator.accessToken != sentToken;
-        if (!refreshed && authenticator.accessToken == sentToken) {
+      if (response.statusCode == HttpStatus.unauthorized) {
+        // One reaction at most, decided by a unit-tested rule
+        // ([decideUnauthorizedReplay]): reuse a token another request already
+        // rotated, refresh once, or fail closed and surface the 401.
+        var replay = decideUnauthorizedReplay(
+          sentToken: sentToken,
+          currentToken: authenticator.accessToken,
+          sessionBound: bound != null,
+          allowRefresh: allowRefresh,
+        );
+        if (replay == UnauthorizedReplay.refreshFirst) {
           AppLogger.debug('401 from $method ${uri.path}; refreshing session');
-          refreshed = await authenticator.refresh();
+          final refreshed = await authenticator.refresh();
           // If refresh ended the session, preserve the definitive original
           // 401 and never retry. A replacement account still fails the fence.
           if (!sessionEnded()) ensureSameSession();
+          final current = authenticator.accessToken;
+          replay = refreshed && current != null
+              ? UnauthorizedReplay.reuseCurrentToken
+              : UnauthorizedReplay.surfaceOriginal;
         }
-        if (refreshed && authenticator.accessToken != null) {
+        if (replay == UnauthorizedReplay.reuseCurrentToken) {
           final headers = _headers(
             body: body,
             rawBody: rawBody,
@@ -501,7 +415,7 @@ class NowaveApiClient {
             token: authenticator.accessToken,
           )..addAll(extraHeaders ?? const {});
           response = await sendForSession(headers);
-        } else {
+        } else if (replay == UnauthorizedReplay.surfaceOriginal) {
           AppLogger.debug(
             'session refresh failed; surfacing the 401 from $method'
             ' ${uri.path}',
@@ -606,77 +520,32 @@ class NowaveApiClient {
     }
   }
 
+  /// Unwraps `{data: ...}` and turns every failure into a typed exception.
+  ///
+  /// The mapping itself lives in [decodeEnvelope]; this method only logs the
+  /// fixed diagnostic token for an unreadable body (issue #49) before
+  /// rethrowing, so callers keep seeing one exception type for every failure.
   dynamic _decode(String method, Uri uri, http.Response response) {
-    final String rawBody;
-    try {
-      rawBody = utf8.decode(response.bodyBytes);
-    } on FormatException {
-      AppLogger.responseMalformed(
-        method,
-        uri.path,
-        response.statusCode,
-        'non-utf8',
-      );
-      throw NowaveApiException(
-        statusCode: response.statusCode,
-        code: 'HTTP_${response.statusCode}',
-        message: 'Unexpected non-UTF-8 response from $method $uri.',
-      );
+    final outcome = decodeEnvelope(
+      statusCode: response.statusCode,
+      bodyBytes: response.bodyBytes,
+      retryAfterHeader: response.headers['retry-after'],
+      requestLabel: '$method ${uri.path}',
+      requestUri: '$method $uri',
+    );
+    switch (outcome) {
+      case EnvelopeData(data: final data):
+        return data;
+      case EnvelopeFailure(error: final error, fault: final fault):
+        if (fault != null) {
+          AppLogger.responseMalformed(
+            method,
+            uri.path,
+            response.statusCode,
+            fault.diagnostic,
+          );
+        }
+        throw error;
     }
-    final dynamic body;
-    try {
-      body = rawBody.isEmpty ? null : jsonDecode(rawBody);
-    } on FormatException {
-      AppLogger.responseMalformed(
-        method,
-        uri.path,
-        response.statusCode,
-        'non-json',
-      );
-      throw NowaveApiException(
-        statusCode: response.statusCode,
-        code: 'HTTP_${response.statusCode}',
-        message: 'Unexpected non-JSON response from $method $uri.',
-      );
-    }
-    if (body is Map<String, dynamic>) {
-      final error = body['error'];
-      if (error is Map<String, dynamic>) {
-        throw NowaveApiException(
-          statusCode: response.statusCode,
-          code: error['code'] as String? ?? 'UNKNOWN',
-          message: error['message'] as String? ?? 'The request failed.',
-          retryAfterSeconds: int.tryParse(
-            response.headers['retry-after'] ?? '',
-          ),
-        );
-      }
-      if (response.statusCode >= 400) {
-        // A 4xx/5xx body that is not the documented error envelope: treat
-        // it as a server failure instead of returning a null `data` payload
-        // that callers would report as an unparseable response.
-        throw NowaveApiException(
-          statusCode: response.statusCode,
-          code: 'HTTP_${response.statusCode}',
-          message:
-              'Unexpected error response shape from $method $uri: '
-              '${body.keys.join(',')}',
-        );
-      }
-      return body['data'];
-    }
-    if (response.statusCode >= 400) {
-      throw NowaveApiException(
-        statusCode: response.statusCode,
-        code: 'HTTP_${response.statusCode}',
-        message: 'Unexpected non-JSON error response from $method $uri.',
-      );
-    }
-    return body;
-  }
-
-  Map<String, dynamic> _asMap(dynamic data, String what) {
-    if (data is Map<String, dynamic>) return data;
-    throw FormatException('Unexpected $what payload: $data');
   }
 }
