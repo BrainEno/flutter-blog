@@ -6,6 +6,8 @@ import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dar
 import 'package:belog/features/blog/data/datasources/latest_feed_cursor.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
+import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart'
+    show kBlogPageSize;
 import 'package:fpdart/fpdart.dart';
 
 /// Loads the article feeds and decides when a cached list may stand in for a

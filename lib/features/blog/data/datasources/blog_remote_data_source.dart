@@ -274,8 +274,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     } on LatestFeedCursorTooDense {
       rethrow;
     } on NowaveApiException catch (error) {
-      if (error.statusCode == 400 &&
-          error.code == 'BAD_USER_INPUT') {
+      if (error.statusCode == 400 && error.code == 'BAD_USER_INPUT') {
         throw const LatestFeedCursorUnavailable();
       }
       throw mapToServerException(error);
