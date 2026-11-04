@@ -102,11 +102,8 @@ class UserEditBloc extends Bloc<UserEditEvent, UserEditState> {
         session.sessionGeneration == fence.generation;
   }
 
-  Failure _notSignedIn() => Failure(
-    '用户未登录',
-    kind: FailureKind.auth,
-    code: 'auth.notSignedIn',
-  );
+  Failure _notSignedIn() =>
+      Failure('用户未登录', kind: FailureKind.auth, code: 'auth.notSignedIn');
 
   Failure _sessionChanged() => Failure(
     '登录账户已变更，资料未保存',

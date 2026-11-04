@@ -34,7 +34,7 @@ class _MemoryStore implements NowaveSessionStore {
 
 class _Connected implements ConnectionChecker {
   @override
-  Future<bool> isConnected async => true;
+  Future<bool> get isConnected async => true;
 }
 
 class _MockEditUserUseCase extends Mock implements EditUserUseCase {}

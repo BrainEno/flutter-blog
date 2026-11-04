@@ -109,11 +109,11 @@ void main() {
 
       final captured =
           verify(
-        () => remote.editUserInfo(
-          captureAny(),
-          sessionFence: any(named: 'sessionFence'),
-        ),
-      ).captured.single
+                () => remote.editUserInfo(
+                  captureAny(),
+                  sessionFence: any(named: 'sessionFence'),
+                ),
+              ).captured.single
               as UserModel;
       expect(captured.id, 'u1');
       expect(captured.name, '新名字');
@@ -156,11 +156,11 @@ void main() {
       expect(result.isRight(), isTrue);
       final captured =
           verify(
-        () => remote.editUserInfo(
-          captureAny(),
-          sessionFence: any(named: 'sessionFence'),
-        ),
-      ).captured.single
+                () => remote.editUserInfo(
+                  captureAny(),
+                  sessionFence: any(named: 'sessionFence'),
+                ),
+              ).captured.single
               as UserModel;
       expect(captured.name, '新名字');
       expect(captured.bio, '写诗的人');
@@ -189,11 +189,11 @@ void main() {
           ),
         ).thenAnswer((_) async => newAvatarUrl);
         when(
-        () => remote.editUserInfo(
-          any(),
-          sessionFence: any(named: 'sessionFence'),
-        ),
-      ).thenAnswer(
+          () => remote.editUserInfo(
+            any(),
+            sessionFence: any(named: 'sessionFence'),
+          ),
+        ).thenAnswer(
           (invocation) async =>
               (invocation.positionalArguments[0] as UserModel),
         );
@@ -218,9 +218,9 @@ void main() {
             sessionFence: any(named: 'sessionFence'),
           ),
           () => remote.editUserInfo(
-          captureAny(),
-          sessionFence: any(named: 'sessionFence'),
-        ),
+            captureAny(),
+            sessionFence: any(named: 'sessionFence'),
+          ),
         ]);
         final captured = order.last.captured.single as UserModel;
         expect(captured.avatarUrl, newAvatarUrl);
