@@ -22,10 +22,11 @@ void main() {
 
     expect(find.text('诗歌'), findsOneWidget);
     expect(find.byType(TextButton), findsNothing);
+    final data = tester
+        .getSemantics(find.byType(ArticleTagLabel))
+        .getSemanticsData();
     expect(
-      tester.getSemantics(find.byType(ArticleTagLabel)).hasFlag(
-        SemanticsFlag.isButton,
-      ),
+      data.flagsCollection.isButton,
       isFalse,
       reason: '不可点的标签不该被读屏当成按钮',
     );
@@ -46,10 +47,12 @@ void main() {
     expect(size.width, greaterThanOrEqualTo(48));
     expect(size.height, greaterThanOrEqualTo(48));
 
-    final node = tester.getSemantics(find.byType(ArticleTagLabel));
-    expect(node.hasFlag(SemanticsFlag.isButton), isTrue);
-    expect(node.hasFlag(SemanticsFlag.hasTapAction), isTrue);
-    expect(node.label, '浏览标签「诗歌」的文章');
+    final data = tester
+        .getSemantics(find.byType(ArticleTagLabel))
+        .getSemanticsData();
+    expect(data.flagsCollection.isButton, isTrue);
+    expect(data.hasAction(SemanticsAction.tap), isTrue);
+    expect(data.label, '浏览标签「诗歌」的文章');
     expect(
       find.text('诗歌'),
       findsOneWidget,

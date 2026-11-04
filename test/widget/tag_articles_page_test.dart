@@ -1,8 +1,6 @@
 import 'package:belog/core/error/failures.dart';
-import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/tag_ref.dart';
-import 'package:belog/features/blog/domain/tag_paging.dart';
 import 'package:belog/features/blog/domain/usecase/get_articles_by_tag.dart';
 import 'package:belog/features/blog/domain/usecase/resolve_tag.dart';
 import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
@@ -72,8 +70,29 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await settle(tester);
   }
+
+  /// Pumps until the bloc leaves its loading states instead of
+  /// `pumpAndSettle`, which would wait out a spinner that never stops.
+  Future<void> settle(WidgetTester tester) async {
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 20));
+      final state = bloc.state;
+      if (state is TagArticlesSuccess ||
+          state is TagArticlesUnknown ||
+          state is TagArticlesFailure) {
+        break;
+      }
+    }
+    await tester.pump();
+  }
+
+  String screenText(WidgetTester tester) => tester
+      .widgetList<Text>(find.byType(Text))
+      .map((text) => text.data ?? text.textSpan?.toPlainText() ?? '')
+      .where((text) => text.isNotEmpty)
+      .join(' | ');
 
   testWidgets('a tag lists its articles under its own name', (tester) async {
     when(
@@ -83,7 +102,11 @@ void main() {
     await pumpPage(tester);
 
     expect(find.text('#诗歌'), findsOneWidget);
-    expect(find.text('夜航手记'), findsOneWidget);
+    expect(
+      find.text('夜航手记'),
+      findsOneWidget,
+      reason: 'state=${bloc.state.runtimeType} screen=${screenText(tester)}',
+    );
     expect(find.text('第二篇'), findsOneWidget);
     verify(() => getArticlesByTag(any())).called(1);
   });
@@ -97,7 +120,11 @@ void main() {
 
     await pumpPage(tester);
 
-    expect(find.text('「诗歌」下还没有文章'), findsOneWidget);
+    expect(
+      find.text('「诗歌」下还没有文章'),
+      findsOneWidget,
+      reason: 'state=${bloc.state.runtimeType} screen=${screenText(tester)}',
+    );
   });
 
   testWidgets('an unknown tag is explicit instead of showing everything', (
@@ -107,7 +134,11 @@ void main() {
 
     await pumpPage(tester, tag: '不存在的');
 
-    expect(find.text('找不到标签「不存在的」'), findsOneWidget);
+    expect(
+      find.text('找不到标签「不存在的」'),
+      findsOneWidget,
+      reason: 'state=${bloc.state.runtimeType} screen=${screenText(tester)}',
+    );
     verifyNever(() => getArticlesByTag(any()));
   });
 
@@ -120,12 +151,20 @@ void main() {
     });
 
     await pumpPage(tester);
-    expect(find.textContaining('无法连接到网络'), findsOneWidget);
+    expect(
+      find.textContaining('无法连接到网络'),
+      findsOneWidget,
+      reason: 'state=${bloc.state.runtimeType} screen=${screenText(tester)}',
+    );
 
     await tester.tap(find.text('重试'));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
-    expect(find.text('夜航手记'), findsOneWidget);
+    expect(
+      find.text('夜航手记'),
+      findsOneWidget,
+      reason: 'state=${bloc.state.runtimeType} screen=${screenText(tester)}',
+    );
     expect(attempts, 2);
   });
 }
