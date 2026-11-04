@@ -1,5 +1,6 @@
 import 'package:belog/core/l10n/app_language.dart';
 import 'package:belog/core/l10n/content_language.dart';
+import 'package:belog/core/l10n/content_locale.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
