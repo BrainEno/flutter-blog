@@ -99,8 +99,7 @@ class ViewerArticleBody extends StatelessWidget {
                         ),
                       ),
                     ],
-                    if (reader != null)
-                      ReadAloudControls(controller: reader!),
+                    if (reader != null) ReadAloudControls(controller: reader!),
                     MarkdownBody(
                       markdown: blog.content,
                       readAloudDocument: document,

@@ -59,10 +59,7 @@ class ReaderAppBar extends StatelessWidget implements PreferredSizeWidget {
                 final userState = context.read<AppUserCubit>().state;
                 if (userState is AppUserLoggedIn) {
                   context.read<BlogLikedBloc>().add(
-                    ToggleBlogLike(
-                      userId: userState.user.id,
-                      blogId: blog.id,
-                    ),
+                    ToggleBlogLike(userId: userState.user.id, blogId: blog.id),
                   );
                 } else {
                   showSnackBar(context, context.l10n.signInRequired);

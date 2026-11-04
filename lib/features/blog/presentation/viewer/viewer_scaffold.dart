@@ -21,6 +21,7 @@ import 'package:flutter/rendering.dart';
 /// widget: bloc wiring, loading/error states and bookkeeping.
 class ViewerScaffold extends StatefulWidget {
   const ViewerScaffold({
+    super.key,
     required this.blog,
     required this.onRequestLogin,
     required this.getRelatedArticles,
