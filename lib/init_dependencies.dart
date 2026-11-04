@@ -10,6 +10,9 @@ import 'package:belog/core/nowave/secure_nowave_session_store.dart';
 import 'package:belog/core/nowave/session_store_migration.dart';
 import 'package:belog/core/nowave/sqlite_nowave_session_store.dart';
 import 'package:belog/core/secrets/app_secrets.dart';
+import 'package:belog/core/l10n/locale_bloc.dart';
+import 'package:belog/core/l10n/locale_preference_store.dart';
+import 'package:belog/core/l10n/sqlite_locale_preference_store.dart';
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/core/theme/sqlite_theme_store.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
@@ -183,6 +186,12 @@ Future<void> initDependencies() async {
     () => SpeechCoordinator(PlatformSpeechEngine()),
   );
   serviceLocator.registerLazySingleton(() => ThemeBloc(serviceLocator()));
+
+  // Issue #108: the in-app language choice, persisted next to the theme.
+  serviceLocator.registerLazySingleton<LocalePreferenceStore>(
+    () => SqliteLocalePreferenceStore(serviceLocator<AppDatabase>()),
+  );
+  serviceLocator.registerLazySingleton(() => LocaleBloc(serviceLocator()));
 
   serviceLocator.registerLazySingleton(() => AppUserCubit());
   // One probe for every build mode and every origin: the configured API's own

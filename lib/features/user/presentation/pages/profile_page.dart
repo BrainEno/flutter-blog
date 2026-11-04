@@ -5,6 +5,7 @@ import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/theme_toggle_button.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
+import 'package:belog/core/common/widgets/language_menu_button.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/app_logger.dart';
@@ -27,7 +28,11 @@ class ProfilePage extends StatelessWidget {
       appBar: AppBar(
         centerTitle: true,
         title: Text(l10n.profileTitle),
-        actions: const [ThemeToggleButton(), SizedBox(width: 16)],
+        actions: const [
+          ThemeToggleButton(),
+          LanguageMenuButton(),
+          SizedBox(width: 16),
+        ],
       ),
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {

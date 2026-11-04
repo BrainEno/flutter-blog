@@ -351,5 +351,9 @@
   "pageNotFound": "页面不存在",
   "backToHome": "返回首页",
   "avatarImage": "个人头像",
-  "coverImage": "封面图片"
+  "coverImage": "封面图片",
+  "languageSettingTitle": "语言",
+  "languageSystem": "跟随系统",
+  "languageChinese": "中文",
+  "languageEnglish": "English"
 }
