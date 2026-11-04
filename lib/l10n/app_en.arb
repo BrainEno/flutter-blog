@@ -414,6 +414,24 @@
   "tagFiction": "Fiction",
   "tagOriginal": "Original",
   "tagOther": "Other",
+  "tagBrowseSemantics": "Browse articles tagged {tag}",
+  "@tagBrowseSemantics": {
+    "placeholders": {
+      "tag": { "type": "String" }
+    }
+  },
+  "tagArticlesEmpty": "No articles tagged {tag} yet",
+  "@tagArticlesEmpty": {
+    "placeholders": {
+      "tag": { "type": "String" }
+    }
+  },
+  "tagUnknown": "The tag {tag} no longer exists",
+  "@tagUnknown": {
+    "placeholders": {
+      "tag": { "type": "String" }
+    }
+  },
   "errorNetworkOffline": "No network connection — check your settings",
   "errorNetworkUnavailable": "Network unavailable — check your connection",
   "errorTimeout": "The request timed out, please try again",

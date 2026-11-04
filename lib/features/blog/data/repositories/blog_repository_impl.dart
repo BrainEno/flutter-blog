@@ -13,6 +13,7 @@ import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
+import 'package:belog/features/blog/domain/entities/tag_ref.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:fpdart/fpdart.dart';
@@ -264,13 +265,29 @@ class BlogRepositoryImpl implements BlogRepository {
   }
 
   @override
-  Future<Either<Failure, List<Blog>>> getBlogsByTag(String tag) async {
+  Future<Either<Failure, TagRef?>> resolveTag(String name) async {
     try {
-      if (!await (connectionChecker.isConnected)) {
+      if (!await connectionChecker.isConnected) {
         return left(Failure.networkOffline());
       }
-      final blogs = await blogRemoteDataSource.getBlogsByTag(tag);
-      return right(blogs);
+      return right(await blogRemoteDataSource.resolveTag(name));
+    } catch (error) {
+      return left(mapErrorToFailure(error));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Blog>>> getArticlesByTag(
+    String slug, {
+    required int offset,
+  }) async {
+    try {
+      if (!await connectionChecker.isConnected) {
+        return left(Failure.networkOffline());
+      }
+      return right(
+        await blogRemoteDataSource.getArticlesByTag(slug, offset: offset),
+      );
     } catch (error) {
       return left(mapErrorToFailure(error));
     }

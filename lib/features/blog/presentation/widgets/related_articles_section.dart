@@ -2,6 +2,7 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
 import 'package:belog/features/blog/presentation/blocs/related_articles/related_articles_cubit.dart';
+import 'package:belog/features/blog/presentation/tag_navigation.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -51,6 +52,7 @@ class RelatedArticlesSection extends StatelessWidget {
                 BlogCard(
                   blog: state.blogs[index],
                   index: index + 1,
+                  onTagTap: (tag) => openTagArticles(context, tag),
                   onTap: () => onOpenArticle(state.blogs[index]),
                 ),
             ],

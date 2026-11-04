@@ -17,6 +17,7 @@ class BlogCard extends StatelessWidget {
     this.featured = false,
     this.index,
     this.labelAuthor = false,
+    this.onTagTap,
   });
 
   final Blog blog;
@@ -24,6 +25,10 @@ class BlogCard extends StatelessWidget {
   final bool featured;
   final int? index;
   final bool labelAuthor;
+
+  /// Opens a tag's article list. Kept as a callback so the item stays
+  /// presentational and the page owns routing (see README).
+  final ValueChanged<String>? onTagTap;
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +56,11 @@ class BlogCard extends StatelessWidget {
       runSpacing: 8,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        for (final tag in blog.tags) ArticleTagLabel(tag: tag),
+        for (final tag in blog.tags)
+          ArticleTagLabel(
+            tag: tag,
+            onTap: onTagTap == null ? null : () => onTagTap!(tag),
+          ),
         Text(
           formatDate(Localizations.localeOf(context), blog.updatedAt),
           style: NoWaveTypography.meta(context),
