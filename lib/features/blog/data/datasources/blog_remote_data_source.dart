@@ -22,7 +22,10 @@ import 'package:belog/features/blog/domain/usecase/search_blogs.dart'
     show kMaxSearchResults;
 import 'package:belog/core/common/entities/image_upload.dart';
 
-/// Remote data source against the no-wave `apps/api` REST backend.
+// HTTP status codes are spelled out below (401/400/404) so the file does not
+// have to import `dart:io` just for its constants.
+//
+// Remote data source against the no-wave `apps/api` REST backend.
 ///
 /// Addressing rules (see docs/supabase-to-nowave-migration.md):
 /// - public reads and likes address an article by its slug, which is
@@ -163,7 +166,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     final userId = active?.activeUserId ?? '';
     if (active == null || userId.isEmpty) {
       throw const NowaveApiException(
-        statusCode: HttpStatus.unauthorized,
+        statusCode: 401,
         code: 'UNAUTHENTICATED',
         message: 'No account is active for this operation.',
       );
@@ -271,7 +274,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     } on LatestFeedCursorTooDense {
       rethrow;
     } on NowaveApiException catch (error) {
-      if (error.statusCode == HttpStatus.badRequest &&
+      if (error.statusCode == 400 &&
           error.code == 'BAD_USER_INPUT') {
         throw const LatestFeedCursorUnavailable();
       }
@@ -442,7 +445,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       );
       return articlePayloadList(data);
     } catch (e) {
-      if (e is NowaveApiException && e.statusCode == HttpStatus.notFound) {
+      if (e is NowaveApiException && e.statusCode == 404) {
         // The tag disappeared between resolving it and reading its page.
         throw const ServerException(
           '这个标签已不存在',
