@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
@@ -40,7 +40,6 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
         content: event.content,
         posterId: event.posterId,
         tags: event.tags,
-        imageMimeType: event.imageMimeType,
         sessionFence: event.sessionFence,
       ),
     );
@@ -63,7 +62,6 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
         title: event.title,
         content: event.content,
         tags: event.tags,
-        imageMimeType: event.imageMimeType,
         sessionFence: event.sessionFence,
       ),
     );

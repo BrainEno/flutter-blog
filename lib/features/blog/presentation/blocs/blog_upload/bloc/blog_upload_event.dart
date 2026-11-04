@@ -6,16 +6,12 @@ abstract class BlogUploadEvent extends Equatable {
 
 class UploadBlogEvent extends BlogUploadEvent {
   /// Picked cover; null publishes a text-only article (issue #17).
-  final File? image;
+  final ImageUpload? image;
   final String title;
   final String content;
   final String posterId;
   final List<String> tags;
   final NowaveSessionFence sessionFence;
-
-  /// MIME type reported by the picker; uploaded as the object's
-  /// contentType.
-  final String? imageMimeType;
 
   const UploadBlogEvent({
     required this.image,
@@ -24,7 +20,6 @@ class UploadBlogEvent extends BlogUploadEvent {
     required this.posterId,
     required this.tags,
     required this.sessionFence,
-    this.imageMimeType,
   });
 
   @override
@@ -34,7 +29,6 @@ class UploadBlogEvent extends BlogUploadEvent {
     content,
     posterId,
     tags,
-    imageMimeType,
     sessionFence.userId,
     sessionFence.generation,
   ];
@@ -42,15 +36,11 @@ class UploadBlogEvent extends BlogUploadEvent {
 
 class UpdateBlogEvent extends BlogUploadEvent {
   final String blogId;
-  final File? image; // Optional, only if updating image
+  final ImageUpload? image; // Optional, only if updating image
   final String title;
   final String content;
   final List<String> tags;
   final NowaveSessionFence sessionFence;
-
-  /// MIME type reported by the picker; uploaded as the object's
-  /// contentType.
-  final String? imageMimeType;
 
   const UpdateBlogEvent({
     required this.blogId,
@@ -59,7 +49,6 @@ class UpdateBlogEvent extends BlogUploadEvent {
     required this.content,
     required this.tags,
     required this.sessionFence,
-    this.imageMimeType,
   });
 
   @override
@@ -69,7 +58,6 @@ class UpdateBlogEvent extends BlogUploadEvent {
     title,
     content,
     tags,
-    imageMimeType,
     sessionFence.userId,
     sessionFence.generation,
   ];

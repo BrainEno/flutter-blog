@@ -1,18 +1,27 @@
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:image_picker/image_picker.dart';
 
 /// A picked, already-downsampled image ready for upload.
 class PickedImage {
-  const PickedImage({required this.file, this.mimeType});
+  const PickedImage({required this.file, required this.bytes, this.mimeType});
 
   final File file;
+
+  /// Raw bytes of [file], read once at pick time: the domain uploads these
+  /// instead of depending on `dart:io`.
+  final Uint8List bytes;
 
   /// Best-effort MIME type reported by the picker (e.g. `image/jpeg`).
   /// Passed on to Storage as `contentType` so objects are served with the
   /// right headers.
   final String? mimeType;
+
+  /// The bytes and content type in the shape the domain expects.
+  ImageUpload get upload => ImageUpload(bytes: bytes, mimeType: mimeType);
 }
 
 /// Thrown when picking fails for a reason other than the user cancelling
@@ -46,7 +55,11 @@ Future<PickedImage?> pickImage() async {
     if (xFile == null) {
       return null; // cancelled by the user
     }
-    return PickedImage(file: File(xFile.path), mimeType: xFile.mimeType);
+    return PickedImage(
+      file: File(xFile.path),
+      bytes: await xFile.readAsBytes(),
+      mimeType: xFile.mimeType,
+    );
   } catch (e, stackTrace) {
     AppLogger.error('picking image failed', error: e, stackTrace: stackTrace);
     throw PickImageException(e);

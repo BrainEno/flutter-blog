@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
@@ -10,6 +8,7 @@ import 'package:belog/features/user/data/datasources/user_remote_data_source.dar
 
 import 'package:belog/features/user/domain/repositories/user_repository.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:belog/core/common/entities/image_upload.dart';
 
 class UserRepositoryImpl implements UserRepository {
   final UserRemoteDataSource remoteDataSource;
@@ -21,8 +20,7 @@ class UserRepositoryImpl implements UserRepository {
   Future<Either<Failure, User>> editUserInfo({
     required String userId,
     required String name,
-    required File? avatar,
-    String? avatarMimeType,
+    ImageUpload? avatar,
     required String bio,
     required String website,
     required NowaveSessionFence sessionFence,
@@ -43,7 +41,6 @@ class UserRepositoryImpl implements UserRepository {
         // notes in docs/supabase-to-nowave-migration.md).
         final newAvatarUrl = await remoteDataSource.uploadAvatar(
           image: avatar,
-          mimeType: avatarMimeType,
           sessionFence: sessionFence,
         );
         userToUpdate = userToUpdate.copyWith(avatarUrl: newAvatarUrl);

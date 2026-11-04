@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
@@ -52,9 +53,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
   File? image;
   bool isNewImageSelected = false;
 
-  /// MIME type of [image] when a new cover was picked; uploaded as the
-  /// object's contentType.
-  String? imageMimeType;
+  /// The picked cover's bytes and MIME type; [image] only feeds the preview.
+  ImageUpload? imageUpload;
   int _draftRequestVersion = 0;
   late final BlogDraftStore _draftStore;
   late final AppUserCubit _userCubit;
@@ -300,7 +300,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
       if (pickedImage != null) {
         setState(() {
           image = pickedImage.file;
-          imageMimeType = pickedImage.mimeType;
+          imageUpload = pickedImage.upload;
           isNewImageSelected = true;
         });
       }
@@ -329,9 +329,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
     _editedDuringPublish = false;
     final draft = _currentDraft();
     final publishImage = widget.blog == null || isNewImageSelected
-        ? image
+        ? imageUpload
         : null;
-    final publishMimeType = publishImage == null ? null : imageMimeType;
     final sessionFence = NowaveSessionFence(
       userId: draft.userId,
       generation: _editorGeneration,
@@ -359,7 +358,6 @@ class _BlogEditorState extends State<BlogEditorPage> {
           content: draft.content.trim(),
           posterId: draft.userId,
           tags: List.of(draft.tags),
-          imageMimeType: publishMimeType,
           sessionFence: sessionFence,
         ),
       );
@@ -371,7 +369,6 @@ class _BlogEditorState extends State<BlogEditorPage> {
           title: draft.title.trim(),
           content: draft.content.trim(),
           tags: List.of(draft.tags),
-          imageMimeType: publishMimeType,
           sessionFence: sessionFence,
         ),
       );

@@ -1,4 +1,3 @@
-import 'dart:io';
 
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
@@ -6,6 +5,7 @@ import 'package:belog/core/usecase/usecase.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:belog/core/common/entities/image_upload.dart';
 
 class UploadBlog implements UseCase<Blog, UploadBlogParams> {
   final BlogRepository blogRepository;
@@ -19,7 +19,6 @@ class UploadBlog implements UseCase<Blog, UploadBlogParams> {
       content: params.content,
       posterId: params.posterId,
       tags: params.tags,
-      imageMimeType: params.imageMimeType,
       sessionFence: params.sessionFence,
     );
   }
@@ -27,12 +26,11 @@ class UploadBlog implements UseCase<Blog, UploadBlogParams> {
 
 class UploadBlogParams {
   /// Picked cover; null publishes a text-only article (issue #17).
-  final File? image;
+  final ImageUpload? image;
   final String title;
   final String content;
   final String posterId;
   final List<String> tags;
-  final String? imageMimeType;
   final NowaveSessionFence sessionFence;
 
   UploadBlogParams({
@@ -42,6 +40,5 @@ class UploadBlogParams {
     required this.posterId,
     required this.tags,
     required this.sessionFence,
-    this.imageMimeType,
   });
 }

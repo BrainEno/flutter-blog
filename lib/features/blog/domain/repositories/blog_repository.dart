@@ -1,4 +1,3 @@
-import 'dart:io';
 
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
@@ -7,16 +6,16 @@ import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/domain/entities/tag_ref.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:belog/core/common/entities/image_upload.dart';
 
 abstract interface class BlogRepository {
   /// [image] is the picked cover; null publishes a text-only article.
   Future<Either<Failure, Blog>> uploadBlog({
-    required File? image,
+    ImageUpload? image,
     required String title,
     required String content,
     required String posterId,
     required List<String> tags,
-    String? imageMimeType,
     NowaveSessionFence? sessionFence,
   });
 
@@ -79,8 +78,7 @@ abstract interface class BlogRepository {
     required String title,
     required String content,
     required List<String> tags,
-    required File? image,
-    String? imageMimeType,
+    ImageUpload? image,
     NowaveSessionFence? sessionFence,
   });
 

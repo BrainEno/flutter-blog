@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
@@ -17,6 +15,7 @@ import 'package:belog/features/blog/domain/entities/tag_ref.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:belog/core/common/entities/image_upload.dart';
 
 class BlogRepositoryImpl implements BlogRepository {
   final BlogRemoteDataSource blogRemoteDataSource;
@@ -31,12 +30,11 @@ class BlogRepositoryImpl implements BlogRepository {
 
   @override
   Future<Either<Failure, Blog>> uploadBlog({
-    File? image,
+    ImageUpload? image,
     required String title,
     required String content,
     required String posterId,
     required List<String> tags,
-    String? imageMimeType,
     NowaveSessionFence? sessionFence,
   }) async {
     try {
@@ -51,13 +49,9 @@ class BlogRepositoryImpl implements BlogRepository {
       final imageUrl = image == null
           ? ''
           : sessionFence == null
-          ? await blogRemoteDataSource.uploadBlogImage(
-              image: image,
-              mimeType: imageMimeType,
-            )
+          ? await blogRemoteDataSource.uploadBlogImage(image: image)
           : await blogRemoteDataSource.uploadBlogImage(
               image: image,
-              mimeType: imageMimeType,
               sessionFence: sessionFence,
             );
       final blogModel = BlogModel(
@@ -281,8 +275,7 @@ class BlogRepositoryImpl implements BlogRepository {
     required String title,
     required String content,
     required List<String> tags,
-    required File? image,
-    String? imageMimeType,
+    ImageUpload? image,
     NowaveSessionFence? sessionFence,
   }) async {
     try {
@@ -314,11 +307,9 @@ class BlogRepositoryImpl implements BlogRepository {
         final newImageUrl = sessionFence == null
             ? await blogRemoteDataSource.uploadBlogImage(
                 image: image,
-                mimeType: imageMimeType,
               )
             : await blogRemoteDataSource.uploadBlogImage(
                 image: image,
-                mimeType: imageMimeType,
                 sessionFence: sessionFence,
               );
         blogToUpdate = blogToUpdate.copyWith(imageUrl: newImageUrl);

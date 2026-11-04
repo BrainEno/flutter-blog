@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
@@ -40,11 +41,11 @@ void main() {
   late MockLocal local;
   late MockConnection connection;
   late BlogRepositoryImpl repository;
-  final cover = File('/nonexistent.jpg');
+  final cover = ImageUpload(bytes: Uint8List(3), mimeType: 'image/jpeg');
 
   setUpAll(() {
     registerFallbackValue(_blog());
-    registerFallbackValue(File('/nonexistent.jpg'));
+    registerFallbackValue(cover);
   });
 
   setUp(() {
@@ -60,7 +61,6 @@ void main() {
       when(
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
-          mimeType: any(named: 'mimeType'),
         ),
       ).thenAnswer((_) async => _kNewCoverUrl);
       when(() => remote.uploadBlog(any())).thenAnswer(
@@ -73,7 +73,6 @@ void main() {
         content: '正文',
         posterId: 'u1',
         tags: const ['诗歌'],
-        imageMimeType: 'image/jpeg',
       );
 
       expect(result.isRight(), isTrue);
@@ -82,7 +81,6 @@ void main() {
       final order = verifyInOrder([
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
-          mimeType: 'image/jpeg',
         ),
         () => remote.uploadBlog(captureAny()),
       ]);
@@ -108,7 +106,6 @@ void main() {
       verifyNever(
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
-          mimeType: any(named: 'mimeType'),
         ),
       );
       final created =
@@ -122,7 +119,6 @@ void main() {
       when(
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
-          mimeType: any(named: 'mimeType'),
         ),
       ).thenAnswer((_) async => _kNewCoverUrl);
       when(
@@ -135,7 +131,6 @@ void main() {
         content: '正文',
         posterId: 'u1',
         tags: const ['诗歌'],
-        imageMimeType: 'image/jpeg',
       );
 
       expect(result.isLeft(), isTrue);
@@ -156,7 +151,6 @@ void main() {
       verifyNever(
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
-          mimeType: any(named: 'mimeType'),
         ),
       );
       verifyNever(() => remote.uploadBlog(any()));
@@ -187,7 +181,6 @@ void main() {
         verifyNever(
           () => remote.uploadBlogImage(
             image: any(named: 'image'),
-            mimeType: any(named: 'mimeType'),
           ),
         );
         verifyNever(() => remote.editBlog(any()));
@@ -211,7 +204,6 @@ void main() {
       verifyNever(
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
-          mimeType: any(named: 'mimeType'),
         ),
       );
       verifyNever(() => remote.editBlog(any()));
@@ -224,7 +216,6 @@ void main() {
       when(
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
-          mimeType: any(named: 'mimeType'),
         ),
       ).thenAnswer((_) async => _kNewCoverUrl);
       when(() => remote.editBlog(any())).thenAnswer(
@@ -237,7 +228,6 @@ void main() {
         title: '新标题',
         content: '新正文',
         tags: const ['诗歌'],
-        imageMimeType: 'image/png',
       );
 
       expect(result.isRight(), isTrue);
@@ -245,7 +235,6 @@ void main() {
         () => remote.getBlogById('my-slug'),
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
-          mimeType: 'image/png',
         ),
         () => remote.editBlog(captureAny()),
       ]);
@@ -277,7 +266,6 @@ void main() {
       verifyNever(
         () => remote.uploadBlogImage(
           image: any(named: 'image'),
-          mimeType: any(named: 'mimeType'),
         ),
       );
       final updated =

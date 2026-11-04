@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
@@ -19,6 +17,7 @@ import 'package:belog/features/blog/domain/tag_paging.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart'
     show kBlogPageSize;
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart'
+import 'package:belog/core/common/entities/image_upload.dart';
     show kMaxSearchResults;
 
 /// Remote data source against the no-wave `apps/api` REST backend.
@@ -40,8 +39,7 @@ abstract interface class BlogRemoteDataSource {
   /// Uploads a cover image (`POST /me/media`, raw bytes + MIME type) and
   /// returns its immutable public URL. The server re-encodes to WebP.
   Future<String> uploadBlogImage({
-    required File image,
-    String? mimeType,
+    required ImageUpload image,
     NowaveSessionFence? sessionFence,
   });
 
@@ -207,20 +205,18 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
 
   @override
   Future<String> uploadBlogImage({
-    required File image,
-    String? mimeType,
+    required ImageUpload image,
     NowaveSessionFence? sessionFence,
   }) async {
     try {
-      final bytes = await image.readAsBytes();
       // A lost response does not prove the upload failed: the server may
       // already have stored a new asset. Media has no idempotency key yet,
       // so do not silently create another one on a transport retry.
       final asset = sessionFence == null
-          ? await client.uploadMedia(bytes, mimeType ?? 'image/jpeg')
+          ? await client.uploadMedia(image.bytes, image.mimeType)
           : await client.uploadMedia(
-              bytes,
-              mimeType ?? 'image/jpeg',
+              image.bytes,
+              image.mimeType,
               sessionFence: sessionFence,
             );
       return client.mediaUri(asset.id).toString();

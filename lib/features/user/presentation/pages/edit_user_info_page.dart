@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/avatar_url.dart';
@@ -25,9 +26,8 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
   File? image;
   bool isNewImageSelected = false;
 
-  /// MIME type of [image] when a new avatar was picked; uploaded as the
-  /// object's contentType.
-  String? avatarMimeType;
+  /// The picked avatar's bytes and MIME type; [image] only feeds the preview.
+  ImageUpload? avatarUpload;
   String? avatarUrl;
   String? email;
   DateTime? updatedAt;
@@ -58,7 +58,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
         // check if disposed
         setState(() {
           image = pickedImage.file;
-          avatarMimeType = pickedImage.mimeType;
+          avatarUpload = pickedImage.upload;
           isNewImageSelected = true;
         });
       }
@@ -84,8 +84,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
         // so the pre-filled current value must survive an unrelated edit.
         bio: _bioController.text,
         website: _websiteController.text,
-        avatar: isNewImageSelected ? image : null,
-        avatarMimeType: isNewImageSelected ? avatarMimeType : null,
+        avatar: isNewImageSelected ? avatarUpload : null,
       ),
     );
   }

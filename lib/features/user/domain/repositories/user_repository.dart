@@ -1,9 +1,9 @@
-import 'dart:io';
 
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:belog/core/common/entities/image_upload.dart';
 
 abstract class UserRepository {
   /// Edits profile display data (name, bio, website, avatar).
@@ -20,8 +20,7 @@ abstract class UserRepository {
   Future<Either<Failure, User>> editUserInfo({
     required String userId,
     required String name,
-    required File? avatar,
-    String? avatarMimeType,
+    ImageUpload? avatar,
     required String bio,
     required String website,
     required NowaveSessionFence sessionFence,
