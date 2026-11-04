@@ -5,6 +5,7 @@ import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/l10n/locale_bloc.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
@@ -114,6 +115,19 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     final viewerId = context.select<AppUserCubit, String?>(
       (cubit) => _viewerId(cubit.state),
     );
+    return BlocListener<LocaleBloc, LocaleState>(
+      // A content-language change (issue #108) starts a new paging session;
+      // two interface choices that resolve to the same content language keep
+      // the current one.
+      listenWhen: (previous, current) => previous.content != current.content,
+      listener: (context, state) =>
+          context.read<BlogBloc>().add(const BlogFetchFirstPage()),
+      child: _viewerScope(viewerId),
+    );
+  }
+
+  /// Keeps the rendered feed tied to the account it was fetched for (#104).
+  Widget _viewerScope(String? viewerId) {
     return BlocListener<AppUserCubit, AppUserState>(
       listenWhen: (previous, current) =>
           _viewerId(previous) != _viewerId(current),

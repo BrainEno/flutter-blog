@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/l10n/locale_bloc.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/format_date.dart';
@@ -21,6 +22,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:go_router/go_router.dart';
+import '../support/locale_test_support.dart';
 
 class _GetArticles implements GetAllBlogs {
   _GetArticles(this.handler);
@@ -107,6 +109,7 @@ void main() {
             providers: [
               BlocProvider<BlogBloc>.value(value: bloc),
               BlocProvider<AppUserCubit>.value(value: user),
+              BlocProvider<LocaleBloc>(create: (_) => systemLocaleBloc()),
             ],
             child: _app(locale: locale, child: const BlogPage()),
           ),
@@ -182,6 +185,7 @@ void main() {
             providers: [
               BlocProvider<BlogBloc>.value(value: bloc),
               BlocProvider<AppUserCubit>.value(value: user),
+              BlocProvider<LocaleBloc>(create: (_) => systemLocaleBloc()),
             ],
             child: _app(locale: locale, child: const BlogPage()),
           ),
@@ -227,6 +231,7 @@ void main() {
           providers: [
             BlocProvider<BlogBloc>.value(value: bloc),
             BlocProvider<AppUserCubit>.value(value: user),
+            BlocProvider<LocaleBloc>(create: (_) => systemLocaleBloc()),
           ],
           child: _app(locale: locale, child: const BlogPage()),
         ),
@@ -285,6 +290,7 @@ void main() {
           providers: [
             BlocProvider<BlogBloc>.value(value: bloc),
             BlocProvider<AppUserCubit>.value(value: user),
+            BlocProvider<LocaleBloc>(create: (_) => systemLocaleBloc()),
           ],
           child: _app(locale: locale, child: const BlogPage()),
         ),
@@ -522,6 +528,7 @@ void main() {
         providers: [
           BlocProvider<BlogBloc>.value(value: bloc),
           BlocProvider<AppUserCubit>.value(value: user),
+          BlocProvider<LocaleBloc>(create: (_) => systemLocaleBloc()),
         ],
         child: _app(locale: const Locale('en'), child: const BlogPage()),
       ),

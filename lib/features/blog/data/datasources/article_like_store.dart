@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:belog/core/error/error_mapper.dart';
+import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
@@ -19,7 +20,13 @@ class ArticleLikeStore {
     required NowaveApiClient client,
     required this.requireActiveFence,
     required this.identity,
+    this.contentLocale,
   }) : _client = client;
+
+  /// Content language for the like lookup; null keeps the Chinese default.
+  final ContentLocale? contentLocale;
+
+  String get _locale => (contentLocale ?? ContentLocale.instance).tag;
 
   final NowaveApiClient _client;
 
@@ -101,12 +108,12 @@ class ArticleLikeStore {
     final data = fence == null
         ? await _client.getJson(
             '/articles/$slug/like',
-            query: {'locale': 'zh-CN'},
+            query: {'locale': _locale},
           )
         : await _client.getJsonForViewer(
             '/articles/$slug/like',
             expectedUserId: fence.userId,
-            query: {'locale': 'zh-CN'},
+            query: {'locale': _locale},
           );
     return articlePayloadMap(data)['likedByViewer'] as bool? ?? false;
   }

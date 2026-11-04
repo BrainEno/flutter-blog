@@ -1,5 +1,6 @@
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/error_mapper.dart';
+import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/features/user/data/models/author_profile_model.dart';
 
@@ -19,14 +20,21 @@ abstract interface class AuthorRemoteDataSource {
 
 class AuthorRemoteDataSourceImpl implements AuthorRemoteDataSource {
   final NowaveApiClient client;
-  const AuthorRemoteDataSourceImpl(this.client);
+  const AuthorRemoteDataSourceImpl(this.client, {this.contentLocale});
+
+  /// Content language for the requests this data source makes; null keeps the
+  /// historical Chinese default for callers that never switch (tests).
+  final ContentLocale? contentLocale;
+
+  String get _locale => (contentLocale ?? ContentLocale.instance).tag;
+
 
   @override
   Future<AuthorProfileModel> getAuthorProfile(String userId) async {
     try {
       final data = await client.getJson(
         '/authors/${Uri.encodeComponent(userId)}',
-        query: {'locale': 'zh-CN'},
+        query: {'locale': _locale},
       );
       return _profile(data);
     } catch (e) {
@@ -40,7 +48,7 @@ class AuthorRemoteDataSourceImpl implements AuthorRemoteDataSource {
       final data = await client.postJson(
         '/users/${Uri.encodeComponent(userId)}/follow',
         null,
-        query: {'locale': 'zh-CN'},
+        query: {'locale': _locale},
       );
       return _profile(data);
     } catch (e) {

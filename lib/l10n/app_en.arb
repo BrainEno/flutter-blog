@@ -509,5 +509,6 @@
   "languageSettingTitle": "Language",
   "languageSystem": "Follow system",
   "languageChinese": "中文",
-  "languageEnglish": "English"
+  "languageEnglish": "English",
+  "languageSystemHint": "Device language, else Chinese"
 }

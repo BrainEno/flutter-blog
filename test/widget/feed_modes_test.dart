@@ -1,4 +1,5 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/l10n/locale_bloc.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -12,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:go_router/go_router.dart';
+import '../support/locale_test_support.dart';
 
 class _GetFeed implements GetAllBlogs {
   _GetFeed(this.handler);
@@ -70,6 +72,7 @@ Future<void> _pumpPage(
       providers: [
         BlocProvider<BlogBloc>.value(value: feed),
         BlocProvider<AppUserCubit>.value(value: user),
+        BlocProvider<LocaleBloc>(create: (_) => systemLocaleBloc()),
       ],
       child: MaterialApp.router(
         locale: locale,

@@ -15,7 +15,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -53,8 +53,10 @@ class AppDatabase extends GeneratedDatabase {
         await _createReadingHistory();
       }
       if (from < 4) {
-        // v4 adds only an index; cached articles and all other data stay put.
-        await _createBlogCacheFeedIndex();
+        // v4 added only an index. The v7 step below rebuilds the table and
+        // recreates the index over the new (id, content_locale) key, and a
+        // pre-v7 table has no `content_locale` column to index yet, so there
+        // is nothing to do here.
       }
       if (from < 5) {
         // Earlier no-wave cache rows already flattened the document, so we
@@ -72,6 +74,24 @@ class AppDatabase extends GeneratedDatabase {
         // Pre-v6 drafts have no provable owner. Keep the old table intact,
         // but never read or assign those rows as any signed-in user's drafts.
         await _createAccountDrafts();
+      }
+      if (from < 7) {
+        // v7 makes the content language part of the cache identity (#108):
+        // one slug can be cached in Chinese and in English, and a row written
+        // for one language must never be served for the other. Every earlier
+        // build requested zh-CN, so existing rows are Chinese.
+        await customStatement('ALTER TABLE blog_cache RENAME TO blog_cache_v6');
+        await _createBlogCache();
+        await customStatement(
+          'INSERT INTO blog_cache (id, article_id, title, content, poster_id, '
+          'image_url, tags, updated_at, poster_name, poster_avatar, '
+          'document_json, content_locale) '
+          'SELECT id, article_id, title, content, poster_id, image_url, tags, '
+          'updated_at, poster_name, poster_avatar, document_json, \'zh-CN\' '
+          'FROM blog_cache_v6',
+        );
+        await customStatement('DROP TABLE blog_cache_v6');
+        await _createBlogCacheFeedIndex();
       }
     },
   );
@@ -96,14 +116,17 @@ class AppDatabase extends GeneratedDatabase {
   }
 
   /// The offline blog cache. `id` is the article's public slug on the
-  /// no-wave backend; `article_id` is the server UUID needed for writes.
+  /// no-wave backend; `article_id` is the server UUID needed for writes;
+  /// `content_locale` is the language the body was fetched in, and is part of
+  /// the key so both languages can be cached side by side (#108).
   Future<void> _createBlogCache() => customStatement(
-    'CREATE TABLE blog_cache (id TEXT PRIMARY KEY, article_id TEXT NOT NULL DEFAULT \'\', title TEXT NOT NULL, content TEXT NOT NULL, poster_id TEXT NOT NULL, image_url TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL, poster_name TEXT, poster_avatar TEXT, document_json TEXT)',
+    'CREATE TABLE blog_cache (id TEXT NOT NULL, content_locale TEXT NOT NULL DEFAULT \'zh-CN\', article_id TEXT NOT NULL DEFAULT \'\', title TEXT NOT NULL, content TEXT NOT NULL, poster_id TEXT NOT NULL, image_url TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL, poster_name TEXT, poster_avatar TEXT, document_json TEXT, PRIMARY KEY (id, content_locale))',
   );
 
-  /// Supports stable feed pagination without sorting all cached article bodies.
+  /// Supports stable, per-language feed pagination without sorting all cached
+  /// article bodies.
   Future<void> _createBlogCacheFeedIndex() => customStatement(
-    'CREATE INDEX blog_cache_feed_order ON blog_cache(updated_at DESC, id ASC)',
+    'CREATE INDEX blog_cache_feed_order ON blog_cache(content_locale, updated_at DESC, id ASC)',
   );
 
   /// Device-local reading history (issue #22), scoped per signed-in
@@ -166,7 +189,10 @@ class AppDatabase extends GeneratedDatabase {
   Future<void> deleteMetadata(String key) =>
       customStatement('DELETE FROM metadata WHERE key = ?', [key]);
 
-  /// Drops a cached article row by its business id (slug).
+  /// Drops every cached language of one article.
+  ///
+  /// The article itself is gone on the server, so no language may keep a copy
+  /// (a deleted article must not reappear offline in the other language).
   Future<void> deleteBlogCacheRow(String id) =>
       customStatement('DELETE FROM blog_cache WHERE id = ?', [id]);
 
@@ -176,6 +202,7 @@ class AppDatabase extends GeneratedDatabase {
   /// adapter in that feature, so storage never imports it (#107).
   Future<void> upsertBlogRow({
     required String id,
+    required String contentLocale,
     required String title,
     required String content,
     required String posterId,
@@ -188,15 +215,16 @@ class AppDatabase extends GeneratedDatabase {
     String? documentJson,
   }) => customStatement(
     '''
-    INSERT INTO blog_cache(id, article_id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar, document_json)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET article_id = excluded.article_id, title = excluded.title, content = excluded.content,
+    INSERT INTO blog_cache(id, content_locale, article_id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar, document_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id, content_locale) DO UPDATE SET article_id = excluded.article_id, title = excluded.title, content = excluded.content,
       poster_id = excluded.poster_id, image_url = excluded.image_url, tags = excluded.tags,
       updated_at = excluded.updated_at, poster_name = excluded.poster_name, poster_avatar = excluded.poster_avatar,
       document_json = excluded.document_json
     ''',
     [
       id,
+      contentLocale,
       articleId,
       title,
       content,

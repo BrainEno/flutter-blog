@@ -355,5 +355,6 @@
   "languageSettingTitle": "语言",
   "languageSystem": "跟随系统",
   "languageChinese": "中文",
-  "languageEnglish": "English"
+  "languageEnglish": "English",
+  "languageSystemHint": "设备语言，不支持时用中文"
 }

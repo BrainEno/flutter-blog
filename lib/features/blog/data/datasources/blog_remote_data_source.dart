@@ -1,6 +1,7 @@
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
@@ -145,7 +146,18 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   /// omit it and keep the old behaviour.
   final NowaveSessionIdentity? identity;
 
-  BlogRemoteDataSourceImpl(this.client, {this.identity});
+  BlogRemoteDataSourceImpl(
+    this.client, {
+    this.identity,
+    this.contentLocale,
+  });
+
+  /// Content language for the requests this data source makes; null keeps the
+  /// historical Chinese default for callers that never switch (tests).
+  final ContentLocale? contentLocale;
+
+  String get _locale => (contentLocale ?? ContentLocale.instance).tag;
+
 
   /// Tag name -> id resolution, cached for the app session.
   late final NowaveTagResolver _tags = NowaveTagResolver(client);
@@ -155,6 +167,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     client: client,
     requireActiveFence: requireActiveFence,
     identity: identity,
+    contentLocale: contentLocale,
   );
 
   /// The account a `/me`-scoped call is made for, right now.
@@ -192,7 +205,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         ),
         'contentBlocksVersion': 0,
         'publish': true,
-        'locale': 'zh-CN',
+        'locale': _locale,
         if (tagIds.isNotEmpty) 'tagIds': tagIds,
       };
       final data = sessionFence == null
@@ -240,7 +253,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           query: {
             'limit': '$kBlogPageSize',
             'offset': '$offset',
-            'locale': 'zh-CN',
+            'locale': _locale,
           },
         ),
       );
@@ -261,7 +274,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           query: {
             'limit': '${continuation.requestLimit}',
             'cursor': continuation.apiCursor,
-            'locale': 'zh-CN',
+            'locale': _locale,
           },
         ),
       );
@@ -294,7 +307,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       final query = <String, String>{
         'limit': '$kBlogPageSize',
         'offset': '${(page - 1) * kBlogPageSize}',
-        'locale': 'zh-CN',
+        'locale': _locale,
         if (kind == BlogFeedKind.popular) 'sort': 'popular',
       };
       final dynamic data;
@@ -327,11 +340,11 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       final data = sessionFence == null
           ? await client.getJson(
               '/articles/$blogId',
-              query: {'locale': 'zh-CN'},
+              query: {'locale': _locale},
             )
           : await client.getJson(
               '/articles/$blogId',
-              query: {'locale': 'zh-CN'},
+              query: {'locale': _locale},
               sessionFence: sessionFence,
             );
       return BlogModel.fromNowaveArticle(articlePayloadMap(data));
@@ -345,7 +358,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     try {
       final data = await client.getJson(
         '/articles/$slug/related',
-        query: {'limit': '$_kRelatedLimit', 'locale': 'zh-CN'},
+        query: {'limit': '$_kRelatedLimit', 'locale': _locale},
       );
       return articlePayloadList(data);
     } catch (e) {
@@ -358,7 +371,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     try {
       final data = await client.getJson(
         '/authors/${Uri.encodeComponent(posterId)}/articles',
-        query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
+        query: {'limit': '$_kListLimit', 'locale': _locale},
       );
       return articlePayloadList(data);
     } catch (e) {
@@ -372,7 +385,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       final data = await client.getJsonForViewer(
         '/me/articles',
         expectedUserId: userId,
-        query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
+        query: {'limit': '$_kListLimit', 'locale': _locale},
       );
       return articlePayloadList(data);
     } on NowaveApiException catch (error) {
@@ -405,7 +418,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
             'query': wanted,
             'limit': '$_kListLimit',
             'offset': '$offset',
-            'locale': 'zh-CN',
+            'locale': _locale,
           },
         );
         final tags = (data as List? ?? const []);
@@ -439,7 +452,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         query: {
           'limit': '$kTagPageSize',
           'offset': '$offset',
-          'locale': 'zh-CN',
+          'locale': _locale,
         },
       );
       return articlePayloadList(data);
@@ -468,7 +481,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         query: {
           'query': sanitizedQuery,
           'limit': '$kMaxSearchResults',
-          'locale': 'zh-CN',
+          'locale': _locale,
         },
       );
       return articlePayloadList(data);
@@ -510,7 +523,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         ),
         'contentBlocksVersion': 0,
         'publish': true,
-        'locale': 'zh-CN',
+        'locale': _locale,
         if (tagIds.isNotEmpty) 'tagIds': tagIds,
       };
       final data = sessionFence == null
@@ -556,12 +569,12 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         () => fence == null
             ? client.getJson(
                 '/me/articles/deleted',
-                query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
+                query: {'limit': '$_kListLimit', 'locale': _locale},
               )
             : client.getJsonForViewer(
                 '/me/articles/deleted',
                 expectedUserId: fence.userId,
-                query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
+                query: {'limit': '$_kListLimit', 'locale': _locale},
               ),
       );
       if (data is List) {
@@ -596,7 +609,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       final data = await client.postJson(
         '/articles/$articleId/restore',
         null,
-        query: {'locale': 'zh-CN'},
+        query: {'locale': _locale},
         sessionFence: fence,
       );
       return BlogModel.fromNowaveArticle(articlePayloadMap(data));
@@ -615,14 +628,14 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           ? await retryOnConnectionClosed(
               () => client.getJson(
                 '/me/liked-articles',
-                query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
+                query: {'limit': '$_kListLimit', 'locale': _locale},
               ),
             )
           : await retryOnConnectionClosed(
               () => client.getJsonForViewer(
                 '/me/liked-articles',
                 expectedUserId: userId,
-                query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
+                query: {'limit': '$_kListLimit', 'locale': _locale},
               ),
             );
       return articlePayloadList(data);
