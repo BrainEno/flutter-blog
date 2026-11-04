@@ -199,7 +199,9 @@ void main() {
         media.store.write(_session()),
         throwsA(isA<SessionStoreException>()),
       );
-      expect(media.authority.marker, isNull, reason: 'nothing to point at');
+      // The marker may already name the medium whose copy write failed. That
+      // is the crash case the reader handles: nothing there, nothing restored.
+      expect(await media.store.read(), isNull);
     });
 
     test('a failed fallback write restores the previous authority', () async {
@@ -233,6 +235,8 @@ void main() {
     test('a clear that fails everywhere still disowns the copies', () async {
       final media = _build();
       await media.store.write(_session());
+      // Residue from an older build can sit in the fallback medium too.
+      media.sqlite.stored = _session();
       media.secure.failClear = true;
       media.sqlite.failClear = true;
 
