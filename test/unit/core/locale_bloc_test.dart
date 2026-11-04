@@ -62,6 +62,22 @@ void main() {
     expect(bloc.state.content, ContentLanguage.zh);
   });
 
+  test('the first frame can wait for the stored choice', () async {
+    final content = ContentLocale();
+    final bloc = LocaleBloc(
+      _MemoryStore(AppLanguage.en),
+      contentLocale: content,
+      deviceLocale: () => const Locale('zh'),
+    );
+    addTearDown(bloc.close);
+
+    await bloc.initialized;
+    // Both the state and the holder are ready: the feed's first request
+    // already carries the stored language instead of the default one.
+    expect(bloc.state.language, AppLanguage.en);
+    expect(content.tag, 'en');
+  });
+
   test('a choice is persisted before it is emitted', () async {
     final store = _MemoryStore();
     final bloc = _bloc(store);

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/core/l10n/app_language.dart';
 import 'package:belog/core/l10n/content_language.dart';
 import 'package:belog/core/l10n/content_locale.dart';
@@ -51,6 +53,13 @@ class LocaleBloc extends Bloc<LocaleEvent, LocaleState> {
   /// The device locale, used only while following the system.
   final Locale Function() _deviceLocale;
 
+  /// Completes once the persisted choice has been applied, so the very first
+  /// frame can wait for it instead of starting the feed in the wrong language.
+  final Completer<void> _initialized = Completer<void>();
+
+  /// Resolves after the stored choice reached both the state and the holder.
+  Future<void> get initialized => _initialized.future;
+
   LocaleBloc(
     this._store, {
     ContentLocale? contentLocale,
@@ -72,7 +81,11 @@ class LocaleBloc extends Bloc<LocaleEvent, LocaleState> {
     Emitter<LocaleState> emit,
   ) async {
     if (event is InitializeLocale) {
-      _emitLanguage(emit, await _loadStoredLanguage());
+      try {
+        _emitLanguage(emit, await _loadStoredLanguage());
+      } finally {
+        if (!_initialized.isCompleted) _initialized.complete();
+      }
       return;
     }
     if (event is! SetAppLanguage) return;

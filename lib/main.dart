@@ -23,6 +23,10 @@ import 'package:go_router/go_router.dart';
 /// guards against a hung network so the app still boots.
 const _kSessionRestoreTimeout = Duration(seconds: 3);
 
+/// The language preference is one small row; it resolves instantly in normal
+/// boots. Bounding it only keeps a corrupt store from delaying the first frame.
+const _kLanguageRestoreTimeout = Duration(seconds: 2);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   _installGlobalErrorHandlers();
@@ -36,6 +40,18 @@ void main() async {
     AppLogger.error('Startup failed', error: error, stackTrace: stackTrace);
     runApp(StartupFailureApp(message: '$error'));
     return;
+  }
+  // Apply the saved interface choice before the first frame (#108). The feed
+  // dispatches its first request while building, and that request reads the
+  // content language from the same holder this bloc updates: resolving it now
+  // means the first page is never fetched in one language and re-fetched in
+  // the other.
+  try {
+    await serviceLocator<LocaleBloc>()
+        .initialized
+        .timeout(_kLanguageRestoreTimeout);
+  } on TimeoutException {
+    AppLogger.debug('language restore timed out; continuing boot');
   }
   // Restore the persisted no-wave session before the first frame so the
   // router's auth redirect and tab visibility see the correct user state
