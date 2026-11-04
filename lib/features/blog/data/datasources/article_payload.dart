@@ -1,4 +1,5 @@
 import 'package:belog/core/error/exceptions.dart';
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 
 /// Requires an object payload from an endpoint that answers with one.
