@@ -19,6 +19,12 @@
 > `AppLogger.connectivityOffline`、`DiagnosticsBuffer.recordOffline`、未使用的
 > `markdownImageAlt` 文案与 data 层兼容导出。本文其余条目仍然有效，但「旧 Isar
 > 导入」相关的正面评价不再适用。
+>
+> 2026-11-04 更新（#107 第三步）：会话时序从 `NowaveSessionManager` 拆成独立单元
+> ——`SessionGeneration`（账号 fence）、`SerialQueue`（持久化排序）、
+> `KeyedSingleFlight`（每会话一次刷新）、`decideSessionExpiry`（纯决策表），
+> 各自带时序/映射测试；`docs/session-lifecycle.md` 是这些规则与改动守则的入口。
+> `nowave_session.dart` 由 570 行降到约 390 行，公开 API 与行为不变。
 
 ## 本轮修复
 

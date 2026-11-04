@@ -426,6 +426,7 @@ CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 
 **不得**当作生产构建分发。另见
 [docs/ci-observability.md](docs/ci-observability.md)、
 [docs/sqlite-storage.md](docs/sqlite-storage.md)、
+[docs/session-lifecycle.md](docs/session-lifecycle.md)、
 [docs/supabase-to-nowave-migration.md](docs/supabase-to-nowave-migration.md)、
 [docs/agent-development.md](docs/agent-development.md)。
 
@@ -456,8 +457,8 @@ CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 
 - **P2 进行中/延后**：分享深链接收（#21，等 web 部署 + association 文件
   可验证）、离线发布队列（#23，文章创建步已
   解锁、封面媒体仍受 #47 阻塞，见上）、举报屏蔽（#18）、
-  架构收敛（#107：依赖规则与 Isar 移除已完成，`nowave_api_client` /
-  `nowave_session` / 超大页面的单元拆分待做）、内容语言与 locale 隔离（#108）、
+  架构收敛（#107：依赖规则、Isar 移除与会话时序单元已完成，遗留
+  `nowave_api_client` 与超大页面的拆分）、内容语言与 locale 隔离（#108）、
   许可与应用身份（#109）、审查证据回写（#110）
 - **P0/P1 已关闭**：#4 工具链升级、#7 schema 版本管理、#8 离线缓存语义
 

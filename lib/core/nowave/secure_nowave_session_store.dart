@@ -1,4 +1,5 @@
-import 'package:belog/core/nowave/nowave_session.dart';
+import 'package:belog/core/nowave/session/session_data.dart';
+import 'package:belog/core/nowave/session/session_store.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// [NowaveSessionStore] backed by the platform secure storage: the iOS
@@ -28,15 +29,12 @@ class SecureNowaveSessionStore implements NowaveSessionStore {
   @override
   Future<NowaveSessionData?> read() async {
     final raw = await _storage.read(key: _key);
-    return NowaveSessionManager.decodeSession(raw);
+    return decodeNowaveSession(raw);
   }
 
   @override
   Future<void> write(NowaveSessionData session) {
-    return _storage.write(
-      key: _key,
-      value: NowaveSessionManager.encodeSession(session),
-    );
+    return _storage.write(key: _key, value: encodeNowaveSession(session));
   }
 
   @override
