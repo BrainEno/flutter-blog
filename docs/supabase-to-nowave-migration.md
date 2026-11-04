@@ -167,7 +167,7 @@
 | `core/utils/storage_objects.dart` | Supabase Storage 路径/URL 工具 | 整文件删除（连同两个桶常量） |
 | `core/error/error_mapper.dart` | PostgrestException/StorageException 映射 | 重写为 no-wave 错误码映射（`error.code`：BAD_USER_INPUT/UNAUTHENTICATED/FORBIDDEN/NOT_FOUND/CONFLICT/RATE_LIMITED(读 Retry-After)） |
 | `retry_on_connection_closed` | 旧迁移方案中的连接重试 | 只对有安全重试契约的调用使用；媒体 POST 遇断流不得盲重试 |
-| 本地 SQLite 博客缓存（lib/core/storage/） | 键为 UUID | 需加列/字段 `slug`（及 contentBlocks 原文可选）；缓存刷新逻辑不变 |
+| 本地 SQLite 博客缓存（表仍由 `lib/core/storage/app_database.dart` 定义，读写适配器在 `lib/features/blog/data/datasources/`，#107） | 键为 UUID | 需加列/字段 `slug`（及 contentBlocks 原文可选）；缓存刷新逻辑不变 |
 | `auth_session_sync.dart` | 监听 Supabase auth 状态流 | 改为监听自建会话管理器的状态流（登录/登出/刷新失败三态） |
 
 ---

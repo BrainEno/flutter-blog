@@ -1,6 +1,6 @@
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/storage/app_database.dart';
-import 'package:belog/core/storage/sqlite_blog_cache.dart';
+import 'package:belog/features/blog/data/datasources/sqlite_blog_cache.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart';

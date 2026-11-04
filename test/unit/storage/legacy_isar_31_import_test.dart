@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:belog/core/storage/app_database.dart';
-import 'package:belog/core/storage/sqlite_blog_cache.dart';
-import 'package:belog/core/storage/sqlite_draft_store.dart';
-import 'package:belog/core/storage/sqlite_theme_store.dart';
+import 'package:belog/features/blog/data/datasources/sqlite_blog_cache.dart';
+import 'package:belog/features/blog/data/datasources/sqlite_draft_store.dart';
+import 'package:belog/core/theme/sqlite_theme_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_test/flutter_test.dart';

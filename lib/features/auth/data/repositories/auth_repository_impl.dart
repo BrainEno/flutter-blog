@@ -5,12 +5,12 @@ import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
-import 'package:belog/core/storage/reading_history_store.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:belog/features/auth/data/datasources/profile_cache_store.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
+import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
 import 'package:fpdart/fpdart.dart';
 
 class AuthRepositoryImpl implements AuthRepository {

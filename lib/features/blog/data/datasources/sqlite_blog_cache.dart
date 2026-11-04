@@ -14,7 +14,19 @@ class SqliteBlogCache implements BlogLocalDataSource {
   Future<void> uploadLocalBlogs({required List<BlogModel> blogs}) =>
       database.transaction(() async {
         for (final blog in blogs) {
-          await database.upsertBlog(blog);
+          await database.upsertBlogRow(
+            id: blog.id,
+            articleId: blog.articleId,
+            title: blog.title,
+            content: blog.content,
+            posterId: blog.posterId,
+            imageUrl: blog.imageUrl,
+            tags: blog.tags,
+            updatedAt: blog.updatedAt,
+            posterName: blog.posterName,
+            posterAvatar: blog.posterAvatar,
+            documentJson: blog.documentJson,
+          );
         }
       });
 

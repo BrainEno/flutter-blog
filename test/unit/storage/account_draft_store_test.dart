@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:belog/core/storage/app_database.dart';
-import 'package:belog/core/storage/sqlite_draft_store.dart';
+import 'package:belog/features/blog/data/datasources/sqlite_draft_store.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';

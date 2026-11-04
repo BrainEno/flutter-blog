@@ -17,5 +17,5 @@ class SqliteThemePreferenceStore implements ThemePreferenceStore {
   }
 
   @override
-  Future<void> save(ThemeMode mode) => database.setTheme(mode);
+  Future<void> save(ThemeMode mode) => database.setTheme(mode.name);
 }
