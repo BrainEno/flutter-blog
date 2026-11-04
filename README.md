@@ -84,7 +84,11 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
   也不会复活旧账号，并把「本地副本未清干净」作为退出结果提示给用户。
 - **刷新轮换**：`POST /auth/refresh` 单次有效且轮换；**重用已轮换的 refresh
   token 会撤销整个会话族**，因此客户端的刷新严格单飞（single-flight），
-  access token 过期遇 401 时自动刷新并重放请求一次。
+  access token 过期遇 401 时自动刷新并重放请求一次。刷新遇到超时、断流或 5xx
+  时结果不明，客户端**不会重发同一个 refresh token**：会话保留（access token
+  仍可继续用），但该 token 会被标记为已作废并持久化，重启后同样不会重发；
+  access token 过期或再次需要刷新时本地登出，要求重新登录。刷新成功但新 token
+  写盘失败时会清除存储里的旧副本，避免重启后拿旧 token 触发重放撤销。
 - **退出**：`DELETE /me/session` 尽力撤销会话族并清除内存中的当前会话；
   安全存储或 SQLite 清除失败时旧副本可能留存，不能承诺已物理擦除。
 - **会话同步**：`lib/features/auth/auth_session_sync.dart` 订阅会话状态流；
