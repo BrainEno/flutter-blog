@@ -19,8 +19,8 @@ import 'package:belog/features/blog/domain/tag_paging.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart'
     show kBlogPageSize;
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart'
-import 'package:belog/core/common/entities/image_upload.dart';
     show kMaxSearchResults;
+import 'package:belog/core/common/entities/image_upload.dart';
 
 /// Remote data source against the no-wave `apps/api` REST backend.
 ///
