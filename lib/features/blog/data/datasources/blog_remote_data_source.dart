@@ -577,20 +577,30 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     if (inFlight != null) {
       return inFlight;
     }
-    return _likeToggleBySlug[blogId] = _toggleLike(blogId).whenComplete(() {
+    return _likeToggleBySlug[blogId] = _toggleLike(
+      userId,
+      blogId,
+    ).whenComplete(() {
       _likeToggleBySlug.remove(blogId);
     });
   }
 
-  Future<bool> _toggleLike(String blogId) async {
+  Future<bool> _toggleLike(String userId, String blogId) async {
     try {
       // The API sets an explicit like state rather than toggling, so the
       // current server state is read first and the opposite is written.
-      // The response is the authoritative post-state.
-      final current = await _likeInfo(blogId);
-      final data = await client.putJson('/articles/$blogId/like', {
-        'liked': !current,
-      });
+      // The response is the authoritative post-state. Like state is the
+      // viewer's own, so both halves name the account they belong to: a tap
+      // made for account A must never land as B's like (#104).
+      final fence = _viewerFenceFor(userId);
+      final current = await _likeInfo(blogId, fence);
+      final data = fence == null
+          ? await client.putJson('/articles/$blogId/like', {'liked': !current})
+          : await client.putJson(
+              '/articles/$blogId/like',
+              {'liked': !current},
+              sessionFence: fence,
+            );
       final map = _articleMap(data);
       return map['likedByViewer'] as bool? ?? !current;
     } catch (e) {
@@ -601,17 +611,40 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   @override
   Future<bool> isBlogLikedByUser(String userId, String blogId) async {
     try {
-      return await _likeInfo(blogId);
+      return await _likeInfo(blogId, _viewerFenceFor(userId));
     } catch (e) {
       throw mapToServerException(e);
     }
   }
 
-  Future<bool> _likeInfo(String slug) async {
-    final data = await client.getJson(
-      '/articles/$slug/like',
-      query: {'locale': 'zh-CN'},
-    );
+  /// The fence for an operation that names its viewer.
+  ///
+  /// Returns null when no identity was injected: those callers predate the
+  /// fence and keep the old unfenced behaviour (see [identity]).
+  NowaveSessionFence? _viewerFenceFor(String userId) {
+    if (identity == null) return null;
+    final fence = requireActiveFence();
+    if (userId.isNotEmpty && userId != fence.userId) {
+      throw const NowaveApiException(
+        statusCode: HttpStatus.conflict,
+        code: 'SESSION_CHANGED',
+        message: 'The like was started by a different account.',
+      );
+    }
+    return fence;
+  }
+
+  Future<bool> _likeInfo(String slug, [NowaveSessionFence? fence]) async {
+    final data = fence == null
+        ? await client.getJson(
+            '/articles/$slug/like',
+            query: {'locale': 'zh-CN'},
+          )
+        : await client.getJsonForViewer(
+            '/articles/$slug/like',
+            expectedUserId: fence.userId,
+            query: {'locale': 'zh-CN'},
+          );
     return _articleMap(data)['likedByViewer'] as bool? ?? false;
   }
 

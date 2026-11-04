@@ -10,3 +10,12 @@ final class RecycleBinRestoreRequested extends RecycleBinEvent {
 
   RecycleBinRestoreRequested({required this.articleId});
 }
+
+/// The active account changed (sign-in, sign-out or a switch).
+final class RecycleBinSessionChanged extends RecycleBinEvent {
+  /// Whether anybody is signed in after the change; a signed-out bin has
+  /// nothing to load.
+  final bool hasOwner;
+
+  RecycleBinSessionChanged({required this.hasOwner});
+}

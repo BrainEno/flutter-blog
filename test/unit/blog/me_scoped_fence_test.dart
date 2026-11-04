@@ -177,6 +177,67 @@ void main() {
     expect(requests, ['DELETE /api/v1/articles/a1']);
   });
 
+  test('a like started by another account is refused', () async {
+    await signInAs('A');
+    final source = sourceFor(
+      (_) async => _json({'likedByViewer': false}),
+    );
+
+    await expectLater(
+      source.toggleLikeBlog('B', 'x'),
+      throwsA(
+        isA<ServerException>().having(
+          (error) => error.code,
+          'code',
+          'auth.sessionChanged',
+        ),
+      ),
+    );
+    expect(requests, isEmpty);
+  });
+
+  test('like state is read for the active viewer only', () async {
+    await signInAs('A');
+    final source = sourceFor((_) async => _json({'likedByViewer': true}));
+
+    expect(await source.isBlogLikedByUser('A', 'x'), isTrue);
+    expect(requests, ['GET /api/v1/articles/x/like']);
+  });
+
+  test('a switch during the like write is reported', () async {
+    await signInAs('A');
+    var likeReads = 0;
+    final writeStarted = Completer<void>();
+    final release = Completer<void>();
+    final source = sourceFor((request) async {
+      if (request.method == 'GET') {
+        likeReads += 1;
+        return _json({'likedByViewer': false});
+      }
+      writeStarted.complete();
+      await release.future;
+      return _json({'likedByViewer': true});
+    });
+
+    final pending = source.toggleLikeBlog('A', 'x');
+    await writeStarted.future;
+    await signInAs('B');
+    release.complete();
+
+    await expectLater(
+      pending,
+      throwsA(
+        isA<ServerException>().having(
+          (error) => error.code,
+          'code',
+          'auth.sessionChanged',
+        ),
+      ),
+    );
+    expect(likeReads, 1, reason: '读数只来自 A 的那一次');
+    expect(requests.last, 'PUT /api/v1/articles/x/like');
+  });
+
   test('restore follows the active account', () async {
     await signInAs('A');
     final source = sourceFor(

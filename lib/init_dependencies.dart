@@ -320,6 +320,7 @@ Future<void> _initBlog(
         toggleBlogLike: serviceLocator<ToggleLikeBlog>(),
         isBlogLiked: serviceLocator<IsBlogLiked>(),
         getUserLikedBlogs: serviceLocator<GetUserLikedBlogs>(),
+        sessionIdentity: sessionManager,
       ),
     )
     ..registerFactory(
@@ -332,6 +333,7 @@ Future<void> _initBlog(
       () => RecycleBinBloc(
         getDeletedBlogs: serviceLocator<GetDeletedBlogs>(),
         restoreDeletedBlog: serviceLocator<RestoreDeletedBlog>(),
+        sessionIdentity: sessionManager,
       ),
     );
 }
