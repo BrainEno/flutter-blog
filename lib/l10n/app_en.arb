@@ -505,5 +505,9 @@
   "pageNotFound": "Page not found",
   "backToHome": "Back to home",
   "avatarImage": "Profile photo",
-  "coverImage": "Cover image"
+  "coverImage": "Cover image",
+  "languageSettingTitle": "Language",
+  "languageSystem": "Follow system",
+  "languageChinese": "中文",
+  "languageEnglish": "English"
 }

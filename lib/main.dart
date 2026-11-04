@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show PlatformDispatcher;
 
+import 'package:belog/core/l10n/locale_bloc.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:belog/l10n/app_localizations.dart';
@@ -62,6 +63,7 @@ void main() async {
     MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => serviceLocator<ThemeBloc>()),
+        BlocProvider(create: (_) => serviceLocator<LocaleBloc>()),
         BlocProvider(create: (_) => serviceLocator<AuthBloc>()),
         BlocProvider(create: (_) => serviceLocator<AppUserCubit>()),
       ],
@@ -126,18 +128,25 @@ class _NoWaveAppState extends State<NoWaveApp> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ThemeBloc, ThemeState>(
-      builder: (context, state) {
-        return MaterialApp.router(
-          debugShowCheckedModeBanner: false,
-          routerConfig: _router,
-          scaffoldMessengerKey: rootScaffoldMessengerKey,
-          themeMode: state.themeMode,
-          theme: AppTheme.lightThemeMode,
-          darkTheme: AppTheme.darkThemeMode,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          localeListResolutionCallback: resolveAppLocale,
-          supportedLocales: const [Locale('zh'), Locale('en')],
+    return BlocBuilder<LocaleBloc, LocaleState>(
+      builder: (context, localeState) {
+        return BlocBuilder<ThemeBloc, ThemeState>(
+          builder: (context, state) {
+            return MaterialApp.router(
+              debugShowCheckedModeBanner: false,
+              routerConfig: _router,
+              scaffoldMessengerKey: rootScaffoldMessengerKey,
+              themeMode: state.themeMode,
+              theme: AppTheme.lightThemeMode,
+              darkTheme: AppTheme.darkThemeMode,
+              // An explicit in-app choice pins the interface; `null` keeps
+              // following the device through resolveAppLocale (issue #108).
+              locale: localeState.locale,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              localeListResolutionCallback: resolveAppLocale,
+              supportedLocales: const [Locale('zh'), Locale('en')],
+            );
+          },
         );
       },
     );
