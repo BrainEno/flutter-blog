@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/network/connection_checker.dart';
@@ -167,10 +167,10 @@ void main() {
   test(
     'a session switch during media upload prevents the later article request',
     () async {
-      final dir = await Directory.systemTemp.createTemp('belog-fenced-media-');
-      addTearDown(() => dir.delete(recursive: true));
-      final image = File('${dir.path}/cover.png');
-      await image.writeAsBytes([1, 2, 3]);
+      final image = ImageUpload(
+        bytes: Uint8List.fromList([1, 2, 3]),
+        mimeType: 'image/png',
+      );
       final auth = _Auth();
       final mediaStarted = Completer<void>();
       final mediaResponse = Completer<http.Response>();

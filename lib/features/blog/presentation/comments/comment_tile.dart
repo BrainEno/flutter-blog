@@ -20,6 +20,7 @@ class CommentTile extends StatelessWidget {
   final Future<bool> Function() confirmDelete;
 
   const CommentTile({
+    super.key,
     required this.comment,
     required this.depth,
     required this.onReply,
