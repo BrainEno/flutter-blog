@@ -27,7 +27,20 @@ class LanguageMenuButton extends StatelessWidget {
             CheckedPopupMenuItem<AppLanguage>(
               value: language,
               checked: current == language,
-              child: Text(languageLabel(context, language)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(languageLabel(context, language)),
+                  // The fallback is stated instead of silently swapping the
+                  // language on an unsupported device.
+                  if (language == AppLanguage.system)
+                    Text(
+                      context.l10n.languageSystemHint,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
+              ),
             ),
         ];
       },

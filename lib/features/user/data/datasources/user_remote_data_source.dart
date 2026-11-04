@@ -1,6 +1,7 @@
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
@@ -35,14 +36,24 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
   final NowaveApiClient client;
   final NowaveSessionManager sessionManager;
 
-  UserRemoteDataSourceImpl(this.client, this.sessionManager);
+  UserRemoteDataSourceImpl(
+    this.client,
+    this.sessionManager, {
+    this.contentLocale,
+  });
+
+  /// Content language for the requests this data source makes; null keeps the
+  /// historical Chinese default for callers that never switch (tests).
+  final ContentLocale? contentLocale;
+
+  String get _locale => (contentLocale ?? ContentLocale.instance).tag;
 
   @override
   Future<UserModel> getUserById(String userId) async {
     try {
       final data = await client.getJson(
         '/authors/$userId',
-        query: {'locale': 'zh-CN'},
+        query: {'locale': _locale},
       );
       return UserModel.fromNowaveProfile(
         _profileMap(data),

@@ -1,5 +1,6 @@
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
+import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/features/user/domain/entities/author_relationship.dart';
 import 'package:http/http.dart' as http;
@@ -19,7 +20,14 @@ class AuthorRelationshipRemoteDataSourceImpl
   AuthorRelationshipRemoteDataSourceImpl({
     required Uri baseUrl,
     http.Client? httpClient,
+    this.contentLocale,
   }) : _client = NowaveApiClient(baseUrl: baseUrl, httpClient: httpClient);
+
+  /// Content language for the requests this data source makes; null keeps the
+  /// historical Chinese default for callers that never switch (tests).
+  final ContentLocale? contentLocale;
+
+  String get _locale => (contentLocale ?? ContentLocale.instance).tag;
 
   final NowaveApiClient _client;
 
@@ -49,7 +57,7 @@ class AuthorRelationshipRemoteDataSourceImpl
       final encodedUserId = Uri.encodeComponent(userId);
       final data = await _client.getJson(
         '/users/$encodedUserId/${kind.name}',
-        query: {'locale': 'zh-CN', 'limit': '$maxAuthorRelationshipResults'},
+        query: {'locale': _locale, 'limit': '$maxAuthorRelationshipResults'},
       );
       if (data is! List || data.length > maxAuthorRelationshipResults) {
         throw _invalidResponse;

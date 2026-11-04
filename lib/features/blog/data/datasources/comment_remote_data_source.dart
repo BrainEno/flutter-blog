@@ -1,5 +1,6 @@
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/error_mapper.dart';
+import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/features/blog/data/models/comment_model.dart';
 
@@ -26,14 +27,20 @@ class CommentRemoteDataSourceImpl implements CommentRemoteDataSource {
   static const _kCommentLimit = 50;
 
   final NowaveApiClient client;
-  const CommentRemoteDataSourceImpl(this.client);
+  const CommentRemoteDataSourceImpl(this.client, {this.contentLocale});
+
+  /// Content language for the requests this data source makes; null keeps the
+  /// historical Chinese default for callers that never switch (tests).
+  final ContentLocale? contentLocale;
+
+  String get _locale => (contentLocale ?? ContentLocale.instance).tag;
 
   @override
   Future<List<CommentModel>> getComments(String slug) async {
     try {
       final data = await client.getJson(
         '/articles/$slug/comments',
-        query: {'locale': 'zh-CN', 'limit': '$_kCommentLimit'},
+        query: {'locale': _locale, 'limit': '$_kCommentLimit'},
       );
       return _commentList(data);
     } catch (e) {
@@ -52,7 +59,7 @@ class CommentRemoteDataSourceImpl implements CommentRemoteDataSource {
       final data = await client.postJson(
         '/articles/$slug/comments',
         {'content': content, 'parentCommentId': parentCommentId},
-        query: {'locale': 'zh-CN'},
+        query: {'locale': _locale},
         extraHeaders: {'Idempotency-Key': idempotencyKey},
       );
       if (data is! Map<String, dynamic>) {

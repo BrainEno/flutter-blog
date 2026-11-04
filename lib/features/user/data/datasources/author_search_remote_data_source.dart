@@ -1,6 +1,7 @@
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/features/user/domain/entities/author_search_result.dart';
 import 'package:http/http.dart' as http;
@@ -15,7 +16,14 @@ class AuthorSearchRemoteDataSourceImpl implements AuthorSearchRemoteDataSource {
   AuthorSearchRemoteDataSourceImpl({
     required Uri baseUrl,
     http.Client? httpClient,
+    this.contentLocale,
   }) : _client = NowaveApiClient(baseUrl: baseUrl, httpClient: httpClient);
+
+  /// Content language for the requests this data source makes; null keeps the
+  /// historical Chinese default for callers that never switch (tests).
+  final ContentLocale? contentLocale;
+
+  String get _locale => (contentLocale ?? ContentLocale.instance).tag;
 
   final NowaveApiClient _client;
 
@@ -47,7 +55,7 @@ class AuthorSearchRemoteDataSourceImpl implements AuthorSearchRemoteDataSource {
         '/users',
         query: {
           'query': trimmed,
-          'locale': 'zh-CN',
+          'locale': _locale,
           'limit': '$maxAuthorSearchResults',
         },
       );

@@ -6,6 +6,11 @@ import 'package:belog/features/blog/data/models/blog_model.dart';
 /// [SqliteBlogCache] backed by Drift/SQLite). Writes must be awaited and rows
 /// are identified by the remote business id, never by a local auto-increment
 /// key.
+///
+/// Rows are scoped by content language (#108): reads only see the language the
+/// implementation was built for, so a language switch has its own (initially
+/// empty) cache instead of serving another language's articles. Deletes remove
+/// the article in every language, because the server copy is gone.
 abstract interface class BlogLocalDataSource {
   Future<void> uploadLocalBlogs({required List<BlogModel> blogs});
 

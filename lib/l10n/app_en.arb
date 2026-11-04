@@ -23,7 +23,7 @@
   "feedEmpty": "No articles yet — pull to refresh",
   "feedNoMore": "No more articles",
   "feedCachedNotice": "Showing cached articles; they may be incomplete or out of date. Pull to refresh when connected.",
-  "feedCachedEmpty": "No cached articles on this device. Connect and try again.",
+  "feedCachedEmpty": "No cached articles in this language on this device. Connect and try again.",
   "feedCachedNoMore": "End of cached articles. Refresh when connected for newer content.",
   "feedSourceChanged": "The article source changed. Refresh and try again.",
   "feedPaginationChanged": "The feed pagination changed. Refresh and try again.",
@@ -509,5 +509,6 @@
   "languageSettingTitle": "Language",
   "languageSystem": "Follow system",
   "languageChinese": "中文",
-  "languageEnglish": "English"
+  "languageEnglish": "English",
+  "languageSystemHint": "Device language, else Chinese"
 }

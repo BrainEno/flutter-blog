@@ -23,7 +23,7 @@
   "feedEmpty": "还没有文章，下拉刷新试试",
   "feedNoMore": "没有更多了",
   "feedCachedNotice": "正在显示本机缓存，内容可能不完整或已过期。联网后下拉刷新。",
-  "feedCachedEmpty": "本机暂无缓存文章，请联网后重试。",
+  "feedCachedEmpty": "本机该语言暂无缓存文章，请联网后重试。",
   "feedCachedNoMore": "已显示全部本机缓存，联网后可刷新查看新内容。",
   "feedSourceChanged": "文章来源已变化，请刷新后重试。",
   "feedPaginationChanged": "文章分页方式已改变，请刷新后重试。",
@@ -355,5 +355,6 @@
   "languageSettingTitle": "语言",
   "languageSystem": "跟随系统",
   "languageChinese": "中文",
-  "languageEnglish": "English"
+  "languageEnglish": "English",
+  "languageSystemHint": "设备语言，不支持时用中文"
 }

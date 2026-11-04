@@ -1,5 +1,6 @@
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/l10n/locale_bloc.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/common/widgets/no_wave_action_row.dart';
 import 'package:belog/core/error/failures.dart';
@@ -74,6 +75,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
+import '../support/locale_test_support.dart';
 
 class MockBlogRemote extends Mock implements BlogRemoteDataSource {}
 
@@ -280,6 +282,7 @@ class Harness {
           BlocProvider<ThemeBloc>.value(value: themeBloc),
           BlocProvider<AuthBloc>.value(value: authBloc),
           BlocProvider<AppUserCubit>.value(value: appUserCubit),
+          BlocProvider<LocaleBloc>(create: (_) => systemLocaleBloc()),
         ],
         child: MaterialApp.router(
           locale: locale,

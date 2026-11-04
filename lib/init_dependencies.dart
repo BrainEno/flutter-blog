@@ -10,6 +10,7 @@ import 'package:belog/core/nowave/secure_nowave_session_store.dart';
 import 'package:belog/core/nowave/session_store_migration.dart';
 import 'package:belog/core/nowave/sqlite_nowave_session_store.dart';
 import 'package:belog/core/secrets/app_secrets.dart';
+import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/l10n/locale_bloc.dart';
 import 'package:belog/core/l10n/locale_preference_store.dart';
 import 'package:belog/core/l10n/sqlite_locale_preference_store.dart';
@@ -191,7 +192,12 @@ Future<void> initDependencies() async {
   serviceLocator.registerLazySingleton<LocalePreferenceStore>(
     () => SqliteLocalePreferenceStore(serviceLocator<AppDatabase>()),
   );
-  serviceLocator.registerLazySingleton(() => LocaleBloc(serviceLocator()));
+  // The one content language every request and the offline cache read from;
+  // the language bloc writes it before the interface rebuilds.
+  serviceLocator.registerLazySingleton<ContentLocale>(() => ContentLocale());
+  serviceLocator.registerLazySingleton(
+    () => LocaleBloc(serviceLocator(), contentLocale: serviceLocator()),
+  );
 
   serviceLocator.registerLazySingleton(() => AppUserCubit());
   // One probe for every build mode and every origin: the configured API's own
@@ -288,10 +294,17 @@ Future<void> _initBlog(
     ..registerFactory<BlogRemoteDataSource>(
       // `/me` routes are bound to the account that is active when they are
       // called, so an old page cannot read or write into a newer account.
-      () => BlogRemoteDataSourceImpl(apiClient, identity: sessionManager),
+      () => BlogRemoteDataSourceImpl(
+        apiClient,
+        identity: sessionManager,
+        contentLocale: serviceLocator<ContentLocale>(),
+      ),
     )
     ..registerFactory<BlogLocalDataSource>(
-      () => SqliteBlogCache(serviceLocator<AppDatabase>()),
+      () => SqliteBlogCache(
+        serviceLocator<AppDatabase>(),
+        contentLocale: serviceLocator<ContentLocale>(),
+      ),
     )
     // Repository
     ..registerFactory<BlogRepository>(
@@ -367,7 +380,10 @@ void _initComments(NowaveApiClient apiClient) {
   serviceLocator
     // Datasource
     ..registerFactory<CommentRemoteDataSource>(
-      () => CommentRemoteDataSourceImpl(apiClient),
+      () => CommentRemoteDataSourceImpl(
+        apiClient,
+        contentLocale: serviceLocator<ContentLocale>(),
+      ),
     )
     // Repository
     ..registerFactory<CommentRepository>(
@@ -388,15 +404,24 @@ void _initAuthors(NowaveApiClient apiClient, Uri apiBaseUrl) {
   serviceLocator
     // Datasource
     ..registerFactory<AuthorRemoteDataSource>(
-      () => AuthorRemoteDataSourceImpl(apiClient),
+      () => AuthorRemoteDataSourceImpl(
+        apiClient,
+        contentLocale: serviceLocator<ContentLocale>(),
+      ),
     )
     // A single app-lifetime client without an authenticator for public lists.
     ..registerLazySingleton<AuthorRelationshipRemoteDataSource>(
-      () => AuthorRelationshipRemoteDataSourceImpl(baseUrl: apiBaseUrl),
+      () => AuthorRelationshipRemoteDataSourceImpl(
+        baseUrl: apiBaseUrl,
+        contentLocale: serviceLocator<ContentLocale>(),
+      ),
     )
     // Search also uses an anonymous client and retains no result cache.
     ..registerLazySingleton<AuthorSearchRemoteDataSource>(
-      () => AuthorSearchRemoteDataSourceImpl(baseUrl: apiBaseUrl),
+      () => AuthorSearchRemoteDataSourceImpl(
+        baseUrl: apiBaseUrl,
+        contentLocale: serviceLocator<ContentLocale>(),
+      ),
     )
     // Repository
     ..registerFactory<AuthorRepository>(
@@ -438,7 +463,11 @@ void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {
   // Datasource
   serviceLocator
     ..registerFactory<UserRemoteDataSource>(
-      () => UserRemoteDataSourceImpl(apiClient, sessionManager),
+      () => UserRemoteDataSourceImpl(
+        apiClient,
+        sessionManager,
+        contentLocale: serviceLocator<ContentLocale>(),
+      ),
     )
     // Repository
     ..registerFactory<UserRepository>(

@@ -73,6 +73,7 @@ void main() {
     final plan = await db
         .customSelect(
           'EXPLAIN QUERY PLAN SELECT * FROM blog_cache '
+          "WHERE content_locale = 'zh-CN' "
           'ORDER BY updated_at DESC, id ASC LIMIT 10 OFFSET 10',
         )
         .get();
@@ -179,7 +180,7 @@ void main() {
       (await db.customSelect('PRAGMA user_version').get()).single.read<int>(
         'user_version',
       ),
-      6,
+      7,
     );
 
     await db.close();
