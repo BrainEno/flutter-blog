@@ -5,10 +5,11 @@
 Before account-scoped drafts were introduced, the local `drafts` table did not
 record a backend or an account. There is no reliable way to determine who wrote
 those rows. They remain in the SQLite database but are **not** automatically
-shown, assigned, deleted, or imported into any account. Older Isar drafts are
-subject to the existing one-time Isar-to-SQLite import; if import fails, the
-original Isar file is retained. This tool only reads rows already in SQLite; it
-cannot extract a `default.isar` file on its own.
+shown, assigned, deleted, or imported into any account. Pre-SQLite Isar drafts
+are no longer imported at all: the Isar reader was removed in #107 and a
+leftover `default.isar` is left untouched (see
+[sqlite-storage.md](sqlite-storage.md)). This tool only reads rows already in
+SQLite; it cannot extract a `default.isar` file on its own.
 
 If you can legally and safely obtain an app-data copy, stop the app first and
 back up the entire app-data directory. The SQLite file is `belog.sqlite` in the
@@ -46,8 +47,9 @@ exposed by an older version or an already-sent network request.
 
 旧版本的本地 `drafts` 表没有记录 API 后端或账号，无法可靠证明每条草稿属于
 谁。升级后这些记录仍保存在 SQLite 中，但**不会**自动展示、分配、删除或导入
-任何账号。旧 Isar 草稿仍按现有流程一次性导入 SQLite；导入失败会保留原 Isar
-文件。本工具只能读取已经进入 SQLite 的记录，不能直接提取 `default.isar`。
+任何账号。Isar 时代（SQLite 之前）的草稿已经不再导入：Isar 读取器在 #107 中
+移除，残留的 `default.isar` 原样保留（见 [sqlite-storage.md](sqlite-storage.md)）。
+本工具只能读取已经进入 SQLite 的记录，不能直接提取 `default.isar`。
 
 仅当你能合法、安全地获取应用数据时，先停止应用并备份整个应用数据目录。
 SQLite 文件名为应用文档目录下的 `belog.sqlite`；若存在同名

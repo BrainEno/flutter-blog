@@ -3,9 +3,8 @@ import 'package:belog/features/blog/domain/entities/article_document.dart';
 /// Published blog article.
 ///
 /// Pure Dart domain entity: it must stay free of persistence and UI framework
-/// annotations. Mapping to remote rows, the SQLite cache and the legacy Isar
-/// collections lives in the data layer (`BlogModel` and
-/// `lib/core/storage/legacy/`).
+/// annotations. Mapping to remote rows and the SQLite cache lives in the data
+/// layer (`BlogModel` and `sqlite_blog_cache.dart`).
 class Blog {
   /// Public identifier used for addressing: the article's slug on the
   /// no-wave backend (`GET /articles/:slug`, likes, deep links). The

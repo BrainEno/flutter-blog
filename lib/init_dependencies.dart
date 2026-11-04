@@ -14,6 +14,7 @@ import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/core/theme/sqlite_theme_store.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
+import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/auth/auth_session_sync.dart';
 import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:belog/features/auth/data/datasources/profile_cache_store.dart';
@@ -119,11 +120,14 @@ Future<void> initDependencies() async {
 
   final directory = await getApplicationDocumentsDirectory();
   final database = AppDatabase.open(File('${directory.path}/belog.sqlite'));
-  try {
-    await database.importLegacyIfNeeded(directory);
-  } catch (_) {
-    await database.close();
-    rethrow;
+  // Isar is no longer supported (#107). A leftover `default.isar` is left in
+  // place untouched; tell the log once so a developer knows why local drafts
+  // from a pre-SQLite build did not show up.
+  if (await database.takeRetiredIsarNotice(directory)) {
+    AppLogger.debug(
+      'found default.isar but the Isar importer was removed; '
+      'local drafts from that build are not imported',
+    );
   }
 
   // The no-wave session. Tokens live in the platform secure storage

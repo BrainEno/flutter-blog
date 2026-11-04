@@ -613,30 +613,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.0"
-  isar_community:
-    dependency: "direct main"
-    description:
-      name: isar_community
-      sha256: "5046967047825b8699b66ad41f29c68c4eaefd54e236f6dea9e90e0b8063442a"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.4.1"
-  isar_community_flutter_libs:
-    dependency: "direct main"
-    description:
-      name: isar_community_flutter_libs
-      sha256: "541b07c0de7b5bd28e76cafc9fb56fac521186937bf309231572bf16551ef2f1"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.4.1"
-  isar_community_generator:
-    dependency: "direct dev"
-    description:
-      name: isar_community_generator
-      sha256: "7db0aa41a2b03dc2d7c38b23ff2dfb1e06c7e43c2ac8831524595446d3f31808"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.4.1"
   jni:
     dependency: transitive
     description:

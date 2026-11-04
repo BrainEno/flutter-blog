@@ -1,14 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:belog/core/storage/legacy/blog.dart' as legacy;
-import 'package:belog/core/storage/legacy/blog_draft.dart' as legacy;
-import 'package:belog/core/storage/legacy/theme_preference.dart' as legacy;
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-import 'package:isar_community/isar.dart' as legacy;
 
-/// SQLite is the live store. Isar is opened only for the one-time import.
+/// The single SQLite store: tables, migrations and primitive row access.
+///
+/// Isar is gone since #107 retired the one-time importer; nothing in the app
+/// depends on an unmaintained database engine any more.
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
@@ -123,89 +122,23 @@ class AppDatabase extends GeneratedDatabase {
     );
   }
 
-  /// Run before exposing this database to any UI. A marker and every imported
-  /// row commit together; failure leaves the old database intact and retries
-  /// on the next launch. The original files are intentionally never deleted.
-  Future<void> importLegacyIfNeeded(Directory directory) async {
+  /// Warns once that a retired `default.isar` file exists.
+  ///
+  /// The Isar reader was removed (#107): the file cannot be imported any more,
+  /// and the app never touches or deletes it. Returns true the first time such
+  /// a file is seen so the caller can log it; the marker keeps later launches
+  /// quiet. Cache rows rebuild from the network, so only drafts and the theme
+  /// choice are affected - see docs/sqlite-storage.md.
+  Future<bool> takeRetiredIsarNotice(Directory directory) async {
     final marker = await customSelect(
-      "SELECT value FROM metadata WHERE key = 'isar_import_v1'",
+      "SELECT value FROM metadata WHERE key = 'legacy_isar_removed'",
     ).getSingleOrNull();
-    if (marker != null) return;
-
-    final legacyFile = File('${directory.path}/default.isar');
-    legacy.Isar? old;
-    Directory? copyDirectory;
-    try {
-      if (await legacyFile.exists()) {
-        // Opening Isar can itself modify schema or database geometry. Never
-        // let a failed or interrupted import alter the user's only copy.
-        copyDirectory = await Directory.systemTemp.createTemp(
-          'belog-isar-import-',
-        );
-        await legacyFile.copy('${copyDirectory.path}/default.isar');
-        old = await legacy.Isar.open(
-          [
-            legacy.ThemePreferenceSchema,
-            legacy.BlogSchema,
-            legacy.BlogDraftSchema,
-          ],
-          directory: copyDirectory.path,
-          inspector: false,
-        );
-      }
-      final preferences = old == null
-          ? <legacy.ThemePreference>[]
-          : await old.themePreferences.where().anyId().findAll();
-      final drafts = old == null
-          ? <legacy.BlogDraft>[]
-          : await old.blogDrafts.where().anyId().findAll();
-      final blogs = old == null
-          ? <legacy.Blog>[]
-          : await old.blogs.where().anyIid().findAll();
-      await transaction(() async {
-        if (preferences.isNotEmpty) {
-          final latest = preferences.reduce((a, b) => a.id > b.id ? a : b);
-          await setTheme(latest.themeMode.name);
-        }
-        for (final draft in drafts) {
-          await customStatement(
-            'INSERT INTO drafts(id, blog_id, title, content, tags, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-            [
-              draft.id,
-              draft.blogId,
-              draft.title,
-              draft.content,
-              jsonEncode(draft.tags),
-              draft.updatedAt.microsecondsSinceEpoch,
-            ],
-          );
-        }
-        for (final blog in blogs) {
-          await upsertBlogRow(
-            id: blog.id,
-            title: blog.title,
-            content: blog.content,
-            posterId: blog.posterId,
-            imageUrl: blog.imageUrl,
-            tags: blog.tags,
-            updatedAt: blog.updatedAt,
-            posterName: blog.posterName,
-            posterAvatar: blog.posterAvatar,
-          );
-        }
-        await customStatement(
-          "INSERT INTO metadata(key, value) VALUES ('isar_import_v1', 'complete')",
-        );
-      });
-    } finally {
-      try {
-        await old?.close();
-      } finally {
-        if (copyDirectory != null && await copyDirectory.exists()) {
-          await copyDirectory.delete(recursive: true);
-        }
-      }
-    }
+    if (marker != null) return false;
+    if (!await File('${directory.path}/default.isar').exists()) return false;
+    await customStatement(
+      "INSERT INTO metadata(key, value) VALUES ('legacy_isar_removed', 'notified')",
+    );
+    return true;
   }
 
   /// Stores the theme by name. The preference model is the theme layer's
