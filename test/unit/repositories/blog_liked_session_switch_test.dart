@@ -37,8 +37,7 @@ class _FakeSession implements NowaveSessionIdentity {
   String? get activeUserId => _userId;
 
   @override
-  String? get accessToken =>
-      _userId == null ? null : 'token-$_userId';
+  String? get accessToken => _userId == null ? null : 'token-$_userId';
 
   @override
   int get sessionGeneration => _generation;
