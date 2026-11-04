@@ -133,9 +133,7 @@ void main() {
     final done = bloc.stream.firstWhere(
       (state) => state is UserEditSuccess || state is UserEditFailure,
     );
-    bloc.add(
-      UserEditSubmitted(name: '新名字', bio: '简介', avatar: avatarFile),
-    );
+    bloc.add(UserEditSubmitted(name: '新名字', bio: '简介', avatar: avatarFile));
     await done;
     await bloc.close();
   }
@@ -200,11 +198,7 @@ void main() {
       );
     final before = cubit.state;
 
-    final save = pumpSave(
-      client: client,
-      cubit: cubit,
-      avatarFile: avatar,
-    );
+    final save = pumpSave(client: client, cubit: cubit, avatarFile: avatar);
     await uploadStarted.future;
     await signInAs('B');
     release.complete();
