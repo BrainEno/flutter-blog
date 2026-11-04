@@ -29,7 +29,6 @@ class AuthorRelationshipRemoteDataSourceImpl
 
   String get _locale => (contentLocale ?? ContentLocale.instance).tag;
 
-
   final NowaveApiClient _client;
 
   static bool _isUsableUserId(String value) =>

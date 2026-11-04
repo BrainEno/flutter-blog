@@ -74,16 +74,19 @@ void main() {
     expect(requested.last.queryParameters['locale'], 'en');
   });
 
-  test('a data source without a holder keeps the historical Chinese default', () async {
-    final requested = <Uri>[];
-    final client = _client(
-      MockClient((request) async {
-        requested.add(request.url);
-        return http.Response(jsonEncode({'data': <dynamic>[]}), 200);
-      }),
-    );
+  test(
+    'a data source without a holder keeps the historical Chinese default',
+    () async {
+      final requested = <Uri>[];
+      final client = _client(
+        MockClient((request) async {
+          requested.add(request.url);
+          return http.Response(jsonEncode({'data': <dynamic>[]}), 200);
+        }),
+      );
 
-    await CommentRemoteDataSourceImpl(client).getComments('yu-zhou');
-    expect(requested.last.queryParameters['locale'], 'zh-CN');
-  });
+      await CommentRemoteDataSourceImpl(client).getComments('yu-zhou');
+      expect(requested.last.queryParameters['locale'], 'zh-CN');
+    },
+  );
 }

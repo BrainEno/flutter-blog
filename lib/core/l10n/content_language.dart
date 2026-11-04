@@ -31,10 +31,10 @@ ContentLanguage contentLanguageFor(AppLanguage language, Locale deviceLocale) {
     case AppLanguage.en:
       return ContentLanguage.en;
     case AppLanguage.system:
-      final ui = resolveAppLocale([deviceLocale], const [
-        Locale('zh'),
-        Locale('en'),
-      ]);
+      final ui = resolveAppLocale(
+        [deviceLocale],
+        const [Locale('zh'), Locale('en')],
+      );
       return ui.languageCode == 'en' ? ContentLanguage.en : ContentLanguage.zh;
   }
 }

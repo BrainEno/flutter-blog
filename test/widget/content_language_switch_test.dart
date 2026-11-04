@@ -61,7 +61,10 @@ void main() {
       getAllBlogs: _GetFeed((params) async {
         calls++;
         return right(
-          BlogFeedPage(blogs: [_article('a$calls')], source: BlogFeedSource.network),
+          BlogFeedPage(
+            blogs: [_article('a$calls')],
+            source: BlogFeedSource.network,
+          ),
         );
       }),
     );
@@ -156,7 +159,10 @@ void main() {
     // mixed into the English list.
     slow.complete(
       right(
-        BlogFeedPage(blogs: [_article('stale')], source: BlogFeedSource.network),
+        BlogFeedPage(
+          blogs: [_article('stale')],
+          source: BlogFeedSource.network,
+        ),
       ),
     );
     await tester.pumpAndSettle();

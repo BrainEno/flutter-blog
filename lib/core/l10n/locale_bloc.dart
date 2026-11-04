@@ -57,7 +57,8 @@ class LocaleBloc extends Bloc<LocaleEvent, LocaleState> {
     Locale Function()? deviceLocale,
   }) : _contentLocale = contentLocale ?? ContentLocale.instance,
        _deviceLocale =
-           deviceLocale ?? (() => WidgetsBinding.instance.platformDispatcher.locale),
+           deviceLocale ??
+           (() => WidgetsBinding.instance.platformDispatcher.locale),
        super(const LocaleState(AppLanguage.system, ContentLanguage.zh)) {
     on<LocaleEvent>(
       _onLocaleEvent,

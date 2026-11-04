@@ -25,7 +25,6 @@ class AuthorSearchRemoteDataSourceImpl implements AuthorSearchRemoteDataSource {
 
   String get _locale => (contentLocale ?? ContentLocale.instance).tag;
 
-
   final NowaveApiClient _client;
 
   static const _invalidResponse = ServerException(

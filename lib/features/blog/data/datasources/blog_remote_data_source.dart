@@ -146,18 +146,13 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   /// omit it and keep the old behaviour.
   final NowaveSessionIdentity? identity;
 
-  BlogRemoteDataSourceImpl(
-    this.client, {
-    this.identity,
-    this.contentLocale,
-  });
+  BlogRemoteDataSourceImpl(this.client, {this.identity, this.contentLocale});
 
   /// Content language for the requests this data source makes; null keeps the
   /// historical Chinese default for callers that never switch (tests).
   final ContentLocale? contentLocale;
 
   String get _locale => (contentLocale ?? ContentLocale.instance).tag;
-
 
   /// Tag name -> id resolution, cached for the app session.
   late final NowaveTagResolver _tags = NowaveTagResolver(client);

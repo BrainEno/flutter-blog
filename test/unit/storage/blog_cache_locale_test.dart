@@ -43,7 +43,11 @@ void main() {
     // slug in the other language.
     content.update(ContentLanguage.zh);
     expect((await cache.loadBlogs()).single.content, '中文正文');
-    expect(await cache.loadBlogs(), hasLength(1), reason: 'one row per language');
+    expect(
+      await cache.loadBlogs(),
+      hasLength(1),
+      reason: 'one row per language',
+    );
 
     // The server copy is gone, so every language drops it: a deleted article
     // must not reappear offline in the other language.

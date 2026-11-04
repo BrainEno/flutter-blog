@@ -28,7 +28,6 @@ class AuthorRemoteDataSourceImpl implements AuthorRemoteDataSource {
 
   String get _locale => (contentLocale ?? ContentLocale.instance).tag;
 
-
   @override
   Future<AuthorProfileModel> getAuthorProfile(String userId) async {
     try {

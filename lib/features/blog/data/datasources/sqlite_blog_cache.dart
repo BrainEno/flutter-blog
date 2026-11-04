@@ -79,8 +79,7 @@ class SqliteBlogCache implements BlogLocalDataSource {
   /// Removes the article in every cached language: the server copy is gone,
   /// so no language may serve it offline.
   @override
-  Future<void> deleteCachedBlog(String id) =>
-      database.deleteBlogCacheRow(id);
+  Future<void> deleteCachedBlog(String id) => database.deleteBlogCacheRow(id);
 
   @override
   Future<BlogModel?> loadBlogById(String id) async {

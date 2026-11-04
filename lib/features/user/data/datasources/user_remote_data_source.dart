@@ -48,7 +48,6 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
 
   String get _locale => (contentLocale ?? ContentLocale.instance).tag;
 
-
   @override
   Future<UserModel> getUserById(String userId) async {
     try {

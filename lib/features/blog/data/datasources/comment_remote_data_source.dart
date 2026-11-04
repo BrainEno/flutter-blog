@@ -35,7 +35,6 @@ class CommentRemoteDataSourceImpl implements CommentRemoteDataSource {
 
   String get _locale => (contentLocale ?? ContentLocale.instance).tag;
 
-
   @override
   Future<List<CommentModel>> getComments(String slug) async {
     try {
