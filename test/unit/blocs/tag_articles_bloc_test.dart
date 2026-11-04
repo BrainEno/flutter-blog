@@ -46,9 +46,7 @@ void main() {
   setUp(() {
     resolveTag = _MockResolveTag();
     getArticlesByTag = _MockGetArticlesByTag();
-    when(
-      () => resolveTag(any()),
-    ).thenAnswer((_) async => right(_tag));
+    when(() => resolveTag(any())).thenAnswer((_) async => right(_tag));
     bloc = TagArticlesBloc(
       resolveTag: resolveTag,
       getArticlesByTag: getArticlesByTag,
@@ -134,9 +132,7 @@ void main() {
   });
 
   test('a tag that vanished mid-session is reported as unknown', () async {
-    when(
-      () => getArticlesByTag(any()),
-    ).thenAnswer(
+    when(() => getArticlesByTag(any())).thenAnswer(
       (_) async => left(
         const Failure(
           '这个标签已不存在',
@@ -187,8 +183,7 @@ void main() {
     await first;
 
     final failedMore = bloc.stream.firstWhere(
-      (state) =>
-          state is TagArticlesSuccess && state.loadMoreFailure != null,
+      (state) => state is TagArticlesSuccess && state.loadMoreFailure != null,
     );
     bloc.add(TagArticlesMoreRequested());
     final state = await failedMore as TagArticlesSuccess;

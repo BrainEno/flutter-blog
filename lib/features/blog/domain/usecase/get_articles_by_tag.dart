@@ -12,10 +12,7 @@ class GetArticlesByTag implements UseCase<List<Blog>, TagArticlesParams> {
 
   @override
   Future<Either<Failure, List<Blog>>> call(TagArticlesParams params) {
-    return blogRepository.getArticlesByTag(
-      params.slug,
-      offset: params.offset,
-    );
+    return blogRepository.getArticlesByTag(params.slug, offset: params.offset);
   }
 }
 

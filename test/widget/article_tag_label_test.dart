@@ -10,7 +10,9 @@ Future<void> _pump(WidgetTester tester, Widget label) {
       locale: const Locale('zh'),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(body: Center(child: Wrap(children: [label]))),
+      home: Scaffold(
+        body: Center(child: Wrap(children: [label])),
+      ),
     ),
   );
 }
@@ -25,11 +27,7 @@ void main() {
     final data = tester
         .getSemantics(find.byType(ArticleTagLabel))
         .getSemanticsData();
-    expect(
-      data.flagsCollection.isButton,
-      isFalse,
-      reason: '不可点的标签不该被读屏当成按钮',
-    );
+    expect(data.flagsCollection.isButton, isFalse, reason: '不可点的标签不该被读屏当成按钮');
     handle.dispose();
   });
 
@@ -38,10 +36,7 @@ void main() {
   ) async {
     final handle = tester.ensureSemantics();
     var taps = 0;
-    await _pump(
-      tester,
-      ArticleTagLabel(tag: '诗歌', onTap: () => taps += 1),
-    );
+    await _pump(tester, ArticleTagLabel(tag: '诗歌', onTap: () => taps += 1));
 
     final size = tester.getSize(find.byType(TextButton));
     expect(size.width, greaterThanOrEqualTo(48));
@@ -53,11 +48,7 @@ void main() {
     expect(data.flagsCollection.isButton, isTrue);
     expect(data.hasAction(SemanticsAction.tap), isTrue);
     expect(data.label, '浏览标签「诗歌」的文章');
-    expect(
-      find.text('诗歌'),
-      findsOneWidget,
-      reason: '视觉上仍是原来的小标签',
-    );
+    expect(find.text('诗歌'), findsOneWidget, reason: '视觉上仍是原来的小标签');
 
     await tester.tap(find.byType(TextButton));
     expect(taps, 1);

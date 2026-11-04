@@ -32,6 +32,33 @@ Blog _blog(String id, String title) => Blog(
   updatedAt: DateTime.utc(2026),
 );
 
+/// Pumps until the bloc leaves its loading states.
+///
+/// `pumpAndSettle` cannot be used: the loading body is a spinner, which would
+/// keep scheduling frames and time the test out instead of failing it.
+Future<void> settle(WidgetTester tester, TagArticlesBloc bloc) async {
+  for (var i = 0; i < 40; i++) {
+    await tester.pump(const Duration(milliseconds: 20));
+    final state = bloc.state;
+    if (state is TagArticlesSuccess ||
+        state is TagArticlesUnknown ||
+        state is TagArticlesFailure) {
+      break;
+    }
+  }
+  await tester.pump();
+}
+
+/// What is actually on screen, for failure messages.
+String diagnostics(WidgetTester tester, TagArticlesBloc bloc) =>
+    'state=${bloc.state.runtimeType} screen=${screenText(tester)}';
+
+String screenText(WidgetTester tester) => tester
+    .widgetList<Text>(find.byType(Text))
+    .map((text) => text.data ?? text.textSpan?.toPlainText() ?? '')
+    .where((text) => text.isNotEmpty)
+    .join(' | ');
+
 void main() {
   late _MockResolveTag resolveTag;
   late _MockGetArticlesByTag getArticlesByTag;
@@ -54,8 +81,6 @@ void main() {
   });
 
   Future<void> pumpPage(WidgetTester tester, {String tag = '诗歌'}) async {
-    // The list is long enough that the footer would ask for a second page;
-    // keep the window tall so the assertions stay about states, not layout.
     tester.view.physicalSize = const Size(1000, 2000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -70,29 +95,9 @@ void main() {
         ),
       ),
     );
-    await settle(tester);
+    await settle(tester, bloc);
   }
 
-  /// Pumps until the bloc leaves its loading states instead of
-  /// `pumpAndSettle`, which would wait out a spinner that never stops.
-  Future<void> settle(WidgetTester tester) async {
-    for (var i = 0; i < 30; i++) {
-      await tester.pump(const Duration(milliseconds: 20));
-      final state = bloc.state;
-      if (state is TagArticlesSuccess ||
-          state is TagArticlesUnknown ||
-          state is TagArticlesFailure) {
-        break;
-      }
-    }
-    await tester.pump();
-  }
-
-  String screenText(WidgetTester tester) => tester
-      .widgetList<Text>(find.byType(Text))
-      .map((text) => text.data ?? text.textSpan?.toPlainText() ?? '')
-      .where((text) => text.isNotEmpty)
-      .join(' | ');
 
   testWidgets('a tag lists its articles under its own name', (tester) async {
     when(
@@ -101,13 +106,18 @@ void main() {
 
     await pumpPage(tester);
 
+    expect(
+      bloc.state,
+      isA<TagArticlesSuccess>(),
+      reason: diagnostics(tester, bloc),
+    );
     expect(find.text('#诗歌'), findsOneWidget);
     expect(
       find.text('夜航手记'),
       findsOneWidget,
-      reason: 'state=${bloc.state.runtimeType} screen=${screenText(tester)}',
+      reason: diagnostics(tester, bloc),
     );
-    expect(find.text('第二篇'), findsOneWidget);
+    expect(find.text('第二篇'), findsOneWidget, reason: diagnostics(tester, bloc));
     verify(() => getArticlesByTag(any())).called(1);
   });
 
@@ -123,7 +133,7 @@ void main() {
     expect(
       find.text('「诗歌」下还没有文章'),
       findsOneWidget,
-      reason: 'state=${bloc.state.runtimeType} screen=${screenText(tester)}',
+      reason: diagnostics(tester, bloc),
     );
   });
 
@@ -137,7 +147,7 @@ void main() {
     expect(
       find.text('找不到标签「不存在的」'),
       findsOneWidget,
-      reason: 'state=${bloc.state.runtimeType} screen=${screenText(tester)}',
+      reason: diagnostics(tester, bloc),
     );
     verifyNever(() => getArticlesByTag(any()));
   });
@@ -154,16 +164,16 @@ void main() {
     expect(
       find.textContaining('无法连接到网络'),
       findsOneWidget,
-      reason: 'state=${bloc.state.runtimeType} screen=${screenText(tester)}',
+      reason: diagnostics(tester, bloc),
     );
 
     await tester.tap(find.text('重试'));
-    await settle(tester);
+    await settle(tester, bloc);
 
     expect(
       find.text('夜航手记'),
       findsOneWidget,
-      reason: 'state=${bloc.state.runtimeType} screen=${screenText(tester)}',
+      reason: diagnostics(tester, bloc),
     );
     expect(attempts, 2);
   });

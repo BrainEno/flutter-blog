@@ -87,7 +87,7 @@ class _TagArticlesPageState extends State<TagArticlesPage> {
         listener: (context, state) => _moreRequested = false,
         child: BlocBuilder<TagArticlesBloc, TagArticlesState>(
           builder: (context, state) {
-            if (state is TagArticlesLoading) {
+            if (state is TagArticlesLoading || state is TagArticlesInitial) {
               return Center(
                 child: CircularProgressIndicator(
                   semanticsLabel: l10n.loadingArticles,
@@ -127,10 +127,7 @@ class _TagArticlesPageState extends State<TagArticlesPage> {
                   ),
                 );
               }
-              return RefreshIndicator(
-                onRefresh: _refresh,
-                child: _list(state),
-              );
+              return RefreshIndicator(onRefresh: _refresh, child: _list(state));
             }
             return const SizedBox.shrink();
           },
@@ -142,7 +139,10 @@ class _TagArticlesPageState extends State<TagArticlesPage> {
   Widget _status(Widget status) => ListView(
     physics: const AlwaysScrollableScrollPhysics(),
     padding: const EdgeInsets.all(NoWaveSpacing.page),
-    children: [const SizedBox(height: 48), Center(child: status)],
+    children: [
+      const SizedBox(height: 48),
+      Center(child: status),
+    ],
   );
 
   Widget _list(TagArticlesSuccess state) {

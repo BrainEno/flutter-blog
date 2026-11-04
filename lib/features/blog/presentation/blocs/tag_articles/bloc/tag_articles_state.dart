@@ -35,10 +35,7 @@ final class TagArticlesSuccess extends TagArticlesState {
 
   bool get isEmpty => articles.isEmpty;
 
-  TagArticlesSuccess copyWith({
-    bool? loadingMore,
-    Failure? loadMoreFailure,
-  }) {
+  TagArticlesSuccess copyWith({bool? loadingMore, Failure? loadMoreFailure}) {
     return TagArticlesSuccess(
       tag: tag,
       articles: articles,
