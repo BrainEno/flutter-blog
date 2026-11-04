@@ -7,6 +7,15 @@
 > - **审查方式**：当前源码静态审查、脚本测试、GitHub PR/CI 证据复核、现有 Issue 验收对照
 > - **重要边界**：本环境没有 Flutter/Dart SDK；未运行 Flutter analyze/test/build、真实后端、模拟器或真机，也未做生产数据验证。
 
+## 0. 勘误（基线之后的进展，读本文前先看这里）
+
+本文是 `9bf57f6`（2026-11-02）的**时点快照**，正文数字与结论按当时状态保留。之后的变化：
+
+- **#107 第一步已完成**（PR #122）：`lib/core` 不再导入 `lib/features`，`core/storage` 不再导入 Flutter UI 类型；`SqliteBlogCache`／`SqliteBlogDraftStore`／阅读历史实现移入 `features/blog`，主题偏好实现移入 `core/theme`，`AppDatabase` 只接受原始类型。`tool/ci/check_core_dependencies.py` 加 unittest 守护。第 119 行、第 96 行以及「架构与可维护性」一行里“core 仍依赖 feature model / Flutter 类型”的描述已不适用。
+- **Isar 依赖已彻底删除**：`isar_community*` 三个包、`lib/core/storage/legacy/` 生成代码（本文第 54 行的 3,991 行）、`tool/legacy_isar_fixture/`（第 56 行）、`test/fixtures/legacy_isar_3_1_0/`、一次性导入器与导入测试、`build.yaml` 全部移除，`docs/isar-to-sqlite-migration.md` 改写为 [sqlite-storage.md](sqlite-storage.md)。第 30 行、第 114 行关于“旧 Isar 复制导入”的正面评价不再适用（导入能力已不存在）。
+- 已关闭：#99、#103、#105、#106。仍开放：**#101、#104**（已实现但未关单）、#107（余下超大单元拆分）、#108、#109、#110。
+- 当前债务清单以 [code-audit.md](code-audit.md) 为准；本文的 issue 表格只反映 11-02 的状态。
+
 ## 1. 执行摘要
 
 这个项目已经不是简单的 UI 示例：它有较完整的 no-wave REST 接入、feature-first 分层、Bloc 状态管理、SQLite 缓存与迁移、双语资源、语义/大字测试、会话刷新单飞、账号代际围栏，以及较严格的 CI/发布防误配检查。

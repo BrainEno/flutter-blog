@@ -128,7 +128,7 @@ lib/
 │   ├── error/             # Failure 契约 + 异常映射（error_mapper）
 │   ├── network/           # 连接检查
 │   ├── nowave/            # API 客户端（envelope/401 刷新/媒体上传）+ 会话管理
-│   ├── storage/           # Drift/SQLite：缓存、草稿、主题、会话（legacy/ 为旧 Isar 模型）
+│   ├── storage/           # Drift/SQLite：建表、迁移与原始行读写（Isar 已于 #107 移除）
 │   ├── theme/             # 主题与 ThemeBloc
 │   └── utils/             # AppLogger、重试、Snackbar 等
 ├── features/
@@ -143,6 +143,9 @@ lib/
 
 - **数据流向**：UI → Bloc → Usecase → Repository（`Either<Failure, T>`）→
   Datasource。Repository 是唯一把异常翻译成 `Failure` 的地方。
+- **分层方向**：依赖只能从 feature 指向 `lib/core`，不能反向；`lib/core/storage`
+  不得导入 Flutter UI 类型。规则由 `tool/ci/check_core_dependencies.py` 在 CI 中
+  强制（`--root` 可对任意目录跑，unittest 也在真实仓库上验证）。
 - **文章寻址双轨**：公开读 / 点赞按 slug（即 `Blog.id`），更新按服务端 UUID
   （`BlogModel.articleId`，仅写入路径使用）。
 - **正文模型**：普通编辑器写入 no-wave `contentBlocks` v0 纯文本块（首张图
@@ -422,7 +425,7 @@ envelope/401 刷新重放、会话刷新单飞、contentBlocks 编解码、Markd
 CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 签名，
 **不得**当作生产构建分发。另见
 [docs/ci-observability.md](docs/ci-observability.md)、
-[docs/isar-to-sqlite-migration.md](docs/isar-to-sqlite-migration.md)、
+[docs/sqlite-storage.md](docs/sqlite-storage.md)、
 [docs/supabase-to-nowave-migration.md](docs/supabase-to-nowave-migration.md)、
 [docs/agent-development.md](docs/agent-development.md)。
 
@@ -452,7 +455,10 @@ CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 
   作者主页与关注（#20）
 - **P2 进行中/延后**：分享深链接收（#21，等 web 部署 + association 文件
   可验证）、离线发布队列（#23，文章创建步已
-  解锁、封面媒体仍受 #47 阻塞，见上）、举报屏蔽（#18）
+  解锁、封面媒体仍受 #47 阻塞，见上）、举报屏蔽（#18）、
+  架构收敛（#107：依赖规则与 Isar 移除已完成，`nowave_api_client` /
+  `nowave_session` / 超大页面的单元拆分待做）、内容语言与 locale 隔离（#108）、
+  许可与应用身份（#109）、审查证据回写（#110）
 - **P0/P1 已关闭**：#4 工具链升级、#7 schema 版本管理、#8 离线缓存语义
 
 **许可证待定**：仓库暂无 LICENSE 文件；候选 MIT / Apache-2.0，定稿前请勿
@@ -461,4 +467,5 @@ CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 
 已完成的重点修复：草稿按后端、账号和文章隔离及快照安全清理（#14、#79）、Feed 分页与刷新竞态（#13）、
 点赞并发与离线行为（#9）、异常契约统一（#12）、iOS 发布流水线（#6）、
 点赞离线假成功（#3）、Supabase → no-wave 后端迁移、删除与回收站（G1）、
-Markdown 正文（#17）、阅读历史与导出（#22）等。
+Markdown 正文（#17）、阅读历史与导出（#22）、Isar 依赖及其一次性导入器的彻底
+移除（#107，见 [SQLite 存储](docs/sqlite-storage.md)）等。
