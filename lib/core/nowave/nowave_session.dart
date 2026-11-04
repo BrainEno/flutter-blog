@@ -120,6 +120,36 @@ abstract class NowaveSessionStore {
   Future<void> clear();
 }
 
+/// How much of a sign-out actually reached durable storage.
+///
+/// Signing out has two halves: the server-side revocation (best-effort) and
+/// the local clear. The local clear is the one that decides whether the
+/// account can come back on the next launch, so its result must not be
+/// reduced to a log line (#102).
+enum SessionClearResult {
+  /// No copy of the session remains and no restart can restore it.
+  cleared,
+
+  /// The app can no longer restore the session, but a copy survived in a
+  /// medium that is currently unwritable. The surviving copy is disowned, so
+  /// it is residue rather than a session - still not the same as a clean
+  /// clear, and the user is told so.
+  disowned,
+
+  /// Not even the record that disowns the copies could be written: a restart
+  /// may restore the account.
+  failed,
+}
+
+/// A store that can report *how* durable a sign-out was.
+///
+/// Kept separate from [NowaveSessionStore] so existing stores and test
+/// doubles stay valid; the session manager asks for it when available.
+abstract interface class NowaveSessionSignOutStore
+    implements NowaveSessionStore {
+  Future<SessionClearResult> clearForSignOut();
+}
+
 /// The immediate identity signal used by sensitive UI. It changes before
 /// storage or network work can delay the ordinary signed-in/out events.
 abstract interface class NowaveSessionIdentity {
@@ -369,22 +399,48 @@ class NowaveSessionManager
 
   /// Drops the local session and broadcasts a sign-out.
   Future<void> clear() async {
+    await clearForSignOut();
+  }
+
+  /// Drops the local session and reports whether a restart could bring it
+  /// back.
+  ///
+  /// The in-memory session is gone either way - the user is signed out of
+  /// this launch - but [SessionClearResult.failed] means the durable copy
+  /// survived, so the caller must not present the sign-out as complete
+  /// (#102).
+  Future<SessionClearResult> clearForSignOut() async {
     final hadSession = _session != null;
     final generation = ++_sessionGeneration;
     _session = null;
     _identityChanges.add(null);
+    var result = SessionClearResult.failed;
+    final store = _store;
     try {
-      await _withStore(_store.clear);
+      if (store is NowaveSessionSignOutStore) {
+        result = await _withStore(store.clearForSignOut);
+      } else {
+        await _withStore(store.clear);
+        result = SessionClearResult.cleared;
+      }
     } catch (e, stackTrace) {
       AppLogger.error(
         'clearing the persisted session failed',
         error: e,
         stackTrace: stackTrace,
       );
+      result = SessionClearResult.failed;
+    }
+    if (result == SessionClearResult.failed) {
+      AppLogger.error(
+        'the local session could not be removed from storage; a restart may '
+        'restore the account',
+      );
     }
     if (hadSession && generation == _sessionGeneration && _session == null) {
       _status.add(const NowaveAuthSignedOut());
     }
+    return result;
   }
 
   /// Broadcasts a sign-in for the current session's user id.

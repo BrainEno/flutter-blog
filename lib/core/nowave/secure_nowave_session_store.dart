@@ -12,28 +12,35 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class SecureNowaveSessionStore implements NowaveSessionStore {
   static const _kStorageKey = 'nowave_session_v1';
 
-  final FlutterSecureStorage _storage;
+  /// Key of the startup canary: a separate slot that exercises write, read and
+  /// delete on the real medium without ever touching the session (#102).
+  static const canaryKey = 'nowave_session_probe_v1';
 
-  const SecureNowaveSessionStore([
-    this._storage = const FlutterSecureStorage(),
-  ]);
+  final FlutterSecureStorage _storage;
+  final String _key;
+
+  const SecureNowaveSessionStore({
+    FlutterSecureStorage storage = const FlutterSecureStorage(),
+    String key = _kStorageKey,
+  }) : _storage = storage,
+       _key = key;
 
   @override
   Future<NowaveSessionData?> read() async {
-    final raw = await _storage.read(key: _kStorageKey);
+    final raw = await _storage.read(key: _key);
     return NowaveSessionManager.decodeSession(raw);
   }
 
   @override
   Future<void> write(NowaveSessionData session) {
     return _storage.write(
-      key: _kStorageKey,
+      key: _key,
       value: NowaveSessionManager.encodeSession(session),
     );
   }
 
   @override
   Future<void> clear() {
-    return _storage.delete(key: _kStorageKey);
+    return _storage.delete(key: _key);
   }
 }

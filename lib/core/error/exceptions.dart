@@ -1,5 +1,21 @@
 import 'package:belog/core/error/failures.dart';
 
+/// Thrown when the session cannot be written to any local medium.
+///
+/// Distinct from a network failure: the credentials were accepted, but this
+/// device cannot keep them, so reporting a successful sign-in would sign the
+/// user out again on the next launch (#100, #102).
+class SessionStoreException implements Exception {
+  final String message;
+  final String? code;
+  final Object? cause;
+
+  const SessionStoreException(this.message, {this.code, this.cause});
+
+  @override
+  String toString() => 'SessionStoreException($message)';
+}
+
 /// Exception thrown by data sources, converted to a [Failure] by the
 /// repository layer.
 ///

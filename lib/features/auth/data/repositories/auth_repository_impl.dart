@@ -4,6 +4,7 @@ import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
+import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/storage/reading_history_store.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dart';
@@ -168,11 +169,25 @@ class AuthRepositoryImpl implements AuthRepository {
     // must not leak into the next account on a shared device.
     final signingOutUserId = remoteDataSource.currentSession?.userId;
     try {
-      await remoteDataSource.logout();
+      final cleared = await remoteDataSource.logout();
       // Delete only the account captured before the async logout. A different
       // account can sign in while cleanup is in flight.
       await _clearCachedProfile(signingOutUserId);
       await _clearReadingHistory(signingOutUserId);
+      if (cleared != SessionClearResult.cleared) {
+        // This launch is signed out, but the durable copy survived (or could
+        // not be disowned). Reporting a clean sign-out here is what lets an
+        // account come back after a restart without the user understanding
+        // why (#102).
+        return left(
+          Failure(
+            '已退出登录，但本地会话副本未能完全清除。重启后若仍显示该账号，请再次退出。',
+            kind: FailureKind.storage,
+            code: 'auth.localSignOutIncomplete',
+            cause: cleared,
+          ),
+        );
+      }
       return right(null);
     } on ServerException catch (e) {
       return left(e.toFailure());

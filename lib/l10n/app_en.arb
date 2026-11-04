@@ -437,6 +437,7 @@
   "errorAuthRequired": "Please sign in",
   "errorAuthSessionExpired": "Your session has expired — please sign in again",
   "errorAuthSessionChanged": "The signed-in account changed. The request may already have completed; check before retrying.",
+  "errorLocalSignOutIncomplete": "Signed out on this device, but a local copy of the session could not be removed. If the app still shows this account after a restart, sign out again.",
   "errorAuthRateLimited": "Too many attempts — try again later",
   "errorSignupRateLimited": "Too many sign-ups — try again later",
   "errorProfileSave": "Failed to save your profile: {reason}",

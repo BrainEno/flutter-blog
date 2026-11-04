@@ -22,7 +22,7 @@ void main() {
       when(
         () => storage.read(key: 'nowave_session_v1'),
       ).thenAnswer((_) async => NowaveSessionManager.encodeSession(_session()));
-      final store = SecureNowaveSessionStore(storage);
+      final store = SecureNowaveSessionStore(storage: storage);
 
       final session = await store.read();
 
@@ -35,7 +35,7 @@ void main() {
       when(
         () => storage.read(key: 'nowave_session_v1'),
       ).thenAnswer((_) async => 'not json {');
-      final store = SecureNowaveSessionStore(storage);
+      final store = SecureNowaveSessionStore(storage: storage);
 
       expect(await store.read(), isNull);
     });
@@ -48,7 +48,7 @@ void main() {
           value: any(named: 'value'),
         ),
       ).thenAnswer((_) async {});
-      final store = SecureNowaveSessionStore(storage);
+      final store = SecureNowaveSessionStore(storage: storage);
 
       await store.write(_session());
 
@@ -68,11 +68,41 @@ void main() {
       when(
         () => storage.delete(key: 'nowave_session_v1'),
       ).thenAnswer((_) async {});
-      final store = SecureNowaveSessionStore(storage);
+      final store = SecureNowaveSessionStore(storage: storage);
 
       await store.clear();
 
       verify(() => storage.delete(key: 'nowave_session_v1')).called(1);
+    });
+
+    test('the canary slot is separate from the session slot', () async {
+      final storage = MockFlutterSecureStorage();
+      when(
+        () => storage.write(
+          key: SecureNowaveSessionStore.canaryKey,
+          value: any(named: 'value'),
+        ),
+      ).thenAnswer((_) async {});
+      final canary = SecureNowaveSessionStore(
+        storage: storage,
+        key: SecureNowaveSessionStore.canaryKey,
+      );
+
+      await canary.write(_session());
+
+      // The startup probe must never write over the real session.
+      verify(
+        () => storage.write(
+          key: SecureNowaveSessionStore.canaryKey,
+          value: any(named: 'value'),
+        ),
+      ).called(1);
+      verifyNever(
+        () => storage.write(
+          key: 'nowave_session_v1',
+          value: any(named: 'value'),
+        ),
+      );
     });
   });
 }

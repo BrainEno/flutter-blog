@@ -24,6 +24,24 @@ class MemorySessionStore implements NowaveSessionStore {
   }
 }
 
+class _ThrowingClearStore extends MemorySessionStore {
+  @override
+  Future<void> clear() async => throw StateError('storage unavailable');
+}
+
+class _SignOutResultStore extends MemorySessionStore
+    implements NowaveSessionSignOutStore {
+  _SignOutResultStore(this.result);
+
+  final SessionClearResult result;
+
+  @override
+  Future<SessionClearResult> clearForSignOut() async {
+    await super.clear();
+    return result;
+  }
+}
+
 NowaveSessionData _session({
   String refreshToken = 'refresh-1',
   String userId = 'u1',
@@ -388,6 +406,39 @@ void main() {
       expect(statuses, hasLength(1));
       expect(store.stored, isNull);
       await sub.cancel();
+    });
+
+    test('a plain store reports a clean sign-out', () async {
+      final manager = NowaveSessionManager(
+        client: clientFor(),
+        store: MemorySessionStore()..stored = _session(),
+      );
+      await manager.restore();
+
+      expect(await manager.clearForSignOut(), SessionClearResult.cleared);
+      expect(manager.currentSession, isNull);
+    });
+
+    test('a failing plain store reports a failed sign-out', () async {
+      final manager = NowaveSessionManager(
+        client: clientFor(),
+        store: _ThrowingClearStore()..stored = _session(),
+      );
+      await manager.restore();
+
+      expect(await manager.clearForSignOut(), SessionClearResult.failed);
+      // The user is signed out of this launch either way.
+      expect(manager.currentSession, isNull);
+    });
+
+    test('a store with an explicit result passes it through', () async {
+      final store = _SignOutResultStore(SessionClearResult.disowned)
+        ..stored = _session();
+      final manager = NowaveSessionManager(client: clientFor(), store: store);
+      await manager.restore();
+
+      expect(await manager.clearForSignOut(), SessionClearResult.disowned);
+      expect(manager.currentSession, isNull);
     });
   });
 

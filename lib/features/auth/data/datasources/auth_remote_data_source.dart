@@ -40,7 +40,7 @@ abstract interface class AuthRemoteDataSource {
   Future<UserModel?> getCurrentUserData();
 
   /// Revokes the session family server-side and drops the local session.
-  Future<void> logout();
+  Future<SessionClearResult> logout();
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -210,7 +210,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> logout() async {
+  Future<SessionClearResult> logout() async {
     final generation = sessionManager.sessionGeneration;
     void ensureSameSession(int expected) {
       if (sessionManager.sessionGeneration != expected &&
@@ -234,11 +234,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
     }
     ensureSameSession(generation);
-    final clearing = sessionManager.clear();
+    final clearing = sessionManager.clearForSignOut();
     final clearedGeneration = sessionManager.sessionGeneration;
-    await clearing;
+    final result = await clearing;
     // A new login may have arrived while the platform store was clearing.
     ensureSameSession(clearedGeneration);
+    // The caller must know whether a restart could bring the account back:
+    // "signed out" in memory is not the same as "gone from this device".
+    return result;
   }
 
   Future<NowaveTokenPair> _exchangeTokens(

@@ -46,6 +46,8 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
       return l10n.errorPasswordUnsupported;
     case 'auth.passwordInProgress':
       return l10n.errorPasswordInProgress;
+    case 'auth.localSignOutIncomplete':
+      return l10n.errorLocalSignOutIncomplete;
     case 'auth.parse':
       return l10n.errorLoginParse;
     case 'auth.parse.missingUser':

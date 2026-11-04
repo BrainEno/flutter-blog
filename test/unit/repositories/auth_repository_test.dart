@@ -513,7 +513,7 @@ void main() {
       when(() => remote.currentSession).thenAnswer((_) => session);
       when(() => remote.logout()).thenAnswer((_) {
         started.complete();
-        return pending.future;
+        return pending.future.then((_) => SessionClearResult.cleared);
       });
 
       final result = repository.logout();
@@ -528,7 +528,9 @@ void main() {
     });
 
     test('a profile cleanup failure does not skip history cleanup', () async {
-      when(() => remote.logout()).thenAnswer((_) async {});
+      when(
+        () => remote.logout(),
+      ).thenAnswer((_) async => SessionClearResult.cleared);
       when(
         () => profileCache.clear(userId: 'u1'),
       ).thenThrow(StateError('locked'));
@@ -538,7 +540,9 @@ void main() {
 
     test('signs out even when the device is offline', () async {
       when(() => connection.isConnected).thenAnswer((_) async => false);
-      when(() => remote.logout()).thenAnswer((_) async {});
+      when(
+        () => remote.logout(),
+      ).thenAnswer((_) async => SessionClearResult.cleared);
 
       final result = await repository.logout();
 
@@ -548,7 +552,9 @@ void main() {
 
     test('online logout goes through the data source', () async {
       when(() => connection.isConnected).thenAnswer((_) async => true);
-      when(() => remote.logout()).thenAnswer((_) async {});
+      when(
+        () => remote.logout(),
+      ).thenAnswer((_) async => SessionClearResult.cleared);
 
       final result = await repository.logout();
 
@@ -557,6 +563,34 @@ void main() {
       // The captured account, not a later sign-in, owns the cleanup.
       verify(() => profileCache.clear(userId: 'u1')).called(1);
       verify(() => history.clear(userId: 'u1')).called(1);
+    });
+
+    test('a surviving local copy is not a clean sign-out', () async {
+      when(() => remote.logout()).thenAnswer((_) async {
+        return SessionClearResult.disowned;
+      });
+
+      final result = await repository.logout();
+
+      final failure = result.getLeft().toNullable();
+      expect(failure?.code, 'auth.localSignOutIncomplete');
+      expect(failure?.kind, FailureKind.storage);
+      // The per-account cleanup still ran: the next account starts clean.
+      verify(() => profileCache.clear(userId: 'u1')).called(1);
+      verify(() => history.clear(userId: 'u1')).called(1);
+    });
+
+    test('a failed local clear is reported, not hidden', () async {
+      when(() => remote.logout()).thenAnswer((_) async {
+        return SessionClearResult.failed;
+      });
+
+      final result = await repository.logout();
+
+      expect(
+        result.getLeft().toNullable()?.code,
+        'auth.localSignOutIncomplete',
+      );
     });
 
     test('a data source failure surfaces as a failure', () async {
