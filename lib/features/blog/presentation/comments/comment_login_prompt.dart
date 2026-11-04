@@ -1,0 +1,35 @@
+import 'package:belog/core/l10n/l10n.dart';
+import 'package:flutter/material.dart';
+
+/// Shown instead of [CommentComposer] to signed-out readers.
+class CommentLoginPrompt extends StatelessWidget {
+  const CommentLoginPrompt({super.key, this.onRequestLogin});
+
+  /// Opens the login flow; null when the host does not offer it.
+  final VoidCallback? onRequestLogin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      decoration: BoxDecoration(
+        color: Colors.grey.withAlpha((0.1 * 255).toInt()),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Text(
+            context.l10n.loginToComment,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          FilledButton.tonal(
+            onPressed: onRequestLogin,
+            child: Text(context.l10n.goSignIn),
+          ),
+        ],
+      ),
+    );
+  }
+}
