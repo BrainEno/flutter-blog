@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
@@ -7,7 +5,10 @@ import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/utils/retry_on_connection_closed.dart';
+import 'package:belog/features/blog/data/datasources/article_like_store.dart';
+import 'package:belog/features/blog/data/datasources/article_payload.dart';
 import 'package:belog/features/blog/data/datasources/latest_feed_cursor.dart';
+import 'package:belog/features/blog/data/datasources/tag_resolver.dart';
 import 'package:belog/features/blog/data/datasources/nowave_article_codec.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/data/models/deleted_blog_model.dart';
@@ -19,8 +20,12 @@ import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart'
     show kBlogPageSize;
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart'
     show kMaxSearchResults;
+import 'package:belog/core/common/entities/image_upload.dart';
 
-/// Remote data source against the no-wave `apps/api` REST backend.
+// HTTP status codes are spelled out below (401/400/404) so the file does not
+// have to import `dart:io` just for its constants.
+//
+// Remote data source against the no-wave `apps/api` REST backend.
 ///
 /// Addressing rules (see docs/supabase-to-nowave-migration.md):
 /// - public reads and likes address an article by its slug, which is
@@ -39,8 +44,7 @@ abstract interface class BlogRemoteDataSource {
   /// Uploads a cover image (`POST /me/media`, raw bytes + MIME type) and
   /// returns its immutable public URL. The server re-encodes to WebP.
   Future<String> uploadBlogImage({
-    required File image,
-    String? mimeType,
+    required ImageUpload image,
     NowaveSessionFence? sessionFence,
   });
 
@@ -143,6 +147,16 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
 
   BlogRemoteDataSourceImpl(this.client, {this.identity});
 
+  /// Tag name -> id resolution, cached for the app session.
+  late final NowaveTagResolver _tags = NowaveTagResolver(client);
+
+  /// The viewer's like state, with one in-flight toggle per article.
+  late final ArticleLikeStore _likes = ArticleLikeStore(
+    client: client,
+    requireActiveFence: requireActiveFence,
+    identity: identity,
+  );
+
   /// The account a `/me`-scoped call is made for, right now.
   ///
   /// Refused when nobody is signed in: sending the request anyway would run it
@@ -152,7 +166,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     final userId = active?.activeUserId ?? '';
     if (active == null || userId.isEmpty) {
       throw const NowaveApiException(
-        statusCode: HttpStatus.unauthorized,
+        statusCode: 401,
         code: 'UNAUTHENTICATED',
         message: 'No account is active for this operation.',
       );
@@ -163,29 +177,13 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     );
   }
 
-  /// In-memory cache of tag name -> tag object, so publishing several
-  /// articles does not re-create/resolve the same tags each time.
-  final Map<String, Map<String, dynamic>> _tagByName = {};
-
-  /// In-flight `POST /tags` resolutions by tag name, so concurrent
-  /// publishes share one request per name.
-  final Map<(String, int?, String?), Future<Map<String, dynamic>>> _tagLookups =
-      {};
-
-  /// One in-flight like toggle per article. The API sets an explicit like
-  /// state rather than toggling, so two overlapping read-then-write pairs
-  /// would both read the same `current` and write the same new state -
-  /// silently dropping one of the taps. Serializing per slug keeps every
-  /// tap meaningful.
-  final Map<String, Future<bool>> _likeToggleBySlug = {};
-
   @override
   Future<BlogModel> uploadBlog(
     BlogModel blog, {
     NowaveSessionFence? sessionFence,
   }) async {
     try {
-      final tagIds = await _resolveTagIds(blog.tags, sessionFence);
+      final tagIds = await _tags.resolveIds(blog.tags, sessionFence);
       final body = <String, dynamic>{
         'title': blog.title,
         'contentBlocks': blogToContentBlocks(
@@ -204,7 +202,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
               body,
               sessionFence: sessionFence,
             );
-      return BlogModel.fromNowaveArticle(_articleMap(data));
+      return BlogModel.fromNowaveArticle(articlePayloadMap(data));
     } catch (e) {
       throw mapToServerException(e);
     }
@@ -212,20 +210,18 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
 
   @override
   Future<String> uploadBlogImage({
-    required File image,
-    String? mimeType,
+    required ImageUpload image,
     NowaveSessionFence? sessionFence,
   }) async {
     try {
-      final bytes = await image.readAsBytes();
       // A lost response does not prove the upload failed: the server may
       // already have stored a new asset. Media has no idempotency key yet,
       // so do not silently create another one on a transport retry.
       final asset = sessionFence == null
-          ? await client.uploadMedia(bytes, mimeType ?? 'image/jpeg')
+          ? await client.uploadMedia(image.bytes, image.mimeType)
           : await client.uploadMedia(
-              bytes,
-              mimeType ?? 'image/jpeg',
+              image.bytes,
+              image.mimeType,
               sessionFence: sessionFence,
             );
       return client.mediaUri(asset.id).toString();
@@ -248,7 +244,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           },
         ),
       );
-      return _articleList(data);
+      return articlePayloadList(data);
     } catch (e) {
       throw mapToServerException(e);
     }
@@ -272,14 +268,13 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       if (data is! List || data.any((row) => row is! Map<String, dynamic>)) {
         throw const LatestFeedCursorUnavailable();
       }
-      return continuation.advance(_articleList(data));
+      return continuation.advance(articlePayloadList(data));
     } on LatestFeedCursorUnavailable {
       rethrow;
     } on LatestFeedCursorTooDense {
       rethrow;
     } on NowaveApiException catch (error) {
-      if (error.statusCode == HttpStatus.badRequest &&
-          error.code == 'BAD_USER_INPUT') {
+      if (error.statusCode == 400 && error.code == 'BAD_USER_INPUT') {
         throw const LatestFeedCursorUnavailable();
       }
       throw mapToServerException(error);
@@ -317,7 +312,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           () => client.getJson(path, query: query),
         );
       }
-      return _articleList(data);
+      return articlePayloadList(data);
     } catch (e) {
       throw mapToServerException(e);
     }
@@ -339,7 +334,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
               query: {'locale': 'zh-CN'},
               sessionFence: sessionFence,
             );
-      return BlogModel.fromNowaveArticle(_articleMap(data));
+      return BlogModel.fromNowaveArticle(articlePayloadMap(data));
     } catch (e) {
       throw mapToServerException(e);
     }
@@ -352,7 +347,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         '/articles/$slug/related',
         query: {'limit': '$_kRelatedLimit', 'locale': 'zh-CN'},
       );
-      return _articleList(data);
+      return articlePayloadList(data);
     } catch (e) {
       throw mapToServerException(e);
     }
@@ -365,7 +360,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         '/authors/${Uri.encodeComponent(posterId)}/articles',
         query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
       );
-      return _articleList(data);
+      return articlePayloadList(data);
     } catch (e) {
       throw mapToServerException(e);
     }
@@ -379,7 +374,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         expectedUserId: userId,
         query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
       );
-      return _articleList(data);
+      return articlePayloadList(data);
     } on NowaveApiException catch (error) {
       // A deployment that predates the account-scoped list still serves the
       // public author list. "My articles" keeps working there; only server
@@ -447,9 +442,9 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           'locale': 'zh-CN',
         },
       );
-      return _articleList(data);
+      return articlePayloadList(data);
     } catch (e) {
-      if (e is NowaveApiException && e.statusCode == HttpStatus.notFound) {
+      if (e is NowaveApiException && e.statusCode == 404) {
         // The tag disappeared between resolving it and reading its page.
         throw const ServerException(
           '这个标签已不存在',
@@ -476,7 +471,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           'locale': 'zh-CN',
         },
       );
-      return _articleList(data);
+      return articlePayloadList(data);
     } catch (e) {
       throw mapToServerException(e);
     }
@@ -502,7 +497,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           code: 'article.structuredEditUnsupported',
         );
       }
-      final tagIds = await _resolveTagIds(blog.tags, sessionFence);
+      final tagIds = await _tags.resolveIds(blog.tags, sessionFence);
       final body = <String, dynamic>{
         'slug': blog.id,
         'title': blog.title,
@@ -525,7 +520,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
               body,
               sessionFence: sessionFence,
             );
-      return BlogModel.fromNowaveArticle(_articleMap(data));
+      return BlogModel.fromNowaveArticle(articlePayloadMap(data));
     } catch (e) {
       throw mapToServerException(e);
     }
@@ -604,7 +599,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         query: {'locale': 'zh-CN'},
         sessionFence: fence,
       );
-      return BlogModel.fromNowaveArticle(_articleMap(data));
+      return BlogModel.fromNowaveArticle(articlePayloadMap(data));
     } catch (e) {
       throw mapToServerException(e);
     }
@@ -630,169 +625,17 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
                 query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
               ),
             );
-      return _articleList(data);
+      return articlePayloadList(data);
     } catch (e) {
       throw mapToServerException(e);
     }
   }
 
   @override
-  Future<bool> toggleLikeBlog(String userId, String blogId) {
-    // Share the in-flight toggle so concurrent callers queue behind it
-    // instead of racing each other; the slot frees on completion.
-    final inFlight = _likeToggleBySlug[blogId];
-    if (inFlight != null) {
-      return inFlight;
-    }
-    return _likeToggleBySlug[blogId] = _toggleLike(userId, blogId).whenComplete(
-      () {
-        _likeToggleBySlug.remove(blogId);
-      },
-    );
-  }
-
-  Future<bool> _toggleLike(String userId, String blogId) async {
-    try {
-      // The API sets an explicit like state rather than toggling, so the
-      // current server state is read first and the opposite is written.
-      // The response is the authoritative post-state. Like state is the
-      // viewer's own, so both halves name the account they belong to: a tap
-      // made for account A must never land as B's like (#104).
-      final fence = _viewerFenceFor(userId);
-      final current = await _likeInfo(blogId, fence);
-      final data = fence == null
-          ? await client.putJson('/articles/$blogId/like', {'liked': !current})
-          : await client.putJson('/articles/$blogId/like', {
-              'liked': !current,
-            }, sessionFence: fence);
-      final map = _articleMap(data);
-      return map['likedByViewer'] as bool? ?? !current;
-    } catch (e) {
-      throw mapToServerException(e);
-    }
-  }
+  Future<bool> toggleLikeBlog(String userId, String blogId) =>
+      _likes.toggle(userId, blogId);
 
   @override
-  Future<bool> isBlogLikedByUser(String userId, String blogId) async {
-    try {
-      return await _likeInfo(blogId, _viewerFenceFor(userId));
-    } catch (e) {
-      throw mapToServerException(e);
-    }
-  }
-
-  /// The fence for an operation that names its viewer.
-  ///
-  /// Returns null when no identity was injected: those callers predate the
-  /// fence and keep the old unfenced behaviour (see [identity]).
-  NowaveSessionFence? _viewerFenceFor(String userId) {
-    if (identity == null) return null;
-    final fence = requireActiveFence();
-    if (userId.isNotEmpty && userId != fence.userId) {
-      throw const NowaveApiException(
-        statusCode: HttpStatus.conflict,
-        code: 'SESSION_CHANGED',
-        message: 'The like was started by a different account.',
-      );
-    }
-    return fence;
-  }
-
-  Future<bool> _likeInfo(String slug, [NowaveSessionFence? fence]) async {
-    final data = fence == null
-        ? await client.getJson(
-            '/articles/$slug/like',
-            query: {'locale': 'zh-CN'},
-          )
-        : await client.getJsonForViewer(
-            '/articles/$slug/like',
-            expectedUserId: fence.userId,
-            query: {'locale': 'zh-CN'},
-          );
-    return _articleMap(data)['likedByViewer'] as bool? ?? false;
-  }
-
-  /// Resolves tag names to tag ids via `POST /tags` (create-or-reuse), with
-  /// an in-memory cache. Concurrent calls for the same name share one
-  /// request (the create-or-reuse endpoint is idempotent, but halving the
-  /// traffic is still worth it).
-  Future<List<String>> _resolveTagIds(
-    List<String> tags,
-    NowaveSessionFence? sessionFence,
-  ) async {
-    final names = tags
-        .map((tag) => tag.trim())
-        .where((tag) => tag.isNotEmpty)
-        .toSet();
-    if (names.isEmpty) return const <String>[];
-    final ids = <String>[];
-    for (final name in names) {
-      final cached = _tagByName[name];
-      if (cached != null) {
-        ids.add(cached['id'] as String);
-        continue;
-      }
-      final lookup = _claimTag(name, sessionFence);
-      final tag = await lookup;
-      _tagByName[name] = tag;
-      ids.add(tag['id'] as String);
-    }
-    return ids;
-  }
-
-  /// Returns the in-flight (or freshly started) resolution for [name].
-  ///
-  /// The slot is released on success AND failure: a failed resolution
-  /// must not poison the name for the rest of the app session, it just
-  /// propagates its error to whoever joined it.
-  Future<Map<String, dynamic>> _claimTag(
-    String name,
-    NowaveSessionFence? sessionFence,
-  ) {
-    // A new login must not join the previous account's in-flight lookup.
-    final key = (name, sessionFence?.generation, sessionFence?.userId);
-    final inFlight = _tagLookups[key];
-    if (inFlight != null) {
-      return inFlight;
-    }
-    return _tagLookups[key] = _resolveTag(name, sessionFence).whenComplete(() {
-      _tagLookups.remove(key);
-    });
-  }
-
-  Future<Map<String, dynamic>> _resolveTag(
-    String name,
-    NowaveSessionFence? sessionFence,
-  ) async {
-    final body = {'name': name};
-    final data = sessionFence == null
-        ? await client.postJson('/tags', body)
-        : await client.postJson('/tags', body, sessionFence: sessionFence);
-    return _articleMap(data);
-  }
-
-  Map<String, dynamic> _articleMap(dynamic data) {
-    if (data is Map<String, dynamic>) return data;
-    throw ServerException(
-      '服务器返回了无法解析的数据',
-      kind: FailureKind.server,
-      code: 'server.parse',
-      cause: data,
-    );
-  }
-
-  List<BlogModel> _articleList(dynamic data) {
-    if (data is List) {
-      return data
-          .whereType<Map<String, dynamic>>()
-          .map(BlogModel.fromNowaveArticle)
-          .toList();
-    }
-    throw ServerException(
-      '服务器返回了无法解析的数据',
-      kind: FailureKind.server,
-      code: 'server.parse',
-      cause: data,
-    );
-  }
+  Future<bool> isBlogLikedByUser(String userId, String blogId) =>
+      _likes.isLiked(userId, blogId);
 }

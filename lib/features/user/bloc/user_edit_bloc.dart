@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:belog/core/common/entities/image_upload.dart';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/error/failures.dart';
@@ -61,7 +61,6 @@ class UserEditBloc extends Bloc<UserEditEvent, UserEditState> {
       userId: (appUserCubit.state as AppUserLoggedIn).user.id,
       name: event.name,
       avatar: event.avatar,
-      avatarMimeType: event.avatarMimeType,
       bio: event.bio ?? '',
       website: event.website ?? '',
       sessionFence: fence,

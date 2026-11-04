@@ -1,11 +1,10 @@
-import 'dart:io';
-
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/usecase/usecase.dart';
 import 'package:belog/features/user/domain/repositories/user_repository.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:belog/core/common/entities/image_upload.dart';
 
 class EditUserUseCase implements UseCase<User, EditUserParams> {
   final UserRepository repository;
@@ -18,7 +17,6 @@ class EditUserUseCase implements UseCase<User, EditUserParams> {
       userId: params.userId,
       name: params.name,
       avatar: params.avatar,
-      avatarMimeType: params.avatarMimeType,
       bio: params.bio,
       website: params.website,
       sessionFence: params.sessionFence,
@@ -29,11 +27,7 @@ class EditUserUseCase implements UseCase<User, EditUserParams> {
 class EditUserParams {
   final String userId;
   final String name;
-  final File? avatar;
-
-  /// MIME type reported by the picker; uploaded as the object's
-  /// contentType.
-  final String? avatarMimeType;
+  final ImageUpload? avatar;
 
   /// Public introduction; sent as-is so the backend never has to guess.
   final String bio;
@@ -51,6 +45,5 @@ class EditUserParams {
     required this.website,
     required this.sessionFence,
     this.avatar,
-    this.avatarMimeType,
   });
 }

@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
@@ -40,11 +41,11 @@ void main() {
   late MockLocal local;
   late MockConnection connection;
   late BlogRepositoryImpl repository;
-  final cover = File('/nonexistent.jpg');
+  final cover = ImageUpload(bytes: Uint8List(3), mimeType: 'image/jpeg');
 
   setUpAll(() {
     registerFallbackValue(_blog());
-    registerFallbackValue(File('/nonexistent.jpg'));
+    registerFallbackValue(cover);
   });
 
   setUp(() {
@@ -58,10 +59,7 @@ void main() {
   group('uploadBlog', () {
     test('uploads the cover first, then creates the article with it', () async {
       when(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-          mimeType: any(named: 'mimeType'),
-        ),
+        () => remote.uploadBlogImage(image: any(named: 'image')),
       ).thenAnswer((_) async => _kNewCoverUrl);
       when(() => remote.uploadBlog(any())).thenAnswer(
         (invocation) async => invocation.positionalArguments[0] as BlogModel,
@@ -73,17 +71,13 @@ void main() {
         content: '正文',
         posterId: 'u1',
         tags: const ['诗歌'],
-        imageMimeType: 'image/jpeg',
       );
 
       expect(result.isRight(), isTrue);
       // Capture through verifyInOrder: a separate verify() afterwards
       // cannot match calls the in-order check already consumed.
       final order = verifyInOrder([
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-          mimeType: 'image/jpeg',
-        ),
+        () => remote.uploadBlogImage(image: any(named: 'image')),
         () => remote.uploadBlog(captureAny()),
       ]);
       final created = order.last.captured.single as BlogModel;
@@ -105,12 +99,7 @@ void main() {
       );
 
       expect(result.isRight(), isTrue);
-      verifyNever(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-          mimeType: any(named: 'mimeType'),
-        ),
-      );
+      verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
       final created =
           verify(() => remote.uploadBlog(captureAny())).captured.single
               as BlogModel;
@@ -120,10 +109,7 @@ void main() {
     test('a failed article create surfaces the failure (media is '
         'server-managed, nothing to roll back client-side)', () async {
       when(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-          mimeType: any(named: 'mimeType'),
-        ),
+        () => remote.uploadBlogImage(image: any(named: 'image')),
       ).thenAnswer((_) async => _kNewCoverUrl);
       when(
         () => remote.uploadBlog(any()),
@@ -135,7 +121,6 @@ void main() {
         content: '正文',
         posterId: 'u1',
         tags: const ['诗歌'],
-        imageMimeType: 'image/jpeg',
       );
 
       expect(result.isLeft(), isTrue);
@@ -153,12 +138,7 @@ void main() {
       );
 
       expect(result.isLeft(), isTrue);
-      verifyNever(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-          mimeType: any(named: 'mimeType'),
-        ),
-      );
+      verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
       verifyNever(() => remote.uploadBlog(any()));
     });
   });
@@ -184,12 +164,7 @@ void main() {
               expect(failure.code, 'article.structuredEditUnsupported'),
           (_) => fail('unsupported content must not be overwritten'),
         );
-        verifyNever(
-          () => remote.uploadBlogImage(
-            image: any(named: 'image'),
-            mimeType: any(named: 'mimeType'),
-          ),
-        );
+        verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
         verifyNever(() => remote.editBlog(any()));
       },
     );
@@ -208,12 +183,7 @@ void main() {
       );
 
       expect(result.isLeft(), isTrue);
-      verifyNever(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-          mimeType: any(named: 'mimeType'),
-        ),
-      );
+      verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
       verifyNever(() => remote.editBlog(any()));
     });
 
@@ -222,10 +192,7 @@ void main() {
         () => remote.getBlogById('my-slug'),
       ).thenAnswer((_) async => _blog());
       when(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-          mimeType: any(named: 'mimeType'),
-        ),
+        () => remote.uploadBlogImage(image: any(named: 'image')),
       ).thenAnswer((_) async => _kNewCoverUrl);
       when(() => remote.editBlog(any())).thenAnswer(
         (invocation) async => invocation.positionalArguments[0] as BlogModel,
@@ -237,16 +204,12 @@ void main() {
         title: '新标题',
         content: '新正文',
         tags: const ['诗歌'],
-        imageMimeType: 'image/png',
       );
 
       expect(result.isRight(), isTrue);
       final order = verifyInOrder([
         () => remote.getBlogById('my-slug'),
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-          mimeType: 'image/png',
-        ),
+        () => remote.uploadBlogImage(image: any(named: 'image')),
         () => remote.editBlog(captureAny()),
       ]);
       final updated = order.last.captured.single as BlogModel;
@@ -274,12 +237,7 @@ void main() {
       );
 
       expect(result.isRight(), isTrue);
-      verifyNever(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-          mimeType: any(named: 'mimeType'),
-        ),
-      );
+      verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
       final updated =
           verify(() => remote.editBlog(captureAny())).captured.single
               as BlogModel;

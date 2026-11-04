@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
@@ -54,20 +55,17 @@ NowaveApiClient _client(
 );
 
 void main() {
-  late Directory temporaryDirectory;
-  late File image;
+  late ImageUpload image;
 
-  setUp(() async {
-    temporaryDirectory = await Directory.systemTemp.createTemp('belog-media-');
-    image = File('${temporaryDirectory.path}/cover.png');
-    await image.writeAsBytes([1, 2, 3]);
+  setUp(() {
+    image = ImageUpload(
+      bytes: Uint8List.fromList([1, 2, 3]),
+      mimeType: 'image/png',
+    );
     AppLogger.clearDiagnostics();
   });
 
-  tearDown(() async {
-    AppLogger.clearDiagnostics();
-    await temporaryDirectory.delete(recursive: true);
-  });
+  tearDown(AppLogger.clearDiagnostics);
 
   test(
     'a lost cover response does not silently create a second asset',
@@ -89,7 +87,7 @@ void main() {
       final dataSource = BlogRemoteDataSourceImpl(_client(httpClient));
 
       await expectLater(
-        dataSource.uploadBlogImage(image: image, mimeType: 'image/png'),
+        dataSource.uploadBlogImage(image: image),
         throwsA(
           isA<ServerException>()
               .having((e) => e.kind, 'kind', FailureKind.network)
@@ -121,7 +119,7 @@ void main() {
     );
 
     await expectLater(
-      dataSource.uploadAvatar(image: image, mimeType: 'image/png'),
+      dataSource.uploadAvatar(image: image),
       throwsA(
         isA<ServerException>().having(
           (e) => e.kind,
@@ -170,7 +168,7 @@ void main() {
       final dataSource = BlogRemoteDataSourceImpl(_client(httpClient));
 
       expect(
-        await dataSource.uploadBlogImage(image: image, mimeType: 'image/png'),
+        await dataSource.uploadBlogImage(image: image),
         'https://api.example.invalid/api/v1/media/asset-1',
       );
       expect(requests, 1);
@@ -191,7 +189,7 @@ void main() {
       );
 
       expect(
-        await dataSource.uploadAvatar(image: image, mimeType: 'image/png'),
+        await dataSource.uploadAvatar(image: image),
         'https://api.example.invalid/api/v1/media/asset-1',
       );
       expect(requests, 1);

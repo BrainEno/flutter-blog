@@ -14,18 +14,13 @@ class UserEditSubmitted extends UserEditEvent {
   final String name;
   final String? bio;
   final String? website;
-  final File? avatar;
-
-  /// MIME type reported by the picker; uploaded as the object's
-  /// contentType.
-  final String? avatarMimeType;
+  final ImageUpload? avatar;
 
   const UserEditSubmitted({
     required this.name,
     this.bio,
     this.website,
     this.avatar,
-    this.avatarMimeType,
   });
 
   @override

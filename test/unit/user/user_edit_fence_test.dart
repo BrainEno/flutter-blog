@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
@@ -75,7 +76,7 @@ void main() {
   late _MemoryStore store;
   late NowaveSessionManager manager;
   late List<String> requests;
-  late File avatar;
+  late ImageUpload avatar;
 
   /// Builds a client whose behaviour per path is supplied by [handler]; the
   /// session manager is the same object the profile form fences against.
@@ -106,18 +107,16 @@ void main() {
       ),
       store: store,
     );
-    final stamp = DateTime.now().microsecondsSinceEpoch;
-    avatar = File('${Directory.systemTemp.path}/fence_avatar_$stamp.jpg');
-    await avatar.writeAsBytes(const [1, 2, 3]);
-    addTearDown(() async {
-      if (await avatar.exists()) await avatar.delete();
-    });
+    avatar = ImageUpload(
+      bytes: Uint8List.fromList(const [1, 2, 3]),
+      mimeType: 'image/jpeg',
+    );
   });
 
   Future<void> pumpSave({
     required NowaveApiClient client,
     required AppUserCubit cubit,
-    File? avatarFile,
+    ImageUpload? avatarFile,
   }) async {
     final repository = UserRepositoryImpl(
       UserRemoteDataSourceImpl(client, manager),

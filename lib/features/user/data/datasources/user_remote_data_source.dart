@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
@@ -7,6 +5,7 @@ import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
+import 'package:belog/core/common/entities/image_upload.dart';
 
 /// User profile operations against the no-wave backend.
 ///
@@ -22,8 +21,7 @@ abstract interface class UserRemoteDataSource {
   /// Uploads an avatar (`POST /me/media`, raw bytes + MIME type) and
   /// returns its immutable public URL. The server re-encodes to WebP.
   Future<String> uploadAvatar({
-    required File image,
-    String? mimeType,
+    required ImageUpload image,
     NowaveSessionFence? sessionFence,
   });
 
@@ -57,15 +55,13 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
 
   @override
   Future<String> uploadAvatar({
-    required File image,
-    String? mimeType,
+    required ImageUpload image,
     NowaveSessionFence? sessionFence,
   }) async {
     try {
-      final bytes = await image.readAsBytes();
       final asset = await client.uploadMedia(
-        bytes,
-        mimeType ?? 'image/jpeg',
+        image.bytes,
+        image.mimeType,
         sessionFence: sessionFence,
       );
       return client.mediaUri(asset.id).toString();

@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
@@ -25,7 +27,9 @@ void main() {
   late UserRepositoryImpl repository;
 
   setUpAll(() {
-    registerFallbackValue(File('/nonexistent.jpg'));
+    registerFallbackValue(
+      ImageUpload(bytes: Uint8List(3), mimeType: 'image/jpeg'),
+    );
     registerFallbackValue(
       UserModel(
         id: 'fallback',
@@ -71,7 +75,7 @@ void main() {
           name: 'n',
           bio: '旧简介',
           website: '',
-          avatar: File('/nonexistent.png'),
+          avatar: ImageUpload(bytes: Uint8List(3), mimeType: 'image/jpeg'),
         );
         result.fold(
           (failure) => expect(failure.message, isNot(contains('private'))),
@@ -184,7 +188,6 @@ void main() {
         when(
           () => remote.uploadAvatar(
             image: any(named: 'image'),
-            mimeType: 'image/jpeg',
             sessionFence: any(named: 'sessionFence'),
           ),
         ).thenAnswer((_) async => newAvatarUrl);
@@ -204,8 +207,7 @@ void main() {
           name: '新名字',
           bio: '旧简介',
           website: '',
-          avatar: File('/nonexistent.jpg'),
-          avatarMimeType: 'image/jpeg',
+          avatar: ImageUpload(bytes: Uint8List(3), mimeType: 'image/jpeg'),
         );
 
         expect(result.isRight(), isTrue);
@@ -214,7 +216,6 @@ void main() {
         final order = verifyInOrder([
           () => remote.uploadAvatar(
             image: any(named: 'image'),
-            mimeType: 'image/jpeg',
             sessionFence: any(named: 'sessionFence'),
           ),
           () => remote.editUserInfo(
