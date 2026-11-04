@@ -22,3 +22,12 @@ final class UserLikedBlogs extends BlogLikedEvent {
 
   UserLikedBlogs({required this.userId});
 }
+
+/// The signed-in account changed: the like state and saved list the bloc
+/// holds belong to the previous viewer and must go.
+final class BlogLikedSessionChanged extends BlogLikedEvent {
+  /// The account signed in now, or null when nobody is.
+  final String? viewerId;
+
+  BlogLikedSessionChanged({required this.viewerId});
+}

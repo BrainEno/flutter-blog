@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/nowave/nowave_session.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/domain/usecases/edit_user_usecase.dart';
 import 'package:belog/features/user/presentation/pages/edit_user_info_page.dart';
@@ -12,6 +16,21 @@ import 'package:fpdart/fpdart.dart';
 import 'package:mocktail/mocktail.dart';
 
 class _MockEditUserUseCase extends Mock implements EditUserUseCase {}
+
+/// A signed-in session for the form: the bloc fences the save with it.
+class _FakeSession implements NowaveSessionIdentity {
+  @override
+  String? get activeUserId => 'u1';
+
+  @override
+  String? get accessToken => 'token';
+
+  @override
+  int get sessionGeneration => 1;
+
+  @override
+  Stream<void> get identityChanges => const Stream<void>.empty();
+}
 
 User _user({
   String name = '旧名字',
@@ -33,14 +52,24 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(
-      EditUserParams(userId: '', name: '', bio: '', website: ''),
+      EditUserParams(
+        userId: '',
+        name: '',
+        bio: '',
+        website: '',
+        sessionFence: const NowaveSessionFence(userId: '', generation: 0),
+      ),
     );
   });
 
   setUp(() {
     useCase = _MockEditUserUseCase();
     appUser = AppUserCubit()..updateUser(_user());
-    bloc = UserEditBloc(editUserUseCase: useCase, appUserCubit: appUser);
+    bloc = UserEditBloc(
+      editUserUseCase: useCase,
+      appUserCubit: appUser,
+      sessionIdentity: _FakeSession(),
+    );
   });
 
   Future<void> pumpPage(WidgetTester tester) async {

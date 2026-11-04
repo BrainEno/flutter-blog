@@ -147,7 +147,7 @@ Future<void> initDependencies() async {
   await sessionManager.restore();
 
   _initAuth(sessionManager, apiClient, uri);
-  await _initBlog(apiClient);
+  await _initBlog(apiClient, sessionManager);
   _initComments(apiClient);
   _initAuthors(apiClient, uri);
   _initUser(apiClient, sessionManager);
@@ -262,11 +262,16 @@ void _initAuth(
     );
 }
 
-Future<void> _initBlog(NowaveApiClient apiClient) async {
+Future<void> _initBlog(
+  NowaveApiClient apiClient,
+  NowaveSessionManager sessionManager,
+) async {
   // Datasource
   serviceLocator
     ..registerFactory<BlogRemoteDataSource>(
-      () => BlogRemoteDataSourceImpl(apiClient),
+      // `/me` routes are bound to the account that is active when they are
+      // called, so an old page cannot read or write into a newer account.
+      () => BlogRemoteDataSourceImpl(apiClient, identity: sessionManager),
     )
     ..registerFactory<BlogLocalDataSource>(
       () => SqliteBlogCache(serviceLocator<AppDatabase>()),
@@ -315,6 +320,7 @@ Future<void> _initBlog(NowaveApiClient apiClient) async {
         toggleBlogLike: serviceLocator<ToggleLikeBlog>(),
         isBlogLiked: serviceLocator<IsBlogLiked>(),
         getUserLikedBlogs: serviceLocator<GetUserLikedBlogs>(),
+        sessionIdentity: sessionManager,
       ),
     )
     ..registerFactory(
@@ -327,6 +333,7 @@ Future<void> _initBlog(NowaveApiClient apiClient) async {
       () => RecycleBinBloc(
         getDeletedBlogs: serviceLocator<GetDeletedBlogs>(),
         restoreDeletedBlog: serviceLocator<RestoreDeletedBlog>(),
+        sessionIdentity: sessionManager,
       ),
     );
 }
@@ -425,6 +432,7 @@ void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {
       () => UserEditBloc(
         editUserUseCase: serviceLocator<EditUserUseCase>(),
         appUserCubit: serviceLocator(),
+        sessionIdentity: sessionManager,
       ),
     )
     // Data export (issue #22): profile + own articles as a JSON file.
