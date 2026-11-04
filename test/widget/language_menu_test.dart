@@ -21,10 +21,10 @@ class _MemoryStore implements LocalePreferenceStore {
 
 void main() {
   Future<LocaleBloc> pumpMenu(WidgetTester tester) async {
-    // A Chinese device makes the default ("follow system") assertions
+    // A Chinese device makes the default ("follow system") state
     // deterministic regardless of the machine running the suite.
-    tester.platformDispatcher.localeTestValue = const Locale('zh');
-    addTearDown(tester.platformDispatcher.clearLocaleTestValue);
+    tester.platformDispatcher.localesTestValue = const [Locale('zh')];
+    addTearDown(tester.platformDispatcher.clearLocalesTestValue);
     final bloc = LocaleBloc(_MemoryStore());
     addTearDown(bloc.close);
     await tester.pumpWidget(
@@ -49,54 +49,55 @@ void main() {
     return bloc;
   }
 
-  testWidgets('the menu offers system, Chinese and English', (tester) async {
-    await pumpMenu(tester);
-
+  Future<void> openMenu(WidgetTester tester) async {
     await tester.tap(find.byIcon(Icons.language));
     await tester.pumpAndSettle();
+  }
+
+  Future<void> pick(WidgetTester tester, String label) async {
+    await tester.tap(
+      find.widgetWithText(CheckedPopupMenuItem<AppLanguage>, label),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('the menu offers system, Chinese and English', (tester) async {
+    await pumpMenu(tester);
+    await openMenu(tester);
 
     expect(find.text('跟随系统'), findsOneWidget);
     expect(find.text('中文'), findsOneWidget);
     expect(find.text('English'), findsOneWidget);
-    // The active choice is ticked.
+    // Exactly the active choice is ticked.
     expect(find.byIcon(Icons.done), findsOneWidget);
   });
 
-  testWidgets('picking English switches the bloc and persists the choice', (
+  testWidgets('picking English switches the interface and persists it', (
     tester,
   ) async {
     final bloc = await pumpMenu(tester);
     expect(bloc.state.language, AppLanguage.system);
 
-    await tester.tap(find.byIcon(Icons.language));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('English'));
-    await tester.pumpAndSettle();
+    await openMenu(tester);
+    await pick(tester, 'English');
 
     expect(bloc.state.language, AppLanguage.en);
-    // The interface follows: Material chrome is now English.
-    expect(
-      Localizations.localeOf(
-        tester.element(find.byType(Scaffold)),
-      ).languageCode,
-      'en',
+    final english = Localizations.localeOf(
+      find.byType(Scaffold).evaluate().single,
     );
+    expect(english.languageCode, 'en');
   });
 
-  testWidgets('picking Chinese pins the interface to zh-CN', (tester) async {
+  testWidgets('picking Chinese pins the interface to Chinese', (tester) async {
     final bloc = await pumpMenu(tester);
 
-    await tester.tap(find.byIcon(Icons.language));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('中文'));
-    await tester.pumpAndSettle();
+    await openMenu(tester);
+    await pick(tester, '中文');
 
     expect(bloc.state.language, AppLanguage.zh);
-    expect(
-      Localizations.localeOf(
-        tester.element(find.byType(Scaffold)),
-      ).languageCode,
-      'zh',
+    final chinese = Localizations.localeOf(
+      find.byType(Scaffold).evaluate().single,
     );
+    expect(chinese.languageCode, 'zh');
   });
 }
