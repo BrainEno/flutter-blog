@@ -11,6 +11,7 @@ import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/presentation/blocs/blog/blog_bloc.dart';
+import 'package:belog/features/blog/presentation/tag_navigation.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -361,6 +362,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
             blog: blog,
             featured: articleIndex == 0,
             index: articleIndex + 1,
+            onTagTap: (tag) => openTagArticles(context, tag),
             onTap: () => context.push('/view/${blog.id}', extra: blog),
           ),
         );

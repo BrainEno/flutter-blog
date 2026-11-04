@@ -25,7 +25,10 @@ import 'package:belog/features/user/presentation/pages/author_relationships_page
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/recycle_bin_page.dart';
 import 'package:belog/features/blog/presentation/pages/saved_blogs_page.dart';
+import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
+import 'package:belog/features/blog/presentation/pages/tag_articles_page.dart';
+import 'package:belog/features/blog/presentation/tag_navigation.dart';
 import 'package:belog/features/blog/presentation/pages/user_blogs_page.dart';
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/domain/usecases/author.dart';
@@ -171,7 +174,12 @@ GoRouter createAppRouter({
                   create: (_) => serviceLocator<BlogBloc>(),
                   child: const BlogPage(),
                 ),
-                routes: [viewerRoute(), editorRoute(), authorRoute()],
+                routes: [
+                  viewerRoute(),
+                  editorRoute(),
+                  authorRoute(),
+                  tagRoute(),
+                ],
               ),
             ],
           ),
@@ -188,6 +196,7 @@ GoRouter createAppRouter({
                 routes: [
                   viewerRoute(),
                   authorRoute(),
+                  tagRoute(),
                   GoRoute(
                     path: 'authors',
                     builder: (context, state) => BlocProvider(
@@ -211,7 +220,7 @@ GoRouter createAppRouter({
                   create: (_) => serviceLocator<BlogLikedBloc>(),
                   child: const SavedBlogsPage(),
                 ),
-                routes: [viewerRoute(), authorRoute()],
+                routes: [viewerRoute(), authorRoute(), tagRoute()],
               ),
             ],
           ),
@@ -226,6 +235,7 @@ GoRouter createAppRouter({
                   viewerRoute(),
                   editorRoute(),
                   authorRoute(),
+                  tagRoute(),
                   GoRoute(
                     path: 'my-articles',
                     builder: (context, state) => MultiBlocProvider(
@@ -360,6 +370,24 @@ GoRoute authorRoute() {
           ),
         ),
     ],
+  );
+}
+
+/// The tag article list (issue #106), nested inside every tab branch so a tag
+/// tapped in the feed, search results, an author's page or an article pushes
+/// onto that tab's own stack and keeps the bottom bar plus its back stack.
+/// `:name` is the stored tag value, not the server slug: the slug is opaque
+/// and is resolved by the page itself.
+GoRoute tagRoute() {
+  return GoRoute(
+    path: 'tag/:name',
+    builder: (context, state) {
+      final tag = tagFromRoute(state.pathParameters['name']!, state.extra);
+      return BlocProvider(
+        create: (_) => serviceLocator<TagArticlesBloc>(),
+        child: TagArticlesPage(tag: tag),
+      );
+    },
   );
 }
 

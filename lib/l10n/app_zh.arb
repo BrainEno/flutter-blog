@@ -274,6 +274,24 @@
   "tagFiction": "小说",
   "tagOriginal": "原创",
   "tagOther": "其他",
+  "tagBrowseSemantics": "浏览标签「{tag}」的文章",
+  "@tagBrowseSemantics": {
+    "placeholders": {
+      "tag": { "type": "String" }
+    }
+  },
+  "tagArticlesEmpty": "「{tag}」下还没有文章",
+  "@tagArticlesEmpty": {
+    "placeholders": {
+      "tag": { "type": "String" }
+    }
+  },
+  "tagUnknown": "找不到标签「{tag}」",
+  "@tagUnknown": {
+    "placeholders": {
+      "tag": { "type": "String" }
+    }
+  },
   "errorNetworkOffline": "无法连接到网络，请检查网络设置",
   "errorNetworkUnavailable": "网络连接不可用，请检查网络",
   "errorTimeout": "请求超时，请稍后重试",

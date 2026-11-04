@@ -8,6 +8,7 @@ import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
+import 'package:belog/features/blog/presentation/tag_navigation.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:belog/features/user/domain/entities/author_profile.dart';
 import 'package:belog/features/user/domain/entities/author_relationship.dart';
@@ -206,6 +207,8 @@ class _AuthorPageState extends State<AuthorPage> {
                                 BlogCard(
                                   blog: blogs[index],
                                   index: index + 1,
+                                  onTagTap: (tag) =>
+                                      openTagArticles(context, tag),
                                   onTap: () => context.push(
                                     shellBranchLocation(
                                       GoRouterState.of(context).uri,

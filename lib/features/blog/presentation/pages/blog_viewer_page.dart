@@ -20,6 +20,7 @@ import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.d
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_viewer/blog_viewer_cubit.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
+import 'package:belog/features/blog/presentation/tag_navigation.dart';
 import 'package:belog/features/blog/presentation/widgets/article_reader_header.dart';
 import 'package:belog/features/blog/presentation/widgets/comments_section.dart';
 import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
@@ -450,6 +451,7 @@ class _ViewerScaffoldState extends State<_ViewerScaffold>
                       ArticleReaderHeader(
                         blog: blog,
                         onAuthorTap: () => openAuthor(blog.posterId),
+                        onTagTap: (tag) => openTagArticles(context, tag),
                         titleHighlight: _reader?.highlights.first,
                         titleKey: _blockKeys.isEmpty ? null : _blockKeys.first,
                       ),

@@ -13,6 +13,8 @@ import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/data/models/deleted_blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
+import 'package:belog/features/blog/domain/entities/tag_ref.dart';
+import 'package:belog/features/blog/domain/tag_paging.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart'
     show kBlogPageSize;
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart'
@@ -75,7 +77,19 @@ abstract interface class BlogRemoteDataSource {
   /// private content and are never written to the shared article cache.
   Future<List<BlogModel>> getMyArticles({required String userId});
 
-  Future<List<BlogModel>> getBlogsByTag(String tag);
+  /// Resolves a stored tag name to its server taxonomy.
+  ///
+  /// The slug is server-generated, so it has to be looked up. The lookup is
+  /// server-side (`query=`) and pages while results come back full: a tag
+  /// that sorts past the first 100 must still resolve (#106). Null means the
+  /// server has no such tag - callers must show an explicit empty state and
+  /// never fall back to "everything".
+  Future<TagRef?> resolveTag(String name);
+
+  /// One page of a tag's published articles (`GET /tags/:slug/articles`),
+  /// newest first. Throws `tag.notFound` when the tag itself is gone, which
+  /// is distinct from a tag that exists with nothing filed under it.
+  Future<List<BlogModel>> getArticlesByTag(String slug, {required int offset});
   Future<List<BlogModel>> searchBlogs(String query);
   Future<BlogModel> editBlog(
     BlogModel blog, {
@@ -107,6 +121,9 @@ abstract interface class BlogRemoteDataSource {
 
 /// Upper bound for author/tag/liked listings (the API caps `limit` at 100).
 const int _kListLimit = 100;
+
+/// How many taxonomy pages a name lookup may walk before giving up.
+const int _kTagLookupPages = 5;
 
 /// Related articles are a reading suggestion rider (issue #19), not a
 /// primary list: the server caps the endpoint at 50, we show a handful.
@@ -377,19 +394,69 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   }
 
   @override
-  Future<List<BlogModel>> getBlogsByTag(String tag) async {
+  Future<TagRef?> resolveTag(String name) async {
+    final wanted = name.trim();
+    if (wanted.isEmpty) return null;
+    final wantedKey = wanted.toLowerCase();
+    var offset = 0;
     try {
-      final slug = await _tagSlugByName(tag);
-      if (slug == null) {
-        // Unknown tag: nothing has been filed under it yet.
-        return const <BlogModel>[];
+      // `query` is a server-side substring match, so the answer no longer
+      // depends on where the tag sorts. Paging covers the pathological case
+      // (a one-letter tag matching hundreds of taxonomies).
+      for (var page = 0; page < _kTagLookupPages; page++) {
+        final data = await client.getJson(
+          '/tags',
+          query: {
+            'query': wanted,
+            'limit': '$_kListLimit',
+            'offset': '$offset',
+            'locale': 'zh-CN',
+          },
+        );
+        final tags = (data as List? ?? const []);
+        for (final entry in tags.whereType<Map<String, dynamic>>()) {
+          final tagName = (entry['name'] as String?)?.trim() ?? '';
+          final slug = (entry['slug'] as String?)?.trim() ?? '';
+          if (slug.isEmpty || tagName.isEmpty) continue;
+          if (tagName.toLowerCase() == wantedKey) {
+            return TagRef(name: tagName, slug: slug);
+          }
+        }
+        if (tags.length < _kListLimit) return null;
+        offset += _kListLimit;
       }
+      // Bounded: a substring that still matches thousands of tags is not a
+      // name anybody can browse to, and searching forever would hang the tap.
+      return null;
+    } catch (e) {
+      throw mapToServerException(e);
+    }
+  }
+
+  @override
+  Future<List<BlogModel>> getArticlesByTag(
+    String slug, {
+    required int offset,
+  }) async {
+    try {
       final data = await client.getJson(
-        '/tags/$slug/articles',
-        query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
+        '/tags/${Uri.encodeComponent(slug)}/articles',
+        query: {
+          'limit': '$kTagPageSize',
+          'offset': '$offset',
+          'locale': 'zh-CN',
+        },
       );
       return _articleList(data);
     } catch (e) {
+      if (e is NowaveApiException && e.statusCode == HttpStatus.notFound) {
+        // The tag disappeared between resolving it and reading its page.
+        throw const ServerException(
+          '这个标签已不存在',
+          kind: FailureKind.server,
+          code: 'tag.notFound',
+        );
+      }
       throw mapToServerException(e);
     }
   }
@@ -702,26 +769,6 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         ? await client.postJson('/tags', body)
         : await client.postJson('/tags', body, sessionFence: sessionFence);
     return _articleMap(data);
-  }
-
-  /// Resolves a tag name to its slug via the public `GET /tags` listing
-  /// (the slug is a server-generated opaque value and cannot be derived
-  /// from the display name client-side).
-  Future<String?> _tagSlugByName(String name) async {
-    final wanted = name.trim();
-    if (wanted.isEmpty) return null;
-    final data = await client.getJson(
-      '/tags',
-      query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
-    );
-    final tags = (data as List? ?? const []);
-    for (final tag in tags) {
-      final map = tag as Map<String, dynamic>;
-      if ((map['name'] as String?)?.trim() == wanted) {
-        return map['slug'] as String?;
-      }
-    }
-    return null;
   }
 
   Map<String, dynamic> _articleMap(dynamic data) {

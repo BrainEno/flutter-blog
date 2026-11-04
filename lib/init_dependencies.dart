@@ -30,27 +30,28 @@ import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:belog/features/blog/data/read_aloud/platform_speech_engine.dart';
-import 'package:belog/features/blog/data/read_aloud/sqlite_read_aloud_preferences.dart';
-import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
-import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
-import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
+import 'package:belog/features/blog/data/read_aloud/platform_speech_engine.dart';
+import 'package:belog/features/blog/data/read_aloud/sqlite_read_aloud_preferences.dart';
 import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart';
 import 'package:belog/features/blog/data/repositories/comment_repository_impl.dart';
+import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
+import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
+import 'package:belog/features/blog/domain/usecase/get_articles_by_tag.dart';
 import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
 import 'package:belog/features/blog/domain/usecase/get_deleted_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_user_liked_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/is_blog_liked.dart';
+import 'package:belog/features/blog/domain/usecase/resolve_tag.dart';
 import 'package:belog/features/blog/domain/usecase/restore_deleted_blog.dart';
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/toggle_like_blog.dart';
@@ -62,6 +63,8 @@ import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_blo
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
+import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
+import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/data/datasources/author_remote_data_source.dart';
 import 'package:belog/features/user/data/datasources/author_relationship_remote_data_source.dart';
@@ -296,6 +299,8 @@ Future<void> _initBlog(
     ..registerFactory(() => DeleteBlog(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetBlogsByPoster(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetMyArticles(serviceLocator<BlogRepository>()))
+    ..registerFactory(() => ResolveTag(serviceLocator<BlogRepository>()))
+    ..registerFactory(() => GetArticlesByTag(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetDeletedBlogs(serviceLocator<BlogRepository>()))
     ..registerFactory(
       () => RestoreDeletedBlog(serviceLocator<BlogRepository>()),
@@ -327,6 +332,12 @@ Future<void> _initBlog(
       () => BlogByBloc(
         getBlogsByPoster: serviceLocator<GetBlogsByPoster>(),
         getMyArticles: serviceLocator<GetMyArticles>(),
+      ),
+    )
+    ..registerFactory(
+      () => TagArticlesBloc(
+        resolveTag: serviceLocator<ResolveTag>(),
+        getArticlesByTag: serviceLocator<GetArticlesByTag>(),
       ),
     )
     ..registerFactory(

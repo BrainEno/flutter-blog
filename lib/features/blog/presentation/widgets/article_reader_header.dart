@@ -19,12 +19,16 @@ class ArticleReaderHeader extends StatelessWidget {
     super.key,
     required this.blog,
     required this.onAuthorTap,
+    this.onTagTap,
     this.titleHighlight,
     this.titleKey,
   });
 
   final Blog blog;
   final VoidCallback onAuthorTap;
+
+  /// Opens a tag's article list; null keeps the labels read-only.
+  final ValueChanged<String>? onTagTap;
   final ValueListenable<ReadAloudHighlight?>? titleHighlight;
   final GlobalKey? titleKey;
 
@@ -42,7 +46,13 @@ class ArticleReaderHeader extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: [for (final tag in blog.tags) ArticleTagLabel(tag: tag)],
+            children: [
+              for (final tag in blog.tags)
+                ArticleTagLabel(
+                  tag: tag,
+                  onTap: onTagTap == null ? null : () => onTagTap!(tag),
+                ),
+            ],
           ),
           const SizedBox(height: 16),
         ],

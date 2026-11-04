@@ -11,6 +11,7 @@ import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart'
     show kMaxSearchResults;
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
+import 'package:belog/features/blog/presentation/tag_navigation.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -229,6 +230,7 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                         blog: blog,
                         index: index + 1,
                         labelAuthor: true,
+                        onTagTap: (tag) => openTagArticles(context, tag),
                         onTap: () => context.push(
                           '/search/view/${blog.id}',
                           extra: blog,

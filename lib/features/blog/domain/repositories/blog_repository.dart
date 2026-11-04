@@ -5,6 +5,7 @@ import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
+import 'package:belog/features/blog/domain/entities/tag_ref.dart';
 import 'package:fpdart/fpdart.dart';
 
 abstract interface class BlogRepository {
@@ -53,7 +54,16 @@ abstract interface class BlogRepository {
 
   Future<Either<Failure, Blog>> getBlogById(String blogId);
 
-  Future<Either<Failure, List<Blog>>> getBlogsByTag(String tag);
+  /// Resolves a stored tag name to its server taxonomy; null means the
+  /// server has no such tag (an explicit empty state, never "everything").
+  Future<Either<Failure, TagRef?>> resolveTag(String name);
+
+  /// One page of a tag's published articles, newest first. The tag listing
+  /// is online-only: its order and membership are the server's.
+  Future<Either<Failure, List<Blog>>> getArticlesByTag(
+    String slug, {
+    required int offset,
+  });
 
   Future<Either<Failure, List<Blog>>> searchBlogs(String query);
 
