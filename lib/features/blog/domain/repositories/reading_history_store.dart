@@ -43,4 +43,3 @@ abstract class ReadingHistoryStore {
   /// Deletes every entry of [userId].
   Future<void> clear({required String userId});
 }
-
