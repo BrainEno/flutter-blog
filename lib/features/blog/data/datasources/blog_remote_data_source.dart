@@ -577,12 +577,11 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     if (inFlight != null) {
       return inFlight;
     }
-    return _likeToggleBySlug[blogId] = _toggleLike(
-      userId,
-      blogId,
-    ).whenComplete(() {
-      _likeToggleBySlug.remove(blogId);
-    });
+    return _likeToggleBySlug[blogId] = _toggleLike(userId, blogId).whenComplete(
+      () {
+        _likeToggleBySlug.remove(blogId);
+      },
+    );
   }
 
   Future<bool> _toggleLike(String userId, String blogId) async {
@@ -596,11 +595,9 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       final current = await _likeInfo(blogId, fence);
       final data = fence == null
           ? await client.putJson('/articles/$blogId/like', {'liked': !current})
-          : await client.putJson(
-              '/articles/$blogId/like',
-              {'liked': !current},
-              sessionFence: fence,
-            );
+          : await client.putJson('/articles/$blogId/like', {
+              'liked': !current,
+            }, sessionFence: fence);
       final map = _articleMap(data);
       return map['likedByViewer'] as bool? ?? !current;
     } catch (e) {

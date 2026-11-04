@@ -179,9 +179,7 @@ void main() {
 
   test('a like started by another account is refused', () async {
     await signInAs('A');
-    final source = sourceFor(
-      (_) async => _json({'likedByViewer': false}),
-    );
+    final source = sourceFor((_) async => _json({'likedByViewer': false}));
 
     await expectLater(
       source.toggleLikeBlog('B', 'x'),

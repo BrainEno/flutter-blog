@@ -25,20 +25,20 @@ class _LikedParamsFake extends Fake implements GetUserLikedBlogsParams {}
 
 /// The signed-in account, switchable mid-test.
 class _FakeSession implements NowaveSessionIdentity {
-  _FakeSession(this.userId);
+  _FakeSession(this._userId);
 
-  @override
-  String? userId;
+  String? _userId;
 
   int _generation = 1;
 
   final StreamController<void> _changes = StreamController<void>.broadcast();
 
   @override
-  String? get activeUserId => userId;
+  String? get activeUserId => _userId;
 
   @override
-  String? get accessToken => userId == null ? null : 'token-$userId';
+  String? get accessToken =>
+      _userId == null ? null : 'token-$_userId';
 
   @override
   int get sessionGeneration => _generation;
@@ -47,7 +47,7 @@ class _FakeSession implements NowaveSessionIdentity {
   Stream<void> get identityChanges => _changes.stream;
 
   void switchTo(String? next) {
-    userId = next;
+    _userId = next;
     _generation += 1;
     _changes.add(null);
   }
@@ -113,8 +113,7 @@ void main() {
 
     final reloaded = bloc.stream.firstWhere(
       (state) =>
-          state is UserLikedBlogsSuccess &&
-          state.blogs.single.title == 'B 收藏',
+          state is UserLikedBlogsSuccess && state.blogs.single.title == 'B 收藏',
     );
     session.switchTo('B');
     await reloaded;
@@ -166,11 +165,7 @@ void main() {
     pending.complete(right(true));
     await Future<void>.delayed(Duration.zero);
 
-    expect(
-      bloc.state,
-      isA<BlogLikedInitial>(),
-      reason: 'A 的点赞结果不能写成 B 的状态',
-    );
+    expect(bloc.state, isA<BlogLikedInitial>(), reason: 'A 的点赞结果不能写成 B 的状态');
     expect(states.whereType<ToggleBlogLikeFailure>(), isEmpty);
   });
 

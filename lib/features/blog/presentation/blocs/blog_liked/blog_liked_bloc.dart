@@ -57,10 +57,9 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
     on<ToggleBlogLike>(_onToggleBlogLike);
     on<UserLikedBlogs>(_onGetUserLikedBlogs);
     on<BlogLikedSessionChanged>(_onSessionChanged);
-    _identityChanges = sessionIdentity?.identityChanges.listen(
-      (_) => add(
-        BlogLikedSessionChanged(viewerId: sessionIdentity?.activeUserId),
-      ),
+    final identity = sessionIdentity;
+    _identityChanges = identity?.identityChanges.listen(
+      (_) => add(BlogLikedSessionChanged(viewerId: identity.activeUserId)),
     );
   }
 

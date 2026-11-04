@@ -21,20 +21,20 @@ class _NoParamsFake extends Fake implements NoParams {}
 /// A session whose account can be switched mid-test, exactly as the real
 /// manager does: the id changes and the generation moves on.
 class _FakeSession implements NowaveSessionIdentity {
-  _FakeSession(this.userId);
+  _FakeSession(this._userId);
 
-  @override
-  String? userId;
+  String? _userId;
 
   int _generation = 1;
 
   final StreamController<void> _changes = StreamController<void>.broadcast();
 
   @override
-  String? get activeUserId => userId;
+  String? get activeUserId => _userId;
 
   @override
-  String? get accessToken => userId == null ? null : 'token-$userId';
+  String? get accessToken =>
+      _userId == null ? null : 'token-$_userId';
 
   @override
   int get sessionGeneration => _generation;
@@ -44,7 +44,7 @@ class _FakeSession implements NowaveSessionIdentity {
 
   /// Switches to [next] (null signs out) and notifies listeners.
   void switchTo(String? next) {
-    userId = next;
+    _userId = next;
     _generation += 1;
     _changes.add(null);
   }
@@ -115,18 +115,13 @@ void main() {
 
     final next = stateWhere(
       (state) =>
-          state is RecycleBinSuccess &&
-          state.blogs.single.title == 'B 的被删文章',
+          state is RecycleBinSuccess && state.blogs.single.title == 'B 的被删文章',
     );
     session.switchTo('B');
     final second = await next;
 
     expect((second as RecycleBinSuccess).blogs.single.articleId, 'B-article');
-    expect(
-      bloc.state,
-      isA<RecycleBinSuccess>(),
-      reason: 'A 的列表不能停留在界面上',
-    );
+    expect(bloc.state, isA<RecycleBinSuccess>(), reason: 'A 的列表不能停留在界面上');
   });
 
   test('a read across the switch never shows the old account', () async {
@@ -144,8 +139,7 @@ void main() {
 
     final reloaded = stateWhere(
       (state) =>
-          state is RecycleBinSuccess &&
-          state.blogs.single.title == 'B 的被删文章',
+          state is RecycleBinSuccess && state.blogs.single.title == 'B 的被删文章',
     );
     bloc.add(RecycleBinRequested());
     await Future<void>.delayed(Duration.zero);
@@ -160,25 +154,21 @@ void main() {
     );
   });
 
-  test('a restore across the switch does not resurrect the bin',
-      () async {
+  test('a restore across the switch does not resurrect the bin', () async {
     serveBinByOwner();
     final loaded = stateWhere((state) => state is RecycleBinSuccess);
     bloc.add(RecycleBinRequested());
     await loaded;
 
     final pending = Completer<Either<Failure, Blog>>();
-    when(
-      () => restoreDeletedBlog(any()),
-    ).thenAnswer((_) => pending.future);
+    when(() => restoreDeletedBlog(any())).thenAnswer((_) => pending.future);
 
     final states = <RecycleBinState>[];
     final subscription = bloc.stream.listen(states.add);
     addTearDown(subscription.cancel);
 
     final restoring = stateWhere(
-      (state) =>
-          state is RecycleBinSuccess && state.restoringArticleId != null,
+      (state) => state is RecycleBinSuccess && state.restoringArticleId != null,
     );
     bloc.add(RecycleBinRestoreRequested(articleId: 'A-article'));
     await restoring;
@@ -188,12 +178,14 @@ void main() {
           state is RecycleBinSuccess &&
           state.blogs.single.articleId == 'B-article',
     );
+    final beforeSwitch = states.length;
     session.switchTo('B');
     pending.complete(right(_restored('A')));
     await reloaded;
 
     expect(
       states
+          .skip(beforeSwitch)
           .whereType<RecycleBinSuccess>()
           .map((state) => state.blogs.single.articleId),
       isNot(contains('A-article')),
@@ -211,7 +203,6 @@ void main() {
     final cleared = stateWhere((state) => state is RecycleBinInitial);
     session.switchTo(null);
     await cleared;
-    await stateWhere((state) => state is RecycleBinInitial);
 
     expect(bloc.state, isA<RecycleBinInitial>());
     verifyNever(() => getDeletedBlogs(any()));
@@ -235,9 +226,6 @@ void main() {
 
     session.switchTo('B');
     await Future<void>.delayed(Duration.zero);
-    expect(
-      (plain.state as RecycleBinSuccess).blogs.single.title,
-      'A 的被删文章',
-    );
+    expect((plain.state as RecycleBinSuccess).blogs.single.title, 'A 的被删文章');
   });
 }

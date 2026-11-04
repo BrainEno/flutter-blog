@@ -39,10 +39,11 @@ class RecycleBinBloc extends Bloc<RecycleBinEvent, RecycleBinState> {
     on<RecycleBinRequested>(_onRequested);
     on<RecycleBinRestoreRequested>(_onRestoreRequested);
     on<RecycleBinSessionChanged>(_onSessionChanged);
-    _identityChanges = sessionIdentity?.identityChanges.listen(
+    final identity = sessionIdentity;
+    _identityChanges = identity?.identityChanges.listen(
       (_) => add(
         RecycleBinSessionChanged(
-          hasOwner: (sessionIdentity?.activeUserId ?? '').isNotEmpty,
+          hasOwner: (identity.activeUserId ?? '').isNotEmpty,
         ),
       ),
     );
