@@ -6,7 +6,7 @@ import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:drift/drift.dart';
 
 /// Account-scoped drafts. The old `drafts` table is deliberately never read
-/// for an account: neither SQLite nor the older Isar schema recorded an owner.
+/// for an account: no version of that table recorded an owner.
 class SqliteBlogDraftStore implements BlogDraftStore {
   SqliteBlogDraftStore(this.database, {required Uri apiBaseUrl})
     : _backend = _backendKey(apiBaseUrl);

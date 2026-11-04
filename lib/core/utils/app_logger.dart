@@ -75,11 +75,6 @@ class AppLogger {
   static void probeInconclusive(String path, int elapsedMs, int budgetMs) =>
       diagnostics.recordProbeInconclusive(path, elapsedMs, budgetMs);
 
-  /// Records that the public-internet probe reported the device offline.
-  /// This is the other half of the "no network" message: it names the gate
-  /// that fired instead of the API that was never contacted.
-  static void connectivityOffline() => diagnostics.recordOffline();
-
   /// Records a response whose body could not be decoded; [reason] is a
   /// fixed token (`non-utf8`, `non-json`), never body content.
   static void responseMalformed(

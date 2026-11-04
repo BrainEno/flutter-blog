@@ -14,7 +14,6 @@ class CoreDependencyRuleTest(unittest.TestCase):
         self._tmp = TemporaryDirectory()
         self.root = Path(self._tmp.name)
         (self.root / "lib" / "core" / "storage").mkdir(parents=True)
-        (self.root / "lib" / "core" / "storage" / "legacy").mkdir(parents=True)
 
     def tearDown(self) -> None:
         self._tmp.cleanup()
@@ -64,13 +63,6 @@ class CoreDependencyRuleTest(unittest.TestCase):
         self.write(
             "lib/core/theme/theme_bloc.dart",
             "import 'package:flutter/material.dart';\n",
-        )
-        self.assertEqual(checker.scan(self.root), [])
-
-    def test_generated_legacy_schema_is_exempt(self) -> None:
-        self.write(
-            "lib/core/storage/legacy/theme_preference.dart",
-            "import 'package:flutter/material.dart' show ThemeMode;\n",
         )
         self.assertEqual(checker.scan(self.root), [])
 

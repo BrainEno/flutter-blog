@@ -9,20 +9,6 @@ rootProject.buildDir = "../build"
 
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
-    // Isar 3's Android library predates AGP's mandatory namespace setting.
-    // Keep this compatibility workaround scoped to that plugin only.
-    if (project.name == "isar_flutter_libs") {
-        afterEvaluate {
-            if (project.hasProperty("android")) {
-                // Isar 3 targets API 30, which cannot link current AndroidX
-                // resources (for example android:attr/lStar).
-                project.android.compileSdkVersion 36
-                if (project.android.namespace == null) {
-                    project.android.namespace = "dev.isar.isar_flutter_libs"
-                }
-            }
-        }
-    }
 }
 
 tasks.register("clean", Delete) {

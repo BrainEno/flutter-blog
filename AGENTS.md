@@ -34,7 +34,7 @@ flutter test --coverage
 flutter build apk --release
 ```
 
-For generated code, also run the generator used by the current dependency set, for example `dart run build_runner build --delete-conflicting-outputs`. Only run commands supported by the current dependency/toolchain; explain any unavailable command.
+The only generated code left is the ARB localization class, produced by `flutter gen-l10n` (driven by `l10n.yaml` and `generate: true`) whenever the app builds or tests run; the former Isar schemas and their `build_runner` step were removed with the Isar dependency (#107), so no `build_runner` invocation is part of the workflow any more. Only run commands supported by the current dependency/toolchain; explain any unavailable command.
 
 - In a focused PR, at minimum format-check every changed Dart file. The CI also audits repository-wide formatter drift as a diagnostic artifact; do not mass-reformat unrelated files just to make an unrelated feature PR pass.
 - Record each command and its actual result in the PR description.

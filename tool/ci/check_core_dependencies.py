@@ -10,9 +10,8 @@ are checked here:
    (`material`, `widgets`, `cupertino`). `flutter/foundation.dart` and
    `dart:*` are fine - they carry no presentation concepts.
 
-`lib/core/storage/legacy` is exempt from rule 2: it is the archived, generated
-Isar schema kept read-only for the one-time import, and regenerating it is not
-an option (the generator package is abandoned).
+Neither rule has exemptions: after #107 retired the Isar importer there is no
+generated storage code left under `lib/core/storage`.
 
 Usage: python3 tool/ci/check_core_dependencies.py [--root DIR]
 """
@@ -29,7 +28,6 @@ FLUTTER_UI_IMPORT = re.compile(
 )
 
 STORAGE_PREFIX = "lib/core/storage/"
-STORAGE_EXEMPT_PREFIXES = ("lib/core/storage/legacy/",)
 
 
 def scan(root: Path) -> list[str]:
@@ -52,8 +50,6 @@ def scan(root: Path) -> list[str]:
                 "feature (move the adapter into the feature)"
             )
         if not rel.startswith(STORAGE_PREFIX):
-            continue
-        if any(rel.startswith(prefix) for prefix in STORAGE_EXEMPT_PREFIXES):
             continue
         if FLUTTER_UI_IMPORT.search(text):
             problems.append(

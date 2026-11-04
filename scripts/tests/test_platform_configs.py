@@ -59,7 +59,7 @@ class DebugNetworkPolicyTests(unittest.TestCase):
     def test_presentation_and_domain_do_not_import_feature_data(self):
         feature_root = ROOT / 'lib/features'
         forbidden = re.compile(r'''(?:import|export)\s+['\"](?:package:belog/features/[^'\"]*/data/|(?:\.\./)+data/)''')
-        framework = re.compile(r'''(?:import|export)\s+['\"]package:(?:flutter|drift|isar_community)/''')
+        framework = re.compile(r'''(?:import|export)\s+['\"]package:(?:flutter|drift)/''')
         for feature in feature_root.iterdir():
             for layer in ('presentation', 'domain'):
                 for path in (feature / layer).rglob('*.dart'):

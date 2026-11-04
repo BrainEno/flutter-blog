@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Export ownerless legacy SQLite drafts without assigning them to an account.
 
-Run against a trusted, stopped-app SQLite copy; this tool does not extract Isar
-files or install/import the resulting JSON. The exported file contains private
-article text. See docs/unclaimed-drafts.md before handling it.
+Run against a trusted, stopped-app SQLite copy. It only reads SQLite: the
+retired Isar files cannot be read any more (#107), and it does not install or
+import the resulting JSON. The exported file contains private article text. See
+docs/unclaimed-drafts.md before handling it.
 """
 
 import argparse

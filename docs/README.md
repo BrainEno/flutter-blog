@@ -15,7 +15,7 @@
 ## 数据、兼容性与故障排查
 
 - [未归属旧草稿](unclaimed-drafts.md)：保留、只读导出范围和降级风险。
-- [Isar 到 SQLite](isar-to-sqlite-migration.md)：旧数据迁移与回退限制。
+- [SQLite 存储](sqlite-storage.md)：schema 版本、迁移、Isar 移除与降级限制。
 - [首页最新分页](latest-feed-cursor.md)：游标、旧部署回退和密集边界。
 - [CI 可观测性](ci-observability.md)：失败证据与构建诊断。
 

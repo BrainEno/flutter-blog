@@ -1,27 +1,21 @@
 import 'dart:io';
 
 import 'package:belog/core/storage/app_database.dart';
-import 'package:belog/core/storage/legacy/blog.dart' as legacy;
-import 'package:belog/core/storage/legacy/blog_draft.dart' as legacy;
-import 'package:belog/core/storage/legacy/theme_preference.dart' as legacy;
 import 'package:belog/features/blog/data/datasources/sqlite_blog_cache.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_draft_store.dart';
 import 'package:belog/core/theme/sqlite_theme_store.dart';
 import 'package:belog/features/auth/data/datasources/profile_cache_store.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
-import 'package:drift/drift.dart' show Variable;
 import 'package:drift/native.dart';
 import 'package:sqlite3/sqlite3.dart' as raw;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:isar_community/isar.dart' as legacy;
 
 void main() {
   late Directory dir;
   late AppDatabase db;
 
-  setUpAll(() => legacy.Isar.initializeIsarCore(download: true));
   setUp(() async {
     dir = await Directory.systemTemp.createTemp('belog-sqlite-');
     db = AppDatabase(NativeDatabase(File('${dir.path}/new.sqlite')));
@@ -83,7 +77,6 @@ void main() {
   });
 
   test('fresh database preserves themes, drafts and upserted cache', () async {
-    await db.importLegacyIfNeeded(dir);
     final themes = SqliteThemePreferenceStore(db);
     expect(await themes.load(), ThemeMode.system);
     await themes.save(ThemeMode.dark);
@@ -111,7 +104,6 @@ void main() {
     expect(await drafts.discardIfUnchanged(draft), isTrue);
     await db.close();
     db = AppDatabase(NativeDatabase(File('${dir.path}/new.sqlite')));
-    await db.importLegacyIfNeeded(dir);
     expect(await SqliteThemePreferenceStore(db).load(), ThemeMode.dark);
     expect(
       await SqliteBlogDraftStore(
@@ -123,7 +115,6 @@ void main() {
   });
 
   test('deleteDraftsFor clears one scope without touching others', () async {
-    await db.importLegacyIfNeeded(dir);
     final store = SqliteBlogDraftStore(
       db,
       apiBaseUrl: Uri.parse('https://api.example.invalid'),
@@ -169,7 +160,6 @@ void main() {
   test(
     'deleteDraftsFor with olderThan keeps drafts edited during upload',
     () async {
-      await db.importLegacyIfNeeded(dir);
       final store = SqliteBlogDraftStore(
         db,
         apiBaseUrl: Uri.parse('https://api.example.invalid'),
@@ -228,7 +218,6 @@ void main() {
   test(
     'drafts are scoped and stale snapshots cannot discard newer work',
     () async {
-      await db.importLegacyIfNeeded(dir);
       final store = SqliteBlogDraftStore(
         db,
         apiBaseUrl: Uri.parse('https://api.example.invalid'),
@@ -264,89 +253,6 @@ void main() {
       expect(await store.discardIfUnchanged(old), isFalse);
       expect((await store.load('a', userId: 'user-a'))!.content, 'new');
       expect((await store.load(null, userId: 'user-a'))!.content, 'keep');
-    },
-  );
-
-  test(
-    'imports actual Isar data once; failure rolls back and can retry',
-    () async {
-      final old = await legacy.Isar.open(
-        [
-          legacy.ThemePreferenceSchema,
-          legacy.BlogSchema,
-          legacy.BlogDraftSchema,
-        ],
-        directory: dir.path,
-        inspector: false,
-      );
-      await old.writeTxn(() async {
-        await old.themePreferences.put(
-          legacy.ThemePreference(themeMode: ThemeMode.light)..id = 2,
-        );
-        await old.themePreferences.put(
-          legacy.ThemePreference(themeMode: ThemeMode.dark)..id = 9,
-        );
-        await old.blogDrafts.put(
-          legacy.BlogDraft(
-            blogId: 'a',
-            title: 'keep',
-            content: 'unsent',
-            tags: ['x'],
-            updatedAt: DateTime.utc(2024),
-          )..id = 7,
-        );
-        await old.blogs.put(
-          legacy.Blog(
-            iid: legacy.Isar.autoIncrement,
-            id: '1',
-            title: 'legacy',
-            content: 'body',
-            posterId: 'author',
-            imageUrl: 'cover',
-            tags: ['one'],
-            updatedAt: DateTime.utc(2025),
-            posterName: 'Alice',
-            posterAvatar: 'avatar',
-          ),
-        );
-      });
-      await old.close();
-      final legacyBytes = await File('${dir.path}/default.isar').readAsBytes();
-      await db.customStatement(
-        "CREATE TRIGGER fail_import BEFORE INSERT ON drafts BEGIN SELECT RAISE(ABORT, 'injected'); END",
-      );
-      await expectLater(db.importLegacyIfNeeded(dir), throwsA(anything));
-      expect(await db.customSelect('SELECT * FROM theme').get(), isEmpty);
-      expect(await db.customSelect('SELECT * FROM metadata').get(), isEmpty);
-      expect(await File('${dir.path}/default.isar').readAsBytes(), legacyBytes);
-      await db.customStatement('DROP TRIGGER fail_import');
-      await db.importLegacyIfNeeded(dir);
-      expect(await File('${dir.path}/default.isar').readAsBytes(), legacyBytes);
-      expect(await SqliteThemePreferenceStore(db).load(), ThemeMode.dark);
-      expect(
-        await SqliteBlogDraftStore(
-          db,
-          apiBaseUrl: Uri.parse('https://api.example.invalid'),
-        ).load('a', userId: 'user-a'),
-        isNull,
-      );
-      expect(
-        (await db
-                .customSelect(
-                  'SELECT content FROM drafts WHERE blog_id = ?',
-                  variables: [Variable<String>('a')],
-                )
-                .getSingle())
-            .read<String>('content'),
-        'unsent',
-      );
-      expect(
-        (await SqliteBlogCache(db).loadBlogs()).single.posterName,
-        'Alice',
-      );
-      await SqliteThemePreferenceStore(db).save(ThemeMode.light);
-      await db.importLegacyIfNeeded(dir);
-      expect(await SqliteThemePreferenceStore(db).load(), ThemeMode.light);
     },
   );
 
@@ -389,5 +295,20 @@ void main() {
     expect(cached.single.id, 'old-id');
     expect(cached.single.title, '旧文');
     expect(cached.single.articleId, '');
+  });
+
+  test('a leftover default.isar is reported once and left untouched', () async {
+    expect(await db.takeRetiredIsarNotice(dir), isFalse);
+    expect(
+      await db.customSelect('SELECT * FROM metadata').get(),
+      isEmpty,
+      reason: 'no marker is written while there is no legacy file',
+    );
+
+    final file = File('${dir.path}/default.isar');
+    await file.writeAsBytes([1, 2, 3]);
+    expect(await db.takeRetiredIsarNotice(dir), isTrue);
+    expect(await db.takeRetiredIsarNotice(dir), isFalse);
+    expect(await file.readAsBytes(), [1, 2, 3]);
   });
 }

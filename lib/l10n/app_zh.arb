@@ -69,7 +69,6 @@
   "readAloudError": "无法朗读，请检查设备语音设置。",
   "readAloudPercent": "{percent}%",
   "@readAloudPercent": {"placeholders": {"percent": {"type": "int"}}},
-  "markdownImageAlt": "[图片]",
   "markdownImageFailed": "[图片加载失败]",
   "commentsTitle": "评论",
   "commentDeleteTitle": "删除评论",

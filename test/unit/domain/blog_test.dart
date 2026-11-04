@@ -45,7 +45,7 @@ void main() {
 
     test('is a plain Dart entity with no persistence imports', () {
       // Regression guard for the domain-purity requirement: the entity must
-      // stay free of Isar/Drift annotations and auto-increment keys.
+      // stay free of Drift annotations and auto-increment keys.
       expect(
         Blog(
           id: 'a',

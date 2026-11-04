@@ -3,8 +3,9 @@ import 'package:belog/features/blog/data/datasources/nowave_article_codec.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 
 /// Data-layer representation of [Blog], including (de)serialization for the
-/// remote backend. Persistence concerns (SQLite cache, legacy Isar import)
-/// live in `lib/core/storage/` and map to/from this model.
+/// remote backend. The SQLite adapter that persists it (and maps rows back to
+/// this model) is `sqlite_blog_cache.dart`; `AppDatabase` itself only knows
+/// primitive columns.
 class BlogModel extends Blog {
   BlogModel({
     required super.id,
