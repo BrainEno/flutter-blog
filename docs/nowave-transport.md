@@ -89,6 +89,6 @@ rejection), `api_envelope_test` (payload, error envelope, non-JSON, non-UTF-8,
 ## Still open in #107
 
 The client is ~551 lines and still holds `_request`/`_send`. The remaining
-steps are the page-level splits (`blog_editor_page.dart`, `blog_viewer_page.dart`,
-`markdown_body.dart`) and the domain attachment interface that exposes
-`dart:io File`.
+steps are the widget splits (`markdown_body.dart`, `comments_section.dart`), the
+data layer (`blog_remote_data_source.dart`, `blog_repository_impl.dart`) and the
+domain attachment interface that exposes `dart:io File`.
