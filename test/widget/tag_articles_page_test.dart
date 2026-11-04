@@ -49,20 +49,21 @@ Future<void> settle(WidgetTester tester, TagArticlesBloc bloc) async {
   await tester.pump();
 }
 
-/// What is actually on screen, for failure messages.
-String diagnostics(WidgetTester tester, TagArticlesBloc bloc) =>
-    'state=${bloc.state.runtimeType} screen=${screenText(tester)}';
-
 String screenText(WidgetTester tester) => tester
     .widgetList<Text>(find.byType(Text))
     .map((text) => text.data ?? text.textSpan?.toPlainText() ?? '')
     .where((text) => text.isNotEmpty)
     .join(' | ');
 
+/// What is actually on screen, for failure messages.
+String diagnostics(
+  WidgetTester tester,
+  TagArticlesBloc bloc,
+) => 'state=${bloc.state.runtimeType} screen=${screenText(tester)}';
+
 void main() {
   late _MockResolveTag resolveTag;
   late _MockGetArticlesByTag getArticlesByTag;
-  late TagArticlesBloc bloc;
 
   setUpAll(() {
     registerFallbackValue(_ResolveParamsFake());
@@ -73,14 +74,25 @@ void main() {
     resolveTag = _MockResolveTag();
     getArticlesByTag = _MockGetArticlesByTag();
     when(() => resolveTag(any())).thenAnswer((_) async => right(_tag));
-    bloc = TagArticlesBloc(
+  });
+
+  /// Built inside the test body on purpose: a bloc created in `setUp` lives
+  /// in the outer zone, and its events would never be delivered while the
+  /// widget test's fake clock is running.
+  TagArticlesBloc newBloc() {
+    final bloc = TagArticlesBloc(
       resolveTag: resolveTag,
       getArticlesByTag: getArticlesByTag,
     );
     addTearDown(bloc.close);
-  });
+    return bloc;
+  }
 
-  Future<void> pumpPage(WidgetTester tester, {String tag = '诗歌'}) async {
+  Future<void> pumpPage(
+    WidgetTester tester,
+    TagArticlesBloc bloc, {
+    String tag = '诗歌',
+  }) async {
     tester.view.physicalSize = const Size(1000, 2000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -98,13 +110,15 @@ void main() {
     await settle(tester, bloc);
   }
 
-
   testWidgets('a tag lists its articles under its own name', (tester) async {
+    final bloc = newBloc();
     when(
       () => getArticlesByTag(any()),
-    ).thenAnswer((_) async => right([_blog('a', '夜航手记'), _blog('b', '第二篇')]));
+    ).thenAnswer(
+      (_) async => right([_blog('a', '夜航手记'), _blog('b', '第二篇')]),
+    );
 
-    await pumpPage(tester);
+    await pumpPage(tester, bloc);
 
     expect(
       bloc.state,
@@ -117,18 +131,23 @@ void main() {
       findsOneWidget,
       reason: diagnostics(tester, bloc),
     );
-    expect(find.text('第二篇'), findsOneWidget, reason: diagnostics(tester, bloc));
+    expect(
+      find.text('第二篇'),
+      findsOneWidget,
+      reason: diagnostics(tester, bloc),
+    );
     verify(() => getArticlesByTag(any())).called(1);
   });
 
   testWidgets('an existing tag with nothing filed under it says so', (
     tester,
   ) async {
+    final bloc = newBloc();
     when(
       () => getArticlesByTag(any()),
     ).thenAnswer((_) async => right(const <Blog>[]));
 
-    await pumpPage(tester);
+    await pumpPage(tester, bloc);
 
     expect(
       find.text('「诗歌」下还没有文章'),
@@ -140,9 +159,10 @@ void main() {
   testWidgets('an unknown tag is explicit instead of showing everything', (
     tester,
   ) async {
+    final bloc = newBloc();
     when(() => resolveTag(any())).thenAnswer((_) async => right(null));
 
-    await pumpPage(tester, tag: '不存在的');
+    await pumpPage(tester, bloc, tag: '不存在的');
 
     expect(
       find.text('找不到标签「不存在的」'),
@@ -153,6 +173,7 @@ void main() {
   });
 
   testWidgets('a failure offers a retry that reloads', (tester) async {
+    final bloc = newBloc();
     var attempts = 0;
     when(() => getArticlesByTag(any())).thenAnswer((_) async {
       attempts += 1;
@@ -160,7 +181,7 @@ void main() {
       return right([_blog('a', '夜航手记')]);
     });
 
-    await pumpPage(tester);
+    await pumpPage(tester, bloc);
     expect(
       find.textContaining('无法连接到网络'),
       findsOneWidget,
