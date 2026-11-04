@@ -305,9 +305,7 @@ class BlogRepositoryImpl implements BlogRepository {
       }
       if (image != null) {
         final newImageUrl = sessionFence == null
-            ? await blogRemoteDataSource.uploadBlogImage(
-                image: image,
-              )
+            ? await blogRemoteDataSource.uploadBlogImage(image: image)
             : await blogRemoteDataSource.uploadBlogImage(
                 image: image,
                 sessionFence: sessionFence,

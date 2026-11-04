@@ -81,5 +81,4 @@ class NowaveTagResolver {
         : await _client.postJson('/tags', body, sessionFence: sessionFence);
     return articlePayloadMap(data);
   }
-
 }

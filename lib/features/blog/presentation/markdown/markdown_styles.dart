@@ -19,9 +19,7 @@ TextStyle structuredMarksStyle(md.Element node, {bool link = false}) {
       TextDecoration.lineThrough,
   ];
   return TextStyle(
-    fontWeight: node.attributes['data-bold'] == 'true'
-        ? FontWeight.bold
-        : null,
+    fontWeight: node.attributes['data-bold'] == 'true' ? FontWeight.bold : null,
     fontStyle: node.attributes['data-italic'] == 'true'
         ? FontStyle.italic
         : null,

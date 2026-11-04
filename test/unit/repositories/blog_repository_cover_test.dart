@@ -59,9 +59,7 @@ void main() {
   group('uploadBlog', () {
     test('uploads the cover first, then creates the article with it', () async {
       when(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-        ),
+        () => remote.uploadBlogImage(image: any(named: 'image')),
       ).thenAnswer((_) async => _kNewCoverUrl);
       when(() => remote.uploadBlog(any())).thenAnswer(
         (invocation) async => invocation.positionalArguments[0] as BlogModel,
@@ -79,9 +77,7 @@ void main() {
       // Capture through verifyInOrder: a separate verify() afterwards
       // cannot match calls the in-order check already consumed.
       final order = verifyInOrder([
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-        ),
+        () => remote.uploadBlogImage(image: any(named: 'image')),
         () => remote.uploadBlog(captureAny()),
       ]);
       final created = order.last.captured.single as BlogModel;
@@ -103,11 +99,7 @@ void main() {
       );
 
       expect(result.isRight(), isTrue);
-      verifyNever(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-        ),
-      );
+      verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
       final created =
           verify(() => remote.uploadBlog(captureAny())).captured.single
               as BlogModel;
@@ -117,9 +109,7 @@ void main() {
     test('a failed article create surfaces the failure (media is '
         'server-managed, nothing to roll back client-side)', () async {
       when(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-        ),
+        () => remote.uploadBlogImage(image: any(named: 'image')),
       ).thenAnswer((_) async => _kNewCoverUrl);
       when(
         () => remote.uploadBlog(any()),
@@ -148,11 +138,7 @@ void main() {
       );
 
       expect(result.isLeft(), isTrue);
-      verifyNever(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-        ),
-      );
+      verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
       verifyNever(() => remote.uploadBlog(any()));
     });
   });
@@ -178,11 +164,7 @@ void main() {
               expect(failure.code, 'article.structuredEditUnsupported'),
           (_) => fail('unsupported content must not be overwritten'),
         );
-        verifyNever(
-          () => remote.uploadBlogImage(
-            image: any(named: 'image'),
-          ),
-        );
+        verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
         verifyNever(() => remote.editBlog(any()));
       },
     );
@@ -201,11 +183,7 @@ void main() {
       );
 
       expect(result.isLeft(), isTrue);
-      verifyNever(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-        ),
-      );
+      verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
       verifyNever(() => remote.editBlog(any()));
     });
 
@@ -214,9 +192,7 @@ void main() {
         () => remote.getBlogById('my-slug'),
       ).thenAnswer((_) async => _blog());
       when(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-        ),
+        () => remote.uploadBlogImage(image: any(named: 'image')),
       ).thenAnswer((_) async => _kNewCoverUrl);
       when(() => remote.editBlog(any())).thenAnswer(
         (invocation) async => invocation.positionalArguments[0] as BlogModel,
@@ -233,9 +209,7 @@ void main() {
       expect(result.isRight(), isTrue);
       final order = verifyInOrder([
         () => remote.getBlogById('my-slug'),
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-        ),
+        () => remote.uploadBlogImage(image: any(named: 'image')),
         () => remote.editBlog(captureAny()),
       ]);
       final updated = order.last.captured.single as BlogModel;
@@ -263,11 +237,7 @@ void main() {
       );
 
       expect(result.isRight(), isTrue);
-      verifyNever(
-        () => remote.uploadBlogImage(
-          image: any(named: 'image'),
-        ),
-      );
+      verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
       final updated =
           verify(() => remote.editBlog(captureAny())).captured.single
               as BlogModel;

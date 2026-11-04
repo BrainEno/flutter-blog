@@ -110,5 +110,4 @@ class ArticleLikeStore {
           );
     return articlePayloadMap(data)['likedByViewer'] as bool? ?? false;
   }
-
 }

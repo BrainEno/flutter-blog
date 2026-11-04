@@ -55,9 +55,7 @@ class BlogFeedLoader {
         }
       } else {
         try {
-          final slice = await _remote.getAllBlogsAfter(
-            cursor: cursor,
-          );
+          final slice = await _remote.getAllBlogsAfter(cursor: cursor);
           blogs = slice.blogs;
           nextCursor = slice.nextCursor;
         } on LatestFeedCursorUnavailable {
@@ -145,5 +143,4 @@ class BlogFeedLoader {
       return left(Failure.storage(cause: error));
     }
   }
-
 }
