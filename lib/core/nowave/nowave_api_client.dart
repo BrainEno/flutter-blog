@@ -328,7 +328,10 @@ class NowaveApiClient {
   }
 
   /// DELETE an endpoint; returns the unwrapped `data` payload when present.
-  Future<dynamic> deleteJson(String path) => _request('DELETE', path);
+  Future<dynamic> deleteJson(
+    String path, {
+    NowaveSessionFence? sessionFence,
+  }) => _request('DELETE', path, sessionFence: sessionFence);
 
   /// Uploads raw image bytes to `POST /me/media`.
   ///

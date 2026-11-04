@@ -4,6 +4,7 @@ import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
+import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/utils/retry_on_connection_closed.dart';
 import 'package:belog/features/blog/data/datasources/latest_feed_cursor.dart';
@@ -113,7 +114,37 @@ const int _kRelatedLimit = 6;
 
 class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   final NowaveApiClient client;
-  BlogRemoteDataSourceImpl(this.client);
+
+  /// Where the *active* account is read from.
+  ///
+  /// Every `/me`-scoped route answers for whoever holds the bearer token, so
+  /// an operation has to name the account it believes it is serving. With no
+  /// identity the app would be trusting the token holder implicitly - the gap
+  /// in #104 - so the app always passes one; tests that predate the fence may
+  /// omit it and keep the old behaviour.
+  final NowaveSessionIdentity? identity;
+
+  BlogRemoteDataSourceImpl(this.client, {this.identity});
+
+  /// The account a `/me`-scoped call is made for, right now.
+  ///
+  /// Refused when nobody is signed in: sending the request anyway would run it
+  /// for an account the caller never meant to act as.
+  NowaveSessionFence requireActiveFence() {
+    final active = identity;
+    final userId = active?.activeUserId ?? '';
+    if (active == null || userId.isEmpty) {
+      throw const NowaveApiException(
+        statusCode: HttpStatus.unauthorized,
+        code: 'UNAUTHENTICATED',
+        message: 'No account is active for this operation.',
+      );
+    }
+    return NowaveSessionFence(
+      userId: userId,
+      generation: active.sessionGeneration,
+    );
+  }
 
   /// In-memory cache of tag name -> tag object, so publishing several
   /// articles does not re-create/resolve the same tags each time.
@@ -444,8 +475,11 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         );
       }
       // 200 with `{id, deletedAt}` means tombstoned; every other outcome
-      // (404 not-yours-or-gone, 403 foreign author, ...) throws.
-      await client.deleteJson('/articles/$articleId');
+      // (404 not-yours-or-gone, 403 foreign author, ...) throws. The fence
+      // makes a page belonging to an old account refuse to delete into the
+      // new one, and the client refuses if the account changes mid-flight.
+      final fence = identity == null ? null : requireActiveFence();
+      await client.deleteJson('/articles/$articleId', sessionFence: fence);
       return true;
     } catch (e) {
       throw mapToServerException(e);
@@ -455,11 +489,18 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   @override
   Future<List<DeletedBlog>> getDeletedBlogs() async {
     try {
+      final fence = identity == null ? null : requireActiveFence();
       final data = await retryOnConnectionClosed(
-        () => client.getJson(
-          '/me/articles/deleted',
-          query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
-        ),
+        () => fence == null
+            ? client.getJson(
+                '/me/articles/deleted',
+                query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
+              )
+            : client.getJsonForViewer(
+                '/me/articles/deleted',
+                expectedUserId: fence.userId,
+                query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
+              ),
       );
       if (data is List) {
         return data
@@ -489,10 +530,12 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         );
       }
       // The restore route reads the locale from the query string.
+      final fence = identity == null ? null : requireActiveFence();
       final data = await client.postJson(
         '/articles/$articleId/restore',
         null,
         query: {'locale': 'zh-CN'},
+        sessionFence: fence,
       );
       return BlogModel.fromNowaveArticle(_articleMap(data));
     } catch (e) {
@@ -503,12 +546,23 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   @override
   Future<List<BlogModel>> getUserLikedBlogs(String userId) async {
     try {
-      final data = await retryOnConnectionClosed(
-        () => client.getJson(
-          '/me/liked-articles',
-          query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
-        ),
-      );
+      // `/me/liked-articles` answers for the token holder, so the requested
+      // account and the active one must agree - otherwise B's likes would be
+      // shown as A's page (#104).
+      final data = identity == null
+          ? await retryOnConnectionClosed(
+              () => client.getJson(
+                '/me/liked-articles',
+                query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
+              ),
+            )
+          : await retryOnConnectionClosed(
+              () => client.getJsonForViewer(
+                '/me/liked-articles',
+                expectedUserId: userId,
+                query: {'limit': '$_kListLimit', 'locale': 'zh-CN'},
+              ),
+            );
       return _articleList(data);
     } catch (e) {
       throw mapToServerException(e);

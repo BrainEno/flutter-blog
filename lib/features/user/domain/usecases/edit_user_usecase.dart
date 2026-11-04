@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/usecase/usecase.dart';
 import 'package:belog/features/user/domain/repositories/user_repository.dart';
 import 'package:fpdart/fpdart.dart';
@@ -20,6 +21,7 @@ class EditUserUseCase implements UseCase<User, EditUserParams> {
       avatarMimeType: params.avatarMimeType,
       bio: params.bio,
       website: params.website,
+      sessionFence: params.sessionFence,
     );
   }
 }
@@ -37,11 +39,17 @@ class EditUserParams {
   final String bio;
   final String website;
 
+  /// The account that opened the form (see `EditUserParams` callers): carried
+  /// through the profile read, the avatar upload and the profile write so a
+  /// switch in between cannot redirect the save into another account (#104).
+  final NowaveSessionFence sessionFence;
+
   EditUserParams({
     required this.userId,
     required this.name,
     required this.bio,
     required this.website,
+    required this.sessionFence,
     this.avatar,
     this.avatarMimeType,
   });

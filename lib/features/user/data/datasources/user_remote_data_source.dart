@@ -5,6 +5,7 @@ import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
 
 /// User profile operations against the no-wave backend.
@@ -20,9 +21,16 @@ abstract interface class UserRemoteDataSource {
 
   /// Uploads an avatar (`POST /me/media`, raw bytes + MIME type) and
   /// returns its immutable public URL. The server re-encodes to WebP.
-  Future<String> uploadAvatar({required File image, String? mimeType});
+  Future<String> uploadAvatar({
+    required File image,
+    String? mimeType,
+    NowaveSessionFence? sessionFence,
+  });
 
-  Future<UserModel> editUserInfo(UserModel user);
+  Future<UserModel> editUserInfo(
+    UserModel user, {
+    NowaveSessionFence? sessionFence,
+  });
 }
 
 class UserRemoteDataSourceImpl implements UserRemoteDataSource {
@@ -48,10 +56,18 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
   }
 
   @override
-  Future<String> uploadAvatar({required File image, String? mimeType}) async {
+  Future<String> uploadAvatar({
+    required File image,
+    String? mimeType,
+    NowaveSessionFence? sessionFence,
+  }) async {
     try {
       final bytes = await image.readAsBytes();
-      final asset = await client.uploadMedia(bytes, mimeType ?? 'image/jpeg');
+      final asset = await client.uploadMedia(
+        bytes,
+        mimeType ?? 'image/jpeg',
+        sessionFence: sessionFence,
+      );
       return client.mediaUri(asset.id).toString();
     } catch (e) {
       throw mapToServerException(e);
@@ -59,7 +75,10 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
   }
 
   @override
-  Future<UserModel> editUserInfo(UserModel user) async {
+  Future<UserModel> editUserInfo(
+    UserModel user, {
+    NowaveSessionFence? sessionFence,
+  }) async {
     try {
       // The write body is a strict whitelist (no-wave
       // `normalizeProfileWriteBody`): `displayName` is required, `bio`
@@ -72,7 +91,7 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
         'bio': user.bio,
         if (user.avatarUrl.isNotEmpty) 'avatarUrl': user.avatarUrl,
         'websiteUrl': website.isEmpty ? null : website,
-      });
+      }, sessionFence: sessionFence);
       return UserModel.fromNowaveProfile(
         _profileMap(data),
         email: sessionManager.currentSession?.email ?? user.email,

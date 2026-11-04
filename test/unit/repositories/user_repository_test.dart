@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
 import 'package:belog/features/user/data/datasources/user_remote_data_source.dart';
 import 'package:belog/features/user/data/repositories/user_repository_impl.dart';
@@ -10,6 +11,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockRemote extends Mock implements UserRemoteDataSource {}
+
+const NowaveSessionFence _fence = NowaveSessionFence(
+  userId: 'u1',
+  generation: 3,
+);
 
 class MockConnection extends Mock implements ConnectionChecker {}
 
@@ -42,6 +48,7 @@ void main() {
         () => connection.isConnected,
       ).thenThrow(const SocketException('lost'));
       final result = await repository.editUserInfo(
+        sessionFence: _fence,
         userId: 'u1',
         name: 'n',
         bio: '旧简介',
@@ -59,6 +66,7 @@ void main() {
         when(() => remote.getUserById('u1')).thenThrow(StateError('private'));
 
         final result = await repository.editUserInfo(
+          sessionFence: _fence,
           userId: 'u1',
           name: 'n',
           bio: '旧简介',
@@ -81,11 +89,17 @@ void main() {
         updatedAt: DateTime.utc(2024),
       );
       when(() => remote.getUserById('u1')).thenAnswer((_) async => stored);
-      when(() => remote.editUserInfo(any())).thenAnswer(
+      when(
+        () => remote.editUserInfo(
+          any(),
+          sessionFence: any(named: 'sessionFence'),
+        ),
+      ).thenAnswer(
         (invocation) async => (invocation.positionalArguments[0] as UserModel),
       );
 
       await repository.editUserInfo(
+        sessionFence: _fence,
         userId: 'u1',
         name: '新名字',
         bio: '新的简介',
@@ -94,7 +108,12 @@ void main() {
       );
 
       final captured =
-          verify(() => remote.editUserInfo(captureAny())).captured.single
+          verify(
+        () => remote.editUserInfo(
+          captureAny(),
+          sessionFence: any(named: 'sessionFence'),
+        ),
+      ).captured.single
               as UserModel;
       expect(captured.id, 'u1');
       expect(captured.name, '新名字');
@@ -113,7 +132,12 @@ void main() {
         updatedAt: DateTime.utc(2024),
       );
       when(() => remote.getUserById('u1')).thenAnswer((_) async => stored);
-      when(() => remote.editUserInfo(any())).thenAnswer(
+      when(
+        () => remote.editUserInfo(
+          any(),
+          sessionFence: any(named: 'sessionFence'),
+        ),
+      ).thenAnswer(
         (invocation) async => (invocation.positionalArguments[0] as UserModel),
       );
 
@@ -121,6 +145,7 @@ void main() {
       // and website must reach the write body unchanged, because the backend
       // stores a missing bio as ''.
       final result = await repository.editUserInfo(
+        sessionFence: _fence,
         userId: 'u1',
         name: '新名字',
         bio: stored.bio,
@@ -130,7 +155,12 @@ void main() {
 
       expect(result.isRight(), isTrue);
       final captured =
-          verify(() => remote.editUserInfo(captureAny())).captured.single
+          verify(
+        () => remote.editUserInfo(
+          captureAny(),
+          sessionFence: any(named: 'sessionFence'),
+        ),
+      ).captured.single
               as UserModel;
       expect(captured.name, '新名字');
       expect(captured.bio, '写诗的人');
@@ -155,14 +185,21 @@ void main() {
           () => remote.uploadAvatar(
             image: any(named: 'image'),
             mimeType: 'image/jpeg',
+            sessionFence: any(named: 'sessionFence'),
           ),
         ).thenAnswer((_) async => newAvatarUrl);
-        when(() => remote.editUserInfo(any())).thenAnswer(
+        when(
+        () => remote.editUserInfo(
+          any(),
+          sessionFence: any(named: 'sessionFence'),
+        ),
+      ).thenAnswer(
           (invocation) async =>
               (invocation.positionalArguments[0] as UserModel),
         );
 
         final result = await repository.editUserInfo(
+          sessionFence: _fence,
           userId: 'u1',
           name: '新名字',
           bio: '旧简介',
@@ -178,8 +215,12 @@ void main() {
           () => remote.uploadAvatar(
             image: any(named: 'image'),
             mimeType: 'image/jpeg',
+            sessionFence: any(named: 'sessionFence'),
           ),
-          () => remote.editUserInfo(captureAny()),
+          () => remote.editUserInfo(
+          captureAny(),
+          sessionFence: any(named: 'sessionFence'),
+        ),
         ]);
         final captured = order.last.captured.single as UserModel;
         expect(captured.avatarUrl, newAvatarUrl);
@@ -197,10 +238,14 @@ void main() {
         ),
       );
       when(
-        () => remote.editUserInfo(any()),
+        () => remote.editUserInfo(
+          any(),
+          sessionFence: any(named: 'sessionFence'),
+        ),
       ).thenThrow(const ServerException('rls denied'));
 
       final result = await repository.editUserInfo(
+        sessionFence: _fence,
         userId: 'u1',
         name: '新名字',
         bio: '旧简介',
@@ -215,6 +260,7 @@ void main() {
       when(() => connection.isConnected).thenAnswer((_) async => false);
 
       final result = await repository.editUserInfo(
+        sessionFence: _fence,
         userId: 'u1',
         name: '新名字',
         bio: '旧简介',

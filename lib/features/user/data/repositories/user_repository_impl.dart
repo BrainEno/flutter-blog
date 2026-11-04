@@ -5,6 +5,8 @@ import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
+import 'package:belog/core/nowave/nowave_session.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/user/data/datasources/user_remote_data_source.dart';
 
 import 'package:belog/features/user/domain/repositories/user_repository.dart';
@@ -24,11 +26,14 @@ class UserRepositoryImpl implements UserRepository {
     String? avatarMimeType,
     required String bio,
     required String website,
+    required NowaveSessionFence sessionFence,
   }) async {
     try {
       if (!await connectionChecker.isConnected) {
         return left(Failure.networkOffline());
       }
+      // The fence is checked again after every step below: the form belongs
+      // to the account that opened it, not to whoever is signed in now.
       final current = await remoteDataSource.getUserById(userId);
       var userToUpdate = current;
 
@@ -40,6 +45,7 @@ class UserRepositoryImpl implements UserRepository {
         final newAvatarUrl = await remoteDataSource.uploadAvatar(
           image: avatar,
           mimeType: avatarMimeType,
+          sessionFence: sessionFence,
         );
         userToUpdate = userToUpdate.copyWith(avatarUrl: newAvatarUrl);
       }
@@ -51,7 +57,10 @@ class UserRepositoryImpl implements UserRepository {
         updatedAt: DateTime.now(),
       );
 
-      final userUpdated = await remoteDataSource.editUserInfo(userToUpdate);
+      final userUpdated = await remoteDataSource.editUserInfo(
+        userToUpdate,
+        sessionFence: sessionFence,
+      );
       return right(userUpdated);
     } on ServerException catch (e) {
       return left(e.toFailure());
