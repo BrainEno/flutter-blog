@@ -80,21 +80,37 @@ class AppDatabase extends GeneratedDatabase {
         // one slug can be cached in Chinese and in English, and a row written
         // for one language must never be served for the other. Every earlier
         // build requested zh-CN, so existing rows are Chinese.
-        await customStatement('ALTER TABLE blog_cache RENAME TO blog_cache_v6');
-        await _createBlogCache();
-        await customStatement(
-          'INSERT INTO blog_cache (id, article_id, title, content, poster_id, '
-          'image_url, tags, updated_at, poster_name, poster_avatar, '
-          'document_json, content_locale) '
-          'SELECT id, article_id, title, content, poster_id, image_url, tags, '
-          'updated_at, poster_name, poster_avatar, document_json, \'zh-CN\' '
-          'FROM blog_cache_v6',
-        );
-        await customStatement('DROP TABLE blog_cache_v6');
+        if (await _tableExists('blog_cache')) {
+          await customStatement(
+            'ALTER TABLE blog_cache RENAME TO blog_cache_v6',
+          );
+          await _createBlogCache();
+          await customStatement(
+            'INSERT INTO blog_cache (id, article_id, title, content, poster_id, '
+            'image_url, tags, updated_at, poster_name, poster_avatar, '
+            'document_json, content_locale) '
+            'SELECT id, article_id, title, content, poster_id, image_url, tags, '
+            'updated_at, poster_name, poster_avatar, document_json, \'zh-CN\' '
+            'FROM blog_cache_v6',
+          );
+          await customStatement('DROP TABLE blog_cache_v6');
+        } else {
+          // A database that never held a cache still has to leave this step
+          // with the v7 table: the app reads it unconditionally afterwards.
+          await _createBlogCache();
+        }
         await _createBlogCacheFeedIndex();
       }
     },
   );
+
+  Future<bool> _tableExists(String table) async {
+    final rows = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+      variables: [Variable.withString(table)],
+    ).get();
+    return rows.isNotEmpty;
+  }
 
   /// New drafts are separate from the unattributed legacy table. Partial
   /// unique indexes include the null new-article key as well as article ids.

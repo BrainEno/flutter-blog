@@ -10,7 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 Map<String, dynamic> _articleMap() => <String, dynamic>{
-  'id': 'server-uuid-1',
+  'id': '00000000-0000-4000-8000-000000000001',
   'slug': 'yu-zhou',
   'title': '标题',
   'summary': '摘要',
@@ -23,6 +23,7 @@ Map<String, dynamic> _articleMap() => <String, dynamic>{
     <String, dynamic>{'id': 't1', 'name': '诗歌', 'slug': 'shi-ge'},
   ],
   'author': <String, dynamic>{'displayName': '作者'},
+  'publishedAt': '2025-01-01T00:00:00.000Z',
   'updatedAt': '2025-01-01T00:00:00.000Z',
 };
 
@@ -42,6 +43,7 @@ void main() {
             'data': [_articleMap()],
           }),
           200,
+          headers: {'content-type': 'application/json'},
         );
       }),
     );
@@ -61,7 +63,11 @@ void main() {
     final client = _client(
       MockClient((request) async {
         requested.add(request.url);
-        return http.Response(jsonEncode({'data': <dynamic>[]}), 200);
+        return http.Response(
+          jsonEncode({'data': <dynamic>[]}),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
       }),
     );
     final content = ContentLocale()..update(ContentLanguage.en);
@@ -81,7 +87,11 @@ void main() {
       final client = _client(
         MockClient((request) async {
           requested.add(request.url);
-          return http.Response(jsonEncode({'data': <dynamic>[]}), 200);
+          return http.Response(
+          jsonEncode({'data': <dynamic>[]}),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
         }),
       );
 
