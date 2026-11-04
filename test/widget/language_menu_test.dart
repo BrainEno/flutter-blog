@@ -8,9 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _MemoryStore implements LocalePreferenceStore {
-  _MemoryStore([this.stored = AppLanguage.system]);
-
-  AppLanguage stored;
+  AppLanguage stored = AppLanguage.system;
 
   @override
   Future<AppLanguage> load() async => stored;
@@ -78,7 +76,9 @@ void main() {
     expect(bloc.state.language, AppLanguage.en);
     // The interface follows: Material chrome is now English.
     expect(
-      Localizations.localeOf(tester.element(find.byType(Scaffold))).languageCode,
+      Localizations.localeOf(
+        tester.element(find.byType(Scaffold)),
+      ).languageCode,
       'en',
     );
   });
@@ -93,7 +93,9 @@ void main() {
 
     expect(bloc.state.language, AppLanguage.zh);
     expect(
-      Localizations.localeOf(tester.element(find.byType(Scaffold))).languageCode,
+      Localizations.localeOf(
+        tester.element(find.byType(Scaffold)),
+      ).languageCode,
       'zh',
     );
   });

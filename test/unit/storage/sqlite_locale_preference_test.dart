@@ -15,7 +15,10 @@ void main() {
       var db = AppDatabase(NativeDatabase(file));
       try {
         await db.writeMetadata('other_preference', 'keep');
-        expect(await SqliteLocalePreferenceStore(db).load(), AppLanguage.system);
+        expect(
+          await SqliteLocalePreferenceStore(db).load(),
+          AppLanguage.system,
+        );
 
         await SqliteLocalePreferenceStore(db).save(AppLanguage.en);
         expect(await SqliteLocalePreferenceStore(db).load(), AppLanguage.en);
@@ -28,7 +31,10 @@ void main() {
         // A value written by a newer build must not brick an older one.
         await db.writeMetadata('app_language', 'cl');
 
-        expect(await SqliteLocalePreferenceStore(db).load(), AppLanguage.system);
+        expect(
+          await SqliteLocalePreferenceStore(db).load(),
+          AppLanguage.system,
+        );
       } finally {
         await db.close();
         await dir.delete(recursive: true);
