@@ -194,7 +194,7 @@
 
 ### 3.4 会话管理器（新组件）
 
-- 存储：flutter_secure_storage（iOS Keychain / Android Keystore 加密存储，issue #46）存 `{accessToken, accessExpiresAt, refreshToken, refreshExpiresAt, userId, email}`。旧版曾落在 SQLite `metadata` 表，启动时由 `migrateSessionStoreToSecureStorage` 一次性迁入安全存储并删除旧行；迁移失败（安全存储不可用）保留 SQLite 兜底，下次启动重试。
+- 存储：flutter_secure_storage（iOS Keychain / Android Keystore 加密存储，issue #46）存 `{accessToken, accessExpiresAt, refreshToken, refreshExpiresAt, userId, email}`。旧版曾落在 SQLite `metadata` 表，启动时由 `openSessionStore` 一次性迁入安全存储：先写入并**读回校验**，校验通过才删除旧行；安全存储写入/校验失败时保留 SQLite 副本，下次启动重试。两份副本哪一份有效由 `metadata` 里不含令牌的标记 `nowave_session_authority_v1` 决定（#102），因此退出清理失败也不会在重启后复活旧账号。
 - 请求封装：统一加 Bearer；认证请求前先经 `ensureFreshAccess`（廉价时间比较，access 距过期不足 30s 才单飞轮换，省掉每个过期点的 401 往返，issue #48）；仍遇 401 → 单飞 `POST /auth/refresh` → 重放原请求一次。
 - 刷新失败语义：仅当后端明确拒绝（401/UNAUTHENTICATED，即会话族被撤销）才清储并广播登出；网络/超时/5xx **保留会话**，由 401 路径兜底。refresh token 本身已过期时本地直接登出，不发网络请求。
 - 启动恢复：本地有对 → `GET /me` 校验 → 失败尝试刷新一次。

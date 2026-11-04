@@ -297,6 +297,7 @@
   "errorAuthRequired": "请登录账户",
   "errorAuthSessionExpired": "登录状态已失效，请重新登录",
   "errorAuthSessionChanged": "登录账户已变更；操作可能已提交，请先确认",
+  "errorLocalSignOutIncomplete": "已退出登录，但本地会话副本未能完全清除。重启后若仍显示该账号，请再次退出。",
   "errorAuthRateLimited": "尝试次数过多，请稍后再试",
   "errorSignupRateLimited": "注册过于频繁，请稍后再试",
   "errorProfileSave": "编辑用户资料失败,{reason}",

@@ -5,6 +5,7 @@ import 'package:belog/core/network/api_connection_checker.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
+import 'package:belog/core/nowave/resilient_nowave_session_store.dart';
 import 'package:belog/core/nowave/secure_nowave_session_store.dart';
 import 'package:belog/core/nowave/session_store_migration.dart';
 import 'package:belog/core/nowave/sqlite_nowave_session_store.dart';
@@ -123,10 +124,17 @@ Future<void> initDependencies() async {
 
   // The no-wave session. Tokens live in the platform secure storage
   // (issue #46); the SQLite-backed store remains as the migration source
-  // and the fallback when the secure store is unavailable.
-  final sessionStore = await migrateSessionStoreToSecureStorage(
+  // and the fallback when the secure store is unavailable. A small marker in
+  // the SQLite metadata table says which of the two copies is current, so a
+  // failed clear cannot resurrect an account and a broken keychain cannot
+  // silently lose one (#102).
+  final sessionStore = await openSessionStore(
     legacy: SqliteNowaveSessionStore(database),
     secure: const SecureNowaveSessionStore(),
+    canary: const SecureNowaveSessionStore(
+      key: SecureNowaveSessionStore.canaryKey,
+    ),
+    authority: SqliteSessionAuthorityStore(database),
   );
   final sessionManager = NowaveSessionManager(
     client: NowaveApiClient(baseUrl: uri),

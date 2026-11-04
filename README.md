@@ -77,6 +77,11 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
 - **会话持久化**：token 对存平台安全存储（iOS Keychain / Android Keystore，
   issue #46；SQLite 作为迁移源与降级兜底，`core/nowave/nowave_session.dart`）。
   启动时恢复，`GET /me` + `GET /me/profile` 解析身份。
+  **哪一份副本有效由一个不含令牌的标记决定**（SQLite `metadata`，`#102`）：
+  安全存储启动时先做写/读/删探针，不可用就直接写 SQLite，会话照常登录；迁移
+  先把旧行复制到安全存储并**读回校验**才删除旧行，写坏或读不回就保留 SQLite
+  副本；退出时**先写「无会话」标记**再清两处副本，即使 Keychain 删除失败，重启
+  也不会复活旧账号，并把「本地副本未清干净」作为退出结果提示给用户。
 - **刷新轮换**：`POST /auth/refresh` 单次有效且轮换；**重用已轮换的 refresh
   token 会撤销整个会话族**，因此客户端的刷新严格单飞（single-flight），
   access token 过期遇 401 时自动刷新并重放请求一次。
