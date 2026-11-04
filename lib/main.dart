@@ -47,9 +47,9 @@ void main() async {
   // means the first page is never fetched in one language and re-fetched in
   // the other.
   try {
-    await serviceLocator<LocaleBloc>()
-        .initialized
-        .timeout(_kLanguageRestoreTimeout);
+    await serviceLocator<LocaleBloc>().initialized.timeout(
+      _kLanguageRestoreTimeout,
+    );
   } on TimeoutException {
     AppLogger.debug('language restore timed out; continuing boot');
   }

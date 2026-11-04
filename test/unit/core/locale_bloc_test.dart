@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belog/core/l10n/app_language.dart';
 import 'package:belog/core/l10n/content_language.dart';
+import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/l10n/locale_bloc.dart';
 import 'package:belog/core/l10n/locale_preference_store.dart';
 import 'package:belog/core/utils/app_logger.dart';
