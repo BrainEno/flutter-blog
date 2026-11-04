@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
-import 'package:belog/core/l10n/tag_l10n.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/common/widgets/loader.dart';
@@ -15,15 +14,13 @@ import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
-import 'package:belog/features/blog/presentation/utils/cover_url.dart';
-import 'package:belog/features/blog/presentation/widgets/editor_field.dart';
-import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
+import 'package:belog/features/blog/presentation/editor/auto_save_banner.dart';
+import 'package:belog/features/blog/presentation/editor/editor_app_bar.dart';
+import 'package:belog/features/blog/presentation/editor/editor_form.dart';
 import 'package:belog/features/blog/presentation/widgets/draft_recovery_dialog.dart';
-import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 /// Creates or edits an article.
 ///
@@ -45,9 +42,6 @@ class BlogEditorPage extends StatefulWidget {
   State<BlogEditorPage> createState() => _BlogEditorState();
 }
 
-/// Status of the background draft auto-save, shown as a thin banner.
-enum _AutoSaveStatus { idle, saving, saved, failed }
-
 class _BlogEditorState extends State<BlogEditorPage> {
   static const _kAutoSaveDelay = Duration(seconds: 2);
 
@@ -57,9 +51,6 @@ class _BlogEditorState extends State<BlogEditorPage> {
   List<String> selectedTags = [];
   File? image;
   bool isNewImageSelected = false;
-
-  /// Markdown preview toggle for the body field (issue #17).
-  bool _previewMode = false;
 
   /// MIME type of [image] when a new cover was picked; uploaded as the
   /// object's contentType.
@@ -79,7 +70,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
   bool _hasUnclaimedDrafts = false;
 
   Timer? _autoSaveTimer;
-  _AutoSaveStatus _autoSaveStatus = _AutoSaveStatus.idle;
+  AutoSaveStatus _autoSaveStatus = AutoSaveStatus.idle;
   bool _draftsReady = false;
   bool _hasUnsavedEdits = false;
   bool _editedDuringPublish = false;
@@ -185,15 +176,15 @@ class _BlogEditorState extends State<BlogEditorPage> {
     if (!_isCurrentEditor || _isBlankDraft()) return;
     final version = _draftRequestVersion;
     final draft = _currentDraft();
-    setState(() => _autoSaveStatus = _AutoSaveStatus.saving);
+    setState(() => _autoSaveStatus = AutoSaveStatus.saving);
     try {
       await _draftStore.save(draft);
       if (!_isCurrentEditor) return;
       _hasUnsavedEdits = version != _draftRequestVersion;
-      setState(() => _autoSaveStatus = _AutoSaveStatus.saved);
+      setState(() => _autoSaveStatus = AutoSaveStatus.saved);
     } catch (_) {
       if (_isCurrentEditor) {
-        setState(() => _autoSaveStatus = _AutoSaveStatus.failed);
+        setState(() => _autoSaveStatus = AutoSaveStatus.failed);
       }
     }
   }
@@ -435,99 +426,11 @@ class _BlogEditorState extends State<BlogEditorPage> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: isDarkMode ? AppPalette.ink : AppPalette.paper,
-      appBar: AppBar(
-        backgroundColor: isDarkMode ? AppPalette.ink : AppPalette.paper,
-        elevation: 0,
-        iconTheme: IconThemeData(
-          color: isDarkMode ? AppPalette.paper : AppPalette.ink,
-        ),
-        title: Text(
-          widget.blog == null
-              ? context.l10n.editorNewTitle
-              : context.l10n.editorEditTitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: isDarkMode ? AppPalette.paper : AppPalette.ink,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          ElevatedButton(
-            onPressed: saveBlog,
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(60, 48),
-              backgroundColor: Theme.of(
-                context,
-              ).colorScheme.primary, // Theme-based background
-              foregroundColor: Theme.of(
-                context,
-              ).colorScheme.onPrimary, // Text color
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 2,
-              ), // Compact padding
-              textStyle: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-              ), // Smaller, bold text
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20), // Rounded corners
-              ),
-              elevation: 0,
-            ),
-            child: Text(context.l10n.actionPublish),
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) {
-              switch (value) {
-                case 'save':
-                  saveBlog();
-                  break;
-                case 'save_draft':
-                  saveDraft();
-                  break;
-                case 'cancel':
-                  Navigator.of(context).pop();
-                  break;
-              }
-            },
-            itemBuilder: (BuildContext context) {
-              // No delete entry here on purpose: deletion lives in "my
-              // articles" (long-press) where the recycle bin entry sits
-              // next to it.
-              if (widget.blog == null) {
-                return [
-                  PopupMenuItem<String>(
-                    value: 'save',
-                    child: Center(child: Text(context.l10n.saveAndPublish)),
-                  ),
-                  PopupMenuItem<String>(
-                    value: 'save_draft',
-                    child: Center(child: Text(context.l10n.saveDraft)),
-                  ),
-                ];
-              } else {
-                return [
-                  PopupMenuItem<String>(
-                    value: 'save',
-                    child: Center(child: Text(context.l10n.actionSaveChanges)),
-                  ),
-                  PopupMenuItem<String>(
-                    value: 'save_draft',
-                    child: Center(child: Text(context.l10n.saveDraft)),
-                  ),
-                  PopupMenuItem<String>(
-                    value: 'cancel',
-                    child: Center(child: Text(context.l10n.actionCancel)),
-                  ),
-                ];
-              }
-            },
-          ),
-        ],
+      appBar: EditorAppBar(
+        isEditing: widget.blog != null,
+        onPublish: saveBlog,
+        onSaveDraft: saveDraft,
+        onCancel: () => Navigator.of(context).pop(),
       ),
       body: BlocConsumer<BlogUploadBloc, BlogUploadState>(
         listener: (context, state) {
@@ -561,293 +464,26 @@ class _BlogEditorState extends State<BlogEditorPage> {
           if (state is BlogUploadLoading) {
             return const Loader();
           }
-          return SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24.0,
-                vertical: 20.0,
-              ),
-              child: Form(
-                key: formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (_hasUnclaimedDrafts)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Semantics(
-                          liveRegion: true,
-                          child: Text(context.l10n.legacyDraftsNotice),
-                        ),
-                      ),
-                    _AutoSaveBanner(status: _autoSaveStatus),
-                    const SizedBox(
-                      height: 20,
-                    ), // Space between buttons and image
-                    // Existing image container
-                    Tooltip(
-                      message: context.l10n.uploadCoverHint,
-                      child: Semantics(
-                        image: true,
-                        label: context.l10n.coverImage,
-                        child: InkWell(
-                          onTap: selectImage,
-                          child: image != null && isNewImageSelected
-                              ? SizedBox(
-                                  height: 250,
-                                  width: double.infinity,
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Image.file(
-                                      image!,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                )
-                              : widget.blog != null &&
-                                    widget.blog!.imageUrl.isNotEmpty
-                              ? SizedBox(
-                                  height: 250,
-                                  width: double.infinity,
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: CachedNetworkImage(
-                                      // Cover URLs are immutable and shared with the reader.
-                                      imageUrl: coverUrlOf(widget.blog!),
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                )
-                              : DottedBorder(
-                                  color: isDarkMode
-                                      ? AppPalette.mutedOnInk.withAlpha(
-                                          (0.6 * 255).toInt(),
-                                        )
-                                      : AppPalette.mutedOnPaper.withAlpha(
-                                          (0.8 * 255).toInt(),
-                                        ),
-                                  radius: const Radius.circular(12),
-                                  borderType: BorderType.RRect,
-                                  dashPattern: const [6, 3],
-                                  strokeCap: StrokeCap.round,
-                                  child: Container(
-                                    constraints: const BoxConstraints(
-                                      minHeight: 250,
-                                    ),
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
-                                      color: isDarkMode
-                                          ? AppPalette.surfaceOnInk.withAlpha(
-                                              (0.3 * 255).toInt(),
-                                            )
-                                          : AppPalette.surfaceOnPaper.withAlpha(
-                                              (0.15 * 255).toInt(),
-                                            ),
-                                    ),
-                                    child: Center(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.image_outlined,
-                                            size: 55,
-                                            color: isDarkMode
-                                                ? AppPalette.mutedOnInk
-                                                : AppPalette.mutedOnPaper,
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Text(
-                                            context.l10n.uploadCoverHint,
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              fontSize: 17,
-                                              fontWeight: FontWeight.w500,
-                                              color: isDarkMode
-                                                  ? AppPalette.mutedOnInk
-                                                  : AppPalette.mutedOnPaper,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 36),
-                    Wrap(
-                      spacing: 10.0,
-                      runSpacing: 10.0,
-                      children: ["诗歌", "小说", "原创", "其他"]
-                          .map(
-                            (e) => InputChip(
-                              label: Text(
-                                localizedTag(context.l10n, e),
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                  color: selectedTags.contains(e)
-                                      ? AppPalette.ink
-                                      : isDarkMode
-                                      ? AppPalette.paper
-                                      : AppPalette.ink,
-                                ),
-                              ),
-                              selected: selectedTags.contains(e),
-                              elevation: 0,
-                              showCheckmark: false,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 8.0,
-                                horizontal: 12.0,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.zero,
-                                side: BorderSide(
-                                  color: isDarkMode
-                                      ? AppPalette.mutedOnInk.withAlpha(
-                                          (0.7 * 255).toInt(),
-                                        )
-                                      : AppPalette.mutedOnPaper.withAlpha(
-                                          (0.7 * 255).toInt(),
-                                        ),
-                                ),
-                              ),
-                              backgroundColor: isDarkMode
-                                  ? AppPalette.surfaceOnInk.withAlpha(
-                                      (0.6 * 255).toInt(),
-                                    )
-                                  : AppPalette.surfaceOnPaper.withAlpha(
-                                      (0.4 * 255).toInt(),
-                                    ),
-                              selectedColor: AppPalette.orange,
-                              labelStyle: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: selectedTags.contains(e)
-                                    ? AppPalette.ink
-                                    : null,
-                              ),
-                              onSelected: (bool selected) {
-                                setState(() {
-                                  if (selected) {
-                                    selectedTags.add(e);
-                                  } else {
-                                    selectedTags.remove(e);
-                                  }
-                                });
-                                _onEditorContentChanged();
-                              },
-                            ),
-                          )
-                          .toList(),
-                    ),
-                    const SizedBox(height: 40),
-                    EditorField(
-                      controller: titleController,
-                      hintText: context.l10n.fieldTitleHint,
-                      contentType: BlogEditorContentType.title,
-                    ),
-                    const SizedBox(height: 30),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final scale =
-                            MediaQuery.textScalerOf(context).scale(14) / 14;
-                        return SegmentedButton<bool>(
-                          direction: constraints.maxWidth / scale < 260
-                              ? Axis.vertical
-                              : Axis.horizontal,
-                          segments: [
-                            ButtonSegment(
-                              value: false,
-                              icon: const Icon(Icons.edit_outlined),
-                              label: Text(context.l10n.editorSegmentEdit),
-                            ),
-                            ButtonSegment(
-                              value: true,
-                              icon: const Icon(Icons.visibility_outlined),
-                              label: Text(context.l10n.editorSegmentPreview),
-                            ),
-                          ],
-                          selected: {_previewMode},
-                          onSelectionChanged: (selection) =>
-                              setState(() => _previewMode = selection.first),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    if (_previewMode)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isDarkMode
-                                ? AppPalette.mutedOnInk
-                                : AppPalette.mutedOnPaper,
-                          ),
-                        ),
-                        child: contentController.text.trim().isEmpty
-                            ? Text(
-                                context.l10n.previewEmptyBody,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              )
-                            : MarkdownBody(markdown: contentController.text),
-                      )
-                    else
-                      EditorField(
-                        controller: contentController,
-                        hintText: context.l10n.fieldBodyHint,
-                        maxLines: null,
-                        expands: true,
-                        contentType: BlogEditorContentType.body,
-                      ),
-                    const SizedBox(height: 40),
-                  ],
-                ),
-              ),
-            ),
+          return EditorForm(
+            formKey: formKey,
+            titleController: titleController,
+            contentController: contentController,
+            selectedTags: selectedTags,
+            onTagsChanged: _onTagsChanged,
+            image: image,
+            isNewImageSelected: isNewImageSelected,
+            blog: widget.blog,
+            hasUnclaimedDrafts: _hasUnclaimedDrafts,
+            autoSaveStatus: _autoSaveStatus,
+            onPickCover: selectImage,
           );
         },
       ),
     );
   }
-}
 
-/// Thin status line for the background draft auto-save.
-class _AutoSaveBanner extends StatelessWidget {
-  final _AutoSaveStatus status;
-
-  const _AutoSaveBanner({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    switch (status) {
-      case _AutoSaveStatus.idle:
-        return const SizedBox.shrink();
-      case _AutoSaveStatus.saving:
-        return Text(
-          context.l10n.autoSaveSaving,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall,
-        );
-      case _AutoSaveStatus.saved:
-        return Text(
-          context.l10n.autoSaveSaved,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall,
-        );
-      case _AutoSaveStatus.failed:
-        return Text(
-          context.l10n.autoSaveFailed,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.error,
-          ),
-        );
-    }
+  void _onTagsChanged(List<String> tags) {
+    setState(() => selectedTags = tags);
+    _onEditorContentChanged();
   }
 }
