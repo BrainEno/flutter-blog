@@ -37,6 +37,41 @@ void main() {
     );
   });
 
+  test('storage ports carry no Flutter UI type', () {
+    // A persisted preference is plain data (#107): the theme port stores
+    // `AppThemeMode` instead of Flutter's `ThemeMode`, so nothing below the UI
+    // needs a widget import. Plugin packages such as flutter_secure_storage
+    // are fine - they are not UI types.
+    const uiLibraries = [
+      'package:flutter/material.dart',
+      'package:flutter/widgets.dart',
+      'package:flutter/cupertino.dart',
+    ];
+    final ports = _dartFiles(
+      'lib/core',
+    ).where((file) => file.path.endsWith('_store.dart')).toList();
+    expect(ports, isNotEmpty);
+    final offenders = <String>[];
+    for (final file in ports) {
+      for (final line in file.readAsLinesSync()) {
+        final directive = line.trimLeft();
+        if (!_isDirective(directive)) continue;
+        final uri = _uriOf(directive);
+        if (uri != null && uiLibraries.contains(uri)) {
+          offenders.add('${file.path}: $directive');
+        }
+      }
+    }
+    expect(
+      offenders,
+      isEmpty,
+      reason:
+          'a storage port in lib/core must not depend on Flutter UI '
+          'types (#107); map to the UI type at the caller instead:\n'
+          '${offenders.join('\n')}',
+    );
+  });
+
   test('the scan reaches the files it is meant to guard', () {
     // A guard that silently matches nothing would pass forever.
     expect(_dartFiles('lib/core'), isNotEmpty);

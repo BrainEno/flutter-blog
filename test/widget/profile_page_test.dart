@@ -5,6 +5,7 @@ import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/common/widgets/no_wave_action_row.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/theme/app_theme_mode.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
@@ -31,17 +32,17 @@ class _MockExporter extends Mock implements ExportUserData {}
 
 class _ThemeStore implements ThemePreferenceStore {
   _ThemeStore(this.mode);
-  ThemeMode mode;
+  AppThemeMode mode;
 
   @override
-  Future<ThemeMode> load() async => mode;
+  Future<AppThemeMode> load() async => mode;
 
   @override
-  Future<void> save(ThemeMode value) async => mode = value;
+  Future<void> save(AppThemeMode value) async => mode = value;
 }
 
 class _Harness {
-  _Harness(this.user, {ThemeMode mode = ThemeMode.light}) {
+  _Harness(this.user, {AppThemeMode mode = AppThemeMode.light}) {
     store = _ThemeStore(mode);
     theme = ThemeBloc(store);
     appUser = AppUserCubit()..updateUser(user);
@@ -141,8 +142,8 @@ User _user({String name = 'A reader'}) => User(
 
 void main() {
   for (final locale in [const Locale('zh'), const Locale('en')]) {
-    for (final mode in [ThemeMode.light, ThemeMode.dark]) {
-      testWidgets('profile fits 320px and 2x text: $locale $mode', (
+    for (final mode in [AppThemeMode.light, AppThemeMode.dark]) {
+      testWidgets('profile fits 320px and 2x text: $locale ${mode.name}', (
         tester,
       ) async {
         tester.view.physicalSize = const Size(320, 640);
@@ -196,11 +197,11 @@ void main() {
     await tester.tap(find.byTooltip('Switch to dark theme'));
     await tester.pumpAndSettle();
     expect(harness.theme.state.themeMode, ThemeMode.dark);
-    expect(harness.store.mode, ThemeMode.dark);
+    expect(harness.store.mode, AppThemeMode.dark);
     expect(find.byTooltip('Switch to light theme'), findsOneWidget);
     await tester.tap(find.byTooltip('Switch to light theme'));
     await tester.pumpAndSettle();
-    expect(harness.store.mode, ThemeMode.light);
+    expect(harness.store.mode, AppThemeMode.light);
   });
 
   testWidgets('profile actions navigate to the intended destinations', (

@@ -68,7 +68,7 @@
 
 ## 六、仍然开放的部分
 
-- **#107**：`lib/core` → `lib/features` 已为 0 命中，千行级单元已拆分，「依赖规则测试」本次由 `test/unit/core/layering_test.dart` 补上（扫描 `lib/core` 是否导入 `package:belog/features/`、`lib/core/storage` 是否导入 `package:flutter/`，并额外断言扫描确实覆盖到文件）。残留一项：`lib/core/theme/sqlite_theme_store.dart#L10-L20` 仍以 Flutter 的 `ThemeMode` 作为端口类型，「存储层不依赖 Flutter UI 类型」在 theme 这一处尚未成立，需要把端口改成自有枚举再由表现层转换。
+- **#107**：`lib/core` → `lib/features` 为 0 命中，千行级单元已拆分，依赖规则由 `test/unit/core/layering_test.dart` 守住（`lib/core` 不得导入 `package:belog/features/`、`lib/core/storage` 不得导入 `package:flutter/`、`lib/core/**/*_store.dart` 不得导入 `package:flutter/{material,widgets,cupertino}.dart`，并断言扫描确实覆盖到文件）。原先最后一项残留——`lib/core/theme/` 以 Flutter `ThemeMode` 作为存储端口类型——已解除：端口改为纯 Dart 的 `AppThemeMode`（`lib/core/theme/app_theme_mode.dart`），`ThemeBloc` 在边界做双向转换。四条验收全部满足，可关闭。
 - **#109**：尚无 `LICENSE`（需维护者选定许可）；`pubspec.yaml` 仍是 `0.0.0+1`；Android `applicationId` 仍是 `com.example.belog`，其变更是升级/数据迁移决策，需所有者确认。**本次已做**：`coverage/lcov.info` 不再由源树承载，覆盖率改为 CI 产物（见 `docs/ci-observability.md`）。
 - **#24**：品牌文案（Belog / Bottom Think）与界面语言切换已清理完成；剩余的是无障碍与文案统一的长期项。
 - **#21 / #18**：功能类需求，需要单独排期。
