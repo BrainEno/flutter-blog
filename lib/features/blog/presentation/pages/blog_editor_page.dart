@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/image_upload.dart';
@@ -17,6 +18,7 @@ import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.da
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
+import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/editor/auto_save_banner.dart';
 import 'package:belog/features/blog/presentation/editor/editor_app_bar.dart';
@@ -32,8 +34,14 @@ import 'package:uuid/uuid.dart';
 /// The page is pushed as `/editor` (new article) or `/profile/editor` with
 /// the article passed as `extra`. It pops with `true` when something was
 /// published, updated or deleted, so the page below can refresh its list.
+///
+/// A [queueEntry] resumes the text and cover of a *failed* publish that never
+/// reached the server. Editing it here is an ordinary new-article publish (new
+/// idempotency key, because the text changed), and the old entry is deleted
+/// once this one has a successor - published, or queued again.
 class BlogEditorPage extends StatefulWidget {
   final Blog? blog;
+  final PublishQueueEntry? queueEntry;
   final BlogDraftStore? draftStore;
   final NowaveSessionIdentity? sessionIdentity;
   final PublishQueueStore? publishQueueStore;
@@ -41,6 +49,7 @@ class BlogEditorPage extends StatefulWidget {
   const BlogEditorPage({
     super.key,
     this.blog,
+    this.queueEntry,
     this.draftStore,
     this.sessionIdentity,
     this.publishQueueStore,
@@ -63,6 +72,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
 
   /// The picked cover's bytes and MIME type; [image] only feeds the preview.
   ImageUpload? imageUpload;
+
+  /// Cover bytes that have no picker file behind them (a resumed queue entry).
+  Uint8List? imageBytes;
   int _draftRequestVersion = 0;
   late final BlogDraftStore _draftStore;
   late final AppUserCubit _userCubit;
@@ -114,6 +126,13 @@ class _BlogEditorState extends State<BlogEditorPage> {
       titleController.text = widget.blog!.title;
       contentController.text = widget.blog!.content;
       selectedTags = List.from(widget.blog!.tags);
+    }
+    final resumed = widget.queueEntry;
+    if (resumed != null && widget.blog == null && !_invalidated) {
+      titleController.text = resumed.title;
+      contentController.text = resumed.content;
+      selectedTags = List.from(resumed.tags);
+      unawaited(_loadQueuedCover(resumed));
     }
     // Attached after the initial text is in place, so pre-filling the
     // editors is not mistaken for an edit.
@@ -318,6 +337,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
         setState(() {
           image = pickedImage.file;
           imageUpload = pickedImage.upload;
+          // A freshly picked file wins over the bytes restored from a queue
+          // entry; keeping both would preview the wrong image.
+          imageBytes = null;
           isNewImageSelected = true;
         });
       }
@@ -347,6 +369,42 @@ class _BlogEditorState extends State<BlogEditorPage> {
     return GetIt.instance.isRegistered<PublishQueueDrainer>()
         ? GetIt.instance<PublishQueueDrainer>()
         : null;
+  }
+
+  /// Restores the cover a failed entry kept inside the app's storage. The text
+  /// is already on screen: a missing cover only leaves the slot empty.
+  Future<void> _loadQueuedCover(PublishQueueEntry entry) async {
+    final store = _queueStore;
+    if (store == null) return;
+    try {
+      final cover = await store.readCover(entry);
+      if (cover == null || !mounted || !_isCurrentEditor) return;
+      // A slow read must not replace a cover the user picked meanwhile.
+      if (image != null && isNewImageSelected) return;
+      setState(() {
+        imageUpload = cover;
+        imageBytes = cover.bytes;
+        isNewImageSelected = true;
+      });
+    } catch (_) {
+      // Reading local bytes failed; the text is still editable and publishable.
+    }
+  }
+
+  /// Deletes the queue entry this editor resumed from, once the text has a
+  /// successor: published, or queued again under a new idempotency key.
+  ///
+  /// Best effort by design. A leftover row is visible and removable, while
+  /// deleting before the successor exists would lose the only copy.
+  Future<void> _retireResumedEntry() async {
+    final entry = widget.queueEntry;
+    final store = _queueStore;
+    if (entry == null || store == null) return;
+    try {
+      await store.remove(entry.id);
+    } catch (_) {
+      // The new intent is already safe; the stale row can be removed by hand.
+    }
   }
 
   /// Failures a retry can plausibly fix. A rejected body, a permission denial
@@ -389,6 +447,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     }
     // The entry now holds the text, so the local draft is redundant; later
     // edits during the publish attempt are kept as a draft on purpose.
+    await _retireResumedEntry();
     _publishIdempotencyKey = null;
     _publishStartedAt = null;
     _hasUnsavedEdits = _editedDuringPublish;
@@ -553,6 +612,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
             );
             // Clear only the exact published snapshot; later edits survive.
             _hasUnsavedEdits = _editedDuringPublish;
+            unawaited(_retireResumedEntry());
             _publishIdempotencyKey = null;
             _publishImageSnapshot = null;
             unawaited(_clearPublishedDraft());
@@ -570,9 +630,11 @@ class _BlogEditorState extends State<BlogEditorPage> {
             selectedTags: selectedTags,
             onTagsChanged: _onTagsChanged,
             image: image,
+            imageBytes: imageBytes,
             isNewImageSelected: isNewImageSelected,
             blog: widget.blog,
             hasUnclaimedDrafts: _hasUnclaimedDrafts,
+            resumedFromQueue: widget.queueEntry != null,
             autoSaveStatus: _autoSaveStatus,
             onPickCover: selectImage,
           );

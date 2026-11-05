@@ -9,6 +9,7 @@ import 'package:belog/features/auth/presentation/pages/change_password_page.dart
 import 'package:belog/features/auth/presentation/pages/login_page.dart';
 import 'package:belog/features/auth/presentation/pages/signup_page.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:belog/features/blog/presentation/blocs/blog/blog_bloc.dart';
@@ -421,6 +422,9 @@ GoRoute tagRoute() {
 /// and the profile branch (editing from "my articles"). The result of the
 /// pushed route reports whether anything was published, updated or deleted so
 /// the page below can refresh.
+///
+/// `extra` is either the [Blog] being edited or a [PublishQueueEntry] to resume
+/// (the queue page), never both.
 GoRoute editorRoute() {
   return GoRoute(
     path: 'editor',
@@ -428,7 +432,10 @@ GoRoute editorRoute() {
       final extra = state.extra;
       return BlocProvider(
         create: (_) => serviceLocator<BlogUploadBloc>(),
-        child: BlogEditorPage(blog: extra is Blog ? extra : null),
+        child: BlogEditorPage(
+          blog: extra is Blog ? extra : null,
+          queueEntry: extra is PublishQueueEntry ? extra : null,
+        ),
       );
     },
   );

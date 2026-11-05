@@ -69,7 +69,22 @@
 - SQLite 实现：`lib/features/blog/data/datasources/sqlite_publish_queue_store.dart`；
 - 发送：`lib/features/blog/data/publish/publish_queue_runner.dart`；
 - 事件接线：`lib/features/blog/data/publish/publish_queue_service.dart`；
-- UI：`profile → 发布队列`（`/profile/publish-queue`）。
+- UI：`profile → 发布队列`（`/profile/publish-queue`）；「继续编辑」把条目作为
+  `extra` 推到 `/profile/editor`，由 `BlogEditorPage(queueEntry: …)` 接手。
+
+## 改内容：失败项的「继续编辑」
+
+停止重试（`failed`）的条目不再只能「重试」或「移除」。队列页给它多一个
+**继续编辑**：把标题、正文、标签和封面装回编辑器，改完再发。
+
+- 重新发布是**一次新的意图**：新的幂等键。正文变了，复用旧键只会让服务端重放原来
+  那篇文章，而不是发这次修改的内容。
+- 原条目在**新意图有了归宿之后**才删除：发布成功，或再次入队。删除是尽力而为的——
+  删早了会丢掉唯一一份文字，删晚了只是一个可见、可移除的多余行。
+- 只有 `failed` 能继续编辑。`queued` 随时可能被 drain 抢走，`uploading` 已经在路上，
+  这两种状态改内容会和正在发送的请求打架。
+- 队列里的封面存在应用目录里，没有选图器文件，所以编辑器直接预览字节
+  （`Image.memory`），发布时仍按原来的上传路径带上同一份字节。
 
 ## 范围
 
@@ -88,4 +103,8 @@
 - `test/unit/storage/publish_queue_store_test.dart`：入库/抢占/退避/修复/清理、
   账号与后端隔离、重开数据库后仍在；
 - `test/unit/publish/publish_queue_runner_test.dart`：带上幂等键发送、失败分类、
-  无会话不发、串账号不发、离线不消耗尝试、FIFO、并发 drain 只发一次。
+  无会话不发、串账号不发、离线不消耗尝试、FIFO、并发 drain 只发一次；
+- `test/widget/publish_queue_page_test.dart`：只有 `failed` 出现「继续编辑」，点进去
+  带着该条目打开编辑器，返回后重新读一次队列；
+- `test/widget/blog_editor_resume_test.dart`：恢复的标题/正文/标签/封面，发布成功或
+  再次入队后删除原条目且不复用旧幂等键；没有队列来源的编辑器不碰队列。

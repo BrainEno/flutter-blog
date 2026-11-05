@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -23,9 +24,11 @@ class EditorForm extends StatelessWidget {
     required this.selectedTags,
     required this.onTagsChanged,
     required this.image,
+    this.imageBytes,
     required this.isNewImageSelected,
     required this.blog,
     required this.hasUnclaimedDrafts,
+    this.resumedFromQueue = false,
     required this.autoSaveStatus,
     required this.onPickCover,
   });
@@ -36,9 +39,14 @@ class EditorForm extends StatelessWidget {
   final List<String> selectedTags;
   final ValueChanged<List<String>> onTagsChanged;
   final File? image;
+  final Uint8List? imageBytes;
   final bool isNewImageSelected;
   final Blog? blog;
   final bool hasUnclaimedDrafts;
+
+  /// The text came from a failed queue entry, so the page says what happens to
+  /// that entry when this publish succeeds.
+  final bool resumedFromQueue;
   final AutoSaveStatus autoSaveStatus;
   final VoidCallback onPickCover;
 
@@ -52,6 +60,14 @@ class EditorForm extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (resumedFromQueue)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    context.l10n.publishQueueResumedNotice,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
               if (hasUnclaimedDrafts)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
@@ -65,6 +81,7 @@ class EditorForm extends StatelessWidget {
               EditorCoverField(
                 blog: blog,
                 image: image,
+                imageBytes: imageBytes,
                 isNewImageSelected: isNewImageSelected,
                 onTap: onPickCover,
               ),
