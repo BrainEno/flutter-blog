@@ -305,21 +305,24 @@ void main() {
     expect(repository.fences.last.userId, 'user-b');
   });
 
-  test('a mark read by the previous account cannot touch the new inbox', () async {
-    await pumpCubit(
-      rows: {
-        'user-a': [_notification(id: 'row-a')],
-      },
-    );
+  test(
+    'a mark read by the previous account cannot touch the new inbox',
+    () async {
+      await pumpCubit(
+        rows: {
+          'user-a': [_notification(id: 'row-a')],
+        },
+      );
 
-    final staleMark = cubit.markRead('row-a');
-    repository.rowsByUser['user-b'] = [_notification(id: 'row-b')];
-    identity.replace('user-b');
-    await Future<void>.delayed(Duration.zero);
-    await staleMark;
+      final staleMark = cubit.markRead('row-a');
+      repository.rowsByUser['user-b'] = [_notification(id: 'row-b')];
+      identity.replace('user-b');
+      await Future<void>.delayed(Duration.zero);
+      await staleMark;
 
-    final state = _loaded(cubit);
-    expect(state.items.single.id, 'row-b');
-    expect(state.items.single.isRead, isFalse);
-  });
+      final state = _loaded(cubit);
+      expect(state.items.single.id, 'row-b');
+      expect(state.items.single.isRead, isFalse);
+    },
+  );
 }

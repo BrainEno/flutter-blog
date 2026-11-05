@@ -161,9 +161,7 @@ void main() {
     final responses = <String, http.Response>{
       'a non-list payload': _data({'notifications': []}),
       'a row that is not an object': _data(['notification-1']),
-      'a row without a created time': _data([
-        _row()..remove('createdAt'),
-      ]),
+      'a row without a created time': _data([_row()..remove('createdAt')]),
       'a body that is not JSON': http.Response('not json', 200),
     };
 
@@ -205,9 +203,7 @@ void main() {
       _Auth(),
       MockClient((request) async {
         seen.add(request);
-        return _data(
-          _row(readAt: '2026-11-05T06:00:00.000Z'),
-        );
+        return _data(_row(readAt: '2026-11-05T06:00:00.000Z'));
       }),
     );
 
@@ -228,9 +224,7 @@ void main() {
   test('a repeated mark read is accepted, not rejected', () async {
     final repository = _repository(
       _Auth(),
-      MockClient(
-        (_) async => _data(_row(readAt: '2026-11-05T06:00:00.000Z')),
-      ),
+      MockClient((_) async => _data(_row(readAt: '2026-11-05T06:00:00.000Z'))),
     );
 
     final first = await repository.markRead('notification-1', fence: _fence);

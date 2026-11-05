@@ -22,7 +22,5 @@ abstract interface class NotificationRepository {
   });
 
   /// Marks every unread notification read; returns how many changed.
-  Future<Either<Failure, int>> markAllRead({
-    required NowaveSessionFence fence,
-  });
+  Future<Either<Failure, int>> markAllRead({required NowaveSessionFence fence});
 }

@@ -60,10 +60,7 @@ void main() {
   test('an article deletion without a purge date is still understood', () {
     final notification = notificationFromRow(
       _row(
-        payload: const {
-          'type': 'article.deleted',
-          'articleId': 'article-9',
-        },
+        payload: const {'type': 'article.deleted', 'articleId': 'article-9'},
       ),
     );
 

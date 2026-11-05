@@ -178,7 +178,10 @@ void main() {
 
   testWidgets('marks one row read and says so', (tester) async {
     final harness = _Harness(
-      rows: [_notification(), _notification(id: 'notification-2')],
+      rows: [
+        _notification(),
+        _notification(id: 'notification-2'),
+      ],
     );
     addTearDown(harness.dispose);
     await harness.pump(tester);
@@ -198,7 +201,10 @@ void main() {
     tester,
   ) async {
     final harness = _Harness(
-      rows: [_notification(), _notification(id: 'notification-2')],
+      rows: [
+        _notification(),
+        _notification(id: 'notification-2'),
+      ],
     );
     addTearDown(harness.dispose);
     await harness.pump(tester);

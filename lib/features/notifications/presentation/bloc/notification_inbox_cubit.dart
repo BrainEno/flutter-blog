@@ -71,10 +71,8 @@ final class NotificationInboxLoaded extends NotificationInboxState {
 /// session changed while it was in flight, so a sign-in switch can never show
 /// one account's inbox to another.
 class NotificationInboxCubit extends Cubit<NotificationInboxState> {
-  NotificationInboxCubit({
-    required this.repository,
-    required this.identity,
-  }) : super(const NotificationInboxLoading()) {
+  NotificationInboxCubit({required this.repository, required this.identity})
+    : super(const NotificationInboxLoading()) {
     _identitySubscription = identity.identityChanges.listen((_) {
       unawaited(load());
     });
@@ -214,7 +212,8 @@ class NotificationInboxCubit extends Cubit<NotificationInboxState> {
     AppNotification updated,
   ) {
     return List.unmodifiable([
-      for (final item in items) if (item.id == updated.id) updated else item,
+      for (final item in items)
+        if (item.id == updated.id) updated else item,
     ]);
   }
 

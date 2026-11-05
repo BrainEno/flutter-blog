@@ -106,9 +106,8 @@ class _NotificationInboxView extends StatelessWidget {
           final capped =
               loaded.items.length >= NotificationInboxCubit.pageLimit;
           return RefreshIndicator(
-            onRefresh: () => context.read<NotificationInboxCubit>().load(
-              showLoading: false,
-            ),
+            onRefresh: () =>
+                context.read<NotificationInboxCubit>().load(showLoading: false),
             child: loaded.isEmpty
                 ? ListView(
                     children: [
