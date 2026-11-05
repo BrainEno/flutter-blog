@@ -80,10 +80,11 @@ void main() {
     bloc.add(ToggleTheme());
     bloc.add(ToggleTheme());
     store.loadGate!.complete(AppThemeMode.dark);
-    expect(
-      (await states).map((state) => state.themeMode),
-      [ThemeMode.dark, ThemeMode.light, ThemeMode.dark],
-    );
+    expect((await states).map((state) => state.themeMode), [
+      ThemeMode.dark,
+      ThemeMode.light,
+      ThemeMode.dark,
+    ]);
     expect(store.writes, [AppThemeMode.light, AppThemeMode.dark]);
   });
 }

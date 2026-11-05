@@ -55,10 +55,7 @@ class ThemeBloc extends Bloc<ThemeEvent, ThemeState> {
     add(InitializeTheme());
   }
 
-  Future<void> _onThemeEvent(
-    ThemeEvent event,
-    Emitter<ThemeState> emit,
-  ) async {
+  Future<void> _onThemeEvent(ThemeEvent event, Emitter<ThemeState> emit) async {
     if (event is InitializeTheme) {
       emit(ThemeState((await _store.load()).themeMode));
       return;
@@ -68,7 +65,8 @@ class ThemeBloc extends Bloc<ThemeEvent, ThemeState> {
     if (event is SetThemeMode) {
       mode = event.themeMode;
     } else if (event is ToggleTheme) {
-      final isDark = state.themeMode == ThemeMode.dark ||
+      final isDark =
+          state.themeMode == ThemeMode.dark ||
           (state.themeMode == ThemeMode.system &&
               event.systemBrightness == Brightness.dark);
       mode = isDark ? ThemeMode.light : ThemeMode.dark;

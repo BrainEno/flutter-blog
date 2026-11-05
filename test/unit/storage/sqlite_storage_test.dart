@@ -10,7 +10,6 @@ import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:drift/native.dart';
 import 'package:sqlite3/sqlite3.dart' as raw;
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

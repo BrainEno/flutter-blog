@@ -10,10 +10,11 @@ void main() {
     }
     // What actually lands in the `theme.mode` column. The names are the
     // storage format, so they must not drift with a UI rename.
-    expect(
-      AppThemeMode.values.map((mode) => mode.name),
-      ['system', 'light', 'dark'],
-    );
+    expect(AppThemeMode.values.map((mode) => mode.name), [
+      'system',
+      'light',
+      'dark',
+    ]);
   });
 
   test('an unknown or missing name falls back to following the system', () {

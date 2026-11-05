@@ -47,9 +47,9 @@ void main() {
       'package:flutter/widgets.dart',
       'package:flutter/cupertino.dart',
     ];
-    final ports = _dartFiles('lib/core')
-        .where((file) => file.path.endsWith('_store.dart'))
-        .toList();
+    final ports = _dartFiles(
+      'lib/core',
+    ).where((file) => file.path.endsWith('_store.dart')).toList();
     expect(ports, isNotEmpty);
     final offenders = <String>[];
     for (final file in ports) {
