@@ -7,6 +7,7 @@ import 'package:belog/core/theme/theme.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/startup/startup_failure_app.dart';
 import 'package:belog/core/utils/app_logger.dart';
+import 'package:belog/core/utils/article_deep_link.dart';
 import 'package:belog/core/utils/global_snackbar.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/features/auth/auth_session_sync.dart';
@@ -134,6 +135,11 @@ class NoWaveApp extends StatefulWidget {
 class _NoWaveAppState extends State<NoWaveApp> {
   late final GoRouter _router = createAppRouter(
     appUserCubit: serviceLocator<AppUserCubit>(),
+    // A cold start from `nowave://article/<slug>` arrives here as the whole
+    // URL (issue #21); the reader is the first frame, not a 404.
+    initialLocation: initialLocationForRoute(
+      PlatformDispatcher.instance.defaultRouteName,
+    ),
   );
 
   @override

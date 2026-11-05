@@ -482,6 +482,45 @@ void main() {
     verify(() => harness.remote.getBlogById('abc')).called(1);
   });
 
+  testWidgets('a nowave:// article link opens the reader while running', (
+    tester,
+  ) async {
+    // The OS hands a received link to the running app as new route
+    // information; the router's redirect rewrites it before matching (#21).
+    final harness = Harness()..buildRouter();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(BlogPage), findsOneWidget);
+
+    harness.router!.go('nowave://article/abc');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BlogViewerPage), findsOneWidget);
+    expect(find.text('深链文章'), findsOneWidget);
+    verify(() => harness.remote.getBlogById('abc')).called(1);
+  });
+
+  testWidgets('a foreign site URL is never rewritten into the reader', (
+    tester,
+  ) async {
+    // Only the own scheme and the configured web origin are links this app
+    // owns; everything else keeps normal routing.
+    final harness = Harness()..buildRouter();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+
+    harness.router!.go('https://someone-else.example/articles/abc');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BlogViewerPage), findsNothing);
+    expect(
+      find.text(lookupAppLocalizations(const Locale('zh')).pageNotFound),
+      findsOneWidget,
+    );
+  });
+
   for (final locale in [const Locale('zh'), const Locale('en')]) {
     testWidgets('viewer metadata and images are accessible at 2x: $locale', (
       tester,
