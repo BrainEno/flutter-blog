@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/source_files.dart';
+
 /// Guards the copy rule that #24 established: user-facing text comes from the
 /// ARB catalogs (`lib/l10n/app_zh.arb` / `app_en.arb`), never from a literal
 /// baked into a widget.
@@ -22,7 +24,7 @@ void main() {
     final offenders = <String>[];
     final allowlistedFiles = <String>{};
 
-    for (final file in _dartFiles('lib')) {
+    for (final file in dartFilesUnder('lib')) {
       if (file.path.startsWith('lib/l10n/')) continue; // catalogs + generated
       final hits = _hardcodedCopyIn(file);
       if (hits.isEmpty) continue;
@@ -54,7 +56,7 @@ void main() {
   });
 
   test('the scan reaches the files it is meant to guard', () {
-    final files = _dartFiles('lib');
+    final files = dartFilesUnder('lib');
     expect(files.length, greaterThan(100));
     // The scan must be able to see a sink at all: a pattern that matches
     // nothing would pass forever.
@@ -115,15 +117,4 @@ List<String> _hardcodedCopyIn(File file, {String? contents}) {
   }
   offenders.sort();
   return offenders;
-}
-
-List<File> _dartFiles(String directory) {
-  final root = Directory(directory);
-  if (!root.existsSync()) return const [];
-  return root
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.dart'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
 }

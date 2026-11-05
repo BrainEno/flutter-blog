@@ -168,14 +168,17 @@ void main() {
       }
     });
 
-    test('articleDeepLink round-trips through the parser', () {
-      final link = articleDeepLink('poetry-1a2b');
-      expect(link, 'nowave://article/poetry-1a2b');
-      expect(articleLocationFromDeepLink(Uri.parse(link)), '/view/poetry-1a2b');
-    });
-
-    test('an empty slug produces no link at all', () {
-      expect(articleDeepLink('  '), isEmpty);
+    test('the shipped custom-scheme shape parses', () {
+      // The builder that produced `nowave://article/<slug>` had no production
+      // caller (the share sheet hands out the web URL), so it was removed in
+      // the 2026-11 audit; this keeps the *shape* pinned to the manifest and
+      // plist entries the app ships.
+      expect(
+        articleLocationFromDeepLink(
+          Uri.parse('nowave://${kArticleDeepLinkHost}/poetry-1a2b'),
+        ),
+        '/view/poetry-1a2b',
+      );
     });
   });
 

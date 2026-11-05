@@ -1,5 +1,6 @@
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
@@ -94,9 +95,7 @@ class _PeopleList extends StatelessWidget {
           );
         }
         final person = people[index - (capped ? 1 : 0)];
-        final name = person.displayName.trim().isEmpty
-            ? context.l10n.anonymousAuthor
-            : person.displayName;
+        final name = authorDisplayName(context.l10n, person.displayName);
         return Column(
           children: [
             Material(

@@ -4,6 +4,7 @@ import 'package:belog/core/common/widgets/no_wave_action_row.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/theme_toggle_button.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/common/widgets/language_menu_button.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -58,9 +59,7 @@ class ProfilePage extends StatelessWidget {
               );
             }
             final user = state.user;
-            final name = user.name.trim().isEmpty
-                ? l10n.anonymousAuthor
-                : user.name;
+            final name = authorDisplayName(l10n, user.name);
             // A single scrollable keeps the header and every action available
             // at large system text sizes.
             return ListView(

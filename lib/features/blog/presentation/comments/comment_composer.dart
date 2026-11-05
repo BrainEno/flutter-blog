@@ -1,3 +1,4 @@
+import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_bloc.dart';
@@ -32,10 +33,10 @@ class CommentComposer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final replyName = replyTo?.authorName ?? '';
-    final replyTarget = replyName.isNotEmpty
-        ? replyName
-        : context.l10n.anonymousReader;
+    final replyTarget = commentAuthorDisplayName(
+      context.l10n,
+      replyTo?.authorName,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

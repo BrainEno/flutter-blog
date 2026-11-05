@@ -2,6 +2,7 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
@@ -249,9 +250,7 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final name = profile.displayName.trim().isNotEmpty
-        ? profile.displayName
-        : l10n.anonymousAuthor;
+    final name = authorDisplayName(l10n, profile.displayName);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

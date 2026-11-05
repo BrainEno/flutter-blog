@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/comments/comment_login_prompt.dart';
@@ -7,6 +5,8 @@ import 'package:belog/features/blog/presentation/widgets/article_reader_header.d
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../support/source_files.dart';
 
 /// System text scaling is an accessibility setting, not a preference the app
 /// may overrule (#24). These tests pin the two ends that matter: the largest
@@ -85,7 +85,7 @@ void main() {
       r'TextScaler\.noScaling|textScaleFactor\s*:'
       r'|TextScaler\.linear\(\s*1(\.0)?\s*\)',
     );
-    for (final file in _dartFiles('lib')) {
+    for (final file in dartFilesUnder('lib')) {
       final lines = file.readAsLinesSync();
       for (var i = 0; i < lines.length; i++) {
         final line = lines[i].trimLeft();
@@ -152,15 +152,4 @@ Future<void> _pumpNarrow(
       ),
     ),
   );
-}
-
-List<File> _dartFiles(String directory) {
-  final root = Directory(directory);
-  if (!root.existsSync()) return const [];
-  return root
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.dart'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
 }
