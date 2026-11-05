@@ -15,7 +15,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -37,6 +37,7 @@ class AppDatabase extends GeneratedDatabase {
       await _createBlogCache();
       await _createBlogCacheFeedIndex();
       await _createReadingHistory();
+      await _createPublishQueue();
     },
     onUpgrade: (m, from, to) async {
       if (from < 2) {
@@ -101,6 +102,12 @@ class AppDatabase extends GeneratedDatabase {
         }
         await _createBlogCacheFeedIndex();
       }
+      if (from < 8) {
+        // v8 adds the publish queue (issue #23): the durable record of a
+        // publish the server has not accepted yet. Pure addition - no existing
+        // table is touched, and an empty queue behaves exactly like before.
+        await _createPublishQueue();
+      }
     },
   );
 
@@ -128,6 +135,29 @@ class AppDatabase extends GeneratedDatabase {
     await customStatement(
       'CREATE UNIQUE INDEX account_drafts_article '
       'ON account_drafts(backend, user_id, blog_id) WHERE blog_id IS NOT NULL',
+    );
+  }
+
+  /// Publishes waiting for the server (issue #23).
+  ///
+  /// `backend` and `user_id` fence an entry to the API origin and the account
+  /// that queued it; `idempotency_key` is sent on every attempt so a retry
+  /// replays the article the server may already have created. `cover_file` is
+  /// a file name inside the app's own `publish_queue/` directory, never the
+  /// picker's temporary path.
+  Future<void> _createPublishQueue() async {
+    await customStatement(
+      'CREATE TABLE publish_queue ('
+      'id TEXT PRIMARY KEY, backend TEXT NOT NULL, user_id TEXT NOT NULL, '
+      'idempotency_key TEXT NOT NULL, title TEXT NOT NULL, '
+      'content TEXT NOT NULL, tags TEXT NOT NULL, cover_file TEXT, '
+      'cover_mime TEXT, state TEXT NOT NULL, attempts INTEGER NOT NULL '
+      'DEFAULT 0, next_attempt_at INTEGER, last_error_code TEXT, '
+      'created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
+    );
+    await customStatement(
+      'CREATE INDEX publish_queue_due '
+      'ON publish_queue(backend, user_id, state, created_at)',
     );
   }
 

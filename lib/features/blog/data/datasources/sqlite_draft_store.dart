@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:belog/core/storage/app_database.dart';
+import 'package:belog/core/storage/backend_key.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:drift/drift.dart';
@@ -9,28 +10,11 @@ import 'package:drift/drift.dart';
 /// for an account: no version of that table recorded an owner.
 class SqliteBlogDraftStore implements BlogDraftStore {
   SqliteBlogDraftStore(this.database, {required Uri apiBaseUrl})
-    : _backend = _backendKey(apiBaseUrl);
+    : _backend = backendKeyOf(apiBaseUrl);
 
   final AppDatabase database;
   final String _backend;
   Future<void> _writeTail = Future<void>.value();
-
-  /// Use the same base-path convention as the API client. Do not persist
-  /// URL user-info, query strings or fragments as part of the namespace.
-  static String _backendKey(Uri uri) {
-    if (!uri.hasAuthority || (uri.scheme != 'https' && uri.scheme != 'http')) {
-      throw ArgumentError('A valid HTTP(S) API base URL is required.');
-    }
-    final path = uri.path.endsWith('/')
-        ? uri.path.substring(0, uri.path.length - 1)
-        : uri.path;
-    return Uri(
-      scheme: uri.scheme,
-      host: uri.host,
-      port: uri.hasPort ? uri.port : null,
-      path: path,
-    ).toString();
-  }
 
   static void _requireUserId(String userId) {
     if (userId.isEmpty || userId != userId.trim()) {

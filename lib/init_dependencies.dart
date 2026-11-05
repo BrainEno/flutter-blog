@@ -38,7 +38,10 @@ import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dar
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_blog_cache.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_draft_store.dart';
+import 'package:belog/features/blog/data/datasources/sqlite_publish_queue_store.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_reading_history_store.dart';
+import 'package:belog/features/blog/data/publish/publish_queue_runner.dart';
+import 'package:belog/features/blog/data/publish/publish_queue_service.dart';
 import 'package:belog/features/blog/data/read_aloud/platform_speech_engine.dart';
 import 'package:belog/features/blog/data/read_aloud/sqlite_read_aloud_preferences.dart';
 import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart';
@@ -47,6 +50,8 @@ import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
+import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.dart';
+import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
@@ -70,6 +75,7 @@ import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
+import 'package:belog/features/blog/presentation/blocs/publish_queue/publish_queue_cubit.dart';
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
@@ -177,6 +183,42 @@ Future<void> initDependencies() async {
   serviceLocator.registerLazySingleton(() => database);
   serviceLocator.registerLazySingleton<BlogDraftStore>(
     () => SqliteBlogDraftStore(database, apiBaseUrl: uri),
+  );
+  // The publish queue (issue #23): what the server has not accepted yet.
+  // Covers are copied into the app's own folder because a picker's temporary
+  // file can be cleaned up while an entry waits for the network.
+  serviceLocator.registerLazySingleton<PublishQueueStore>(
+    () => SqlitePublishQueueStore(
+      database,
+      apiBaseUrl: uri,
+      directory: Directory('${directory.path}/publish_queue'),
+    ),
+  );
+  serviceLocator.registerLazySingleton(
+    () => PublishQueueRunner(
+      store: serviceLocator<PublishQueueStore>(),
+      repository: serviceLocator<BlogRepository>(),
+      identity: sessionManager,
+      connectionChecker: serviceLocator<ConnectionChecker>(),
+    ),
+  );
+  serviceLocator.registerLazySingleton(
+    () => PublishQueueService(
+      store: serviceLocator<PublishQueueStore>(),
+      runner: serviceLocator<PublishQueueRunner>(),
+      identity: sessionManager,
+    ),
+  );
+  // The UI starts sends through the domain port, never through the data layer.
+  serviceLocator.registerLazySingleton<PublishQueueDrainer>(
+    () => serviceLocator<PublishQueueRunner>(),
+  );
+  serviceLocator.registerFactory(
+    () => PublishQueueCubit(
+      store: serviceLocator<PublishQueueStore>(),
+      drainer: serviceLocator<PublishQueueDrainer>(),
+      identity: sessionManager,
+    ),
   );
   serviceLocator.registerLazySingleton(() => apiClient);
   serviceLocator.registerLazySingleton(() => sessionManager);

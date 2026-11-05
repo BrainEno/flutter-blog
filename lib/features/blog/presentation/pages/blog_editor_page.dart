@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/image_upload.dart';
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
@@ -12,6 +13,8 @@ import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/pick_image.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
+import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.dart';
+import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
@@ -22,6 +25,7 @@ import 'package:belog/features/blog/presentation/widgets/draft_recovery_dialog.d
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:uuid/uuid.dart';
 
 /// Creates or edits an article.
 ///
@@ -32,11 +36,15 @@ class BlogEditorPage extends StatefulWidget {
   final Blog? blog;
   final BlogDraftStore? draftStore;
   final NowaveSessionIdentity? sessionIdentity;
+  final PublishQueueStore? publishQueueStore;
+  final PublishQueueDrainer? publishQueueDrainer;
   const BlogEditorPage({
     super.key,
     this.blog,
     this.draftStore,
     this.sessionIdentity,
+    this.publishQueueStore,
+    this.publishQueueDrainer,
   });
 
   @override
@@ -76,6 +84,15 @@ class _BlogEditorState extends State<BlogEditorPage> {
   bool _editedDuringPublish = false;
   DateTime? _publishStartedAt;
   BlogDraft? _publishedDraftSnapshot;
+
+  /// The cover sent with the current publish attempt, kept so a failure can
+  /// be queued with exactly the same bytes.
+  ImageUpload? _publishImageSnapshot;
+
+  /// One key per publish intent (issue #23): a queued retry reuses it so the
+  /// server replays the article instead of creating a second one. It is only
+  /// cleared when this intent is finished - accepted, or handed to the queue.
+  String? _publishIdempotencyKey;
 
   @override
   void initState() {
@@ -314,6 +331,74 @@ class _BlogEditorState extends State<BlogEditorPage> {
     }
   }
 
+  /// The queue is optional at this layer so the page can still be built (and
+  /// tested) without it; without a queue a failure simply stays a failure.
+  PublishQueueStore? get _queueStore {
+    final injected = widget.publishQueueStore;
+    if (injected != null) return injected;
+    return GetIt.instance.isRegistered<PublishQueueStore>()
+        ? GetIt.instance<PublishQueueStore>()
+        : null;
+  }
+
+  PublishQueueDrainer? get _queueDrainer {
+    final injected = widget.publishQueueDrainer;
+    if (injected != null) return injected;
+    return GetIt.instance.isRegistered<PublishQueueDrainer>()
+        ? GetIt.instance<PublishQueueDrainer>()
+        : null;
+  }
+
+  /// Failures a retry can plausibly fix. A rejected body, a permission denial
+  /// or an expired session is not queued: sending it again would only fail
+  /// again, and the user has to act first.
+  static bool _isWorthQueueing(FailureKind kind) {
+    if (kind == FailureKind.network || kind == FailureKind.timeout) {
+      return true;
+    }
+    if (kind == FailureKind.server || kind == FailureKind.unknown) {
+      return true;
+    }
+    return false;
+  }
+
+  /// Keeps a publish the network refused (issue #23).
+  ///
+  /// The queued entry carries the same idempotency key as the attempt that
+  /// just failed, so the server either creates the article once or replays the
+  /// one it already created - never a duplicate. Returns true when the entry
+  /// is safely stored, which is what lets the page report "queued" instead of
+  /// "failed".
+  Future<bool> _queueFailedPublish() async {
+    final snapshot = _publishedDraftSnapshot;
+    final key = _publishIdempotencyKey;
+    final store = _queueStore;
+    if (widget.blog != null) return false;
+    if (snapshot == null || key == null || store == null) return false;
+    try {
+      await store.enqueue(
+        userId: snapshot.userId,
+        title: snapshot.title.trim(),
+        content: snapshot.content.trim(),
+        tags: List.of(snapshot.tags),
+        idempotencyKey: key,
+        cover: _publishImageSnapshot,
+      );
+    } catch (_) {
+      return false;
+    }
+    // The entry now holds the text, so the local draft is redundant; later
+    // edits during the publish attempt are kept as a draft on purpose.
+    _publishIdempotencyKey = null;
+    _publishStartedAt = null;
+    _hasUnsavedEdits = _editedDuringPublish;
+    await _clearPublishedDraft();
+    _publishedDraftSnapshot = null;
+    _publishImageSnapshot = null;
+    unawaited(_queueDrainer?.drain());
+    return true;
+  }
+
   Future<void> saveBlog() async {
     if (!_isCurrentEditor || _publishStartedAt != null) return;
     final version = ++_draftRequestVersion;
@@ -335,6 +420,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
       userId: draft.userId,
       generation: _editorGeneration,
     );
+    // A key identifies one intent to publish. It is generated once, before the
+    // first request, and reused by every retry of that intent (#23).
+    final idempotencyKey = _publishIdempotencyKey ??= const Uuid().v4();
+    _publishImageSnapshot = publishImage;
     // Persist the exact request snapshot first. If the route is closed, the
     // account changes, or the server response is lost, the text survives.
     try {
@@ -359,6 +448,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
           posterId: draft.userId,
           tags: List.of(draft.tags),
           sessionFence: sessionFence,
+          idempotencyKey: idempotencyKey,
         ),
       );
     } else {
@@ -373,6 +463,22 @@ class _BlogEditorState extends State<BlogEditorPage> {
         ),
       );
     }
+  }
+
+  /// Reports a failed publish, keeping it in the queue when that is the only
+  /// way the user does not lose the article (issue #23).
+  Future<void> _reportPublishFailure(BlogUploadFailure failure) async {
+    if (_isWorthQueueing(failure.failure.kind) && await _queueFailedPublish()) {
+      if (!mounted || !_isCurrentEditor) return;
+      showSnackBar(context, context.l10n.publishQueued);
+      Navigator.of(context).pop(true);
+      return;
+    }
+    _publishStartedAt = null;
+    _publishedDraftSnapshot = null;
+    if (_hasUnsavedEdits && _draftsReady) _scheduleAutoSave();
+    if (!mounted || !_isCurrentEditor) return;
+    showSnackBar(context, localizedFailure(context.l10n, failure.failure));
   }
 
   Future<void> saveDraft() async {
@@ -433,13 +539,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
         listener: (context, state) {
           if (!_isCurrentEditor) return;
           if (state is BlogUploadFailure) {
-            _publishStartedAt = null;
-            _publishedDraftSnapshot = null;
-            if (_hasUnsavedEdits && _draftsReady) _scheduleAutoSave();
-            showSnackBar(
-              context,
-              localizedFailure(context.l10n, state.failure),
-            );
+            unawaited(_reportPublishFailure(state));
           } else if (state is BlogUploadSuccess) {
             // No manual imageCache eviction needed: covers are immutable
             // media URLs that change whenever a new cover is uploaded, so
@@ -453,6 +553,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
             );
             // Clear only the exact published snapshot; later edits survive.
             _hasUnsavedEdits = _editedDuringPublish;
+            _publishIdempotencyKey = null;
+            _publishImageSnapshot = null;
             unawaited(_clearPublishedDraft());
             Navigator.of(context).pop(true);
           }

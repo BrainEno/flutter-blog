@@ -510,5 +510,38 @@
   "languageSystem": "Follow system",
   "languageChinese": "中文",
   "languageEnglish": "English",
-  "languageSystemHint": "Device language, else Chinese"
+  "languageSystemHint": "Device language, else Chinese",
+  "publishQueued": "Added to the publish queue; it will publish when you are online",
+  "publishQueueTitle": "Publish queue",
+  "publishQueueMenuHint": "Publishes made offline wait here",
+  "publishQueueEmptyTitle": "Nothing is waiting",
+  "publishQueueEmptyBody": "Articles you publish offline, or that fail on the network, land here and retry automatically.",
+  "publishQueueStatusQueued": "Waiting to send",
+  "publishQueueStatusUploading": "Sending",
+  "publishQueueStatusFailed": "Needs attention",
+  "publishQueueRetry": "Retry",
+  "publishQueueSendNow": "Send now",
+  "publishQueueRemove": "Remove",
+  "publishQueueRemoved": "Removed from the queue",
+  "publishQueueRetryQueued": "Queued again",
+  "publishQueueLoadFailed": "Could not read the queue",
+  "publishQueueAttempts": "{count, plural, one{Tried once} other{Tried {count} times}}",
+  "@publishQueueAttempts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "publishQueueLastError": "Last attempt failed: {reason}",
+  "@publishQueueLastError": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "publishQueueNoSession": "Sign in to send queued articles",
+  "publishQueueSignIn": "Sign in",
+  "publishQueueUntitled": "Untitled article"
 }

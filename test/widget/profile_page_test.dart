@@ -171,6 +171,7 @@ void main() {
             l10n.menuChangePassword,
             l10n.menuMyArticles,
             l10n.menuReadingHistory,
+            l10n.publishQueueTitle,
             l10n.accountSessionsTitle,
             l10n.menuAbout,
             l10n.exportMyData,
@@ -179,7 +180,7 @@ void main() {
             await tester.scrollUntilVisible(find.text(label), 140);
             expect(find.text(label), findsOneWidget);
           }
-          expect(find.byType(NoWaveActionRow), findsNWidgets(8));
+          expect(find.byType(NoWaveActionRow), findsNWidgets(9));
           expect(tester.takeException(), isNull);
         } finally {
           semantics.dispose();

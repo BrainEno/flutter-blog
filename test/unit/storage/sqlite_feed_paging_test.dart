@@ -138,10 +138,12 @@ void main() {
     );
     await db.close();
 
-    // Recreate the v3 shape: no feed index and no v5 document column.
+    // Recreate the v3 shape: no feed index, no v5 document column and no v8
+    // publish queue, so the upgrade has to add all three back.
     final old = raw.sqlite3.open(file.path);
     old.execute('DROP INDEX blog_cache_feed_order');
     old.execute('DROP TABLE account_drafts');
+    old.execute('DROP TABLE publish_queue');
     old.execute('ALTER TABLE blog_cache DROP COLUMN document_json');
     old.execute('PRAGMA user_version = 3');
     old.close();
@@ -180,7 +182,7 @@ void main() {
       (await db.customSelect('PRAGMA user_version').get()).single.read<int>(
         'user_version',
       ),
-      7,
+      8,
     );
 
     await db.close();

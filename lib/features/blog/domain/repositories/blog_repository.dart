@@ -16,6 +16,7 @@ abstract interface class BlogRepository {
     required String posterId,
     required List<String> tags,
     NowaveSessionFence? sessionFence,
+    String? idempotencyKey,
   });
 
   /// Soft-deletes the article with the public id [blogId] (slug): it

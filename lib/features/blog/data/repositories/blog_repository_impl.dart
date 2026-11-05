@@ -35,6 +35,7 @@ class BlogRepositoryImpl implements BlogRepository {
     required String posterId,
     required List<String> tags,
     NowaveSessionFence? sessionFence,
+    String? idempotencyKey,
   }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
@@ -63,10 +64,14 @@ class BlogRepositoryImpl implements BlogRepository {
         updatedAt: DateTime.now(),
       );
       final blog = sessionFence == null
-          ? await blogRemoteDataSource.uploadBlog(blogModel)
+          ? await blogRemoteDataSource.uploadBlog(
+              blogModel,
+              idempotencyKey: idempotencyKey,
+            )
           : await blogRemoteDataSource.uploadBlog(
               blogModel,
               sessionFence: sessionFence,
+              idempotencyKey: idempotencyKey,
             );
       return right(blog);
     } catch (error) {

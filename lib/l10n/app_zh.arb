@@ -356,5 +356,38 @@
   "languageSystem": "跟随系统",
   "languageChinese": "中文",
   "languageEnglish": "English",
-  "languageSystemHint": "设备语言，不支持时用中文"
+  "languageSystemHint": "设备语言，不支持时用中文",
+  "publishQueued": "已加入发布队列，联网后会自动发布",
+  "publishQueueTitle": "发布队列",
+  "publishQueueMenuHint": "离线时发布的内容在这里等待发送",
+  "publishQueueEmptyTitle": "队列是空的",
+  "publishQueueEmptyBody": "离线发布或网络失败的文章会出现在这里，联网后自动重试。",
+  "publishQueueStatusQueued": "等待发送",
+  "publishQueueStatusUploading": "正在发送",
+  "publishQueueStatusFailed": "需要处理",
+  "publishQueueRetry": "重试",
+  "publishQueueSendNow": "立即发送",
+  "publishQueueRemove": "移除",
+  "publishQueueRemoved": "已从队列移除",
+  "publishQueueRetryQueued": "已重新排队",
+  "publishQueueLoadFailed": "队列读取失败",
+  "publishQueueAttempts": "{count, plural, other{已尝试 {count} 次}}",
+  "@publishQueueAttempts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "publishQueueLastError": "上次失败：{reason}",
+  "@publishQueueLastError": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "publishQueueNoSession": "登录后才能发送队列中的文章",
+  "publishQueueSignIn": "去登录",
+  "publishQueueUntitled": "未命名文章"
 }

@@ -328,9 +328,13 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 20));
         return <String, dynamic>{'id': 't1', 'name': '诗歌', 'slug': 's'};
       });
-      when(() => client.postJson('/articles', any())).thenAnswer((_) async {
-        return _articleMap();
-      });
+      when(
+        () => client.postJson(
+          '/articles',
+          any(),
+          extraHeaders: any(named: 'extraHeaders'),
+        ),
+      ).thenAnswer((_) async => _articleMap());
 
       final blog = _blog();
       await Future.wait([

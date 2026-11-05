@@ -41,6 +41,7 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
         posterId: event.posterId,
         tags: event.tags,
         sessionFence: event.sessionFence,
+        idempotencyKey: event.idempotencyKey,
       ),
     );
 
