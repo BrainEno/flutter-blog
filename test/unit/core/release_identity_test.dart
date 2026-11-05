@@ -98,8 +98,21 @@ void main() {
       'tool/release/validate_release.py',
     ).readAsStringSync();
     expect(validator, contains('"$expectedId"'));
-    final apkCheck = File('tool/mobile/verify_android_package.sh');
-    expect(apkCheck.readAsStringSync(), contains(expectedId));
+    // Packaging and verification scripts carry the id as a literal too: a
+    // rename that misses one of them fails only on a real build, so it is
+    // checked here instead.
+    for (final path in [
+      'tool/mobile/verify_android_package.sh',
+      'tool/release/verify_apk.sh',
+      'tool/mobile/build_ios_package.sh',
+      'scripts/build_ios_ipa.sh',
+    ]) {
+      expect(
+        File(path).readAsStringSync(),
+        contains(expectedId),
+        reason: '$path does not verify the release identity',
+      );
+    }
   });
 
   test('the license and the bundled notices are in place', () {
