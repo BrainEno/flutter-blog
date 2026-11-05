@@ -101,6 +101,8 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
     // Feature-specific failures.
     case 'sessions.unavailable':
       return l10n.accountSessionsUnavailable;
+    case 'notifications.unavailable':
+      return l10n.notificationsUnavailable;
     case 'feed.sourceChanged':
       return l10n.feedSourceChanged;
     case 'feed.paginationChanged':

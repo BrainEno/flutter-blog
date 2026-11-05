@@ -79,6 +79,9 @@ import 'package:belog/features/blog/presentation/blocs/publish_queue/publish_que
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
+import 'package:belog/features/notifications/data/repositories/notification_repository_impl.dart';
+import 'package:belog/features/notifications/domain/repositories/notification_repository.dart';
+import 'package:belog/features/notifications/presentation/bloc/notification_inbox_cubit.dart';
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/data/datasources/author_relationship_remote_data_source.dart';
 import 'package:belog/features/user/data/datasources/author_remote_data_source.dart';
@@ -533,6 +536,16 @@ void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {
     )
     ..registerFactory<AccountSessionRepository>(
       () => AccountSessionRepositoryImpl(apiClient),
+    )
+    // The notification inbox (#23 follow-up): read on open, never polled.
+    ..registerFactory<NotificationRepository>(
+      () => NotificationRepositoryImpl(apiClient),
+    )
+    ..registerFactory(
+      () => NotificationInboxCubit(
+        repository: serviceLocator<NotificationRepository>(),
+        identity: sessionManager,
+      ),
     )
     // Usecases
     ..registerFactory(() => EditUserUseCase(serviceLocator<UserRepository>()))

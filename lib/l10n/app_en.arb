@@ -543,5 +543,45 @@
   },
   "publishQueueNoSession": "Sign in to send queued articles",
   "publishQueueSignIn": "Sign in",
-  "publishQueueUntitled": "Untitled article"
+  "publishQueueUntitled": "Untitled article",
+  "notificationsTitle": "Notifications",
+  "notificationsMenuHint": "Alerts such as a work you commented on being deleted",
+  "notificationsEmptyTitle": "Nothing here yet",
+  "notificationsEmptyBody": "When an author deletes a work you commented on, you are told here. The app does not push notifications, so opening this page is what fetches the latest state.",
+  "notificationsUnavailable": "This server does not offer notifications yet. Try again later or check its version.",
+  "notificationsSignInTitle": "Sign in to see your notifications",
+  "notificationsSignIn": "Sign in",
+  "notificationsMarkAllRead": "Mark all as read",
+  "notificationsMarkRead": "Mark as read",
+  "notificationsUnreadBadge": "Unread",
+  "notificationsUnreadCount": "{count} unread",
+  "@notificationsUnreadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationsAllRead": "All marked as read",
+  "notificationsMarkedRead": "Marked as read",
+  "notificationsRetry": "Retry",
+  "notificationArticleDeleted": "A work you commented on was deleted by its author; your comment will be removed with it on {date}.",
+  "@notificationArticleDeleted": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationArticleDeletedNoDate": "A work you commented on was deleted by its author; your comment will be removed with it.",
+  "notificationMessageReceived": "You received a private message (conversations are not available in the app yet)",
+  "notificationUnknown": "You have a new notification",
+  "notificationsOlderHidden": "Only the latest {limit} notifications are shown; older ones are not available yet.",
+  "@notificationsOlderHidden": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  }
 }

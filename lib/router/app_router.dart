@@ -41,6 +41,7 @@ import 'package:belog/features/user/presentation/bloc/author_search/author_searc
 import 'package:belog/features/user/presentation/pages/author_search_page.dart';
 import 'package:belog/features/user/presentation/bloc/author/author_cubit.dart';
 import 'package:belog/features/user/presentation/bloc/author_relationships/author_relationships_cubit.dart';
+import 'package:belog/features/notifications/presentation/pages/notification_inbox_page.dart';
 import 'package:belog/features/user/presentation/pages/about_page.dart';
 import 'package:belog/features/user/presentation/pages/account_sessions_page.dart';
 import 'package:belog/features/user/presentation/pages/edit_user_info_page.dart';
@@ -288,6 +289,10 @@ GoRouter createAppRouter({
                   GoRoute(
                     path: 'about',
                     builder: (context, state) => const AboutPage(),
+                  ),
+                  GoRoute(
+                    path: 'notifications',
+                    builder: (context, state) => const NotificationInboxPage(),
                   ),
                   GoRoute(
                     path: 'history',

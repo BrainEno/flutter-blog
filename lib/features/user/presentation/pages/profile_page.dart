@@ -127,6 +127,12 @@ class ProfilePage extends StatelessWidget {
                           onTap: () => context.push('/profile/history'),
                         ),
                         NoWaveActionRow(
+                          icon: Icons.notifications_none,
+                          label: l10n.notificationsTitle,
+                          description: l10n.notificationsMenuHint,
+                          onTap: () => context.push('/profile/notifications'),
+                        ),
+                        NoWaveActionRow(
                           icon: Icons.cloud_upload_outlined,
                           label: l10n.publishQueueTitle,
                           description: l10n.publishQueueMenuHint,
