@@ -9,11 +9,12 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
 到后端，用户主动导出或分享则交由系统分享面板处理。外部图片和系统语音引擎
 也可能访问网络，详见 [隐私政策草案](docs/privacy-policy-draft.md)。
 
-> **命名说明**：产品名统一为 **No Wave**（中文「无浪潮」），Android/iOS 的应用名、
-> 应用内文案与文档都已按此改名。仓库内仍保留 `belog` 的地方都是兼容性标识，
-> 改动会破坏构建或丢失本地数据：Dart 包名 `belog` 与 `package:belog/...` 导入、
-> `BELOG_*` 构建变量、`belog.sqlite` 数据文件、`com.example.belog` /
-> `com.nodeman24.belog` 包名、`belog.exe` 与发布流水线的产物文件名。
+> **命名说明**：产品名统一为 **No Wave**（中文「无浪潮」），Android/iOS/macOS/Windows
+> 的应用名、应用内文案与文档都已按此改名，发布身份统一为 `com.nodeman24.nowave`
+> （0.2.0 起，见 [发布策略](docs/releasing.md)）。仓库内仍保留 `belog` 的地方都是
+> 兼容性标识，改动会破坏构建或让本地数据变成孤儿：Dart 包名 `belog` 与
+> `package:belog/...` 导入、`BELOG_*` 构建变量、`belog.sqlite` 数据文件、
+> `belog.exe`、原生通道名 `belog/read_aloud` 与发布流水线的产物文件名。
 
 后端迁移背景与逐接口核对结论见
 [docs/supabase-to-nowave-migration.md](docs/supabase-to-nowave-migration.md)
@@ -457,13 +458,15 @@ CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 
 - **P2 进行中/延后**：分享深链接收（#21，等 web 部署 + association 文件
   可验证）、离线发布队列（#23，文章创建步已
   解锁、封面媒体仍受 #47 阻塞，见上）、举报屏蔽（#18）、
-  架构收敛（#107：依赖规则、Isar 移除与会话时序单元已完成，遗留
-  `nowave_api_client` 与超大页面的拆分）、内容语言与 locale 隔离（#108）、
-  许可与应用身份（#109）、审查证据回写（#110）
+  架构收敛的后续拆分（#107 的依赖规则、存储端口去 UI 类型、
+  会话时序单元与 Isar 移除已完成；`nowave_api_client` 等仍有拆分空间）、
+  无障碍与文案统一的长期项（#24）
 - **P0/P1 已关闭**：#4 工具链升级、#7 schema 版本管理、#8 离线缓存语义
 
-**许可证待定**：仓库暂无 LICENSE 文件；候选 MIT / Apache-2.0，定稿前请勿
-分发二进制。相关讨论见 issue #26。
+**许可证**：[Apache License 2.0](LICENSE)。随包分发的字体等第三方资源及其
+许可证见 [NOTICE](NOTICE)；Dart/Flutter 依赖各自的许可随 pub 包分发，解析结果
+固定在 `pubspec.lock`。版本与发布身份（`com.nodeman24.nowave`、`0.2.0+1`）见
+[发布策略](docs/releasing.md)。
 
 已完成的重点修复：草稿按后端、账号和文章隔离及快照安全清理（#14、#79）、Feed 分页与刷新竞态（#13）、
 点赞并发与离线行为（#9）、异常契约统一（#12）、iOS 发布流水线（#6）、

@@ -82,7 +82,7 @@ if [[ "$mode" == altstore ]]; then
   candidate="$stage/candidate.ipa"
   # Verify the archive before extracting it, then check the actual packaged
   # bundle (including nested frameworks), not just the pre-zip staging copy.
-  python3 "$PROJECT_ROOT/tool/release/verify_ipa.py" "$candidate" com.nodeman24.belog "$build_name" "$build_number"
+  python3 "$PROJECT_ROOT/tool/release/verify_ipa.py" "$candidate" com.nodeman24.nowave "$build_name" "$build_number"
   mkdir -p "$stage/extracted"
   ditto -x -k "$candidate" "$stage/extracted"
   codesign --verify --deep --strict --verbose "$stage/extracted/Payload/Runner.app"
@@ -99,7 +99,7 @@ else
     count=$((count + 1))
   done < <(find "$ipa_dir" -maxdepth 1 -type f -name '*.ipa' -newer "$marker" -print0)
   [[ "$count" == 1 ]] || fail 'Expected exactly one newly exported IPA; refusing to use a stale or ambiguous artifact.'
-  python3 "$SCRIPT_DIR/verify_signed_ipa.py" "$candidate" com.nodeman24.belog "$build_name" "$build_number"
+  python3 "$SCRIPT_DIR/verify_signed_ipa.py" "$candidate" com.nodeman24.nowave "$build_name" "$build_number"
   mkdir -p "$stage/extracted"
   ditto -x -k "$candidate" "$stage/extracted"
   codesign --verify --deep --strict --verbose "$stage/extracted/Payload/Runner.app"

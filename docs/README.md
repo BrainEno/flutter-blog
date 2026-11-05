@@ -8,7 +8,8 @@
 
 - [个人安装 IPA / APK](mobile-packages.md)：GitHub Actions、AltStore 重签、
   Android 签名、权限和真机检查。不要提供 Apple ID 或签名凭据给聊天。
-- [发布流程](releasing.md)：版本、签名和发布门禁。
+- [发布流程](releasing.md)：应用身份（`com.nodeman24.nowave`）、版本
+  （`0.2.0+1`）、许可证、签名和发布门禁。
 - [朗读功能](read-aloud.md)：操作、平台语音和设备/隐私边界。
 - [隐私政策草案](privacy-policy-draft.md)：未发布；正式政策仍需运营主体审阅。
 

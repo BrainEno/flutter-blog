@@ -20,7 +20,7 @@ cat "$FIXTURE_BADGING"
 EOF
 chmod +x "$ANDROID_HOME/build-tools/36.0.0/"{apksigner,aapt}
 touch "$tmp/app.apk"
-printf "package: name='com.example.belog' versionCode='42' versionName='1.2.3'\nuses-permission: name='android.permission.INTERNET'\n" > "$FIXTURE_BADGING"
+printf "package: name='com.nodeman24.nowave' versionCode='42' versionName='1.2.3'\nuses-permission: name='android.permission.INTERNET'\n" > "$FIXTURE_BADGING"
 expected="$(printf 'a%.0s' {1..64})"
 wrong="$(printf 'b%.0s' {1..64})"
 verify() {
@@ -60,8 +60,8 @@ printf 'V2 Signer: certificate DN: CN=CI Test Only\nV2 Signer: certificate SHA-2
 export FAIL_SIGNATURE=true
 expect_failure '' verify
 unset FAIL_SIGNATURE
-printf "package: name='com.example.belog' versionCode='43' versionName='1.2.3'\nuses-permission: name='android.permission.INTERNET'\n" > "$FIXTURE_BADGING"
+printf "package: name='com.nodeman24.nowave' versionCode='43' versionName='1.2.3'\nuses-permission: name='android.permission.INTERNET'\n" > "$FIXTURE_BADGING"
 expect_failure '' verify
-printf "package: name='com.example.belog' versionCode='42' versionName='1.2.3'\n" > "$FIXTURE_BADGING"
+printf "package: name='com.nodeman24.nowave' versionCode='42' versionName='1.2.3'\n" > "$FIXTURE_BADGING"
 expect_failure '' verify
 echo 'APK verifier accepts both output formats and rejects invalid signatures/metadata.'

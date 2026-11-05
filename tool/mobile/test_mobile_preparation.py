@@ -91,7 +91,7 @@ class MobilePreparationTests(unittest.TestCase):
     def test_signing_is_private_and_fails_closed_without_echoing_values(self):
         keystore = self.root / 'test.keystore'
         sign_env = {
-            'ANDROID_APPLICATION_ID_APPROVED': 'com.example.belog',
+            'ANDROID_APPLICATION_ID_APPROVED': 'com.nodeman24.nowave',
             'ANDROID_RELEASE_CERT_SHA256': 'a' * 64,
             'ANDROID_KEYSTORE_BASE64': base64.b64encode(b'fixture-key').decode(),
             'ANDROID_KEYSTORE_PASSWORD': 'fixture-secret-password',

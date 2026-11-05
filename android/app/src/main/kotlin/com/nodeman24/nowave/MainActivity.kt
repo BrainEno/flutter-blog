@@ -1,4 +1,4 @@
-package com.example.belog
+package com.nodeman24.nowave
 
 import android.os.Build
 import android.os.Bundle

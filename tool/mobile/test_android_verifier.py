@@ -34,7 +34,7 @@ esac''')
         self.manifest = self.root / 'manifest'
         self.cert.write_text('Signer #1 certificate DN: CN=Owner Fixture\n'
                              f'Signer #1 certificate SHA-256 digest: {"a" * 64}\n')
-        self.badging.write_text("package: name='com.example.belog' versionCode='8' versionName='1.2.3'\nuses-permission: name='android.permission.INTERNET'\n")
+        self.badging.write_text("package: name='com.nodeman24.nowave' versionCode='8' versionName='1.2.3'\nuses-permission: name='android.permission.INTERNET'\n")
         self.permissions.write_text("uses-permission: name='android.permission.INTERNET'\n"
                                     "uses-permission: name='android.permission.ACCESS_NETWORK_STATE'\n")
         self.manifest.write_text('E: manifest\n')
@@ -78,9 +78,9 @@ esac''')
         self.manifest.write_text('A: android:usesCleartextTraffic(0x010104ec)=(type 0x12)0xffffffff\n')
         self.assertNotEqual(self.invoke().returncode, 0)
         self.manifest.write_text('E: manifest\n')
-        self.badging.write_text("package: name='com.example.belog' versionCode='8' versionName='1.2.3'\nuses-permission: name='android.permission.INTERNET'\napplication-debuggable\n")
+        self.badging.write_text("package: name='com.nodeman24.nowave' versionCode='8' versionName='1.2.3'\nuses-permission: name='android.permission.INTERNET'\napplication-debuggable\n")
         self.assertNotEqual(self.invoke().returncode, 0)
-        self.badging.write_text("package: name='com.example.belog' versionCode='8' versionName='1.2.3'\nuses-permission: name='android.permission.INTERNET'\n")
+        self.badging.write_text("package: name='com.nodeman24.nowave' versionCode='8' versionName='1.2.3'\nuses-permission: name='android.permission.INTERNET'\n")
         self.make_apk(include_32=False)
         result = self.invoke()
         self.assertNotEqual(result.returncode, 0)
@@ -88,7 +88,7 @@ esac''')
 
     def test_debug_build_is_explicitly_debuggable(self):
         self.assertNotEqual(self.invoke(mode='debug', cert='-').returncode, 0)
-        self.badging.write_text("package: name='com.example.belog' versionCode='8' versionName='1.2.3'\nuses-permission: name='android.permission.INTERNET'\napplication-debuggable\n")
+        self.badging.write_text("package: name='com.nodeman24.nowave' versionCode='8' versionName='1.2.3'\nuses-permission: name='android.permission.INTERNET'\napplication-debuggable\n")
         self.assertEqual(self.invoke(mode='debug', cert='-').returncode, 0)
 
 
