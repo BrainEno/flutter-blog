@@ -175,7 +175,7 @@ void main() {
       // plist entries the app ships.
       expect(
         articleLocationFromDeepLink(
-          Uri.parse('nowave://${kArticleDeepLinkHost}/poetry-1a2b'),
+          Uri.parse('nowave://$kArticleDeepLinkHost/poetry-1a2b'),
         ),
         '/view/poetry-1a2b',
       );
