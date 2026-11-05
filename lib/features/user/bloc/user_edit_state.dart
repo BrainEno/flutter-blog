@@ -20,7 +20,7 @@ class UserEditFailure extends UserEditState {
 
   /// Display-safe Chinese fallback, composed as before (issue #24): the
   /// UI localizes via `errorProfileSavePrefix` + `localizedFailure`.
-  String get message => '编辑用户资料失败,${failure.message}';
+  String get message => '编辑用户资料失败，${failure.message}';
 
   @override
   List<Object> get props => [message];

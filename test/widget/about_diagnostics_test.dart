@@ -80,7 +80,7 @@ void main() {
     );
     AppLogger.request('GET', '/api/v1/articles', 503, 1203);
 
-    await tester.longPress(find.text('应用版本: 9.9+42'));
+    await tester.longPress(find.text('应用版本：9.9+42'));
     await tester.pumpAndSettle();
 
     expect(find.text('诊断信息'), findsOneWidget);
@@ -149,7 +149,7 @@ void main() {
   ) async {
     await pumpAbout(tester);
 
-    expect(find.text('应用版本: 9.9+42'), findsOneWidget);
+    expect(find.text('应用版本：9.9+42'), findsOneWidget);
     expect(find.textContaining('Version 1.9'), findsNothing);
   });
 
@@ -158,7 +158,7 @@ void main() {
   ) async {
     await pumpAbout(tester);
 
-    await tester.longPress(find.text('应用版本: 9.9+42'));
+    await tester.longPress(find.text('应用版本：9.9+42'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('诊断缓冲为空'), findsOneWidget);
@@ -170,7 +170,7 @@ void main() {
     await pumpAbout(tester);
     AppLogger.request('GET', '/api/v1/articles', 500, 42);
 
-    await tester.longPress(find.text('应用版本: 9.9+42'));
+    await tester.longPress(find.text('应用版本：9.9+42'));
     await tester.pumpAndSettle();
     expect(find.textContaining('GET /api/v1/articles'), findsOneWidget);
 
@@ -189,7 +189,7 @@ void main() {
     await pumpAbout(tester);
     AppLogger.request('GET', '/api/v1/articles', 500, 42);
 
-    await tester.longPress(find.text('应用版本: 9.9+42'));
+    await tester.longPress(find.text('应用版本：9.9+42'));
     await tester.pumpAndSettle();
     expect(find.text('分享'), findsOneWidget);
 
@@ -207,7 +207,7 @@ void main() {
     await pumpAbout(tester);
     AppLogger.request('GET', '/api/v1/articles', 500, 42);
 
-    await tester.longPress(find.text('应用版本: 9.9+42'));
+    await tester.longPress(find.text('应用版本：9.9+42'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('关闭'));

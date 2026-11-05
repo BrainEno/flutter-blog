@@ -51,6 +51,8 @@ Future<void> _pumpSection(
   WidgetTester tester, {
   required AppUserCubit appUserCubit,
   required CommentBloc commentBloc,
+  Locale locale = const Locale('zh'),
+  double textScale = 1,
 }) {
   return tester.pumpWidget(
     MultiBlocProvider(
@@ -58,12 +60,19 @@ Future<void> _pumpSection(
         BlocProvider<AppUserCubit>.value(value: appUserCubit),
         BlocProvider<CommentBloc>.value(value: commentBloc),
       ],
-      child: const MaterialApp(
-        locale: Locale('zh'),
+      child: MaterialApp(
+        locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-
-        home: Scaffold(
+        builder: textScale == 1
+            ? null
+            : (context, child) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: TextScaler.linear(textScale)),
+                child: child!,
+              ),
+        home: const Scaffold(
           body: SingleChildScrollView(
             child: CommentsSection(
               slug: 'my-slug',
@@ -347,5 +356,81 @@ void main() {
 
     expect(find.text('评论加载失败'), findsOneWidget);
     expect(find.text('重试'), findsOneWidget);
+  });
+
+  testWidgets('an English reader sees localized comment copy, not Chinese', (
+    tester,
+  ) async {
+    when(
+      () => getComments('my-slug'),
+    ).thenAnswer((_) async => left<Failure, List<Comment>>(Failure('评论加载失败')));
+
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+
+    await _pumpSection(
+      tester,
+      appUserCubit: appUserCubit,
+      commentBloc: bloc,
+      locale: const Locale('en'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Comments'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+    expect(find.text('评论加载失败'), findsNothing, reason: '英文界面不能回落到中文兜底文案');
+  });
+
+  testWidgets('the empty state is localized in English too', (tester) async {
+    when(
+      () => getComments('my-slug'),
+    ).thenAnswer((_) async => right<Failure, List<Comment>>(const []));
+
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+
+    await _pumpSection(
+      tester,
+      appUserCubit: appUserCubit,
+      commentBloc: bloc,
+      locale: const Locale('en'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('No comments yet — be the first to speak'),
+      findsOneWidget,
+    );
+    expect(find.text('评论'), findsNothing);
+  });
+
+  testWidgets('a thread survives 2x text on a narrow screen', (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    when(() => getComments('my-slug')).thenAnswer(
+      (_) async => right<Failure, List<Comment>>([
+        _comment(
+          'c1',
+          replies: [_comment('c2', content: '同感', parentId: 'c1')],
+        ),
+      ]),
+    );
+
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+
+    await _pumpSection(
+      tester,
+      appUserCubit: appUserCubit,
+      commentBloc: bloc,
+      textScale: 2,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('写得真好'), findsOneWidget);
+    expect(find.text('同感'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

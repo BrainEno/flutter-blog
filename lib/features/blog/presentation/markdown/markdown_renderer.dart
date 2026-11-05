@@ -475,7 +475,16 @@ class MarkdownRenderer {
 
   Widget _linkWidget(TapGestureRecognizer? link, Widget child) {
     if (link == null) return child;
-    return GestureDetector(onTap: link.onTap, child: child);
+    // A link that wraps an inline code span becomes a WidgetSpan, so the
+    // paragraph's own inline semantics cannot describe it (issue #24).
+    // Without this annotation a reader sees plain text and a bare
+    // GestureDetector: no "link" role, no tap action, nothing to activate
+    // with TalkBack/VoiceOver. The gesture stays on the child so the
+    // pointer and the assistive-tech action share one code path.
+    return Semantics(
+      link: true,
+      child: GestureDetector(onTap: link.onTap, child: child),
+    );
   }
 
   /// Only http(s) targets can be opened or loaded. Everything else

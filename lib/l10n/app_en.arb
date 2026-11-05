@@ -366,8 +366,8 @@
   "aboutHeading": "About No Wave",
   "aboutBody": "No Wave is an independent digital publishing platform for literary works, thoughtful reading and in-depth discussion.",
   "contactHeading": "Contact",
-  "emailLabel": "E-mail: ",
-  "githubLabel": "Github: ",
+  "emailLabel": "E-mail:",
+  "githubLabel": "GitHub:",
   "versionHeading": "Version",
   "appVersionLabel": "App version: {version}",
   "@appVersionLabel": {

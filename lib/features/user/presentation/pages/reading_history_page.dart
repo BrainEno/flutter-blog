@@ -176,7 +176,11 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
       );
 
   Widget _buildScaffold(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    // Every colour below comes from the theme palette (issue #24): the
+    // earlier hardcoded greys/reds were tuned for one brightness and could
+    // drop below the contrast budget in the other.
+    final mutedColor = scheme.onSurfaceVariant;
     final userId = _userId;
     final ownerMatches = userId != null && userId == _entriesUserId;
     final entries = ownerMatches ? _entries : <ReadingHistoryEntry>[];
@@ -206,14 +210,11 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.history, size: 64, color: Colors.grey.shade400),
+                  Icon(Icons.history, size: 64, color: mutedColor),
                   const SizedBox(height: 12),
                   Text(
                     context.l10n.historyEmpty,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: isDarkMode ? Colors.white70 : Colors.black54,
-                    ),
+                    style: TextStyle(fontSize: 16, color: mutedColor),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -238,10 +239,10 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                   direction: DismissDirection.endToStart,
                   onDismissed: (_) => _remove(entry),
                   background: Container(
-                    color: Colors.red,
+                    color: scheme.error,
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: 20),
-                    child: const Icon(Icons.delete, color: Colors.white),
+                    child: Icon(Icons.delete, color: scheme.onError),
                   ),
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(
@@ -257,11 +258,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                           width: 56,
                           height: 56,
                           child: entry.imageUrl.isEmpty
-                              ? Icon(
-                                  Icons.article,
-                                  size: 32,
-                                  color: Colors.grey.shade400,
-                                )
+                              ? Icon(Icons.article, size: 32, color: mutedColor)
                               : CachedNetworkImage(
                                   imageUrl: entry.imageUrl,
                                   fit: BoxFit.cover,
@@ -271,7 +268,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                                       Icon(
                                         Icons.broken_image,
                                         size: 32,
-                                        color: Colors.grey.shade400,
+                                        color: mutedColor,
                                       ),
                                 ),
                         ),
@@ -295,11 +292,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                     ),
                     trailing: IconButton(
                       tooltip: context.l10n.removeHistoryEntry,
-                      icon: Icon(
-                        Icons.close,
-                        size: 20,
-                        color: Colors.grey.shade500,
-                      ),
+                      icon: Icon(Icons.close, size: 20, color: mutedColor),
                       onPressed: () => _remove(entry),
                     ),
                     onTap: () => context.push('/view/${entry.blogId}'),
