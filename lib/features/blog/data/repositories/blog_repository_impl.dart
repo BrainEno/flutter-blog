@@ -36,13 +36,7 @@ class BlogRepositoryImpl implements BlogRepository {
       if (!await (connectionChecker.isConnected)) {
         return left(Failure.networkOffline());
       }
-      final url = sessionFence == null
-          ? await blogRemoteDataSource.uploadBlogImage(image: image)
-          : await blogRemoteDataSource.uploadBlogImage(
-              image: image,
-              sessionFence: sessionFence,
-            );
-      return right(url);
+      return right(await _uploadCoverBytes(image, sessionFence));
     } catch (error) {
       return left(mapErrorToFailure(error));
     }
@@ -70,16 +64,8 @@ class BlogRepositoryImpl implements BlogRepository {
       // server-side) - which is exactly why a caller that already uploaded the
       // cover passes [uploadedCoverUrl] instead of making a second asset.
       // A coverless publish (issue #17) skips the upload.
-      final imageUrl = uploadedCoverUrl != null
-          ? uploadedCoverUrl
-          : image == null
-          ? ''
-          : sessionFence == null
-          ? await blogRemoteDataSource.uploadBlogImage(image: image)
-          : await blogRemoteDataSource.uploadBlogImage(
-              image: image,
-              sessionFence: sessionFence,
-            );
+      final imageUrl =
+          uploadedCoverUrl ?? await _uploadCoverBytes(image, sessionFence);
       final blogModel = BlogModel(
         id: '',
         title: title,
@@ -103,6 +89,25 @@ class BlogRepositoryImpl implements BlogRepository {
     } catch (error) {
       return left(mapErrorToFailure(error));
     }
+  }
+
+  /// Uploads [image] and returns the URL the server stored it at.
+  ///
+  /// A null [image] is a coverless publish and uploads nothing. No failure
+  /// mapping happens here: the callers wrap it, so an upload error surfaces
+  /// through the same path as the rest of their work.
+  Future<String> _uploadCoverBytes(
+    ImageUpload? image,
+    NowaveSessionFence? sessionFence,
+  ) async {
+    if (image == null) return '';
+    if (sessionFence == null) {
+      return blogRemoteDataSource.uploadBlogImage(image: image);
+    }
+    return blogRemoteDataSource.uploadBlogImage(
+      image: image,
+      sessionFence: sessionFence,
+    );
   }
 
   @override

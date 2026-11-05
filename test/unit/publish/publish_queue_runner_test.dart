@@ -358,9 +358,7 @@ void main() {
     ).thenAnswer((_) async {
       creates++;
       // The first article request is lost; the retry must not upload again.
-      return creates == 1
-          ? left(Failure.networkOffline())
-          : right(_blog('ok'));
+      return creates == 1 ? left(Failure.networkOffline()) : right(_blog('ok'));
     });
 
     expect(await runner.drain(), 0);

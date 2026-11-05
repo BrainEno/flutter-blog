@@ -73,7 +73,7 @@ class SqlitePublishQueueStore implements PublishQueueStore {
         'INSERT INTO publish_queue(id, backend, user_id, idempotency_key, '
         'title, content, tags, cover_file, cover_mime, cover_url, state, '
         'attempts, next_attempt_at, last_error_code, created_at, updated_at) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?)',
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?)',
         variables: [
           Variable<String>(id),
           Variable<String>(_backend),
