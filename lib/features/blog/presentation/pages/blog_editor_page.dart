@@ -467,12 +467,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
 
   /// Reports a failed publish, keeping it in the queue when that is the only
   /// way the user does not lose the article (issue #23).
-  Future<void> _reportPublishFailure(
-    BuildContext context,
-    BlogUploadFailure failure,
-  ) async {
-    if (_isWorthQueueing(failure.failure.kind) &&
-        await _queueFailedPublish()) {
+  Future<void> _reportPublishFailure(BlogUploadFailure failure) async {
+    if (_isWorthQueueing(failure.failure.kind) && await _queueFailedPublish()) {
       if (!mounted || !_isCurrentEditor) return;
       showSnackBar(context, context.l10n.publishQueued);
       Navigator.of(context).pop(true);
@@ -543,7 +539,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
         listener: (context, state) {
           if (!_isCurrentEditor) return;
           if (state is BlogUploadFailure) {
-            unawaited(_reportPublishFailure(context, state));
+            unawaited(_reportPublishFailure(state));
           } else if (state is BlogUploadSuccess) {
             // No manual imageCache eviction needed: covers are immutable
             // media URLs that change whenever a new cover is uploaded, so

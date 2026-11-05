@@ -113,13 +113,12 @@ void main() {
 
       expect(result.isRight(), isTrue);
       verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
-      final captures =
-          verify(
-            () => remote.uploadBlog(
-              captureAny(),
-              idempotencyKey: any(named: 'idempotencyKey'),
-            ),
-          ).captured;
+      final captures = verify(
+        () => remote.uploadBlog(
+          captureAny(),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).captured;
       final created = captures.single as BlogModel;
       expect(created.imageUrl, '');
     });

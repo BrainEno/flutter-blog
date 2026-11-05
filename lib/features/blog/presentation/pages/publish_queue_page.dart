@@ -199,8 +199,7 @@ class _QueueEntryCard extends StatelessWidget {
         ? context.l10n.publishQueueUntitled
         : entry.title.trim();
     final lastError = entry.lastErrorCode;
-    final canRetry =
-        !sending && entry.status != PublishQueueStatus.uploading;
+    final canRetry = !sending && entry.status != PublishQueueStatus.uploading;
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(

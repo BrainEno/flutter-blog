@@ -22,16 +22,14 @@ class _MockRepository extends Mock implements BlogRepository {}
 class _MockConnectionChecker extends Mock implements ConnectionChecker {}
 
 class _FakeIdentity implements NowaveSessionIdentity {
-  _FakeIdentity({this.activeUserId = 'alice', this.sessionGeneration = 1});
-
   @override
-  String? activeUserId;
+  String? activeUserId = 'alice';
 
   @override
   String? accessToken = 'token';
 
   @override
-  int sessionGeneration;
+  int sessionGeneration = 1;
 
   @override
   Stream<void> get identityChanges => const Stream<void>.empty();

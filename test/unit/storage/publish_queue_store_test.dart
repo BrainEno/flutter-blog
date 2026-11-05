@@ -80,10 +80,7 @@ void main() {
       idempotencyKey: 'key-1',
     );
 
-    final claimed = await store.claimNext(
-      userId: 'alice',
-      now: DateTime.now(),
-    );
+    final claimed = await store.claimNext(userId: 'alice', now: DateTime.now());
     expect(claimed?.id, entry.id);
     expect(claimed?.status, PublishQueueStatus.uploading);
     expect(claimed?.idempotencyKey, 'key-1');
@@ -300,19 +297,14 @@ void main() {
       idempotencyKey: 'key-c',
     );
 
-    expect(
-      (await store.entries(userId: 'alice')).map((e) => e.title),
-      ['alice on first'],
-    );
-    expect(
-      (await other.entries(userId: 'alice')).map((e) => e.title),
-      ['alice on second'],
-    );
+    expect((await store.entries(userId: 'alice')).map((e) => e.title), [
+      'alice on first',
+    ]);
+    expect((await other.entries(userId: 'alice')).map((e) => e.title), [
+      'alice on second',
+    ]);
     // A claim is scoped the same way.
-    final claimed = await other.claimNext(
-      userId: 'alice',
-      now: DateTime.now(),
-    );
+    final claimed = await other.claimNext(userId: 'alice', now: DateTime.now());
     expect(claimed?.title, 'alice on second');
   });
 
@@ -340,9 +332,8 @@ void main() {
       apiBaseUrl: _firstBackend,
       directory: covers,
     );
-    expect(
-      (await secondStore.entries(userId: 'alice')).map((e) => e.title),
-      ['across launches'],
-    );
+    expect((await secondStore.entries(userId: 'alice')).map((e) => e.title), [
+      'across launches',
+    ]);
   });
 }

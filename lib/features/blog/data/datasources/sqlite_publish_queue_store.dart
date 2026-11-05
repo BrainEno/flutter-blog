@@ -153,10 +153,9 @@ class SqlitePublishQueueStore implements PublishQueueStore {
           ],
         );
         if (updated != 1) return;
-        claimed = _entryOf(row).copyWith(
-          status: PublishQueueStatus.uploading,
-          updatedAt: now,
-        );
+        claimed = _entryOf(
+          row,
+        ).copyWith(status: PublishQueueStatus.uploading, updatedAt: now);
       });
       return claimed;
     });
