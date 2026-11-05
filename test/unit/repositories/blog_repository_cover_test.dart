@@ -168,6 +168,70 @@ void main() {
     });
   });
 
+  group('uploadCover', () {
+    test('returns the URL the server stored the asset at', () async {
+      when(
+        () => remote.uploadBlogImage(image: any(named: 'image')),
+      ).thenAnswer((_) async => _kNewCoverUrl);
+
+      final result = await repository.uploadCover(image: cover);
+
+      expect(result.fold((_) => null, (url) => url), _kNewCoverUrl);
+    });
+
+    test('offline fails fast without touching the server', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => false);
+
+      final result = await repository.uploadCover(image: cover);
+
+      expect(result.isLeft(), isTrue);
+      verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
+    });
+
+    test('a rejected upload surfaces the failure', () async {
+      when(
+        () => remote.uploadBlogImage(image: any(named: 'image')),
+      ).thenThrow(const ServerException('media rejected'));
+
+      final result = await repository.uploadCover(image: cover);
+
+      expect(result.isLeft(), isTrue);
+    });
+  });
+
+  group('uploadBlog with an already uploaded cover', () {
+    test('reuses the URL instead of uploading the bytes again', () async {
+      when(
+        () => remote.uploadBlog(
+          any(),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).thenAnswer(
+        (invocation) async => invocation.positionalArguments[0] as BlogModel,
+      );
+
+      final result = await repository.uploadBlog(
+        image: cover,
+        uploadedCoverUrl: _kNewCoverUrl,
+        title: '标题',
+        content: '正文',
+        posterId: 'u1',
+        tags: const ['诗歌'],
+      );
+
+      expect(result.isRight(), isTrue);
+      verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
+      final BlogModel created = verify(
+        () => remote.uploadBlog(
+          captureAny(),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).captured.single;
+      expect(created.imageUrl, _kNewCoverUrl);
+      expect(created.title, '标题');
+    });
+  });
+
   group('editBlog', () {
     test(
       'rejects unsupported structures before uploading or writing',

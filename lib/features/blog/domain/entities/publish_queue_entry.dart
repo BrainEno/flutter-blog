@@ -40,6 +40,7 @@ class PublishQueueEntry {
     required this.updatedAt,
     this.coverFileName,
     this.coverMimeType,
+    this.coverUrl,
     this.nextAttemptAt,
     this.lastErrorCode,
   });
@@ -71,6 +72,14 @@ class PublishQueueEntry {
   final String? coverFileName;
   final String? coverMimeType;
 
+  /// Where the cover already lives on the server, once an attempt uploaded it.
+  ///
+  /// Media assets are immutable, so a retry reuses this URL instead of sending
+  /// the same bytes again: without it, every failed attempt that got as far as
+  /// the upload left an unreferenced asset behind. Null means "not uploaded
+  /// yet" (including every entry queued before this field existed).
+  final String? coverUrl;
+
   /// When a retryable failure may be attempted again; null means "as soon as
   /// a session and a network are available".
   final DateTime? nextAttemptAt;
@@ -87,6 +96,7 @@ class PublishQueueEntry {
     bool clearNextAttemptAt = false,
     String? lastErrorCode,
     bool clearLastErrorCode = false,
+    String? coverUrl,
   }) {
     return PublishQueueEntry(
       id: id,
@@ -101,6 +111,7 @@ class PublishQueueEntry {
       updatedAt: updatedAt ?? this.updatedAt,
       coverFileName: coverFileName,
       coverMimeType: coverMimeType,
+      coverUrl: coverUrl ?? this.coverUrl,
       nextAttemptAt: clearNextAttemptAt
           ? null
           : (nextAttemptAt ?? this.nextAttemptAt),

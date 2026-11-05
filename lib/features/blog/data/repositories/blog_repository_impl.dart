@@ -28,8 +28,24 @@ class BlogRepositoryImpl implements BlogRepository {
   );
 
   @override
+  Future<Either<Failure, String>> uploadCover({
+    required ImageUpload image,
+    NowaveSessionFence? sessionFence,
+  }) async {
+    try {
+      if (!await (connectionChecker.isConnected)) {
+        return left(Failure.networkOffline());
+      }
+      return right(await _uploadCoverBytes(image, sessionFence));
+    } catch (error) {
+      return left(mapErrorToFailure(error));
+    }
+  }
+
+  @override
   Future<Either<Failure, Blog>> uploadBlog({
     ImageUpload? image,
+    String? uploadedCoverUrl,
     required String title,
     required String content,
     required String posterId,
@@ -45,15 +61,11 @@ class BlogRepositoryImpl implements BlogRepository {
       // cover is uploaded first and the article row is created with it.
       // A failure between the two only leaves an unreferenced asset (the
       // backend has no delete endpoint; its lifecycle is managed
-      // server-side). A coverless publish (issue #17) skips the upload.
-      final imageUrl = image == null
-          ? ''
-          : sessionFence == null
-          ? await blogRemoteDataSource.uploadBlogImage(image: image)
-          : await blogRemoteDataSource.uploadBlogImage(
-              image: image,
-              sessionFence: sessionFence,
-            );
+      // server-side) - which is exactly why a caller that already uploaded the
+      // cover passes [uploadedCoverUrl] instead of making a second asset.
+      // A coverless publish (issue #17) skips the upload.
+      final imageUrl =
+          uploadedCoverUrl ?? await _uploadCoverBytes(image, sessionFence);
       final blogModel = BlogModel(
         id: '',
         title: title,
@@ -77,6 +89,25 @@ class BlogRepositoryImpl implements BlogRepository {
     } catch (error) {
       return left(mapErrorToFailure(error));
     }
+  }
+
+  /// Uploads [image] and returns the URL the server stored it at.
+  ///
+  /// A null [image] is a coverless publish and uploads nothing. No failure
+  /// mapping happens here: the callers wrap it, so an upload error surfaces
+  /// through the same path as the rest of their work.
+  Future<String> _uploadCoverBytes(
+    ImageUpload? image,
+    NowaveSessionFence? sessionFence,
+  ) async {
+    if (image == null) return '';
+    if (sessionFence == null) {
+      return blogRemoteDataSource.uploadBlogImage(image: image);
+    }
+    return blogRemoteDataSource.uploadBlogImage(
+      image: image,
+      sessionFence: sessionFence,
+    );
   }
 
   @override

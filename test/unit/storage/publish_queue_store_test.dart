@@ -3,10 +3,12 @@ import 'dart:typed_data';
 
 import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/storage/app_database.dart';
+import 'package:belog/core/storage/backend_key.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_publish_queue_store.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqlite3/sqlite3.dart' as raw;
 
 final _firstBackend = Uri.parse('https://first.example.invalid/api-root/');
 final _secondBackend = Uri.parse('https://second.example.invalid/api-root');
@@ -335,5 +337,161 @@ void main() {
     expect((await secondStore.entries(userId: 'alice')).map((e) => e.title), [
       'across launches',
     ]);
+  });
+
+  test('the uploaded cover URL is remembered and survives a reopen', () async {
+    final file = File('${covers.path}/cover-url.sqlite');
+    final first = AppDatabase(NativeDatabase(file));
+    final firstStore = SqlitePublishQueueStore(
+      first,
+      apiBaseUrl: _firstBackend,
+      directory: covers,
+    );
+    final entry = await firstStore.enqueue(
+      userId: 'alice',
+      title: 'with cover',
+      content: 'body',
+      tags: const [],
+      idempotencyKey: 'key-1',
+      cover: ImageUpload(bytes: Uint8List.fromList(const [1, 2, 3])),
+    );
+    expect(entry.coverUrl, isNull);
+    await firstStore.recordCoverUrl(entry.id, url: 'https://cdn/cover-1.png');
+    // The bytes stay on disk: the URL is what a retry needs, the file is only
+    // a fallback for entries queued before the URL was recorded.
+    expect(await firstStore.readCover(entry), isNotNull);
+    await first.close();
+
+    final second = AppDatabase(NativeDatabase(file));
+    addTearDown(second.close);
+    final secondStore = SqlitePublishQueueStore(
+      second,
+      apiBaseUrl: _firstBackend,
+      directory: covers,
+    );
+    final reopened = (await secondStore.entries(userId: 'alice')).single;
+    expect(reopened.coverUrl, 'https://cdn/cover-1.png');
+    expect(reopened.idempotencyKey, 'key-1');
+  });
+
+  test('a claimed entry keeps the cover URL it already recorded', () async {
+    final entry = await store.enqueue(
+      userId: 'alice',
+      title: 'with cover',
+      content: 'body',
+      tags: const [],
+      idempotencyKey: 'key-1',
+      cover: ImageUpload(bytes: Uint8List.fromList(const [1, 2, 3])),
+    );
+    await store.recordCoverUrl(entry.id, url: 'https://cdn/cover-1.png');
+
+    final claimed = await store.claimNext(userId: 'alice', now: DateTime.now());
+
+    expect(claimed?.coverUrl, 'https://cdn/cover-1.png');
+    expect(claimed?.status, PublishQueueStatus.uploading);
+  });
+
+  test('a v8 queue upgrades in place and gains the cover URL column', () async {
+    final file = File('${covers.path}/legacy-v8.sqlite');
+    final old = raw.sqlite3.open(file.path);
+    old.execute('PRAGMA user_version = 8');
+    old.execute(
+      'CREATE TABLE publish_queue (id TEXT PRIMARY KEY, backend TEXT NOT NULL, '
+      'user_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, '
+      'title TEXT NOT NULL, content TEXT NOT NULL, tags TEXT NOT NULL, '
+      'cover_file TEXT, cover_mime TEXT, state TEXT NOT NULL, '
+      'attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at INTEGER, '
+      'last_error_code TEXT, created_at INTEGER NOT NULL, '
+      'updated_at INTEGER NOT NULL)',
+    );
+    old.execute(
+      'CREATE INDEX publish_queue_due '
+      'ON publish_queue(backend, user_id, state, created_at)',
+    );
+    old.execute(
+      'INSERT INTO publish_queue(id, backend, user_id, idempotency_key, '
+      'title, content, tags, cover_file, cover_mime, state, attempts, '
+      'next_attempt_at, last_error_code, created_at, updated_at) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, 1, NULL, ?, ?, ?)',
+      [
+        'legacy-entry',
+        backendKeyOf(_firstBackend),
+        'alice',
+        'key-legacy',
+        'legacy title',
+        'legacy body',
+        '["old"]',
+        'queued',
+        'network.offline',
+        DateTime.utc(2026, 11, 1).microsecondsSinceEpoch,
+        DateTime.utc(2026, 11, 1).microsecondsSinceEpoch,
+      ],
+    );
+    old.close();
+
+    final upgraded = AppDatabase(NativeDatabase(file));
+    addTearDown(upgraded.close);
+    final legacyStore = SqlitePublishQueueStore(
+      upgraded,
+      apiBaseUrl: _firstBackend,
+      directory: covers,
+    );
+
+    final row = (await legacyStore.entries(userId: 'alice')).single;
+    expect(row.id, 'legacy-entry');
+    expect(row.title, 'legacy title');
+    expect(row.idempotencyKey, 'key-legacy');
+    expect(row.attempts, 1);
+    // NULL reads as "not uploaded yet", which is what v8 did on every attempt.
+    expect(row.coverUrl, isNull);
+
+    // The new column is usable right after the upgrade.
+    await legacyStore.recordCoverUrl(
+      'legacy-entry',
+      url: 'https://cdn/legacy.png',
+    );
+    expect(
+      (await legacyStore.entries(userId: 'alice')).single.coverUrl,
+      'https://cdn/legacy.png',
+    );
+    final version = await upgraded
+        .customSelect('PRAGMA user_version')
+        .getSingle();
+    expect(version.read<int>('user_version'), 9);
+  });
+
+  test('a pre-v8 database gains the queue with cover_url', () async {
+    // The v8 step creates the table in its current shape, so the v9 step must
+    // not try to add the column a second time.
+    final file = File('${covers.path}/legacy-v7.sqlite');
+    final old = raw.sqlite3.open(file.path);
+    old.execute('PRAGMA user_version = 7');
+    old.close();
+
+    final upgraded = AppDatabase(NativeDatabase(file));
+    addTearDown(upgraded.close);
+    final legacyStore = SqlitePublishQueueStore(
+      upgraded,
+      apiBaseUrl: _firstBackend,
+      directory: covers,
+    );
+
+    expect(await legacyStore.entries(userId: 'alice'), isEmpty);
+    final entry = await legacyStore.enqueue(
+      userId: 'alice',
+      title: 'after the upgrade',
+      content: 'body',
+      tags: const [],
+      idempotencyKey: 'key-1',
+    );
+    expect(entry.coverUrl, isNull);
+    await legacyStore.recordCoverUrl(
+      entry.id,
+      url: 'https://cdn/after-upgrade.png',
+    );
+    expect(
+      (await legacyStore.entries(userId: 'alice')).single.coverUrl,
+      'https://cdn/after-upgrade.png',
+    );
   });
 }

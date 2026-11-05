@@ -39,6 +39,13 @@ abstract interface class PublishQueueStore {
   /// The stored cover bytes, or null when the entry has no cover file.
   Future<ImageUpload?> readCover(PublishQueueEntry entry);
 
+  /// Remembers the URL an attempt just uploaded the cover to.
+  ///
+  /// Callers must await this *before* creating the article: a crash between
+  /// the two must not make the next attempt upload a second copy of the same
+  /// bytes. Immutable media means a recorded URL stays valid for the retry.
+  Future<void> recordCoverUrl(String id, {required String url});
+
   /// The server accepted the entry: drop it and its cover file.
   Future<void> complete(String id);
 

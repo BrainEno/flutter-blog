@@ -71,9 +71,9 @@ class SqlitePublishQueueStore implements PublishQueueStore {
       }
       await database.customInsert(
         'INSERT INTO publish_queue(id, backend, user_id, idempotency_key, '
-        'title, content, tags, cover_file, cover_mime, state, attempts, '
-        'next_attempt_at, last_error_code, created_at, updated_at) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?)',
+        'title, content, tags, cover_file, cover_mime, cover_url, state, '
+        'attempts, next_attempt_at, last_error_code, created_at, updated_at) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?)',
         variables: [
           Variable<String>(id),
           Variable<String>(_backend),
@@ -84,6 +84,7 @@ class SqlitePublishQueueStore implements PublishQueueStore {
           Variable<String>(jsonEncode(tags)),
           Variable<String>(coverFileName),
           Variable<String>(coverMime),
+          Variable<String>(null),
           Variable<String>(PublishQueueStatus.queued.name),
           Variable<int>(now.microsecondsSinceEpoch),
           Variable<int>(now.microsecondsSinceEpoch),
@@ -241,6 +242,17 @@ class SqlitePublishQueueStore implements PublishQueueStore {
   }
 
   @override
+  Future<void> recordCoverUrl(String id, {required String url}) {
+    return _serializeWrite(() async {
+      await database.customStatement(
+        'UPDATE publish_queue SET cover_url = ?, updated_at = ? '
+        'WHERE id = ? AND backend = ?',
+        [url, DateTime.now().microsecondsSinceEpoch, id, _backend],
+      );
+    });
+  }
+
+  @override
   Future<void> recordFailure(
     String id, {
     required String errorCode,
@@ -304,6 +316,7 @@ class SqlitePublishQueueStore implements PublishQueueStore {
       ),
       coverFileName: row.readNullable<String>('cover_file'),
       coverMimeType: row.readNullable<String>('cover_mime'),
+      coverUrl: row.readNullable<String>('cover_url'),
       nextAttemptAt: _timeOf(row.readNullable<int>('next_attempt_at')),
       lastErrorCode: row.readNullable<String>('last_error_code'),
     );

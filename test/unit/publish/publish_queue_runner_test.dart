@@ -35,6 +35,8 @@ class _FakeIdentity implements NowaveSessionIdentity {
   Stream<void> get identityChanges => const Stream<void>.empty();
 }
 
+const _kCoverUrl = 'https://api.example.invalid/api/v1/media/cover-1';
+
 const _rejected = Failure(
   '标题太长',
   kind: FailureKind.validation,
@@ -109,7 +111,7 @@ void main() {
     await enqueue();
     when(
       () => repository.uploadBlog(
-        image: any(named: 'image'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
         title: any(named: 'title'),
         content: any(named: 'content'),
         posterId: any(named: 'posterId'),
@@ -124,7 +126,7 @@ void main() {
     expect(sent, 1);
     verify(
       () => repository.uploadBlog(
-        image: any(named: 'image'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
         title: 'Queued title',
         content: 'body',
         posterId: 'alice',
@@ -140,7 +142,7 @@ void main() {
     await enqueue();
     when(
       () => repository.uploadBlog(
-        image: any(named: 'image'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
         title: any(named: 'title'),
         content: any(named: 'content'),
         posterId: any(named: 'posterId'),
@@ -166,7 +168,7 @@ void main() {
     await enqueue();
     when(
       () => repository.uploadBlog(
-        image: any(named: 'image'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
         title: any(named: 'title'),
         content: any(named: 'content'),
         posterId: any(named: 'posterId'),
@@ -187,7 +189,7 @@ void main() {
     await enqueue();
     when(
       () => repository.uploadBlog(
-        image: any(named: 'image'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
         title: any(named: 'title'),
         content: any(named: 'content'),
         posterId: any(named: 'posterId'),
@@ -211,7 +213,7 @@ void main() {
     expect(await runner.drain(), 0);
     verifyNever(
       () => repository.uploadBlog(
-        image: any(named: 'image'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
         title: any(named: 'title'),
         content: any(named: 'content'),
         posterId: any(named: 'posterId'),
@@ -229,7 +231,7 @@ void main() {
     expect(await runner.drain(), 0);
     verifyNever(
       () => repository.uploadBlog(
-        image: any(named: 'image'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
         title: any(named: 'title'),
         content: any(named: 'content'),
         posterId: any(named: 'posterId'),
@@ -255,7 +257,7 @@ void main() {
     await enqueue(title: 'second', key: 'key-2');
     when(
       () => repository.uploadBlog(
-        image: any(named: 'image'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
         title: any(named: 'title'),
         content: any(named: 'content'),
         posterId: any(named: 'posterId'),
@@ -268,7 +270,7 @@ void main() {
     expect(await runner.drain(), 2);
     verifyInOrder([
       () => repository.uploadBlog(
-        image: any(named: 'image'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
         title: 'first',
         content: 'body',
         posterId: 'alice',
@@ -277,7 +279,7 @@ void main() {
         idempotencyKey: 'key-1',
       ),
       () => repository.uploadBlog(
-        image: any(named: 'image'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
         title: 'second',
         content: 'body',
         posterId: 'alice',
@@ -293,7 +295,7 @@ void main() {
     await enqueue();
     when(
       () => repository.uploadBlog(
-        image: any(named: 'image'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
         title: any(named: 'title'),
         content: any(named: 'content'),
         posterId: any(named: 'posterId'),
@@ -312,13 +314,179 @@ void main() {
     expect(await first, 1);
     verify(
       () => repository.uploadBlog(
-        image: any(named: 'image'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
         title: any(named: 'title'),
         content: any(named: 'content'),
         posterId: any(named: 'posterId'),
         tags: any(named: 'tags'),
         sessionFence: any(named: 'sessionFence'),
         idempotencyKey: any(named: 'idempotencyKey'),
+      ),
+    ).called(1);
+  });
+
+  Future<PublishQueueEntry> enqueueWithCover({String key = 'key-cover'}) {
+    return store.enqueue(
+      userId: 'alice',
+      title: 'With cover',
+      content: 'body',
+      tags: const ['tag'],
+      idempotencyKey: key,
+      cover: ImageUpload(bytes: Uint8List.fromList(const [9, 8, 7])),
+    );
+  }
+
+  test('a cover is uploaded once and reused by the retry', () async {
+    await enqueueWithCover();
+    when(
+      () => repository.uploadCover(
+        image: any(named: 'image'),
+        sessionFence: any(named: 'sessionFence'),
+      ),
+    ).thenAnswer((_) async => right(_kCoverUrl));
+    var creates = 0;
+    when(
+      () => repository.uploadBlog(
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+        title: any(named: 'title'),
+        content: any(named: 'content'),
+        posterId: any(named: 'posterId'),
+        tags: any(named: 'tags'),
+        sessionFence: any(named: 'sessionFence'),
+        idempotencyKey: any(named: 'idempotencyKey'),
+      ),
+    ).thenAnswer((_) async {
+      creates++;
+      // The first article request is lost; the retry must not upload again.
+      return creates == 1 ? left(Failure.networkOffline()) : right(_blog('ok'));
+    });
+
+    expect(await runner.drain(), 0);
+    final afterFailure = (await store.entries(userId: 'alice')).single;
+    expect(afterFailure.status, PublishQueueStatus.queued);
+    expect(afterFailure.coverUrl, _kCoverUrl);
+    expect(afterFailure.idempotencyKey, 'key-cover');
+
+    // Let the backoff window pass, as a later drain would.
+    const rearm = 'UPDATE publish_queue SET next_attempt_at = NULL';
+    await db.customStatement(rearm);
+    expect(await runner.drain(), 1);
+
+    verify(
+      () => repository.uploadCover(
+        image: any(named: 'image'),
+        sessionFence: any(named: 'sessionFence'),
+      ),
+    ).called(1);
+    verify(
+      () => repository.uploadBlog(
+        uploadedCoverUrl: _kCoverUrl,
+        title: 'With cover',
+        content: 'body',
+        posterId: 'alice',
+        tags: any(named: 'tags'),
+        sessionFence: any(named: 'sessionFence'),
+        idempotencyKey: 'key-cover',
+      ),
+    ).called(2);
+    expect(await store.entries(userId: 'alice'), isEmpty);
+  });
+
+  test('an entry that already has a cover URL is not uploaded again', () async {
+    final queued = await enqueueWithCover();
+    await store.recordCoverUrl(queued.id, url: _kCoverUrl);
+    when(
+      () => repository.uploadBlog(
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+        title: any(named: 'title'),
+        content: any(named: 'content'),
+        posterId: any(named: 'posterId'),
+        tags: any(named: 'tags'),
+        sessionFence: any(named: 'sessionFence'),
+        idempotencyKey: any(named: 'idempotencyKey'),
+      ),
+    ).thenAnswer((_) async => right(_blog('ok')));
+
+    expect(await runner.drain(), 1);
+
+    verifyNever(
+      () => repository.uploadCover(
+        image: any(named: 'image'),
+        sessionFence: any(named: 'sessionFence'),
+      ),
+    );
+    verify(
+      () => repository.uploadBlog(
+        uploadedCoverUrl: _kCoverUrl,
+        title: any(named: 'title'),
+        content: any(named: 'content'),
+        posterId: any(named: 'posterId'),
+        tags: any(named: 'tags'),
+        sessionFence: any(named: 'sessionFence'),
+        idempotencyKey: any(named: 'idempotencyKey'),
+      ),
+    ).called(1);
+  });
+
+  test('a failed cover upload does not publish text only', () async {
+    await enqueueWithCover();
+    when(
+      () => repository.uploadCover(
+        image: any(named: 'image'),
+        sessionFence: any(named: 'sessionFence'),
+      ),
+    ).thenAnswer((_) async => left(Failure.networkOffline()));
+
+    expect(await runner.drain(), 0);
+
+    final stored = (await store.entries(userId: 'alice')).single;
+    expect(stored.status, PublishQueueStatus.queued);
+    expect(stored.attempts, 1);
+    expect(stored.coverUrl, isNull);
+    verifyNever(
+      () => repository.uploadBlog(
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+        title: any(named: 'title'),
+        content: any(named: 'content'),
+        posterId: any(named: 'posterId'),
+        tags: any(named: 'tags'),
+        sessionFence: any(named: 'sessionFence'),
+        idempotencyKey: any(named: 'idempotencyKey'),
+      ),
+    );
+  });
+
+  test('a coverless entry never asks for a cover upload', () async {
+    await enqueue();
+    when(
+      () => repository.uploadBlog(
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+        title: any(named: 'title'),
+        content: any(named: 'content'),
+        posterId: any(named: 'posterId'),
+        tags: any(named: 'tags'),
+        sessionFence: any(named: 'sessionFence'),
+        idempotencyKey: any(named: 'idempotencyKey'),
+      ),
+    ).thenAnswer((_) async => right(_blog('ok')));
+
+    expect(await runner.drain(), 1);
+
+    verifyNever(
+      () => repository.uploadCover(
+        image: any(named: 'image'),
+        sessionFence: any(named: 'sessionFence'),
+      ),
+    );
+    verify(
+      () => repository.uploadBlog(
+        uploadedCoverUrl: null,
+        title: 'Queued title',
+        content: 'body',
+        posterId: 'alice',
+        tags: any(named: 'tags'),
+        sessionFence: any(named: 'sessionFence'),
+        idempotencyKey: 'key-1',
       ),
     ).called(1);
   });
