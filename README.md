@@ -175,6 +175,10 @@ lib/
 
 - **数据流向**：UI → Bloc → Usecase → Repository（`Either<Failure, T>`）→
   Datasource。Repository 是唯一把异常翻译成 `Failure` 的地方。
+- **内容源**：当前只有一个内容源——no-wave `apps/api`。让同一个 App 也能读 Notion
+  数据库的可行性、必须先清的 8 处代码阻碍与分期方案见
+  [Notion 内容源评估](docs/notion-content-source-assessment.md)；它尚未实现，
+  现有 no-wave 行为不受影响。
 - **分层方向**：依赖只能从 feature 指向 `lib/core`，不能反向；`lib/core/storage`
   不得导入 Flutter UI 类型。规则由 `tool/ci/check_core_dependencies.py` 在 CI 中
   强制（`--root` 可对任意目录跑，unittest 也在真实仓库上验证）。
@@ -494,7 +498,8 @@ CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 
 [docs/sqlite-storage.md](docs/sqlite-storage.md)、
 [docs/session-lifecycle.md](docs/session-lifecycle.md)、
 [docs/supabase-to-nowave-migration.md](docs/supabase-to-nowave-migration.md)、
-[docs/agent-development.md](docs/agent-development.md)。
+[docs/agent-development.md](docs/agent-development.md)、
+[Notion 内容源评估](docs/notion-content-source-assessment.md)。
 
 ## 服务端（no-wave）差距与待办
 
