@@ -9,8 +9,8 @@ import 'package:belog/features/auth/data/datasources/profile_cache_store.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:drift/native.dart';
-import 'package:sqlite3/sqlite3.dart' as raw;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqlite3/sqlite3.dart' as raw;
 
 void main() {
   late Directory dir;
