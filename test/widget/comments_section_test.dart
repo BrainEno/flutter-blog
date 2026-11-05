@@ -67,9 +67,9 @@ Future<void> _pumpSection(
         builder: textScale == 1
             ? null
             : (context, child) => MediaQuery(
-                data: MediaQuery.of(context).copyWith(
-                  textScaler: TextScaler.linear(textScale),
-                ),
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: TextScaler.linear(textScale)),
                 child: child!,
               ),
         home: const Scaffold(
@@ -378,11 +378,7 @@ void main() {
 
     expect(find.text('Comments'), findsOneWidget);
     expect(find.text('Retry'), findsOneWidget);
-    expect(
-      find.text('评论加载失败'),
-      findsNothing,
-      reason: '英文界面不能回落到中文兜底文案',
-    );
+    expect(find.text('评论加载失败'), findsNothing, reason: '英文界面不能回落到中文兜底文案');
   });
 
   testWidgets('the empty state is localized in English too', (tester) async {
@@ -401,7 +397,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('No comments yet — be the first to speak'), findsOneWidget);
+    expect(
+      find.text('No comments yet — be the first to speak'),
+      findsOneWidget,
+    );
     expect(find.text('评论'), findsNothing);
   });
 

@@ -50,7 +50,8 @@ void main() {
           tester
               .getSemantics(find.byType(NoWaveStatus))
               .getSemanticsData()
-              .flagsCollection.isLiveRegion,
+              .flagsCollection
+              .isLiveRegion,
           isTrue,
           reason: '状态变化要被读屏播报',
         );
@@ -146,10 +147,7 @@ Future<void> _pumpNarrow(
       ),
       home: Scaffold(
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: child,
-          ),
+          child: Padding(padding: const EdgeInsets.all(16), child: child),
         ),
       ),
     ),

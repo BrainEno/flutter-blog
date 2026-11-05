@@ -157,9 +157,9 @@ print('hi');
     final handle = tester.ensureSemantics();
     await pumpMarkdown(tester, 'see [`belog`](https://example.invalid)');
 
-    final links = _semanticsNodes(tester)
-        .where((node) => node.getSemanticsData().flagsCollection.isLink)
-        .toList();
+    final links = _semanticsNodes(
+      tester,
+    ).where((node) => node.getSemanticsData().flagsCollection.isLink).toList();
     expect(
       links,
       hasLength(1),
@@ -196,9 +196,9 @@ print('hi');
       ),
     );
 
-    final links = _semanticsNodes(tester)
-        .where((node) => node.getSemanticsData().flagsCollection.isLink)
-        .toList();
+    final links = _semanticsNodes(
+      tester,
+    ).where((node) => node.getSemanticsData().flagsCollection.isLink).toList();
     expect(links, isNotEmpty);
     expect(tester.takeException(), isNull);
     handle.dispose();

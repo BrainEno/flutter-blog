@@ -258,11 +258,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                           width: 56,
                           height: 56,
                           child: entry.imageUrl.isEmpty
-                              ? Icon(
-                                  Icons.article,
-                                  size: 32,
-                                  color: mutedColor,
-                                )
+                              ? Icon(Icons.article, size: 32, color: mutedColor)
                               : CachedNetworkImage(
                                   imageUrl: entry.imageUrl,
                                   fit: BoxFit.cover,
@@ -296,11 +292,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                     ),
                     trailing: IconButton(
                       tooltip: context.l10n.removeHistoryEntry,
-                      icon: Icon(
-                        Icons.close,
-                        size: 20,
-                        color: mutedColor,
-                      ),
+                      icon: Icon(Icons.close, size: 20, color: mutedColor),
                       onPressed: () => _remove(entry),
                     ),
                     onTap: () => context.push('/view/${entry.blogId}'),
