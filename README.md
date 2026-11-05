@@ -140,8 +140,9 @@ iOS 用 `xcrun simctl openurl booted "nowave://article/<slug>"`，各跑一次�
 - **取消 ≠ 失败**：`pickImage()` 取消返回 `null`，真失败抛
   `PickImageException`，调用方（编辑器/资料页）对失败弹提示，不再吞掉。
 - **重试与回收**：媒体上传当前没有服务端幂等键，相同内容多次提交仍会创建独立资产；封面和头像在连接失败或超时后不自动重发。失败时服务端是否已保存可能未知，手动重试仍可能产生重复资产；明确的 401 经刷新会话后的单次重放不属于断流盲重试。no-wave `13271b21` 已新增媒体库与手动删除，但其引用检查存在[误删风险](https://github.com/BrainEno/no-wave/issues/146)；修复前不要使用网页媒体库删除图片。Flutter 没有接入媒体列表或删除，也不提供回滚；没有定时回收。
-- **缓存**：封面与头像 URL 不可变，无需 `?v=` cache-busting
-  （`presentation/utils/cover_url.dart` 已简化）。
+- **缓存**：封面与头像 URL 不可变，无需 `?v=` cache-busting（`Blog.imageUrl`
+  直接使用；曾经包一层的 `presentation/utils/cover_url.dart` 是恒等函数，
+  2026-11 的整理中已删除）。
 
 ## 架构
 
@@ -150,17 +151,22 @@ iOS 用 `xcrun simctl openurl booted "nowave://article/<slug>"`，各跑一次�
 ```
 lib/
 ├── core/                  # 与业务无关的基础设施
-│   ├── common/            # 全局 cubit（AppUser）
+│   ├── common/            # 全局 cubit（AppUser）与通用控件
 │   ├── error/             # Failure 契约 + 异常映射（error_mapper）
+│   ├── l10n/              # 界面语言、内容语言，以及 Failure/标签/作者名文案 helper
 │   ├── network/           # 连接检查
 │   ├── nowave/            # API 客户端（envelope/401 刷新/媒体上传）+ 会话管理
+│   ├── secrets/           # 编译期环境（API base URL、WEB base URL）
+│   ├── startup/           # 启动失败兜底界面（依赖初始化抛错时）
 │   ├── storage/           # Drift/SQLite：建表、迁移与原始行读写（Isar 已于 #107 移除）
 │   ├── theme/             # 主题与 ThemeBloc
-│   └── utils/             # AppLogger、重试、Snackbar 等
+│   ├── usecase/           # UseCase 抽象
+│   └── utils/             # AppLogger、重试、Snackbar、分享/深链解析等
 ├── features/
 │   ├── auth/              # 登录注册（no-wave /auth/*）
 │   ├── blog/              # 文章域：datasources / repository / usecases / blocs / pages
 │   └── user/              # 个人资料
+├── l10n/                  # ARB 目录（中文/英文）+ 生成物（git 忽略，pub get 生成）
 ├── router/                # go_router 路由（页面级 bloc 随页面创建销毁）
 └── main.dart              # 入口 + 全局错误钩子
 ```
@@ -428,6 +434,23 @@ Windows PowerShell mock 测试为 `powershell -File scripts/tests/test_android.p
 它们不等同于真实模拟器、后端、IPA 安装或签名验收。代码审查的修复与剩余
 风险见 [docs/code-audit.md](docs/code-audit.md)。
 
+### 依赖升级
+
+`pubspec.lock` 已入库，但 CI 与所有脚本只跑 `flutter pub get`（没有
+`--enforce-lockfile`），所以改约束不会被锁死，也不会自动升级。升级目标包前先确认
+它与固定的 Flutter 3.47.8 兼容：
+
+```bash
+flutter pub outdated                 # 需要能访问 pub.dev
+flutter pub upgrade --major-versions # 或逐个改 pubspec.yaml
+flutter pub get
+```
+
+`flutter_lints`、`drift`（当前精确锁定）、`sqlite3` 的约束都带历史原因（见下面的
+「本地启动常见阻塞」与 `docs/code-audit.md`），不要顺手改高下限。升级后至少跑
+`flutter analyze --fatal-infos`、`flutter test` 与
+`python3 -m unittest discover -s scripts/tests`，再交给 CI 判定。
+
 ## 测试与 CI
 
 `.github/workflows/ci.yml`（PR / push 到 main 时运行，Flutter 3.47.8 + JDK 17）：
@@ -506,6 +529,9 @@ CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 
   会话时序单元与 Isar 移除已完成；`nowave_api_client` 等仍有拆分空间）
 - **P0/P1 已关闭**：#4 工具链升级、#7 schema 版本管理、#8 离线缓存语义
 
+截至 2026-11-05，`main` 上**只剩 #18（举报与屏蔽）开放**：它需要 no-wave 侧先
+提供举报/屏蔽接口与权限约束，客户端不能单独完成。
+
 **许可证**：[Apache License 2.0](LICENSE)。随包分发的字体等第三方资源及其
 许可证见 [NOTICE](NOTICE)；Dart/Flutter 依赖各自的许可随 pub 包分发，解析结果
 固定在 `pubspec.lock`。版本与发布身份（`com.nodeman24.nowave`、`0.2.0+1`）见
@@ -515,4 +541,6 @@ CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 
 点赞并发与离线行为（#9）、异常契约统一（#12）、iOS 发布流水线（#6）、
 点赞离线假成功（#3）、Supabase → no-wave 后端迁移、删除与回收站（G1）、
 Markdown 正文（#17）、阅读历史与导出（#22）、Isar 依赖及其一次性导入器的彻底
-移除（#107，见 [SQLite 存储](docs/sqlite-storage.md)）等。
+移除（#107，见 [SQLite 存储](docs/sqlite-storage.md)）、深链入站与分享（#21）、
+中文文案统一与无障碍扫描（#24）、无调用方代码与 `build_runner` 的清理（2026-11，
+见 [docs/code-audit.md](docs/code-audit.md)）等。
