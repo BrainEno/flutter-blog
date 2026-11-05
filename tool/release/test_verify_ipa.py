@@ -6,7 +6,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-BUNDLE_ID = 'com.nodeman24.belog'
+BUNDLE_ID = 'com.nodeman24.nowave'
 BUILD_NAME = '1.2.3'
 BUILD_NUMBER = '42'
 

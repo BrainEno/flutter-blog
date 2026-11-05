@@ -178,7 +178,7 @@ jobs:
             -alias ci-only -keypass ci-only-password -dname 'CN=CI Fixture Only' \
             -keyalg RSA -keysize 2048 -validity 1 >/dev/null 2>&1
           expected="$(keytool -exportcert -keystore "$RUNNER_TEMP/source-ci.keystore" -storepass ci-only-password -alias ci-only | sha256sum | cut -d' ' -f1)"
-          export ANDROID_APPLICATION_ID_APPROVED=com.example.belog ANDROID_RELEASE_CERT_SHA256="$expected"
+          export ANDROID_APPLICATION_ID_APPROVED=com.nodeman24.nowave ANDROID_RELEASE_CERT_SHA256="$expected"
           export ANDROID_KEYSTORE_BASE64="$(base64 -w0 "$RUNNER_TEMP/source-ci.keystore")"
           export ANDROID_KEYSTORE_PASSWORD=ci-only-password ANDROID_KEY_ALIAS=ci-only ANDROID_KEY_PASSWORD=ci-only-password
           python3 tool/mobile/prepare_android_signing.py "$RUNNER_TEMP/belog-mobile.keystore"

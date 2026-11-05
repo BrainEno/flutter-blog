@@ -1,0 +1,37 @@
+No Wave
+Copyright 2026 No Wave
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Bundled third-party assets
+--------------------------
+
+- Instrument Serif: assets/fonts/InstrumentSerif-Regular.ttf and
+  assets/fonts/InstrumentSerif-Italic.ttf
+  Copyright 2022 The Instrument Serif Project Authors
+  SIL Open Font License, Version 1.1 - full text in
+  assets/fonts/OFL-InstrumentSerif.txt
+
+- Inter Tight: assets/fonts/InterTight-Variable.ttf
+  Copyright 2022 The Inter Project Authors
+  SIL Open Font License, Version 1.1 - full text in
+  assets/fonts/OFL-InterTight.txt
+
+- assets/images/no_wave_cover_fallback.jpg is original abstract artwork
+  produced for this app (AI-assisted), distributed under the same license as
+  the rest of the repository.
+
+Dart and Flutter packages
+-------------------------
+
+The app depends on open-source Dart/Flutter packages published on pub.dev.
+Each package keeps its own license in the source archive; the exact resolved
+versions are pinned in pubspec.lock. Run `flutter pub deps --style=compact`
+or open the package's `LICENSE` under the pub cache to review them.
+
+Runtime services
+----------------
+
+System text-to-speech engines, the system share sheet, and the operator's
+no-wave backend are used at runtime and are not distributed with this
+repository.

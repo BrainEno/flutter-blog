@@ -70,7 +70,7 @@ elif name == 'flutter':
             (app/item).write_bytes(b'fake-binary')
         if os.environ.get('MOCK_MISSING_FRAMEWORK'):
             (app/'Frameworks/App.framework/App').unlink()
-        info = {'CFBundleIdentifier':'com.nodeman24.belog', 'CFBundleShortVersionString':values['--build-name'],
+        info = {'CFBundleIdentifier':'com.nodeman24.nowave', 'CFBundleShortVersionString':values['--build-name'],
                 'CFBundleVersion':values['--build-number'], 'CFBundleExecutable':'Runner', 'CFBundlePackageType':'APPL',
                 'LSRequiresIPhoneOS':True, 'CFBundleSupportedPlatforms':['iPhoneOS'],
                 'NSPhotoLibraryUsageDescription':'Photo access', 'NSCameraUsageDescription':'Camera access',
@@ -223,6 +223,6 @@ class MacScriptTests(unittest.TestCase):
         with zipfile.ZipFile(ipa, 'w') as z:
             z.writestr('../../escape', 'bad')
         result = subprocess.run(['python3', str(self.root/'scripts/verify_signed_ipa.py'), str(ipa),
-                                 'com.nodeman24.belog', '1.0.0', '1'], text=True, capture_output=True)
+                                 'com.nodeman24.nowave', '1.0.0', '1'], text=True, capture_output=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('Unsafe IPA entry', result.stderr)

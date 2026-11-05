@@ -43,7 +43,7 @@ def validate_api_base_url(url: str) -> None:
 
 def validate_android_signing(environ) -> None:
     """Shared fail-closed policy for tagged and manually requested releases."""
-    if environ.get("ANDROID_APPLICATION_ID_APPROVED") != "com.example.belog":
+    if environ.get("ANDROID_APPLICATION_ID_APPROVED") != "com.nodeman24.nowave":
         raise ValueError("Owner must explicitly approve the existing Android application ID before publishing.")
     cert = environ.get("ANDROID_RELEASE_CERT_SHA256", "")
     if not re.fullmatch(r"[0-9A-Fa-f]{64}", cert):

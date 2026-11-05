@@ -38,7 +38,7 @@ class ReleaseValidationTests(unittest.TestCase):
                 "GITHUB_REF_NAME": "v1.2.3+42",
                 "GITHUB_OUTPUT": str(root / "output"),
                 "RUNNER_TEMP": str(root),
-                "ANDROID_APPLICATION_ID_APPROVED": "com.example.belog",
+                "ANDROID_APPLICATION_ID_APPROVED": "com.nodeman24.nowave",
                 "ANDROID_RELEASE_CERT_SHA256": "a" * 64,
                 "ANDROID_KEYSTORE_BASE64": "test-only-keystore",
                 "ANDROID_KEYSTORE_PASSWORD": "test-only-store-password",

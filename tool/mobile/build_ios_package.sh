@@ -17,7 +17,7 @@ while IFS= read -r -d '' item; do
   count=$((count + 1))
 done < <(find build/ios/local-ipa -maxdepth 1 -type f -name '*.ipa' -print0)
 [[ "$count" == 1 ]] || { echo 'Expected exactly one new IPA in this clean CI checkout.' >&2; exit 1; }
-python3 tool/release/verify_ipa.py "$IPA" com.nodeman24.belog "$BUILD_NAME" "$BUILD_NUMBER"
+python3 tool/release/verify_ipa.py "$IPA" com.nodeman24.nowave "$BUILD_NAME" "$BUILD_NUMBER"
 tmp="$(mktemp -d "${RUNNER_TEMP:-/tmp}/belog-ios-check.XXXXXXXX")"
 trap 'rm -rf "$tmp"' EXIT
 ditto -x -k "$IPA" "$tmp"

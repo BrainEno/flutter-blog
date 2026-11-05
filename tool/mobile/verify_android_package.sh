@@ -20,7 +20,7 @@ trap 'rm -rf "$tmp"' EXIT
 "$TOOLS/aapt" dump badging "$APK" > "$tmp/badging.txt"
 "$TOOLS/aapt" dump permissions "$APK" > "$tmp/permissions.txt"
 "$TOOLS/aapt" dump xmltree "$APK" AndroidManifest.xml > "$tmp/manifest.txt"
-grep -F "package: name='com.example.belog' versionCode='$BUILD_NUMBER' versionName='$BUILD_NAME'" "$tmp/badging.txt" >/dev/null
+grep -F "package: name='com.nodeman24.nowave' versionCode='$BUILD_NUMBER' versionName='$BUILD_NAME'" "$tmp/badging.txt" >/dev/null
 for permission in android.permission.INTERNET android.permission.ACCESS_NETWORK_STATE; do
   if ! grep -Fq "uses-permission: name='$permission'" "$tmp/permissions.txt"; then
     echo "Required permission missing from final APK: $permission" >&2

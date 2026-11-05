@@ -31,11 +31,11 @@ IPA 经过归档结构、iPhoneOS/arm64 架构、包标识/版本、隐私提示
 
 ## Android：稳定签名的个人 APK
 
-`personal` 用已有正式/个人 keystore 签名 release APK，并验证签名指纹、包名 `com.example.belog`、版本、最终权限、非调试/禁止明文、ARM 32/64 位及 16 KiB 对齐。**稳定升级需要始终使用同一个签名证书和兼容的版本码**；如果曾安装过其他 key 签名的同包名应用，Android 不允许直接覆盖。不要在没有可靠备份前卸载旧应用，卸载可能清除本地草稿和数据。应用 ID 保持原样，未进行包名/数据迁移。
+`personal` 用已有正式/个人 keystore 签名 release APK，并验证签名指纹、包名 `com.nodeman24.nowave`、版本、最终权限、非调试/禁止明文、ARM 32/64 位及 16 KiB 对齐。**稳定升级需要始终使用同一个签名证书和兼容的版本码**；如果曾安装过其他 key 签名的同包名应用，Android 不允许直接覆盖。不要在没有可靠备份前卸载旧应用，卸载可能清除本地草稿和数据。应用 ID 自 0.2.0 起统一为 `com.nodeman24.nowave`：与旧 `com.example.belog` 安装是**两个应用**，不就地升级、不共享数据，迁移步骤见 [releasing.md](releasing.md#upgrading-from-the-previous-identifier)。
 
 在 GitHub **Settings → Environments → production** 中限制允许部署的分支为 `main`，按需启用审批；复用正式发布流程的环境变量/Secrets：
 
-- Variables：`ANDROID_APPLICATION_ID_APPROVED` = `com.example.belog`；`ANDROID_RELEASE_CERT_SHA256` = 所有者独立核对的签名证书 SHA-256 指纹（64 位十六进制，无冒号）。
+- Variables：`ANDROID_APPLICATION_ID_APPROVED` = `com.nodeman24.nowave`；`ANDROID_RELEASE_CERT_SHA256` = 所有者独立核对的签名证书 SHA-256 指纹（64 位十六进制，无冒号）。
 - Secrets：`ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD`。
 
 已有用户时应使用原签名 key，不要生成新 key。首次安装且没有旧 key 时，可在自己的电脑用 JDK `keytool -genkeypair -keystore <安全位置> -alias <别名> -keyalg RSA -keysize 3072 -validity 10000` 创建并按交互提示设置密码；妥善备份 keystore 与密码，切勿提交到仓库或发到聊天。用 `keytool -exportcert -rfc -keystore <安全位置> -alias <别名> | openssl x509 -noout -fingerprint -sha256` 独立取得指纹并去掉冒号；本机安全地将 keystore 的 base64 值放入对应 GitHub Secret。不要在公开终端、日志、截图或工作流输入里粘贴它们。丢失 key 将影响未来覆盖升级。

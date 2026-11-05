@@ -1,10 +1,55 @@
 # Release and signing policy
 
-## Identity and compatibility (owner decision required)
+## Identity, license and version
 
-The current Android application ID is `com.example.belog`; the iOS Runner bundle ID is `com.nodeman24.belog`. They are intentionally unchanged. The proposed canonical ID is `com.nodeman24.belog`, matching iOS, but the owner must approve it and a migration plan before any ID change. Changing Android's ID creates a separate app and will not upgrade existing installations or retain their private data automatically. Changing an existing signing certificate can also prevent upgrades unless the applicable store's signing-key rotation process is used. We do not know whether either ID has shipped or who owns its signing keys.
+The owner fixed the release identity in November 2026 (#109):
 
-Until the owner resolves this, the release workflow refuses to publish unless the protected `production` environment explicitly sets `ANDROID_APPLICATION_ID_APPROVED` to the **current** ID, `com.example.belog`. Approval does not mean the example ID is suitable for a store. An ID migration requires changing the application, this gate, and release documentation together; do not silently rename it.
+- Every platform uses the bundle/application ID `com.nodeman24.nowave`: Android
+  `namespace` and `applicationId` in `android/app/build.gradle`, the Kotlin
+  package of `MainActivity`, and `PRODUCT_BUNDLE_IDENTIFIER` in the iOS and
+  macOS projects. The Windows resource metadata uses `com.nodeman24`.
+- `pubspec.yaml` carries `0.2.0+1`. Release tags must be exactly
+  `v0.2.0+1` (see below); the workflow passes that name and build number to
+  Flutter, so the version is injected by the toolchain rather than edited per
+  release.
+- The project is licensed under the Apache License, Version 2.0 (`LICENSE`).
+  Bundled fonts and other third-party material are listed in `NOTICE`, with the
+  full OFL texts shipped next to the fonts.
+- `test/unit/core/release_identity_test.dart` fails the suite when the version,
+  the three platform identifiers, or the license files drift apart.
+
+### Upgrading from the previous identifier
+
+The previous ids were `com.example.belog` (Android) and `com.nodeman24.belog`
+(iOS/macOS). A different application ID is a **different app**: a store cannot
+upgrade an existing installation, and the old app keeps its own private storage
+(`belog.sqlite` with drafts, reading history and cached articles, plus the
+theme/language preferences) and its own keychain-backed session.
+
+No store build was ever published under the old ids, so this rename is not an
+end-user migration. Anyone holding an older local QA or personal build should:
+
+1. Export what matters from the old install before removing it: the app's data
+   export writes a JSON file (`导出我的数据`), and unattributed legacy drafts can
+   be extracted from a copy of the database with
+   `tool/export_unclaimed_drafts.py` (see [unclaimed-drafts.md](unclaimed-drafts.md)).
+2. Install the new package and sign in again: the new id starts with no stored
+   session.
+3. Do not uninstall the old app until the export has been verified; uninstalling
+   deletes its private storage.
+
+If an identifier with real users ever ships, further changes need this analysis
+plus the store's signing-key rotation process.
+
+## Release gate
+
+The publishing workflow refuses to publish unless the protected `production`
+environment explicitly approves the identity it is about to build:
+`ANDROID_APPLICATION_ID_APPROVED` must equal `com.nodeman24.nowave`, the value
+the code is compiled with - `tool/release/validate_release.py` compares both, so
+a rename that misses one side fails closed. Approval does not mean any
+identifier is suitable for a store; changing the id again requires changing the
+application, this gate, and this document together.
 
 ## Validation builds are not releases
 
@@ -21,7 +66,8 @@ The separate tag workflow is the only publishing path. Configure a protected Git
 
 Use the correct existing production signing key if users already have the app. Back up and restrict it under the owner's control; loss or replacement can break upgrades. Obtain the expected SHA-256 fingerprint independently, for example using `keytool -list -v` on the approved keystore, and verify it out of band. The workflow rejects missing credentials, the standard debug alias/certificate, a fingerprint mismatch, unapproved app ID, mismatched package/version/permission, placeholder backend URL. Temporary files are removed after the job; GitHub runner and environment security remain owner responsibilities.
 
-Set `version: MAJOR.MINOR.PATCH+BUILD` in `pubspec.yaml`, with a positive Android version code no greater than 2100000000. Merge and validate that commit on `main`. Create a new immutable tag exactly `vMAJOR.MINOR.PATCH+BUILD` pointing to a commit reachable from `main`; only tag pushes trigger publication. The workflow uses the matching values as Flutter build name and number, checks the resulting APK metadata and signature, then creates a new GitHub Release with generated notes and a versioned APK name. It fails rather than replacing an existing release or asset. Never move/reuse release tags. The current `0.0.0+1` is a placeholder, not a recommendation for a first release.
+Set `version: MAJOR.MINOR.PATCH+BUILD` in `pubspec.yaml`, with a positive Android version code no greater than 2100000000. Merge and validate that commit on `main`. Create a new immutable tag exactly `vMAJOR.MINOR.PATCH+BUILD` pointing to a commit reachable from `main`; only tag pushes trigger publication. The workflow uses the matching values as Flutter build name and number, checks the resulting APK metadata and signature, then creates a new GitHub Release with generated notes and a versioned APK name. It fails rather than replacing an existing release or asset. Never move/reuse release tags. The current `0.2.0+1` is the first real version: tag `v0.2.0+1` for it, and
+raise the build number for every following release.
 
 A successful CI fixture-signing test does not validate production credentials, store acceptance, device installation, backend configuration, or real signing. No production signing or publication has been performed by this change.
 

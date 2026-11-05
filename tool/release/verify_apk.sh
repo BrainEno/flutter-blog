@@ -31,6 +31,6 @@ if grep -qi 'certificate DN:.*CN=Android Debug' "$cert_file"; then
   exit 1
 fi
 "$TOOLS/aapt" dump badging "$APK" > "$badging_file"
-grep -F "package: name='com.example.belog' versionCode='$BUILD_NUMBER' versionName='$BUILD_NAME'" "$badging_file" >/dev/null
+grep -F "package: name='com.nodeman24.nowave' versionCode='$BUILD_NUMBER' versionName='$BUILD_NAME'" "$badging_file" >/dev/null
 grep -F 'android.permission.INTERNET' "$badging_file" >/dev/null
 echo 'APK signature, package ID, version and INTERNET permission verified.'
