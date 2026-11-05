@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
@@ -14,6 +15,7 @@ class EditorCoverField extends StatelessWidget {
     super.key,
     this.blog,
     this.image,
+    this.imageBytes,
     this.isNewImageSelected = false,
     required this.onTap,
   });
@@ -23,6 +25,11 @@ class EditorCoverField extends StatelessWidget {
 
   /// The newly picked file, if any.
   final File? image;
+
+  /// The same cover as raw bytes, for covers this page did not pick from the
+  /// file system: a resumed queue entry keeps its image inside the app's own
+  /// storage, so there is no picker file to point at.
+  final Uint8List? imageBytes;
 
   /// Whether [image] replaces the published cover.
   final bool isNewImageSelected;
@@ -50,6 +57,17 @@ class EditorCoverField extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Image.file(picked, fit: BoxFit.cover),
+        ),
+      );
+    }
+    final bytes = imageBytes;
+    if (bytes != null && isNewImageSelected) {
+      return SizedBox(
+        height: 250,
+        width: double.infinity,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.memory(bytes, fit: BoxFit.cover),
         ),
       );
     }

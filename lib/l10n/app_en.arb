@@ -583,5 +583,7 @@
         "type": "int"
       }
     }
-  }
+  },
+  "publishQueueResumeEditing": "Continue editing",
+  "publishQueueResumedNotice": "Loaded from the queue. The original entry is removed once this publishes."
 }

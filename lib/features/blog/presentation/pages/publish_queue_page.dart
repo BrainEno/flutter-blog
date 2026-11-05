@@ -193,6 +193,15 @@ class _QueueEntryCard extends StatelessWidget {
     }
   }
 
+  /// Opens the editor with this entry's text and cover. The editor deletes the
+  /// entry once the new attempt publishes or is queued again, so this screen
+  /// reloads on return instead of assuming either outcome.
+  Future<void> _resumeEditing(BuildContext context) async {
+    await context.push<bool>('/profile/editor', extra: entry);
+    if (!context.mounted) return;
+    await context.read<PublishQueueCubit>().load(silent: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = entry.title.trim().isEmpty
@@ -200,6 +209,9 @@ class _QueueEntryCard extends StatelessWidget {
         : entry.title.trim();
     final lastError = entry.lastErrorCode;
     final canRetry = !sending && entry.status != PublishQueueStatus.uploading;
+    // Only a stopped entry can be re-edited: a queued one may be claimed by
+    // the drain mid-edit, and an uploading one is already on the wire.
+    final canResume = !sending && entry.status == PublishQueueStatus.failed;
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -237,13 +249,20 @@ class _QueueEntryCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 8),
-            Row(
+            // A wrap, not a row: three actions must still fit at 320 dp and
+            // 2x text without an overflow banner.
+            Wrap(
+              spacing: 8,
               children: [
+                if (canResume)
+                  TextButton(
+                    onPressed: () => _resumeEditing(context),
+                    child: Text(context.l10n.publishQueueResumeEditing),
+                  ),
                 TextButton(
                   onPressed: canRetry ? () => _retry(context) : null,
                   child: Text(context.l10n.publishQueueRetry),
                 ),
-                const Spacer(),
                 TextButton(
                   onPressed: () => _remove(context),
                   child: Text(context.l10n.publishQueueRemove),

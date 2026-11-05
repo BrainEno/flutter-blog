@@ -429,5 +429,7 @@
         "type": "int"
       }
     }
-  }
+  },
+  "publishQueueResumeEditing": "继续编辑",
+  "publishQueueResumedNotice": "已载入队列中的内容；这次发布成功后，原条目会被移除。"
 }
