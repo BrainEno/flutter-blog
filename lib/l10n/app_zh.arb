@@ -389,5 +389,45 @@
   },
   "publishQueueNoSession": "登录后才能发送队列中的文章",
   "publishQueueSignIn": "去登录",
-  "publishQueueUntitled": "未命名文章"
+  "publishQueueUntitled": "未命名文章",
+  "notificationsTitle": "通知",
+  "notificationsMenuHint": "评论过的作品被删除等提醒",
+  "notificationsEmptyTitle": "还没有通知",
+  "notificationsEmptyBody": "你评论过的作品被作者删除时会在这里提醒。应用不推送通知，打开页面即可读取最新状态。",
+  "notificationsUnavailable": "此服务器暂不提供通知。请稍后重试或检查服务器版本。",
+  "notificationsSignInTitle": "登录后可以查看通知",
+  "notificationsSignIn": "去登录",
+  "notificationsMarkAllRead": "全部标为已读",
+  "notificationsMarkRead": "标为已读",
+  "notificationsUnreadBadge": "未读",
+  "notificationsUnreadCount": "{count} 条未读",
+  "@notificationsUnreadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationsAllRead": "已全部标为已读",
+  "notificationsMarkedRead": "已标为已读",
+  "notificationsRetry": "重试",
+  "notificationArticleDeleted": "你评论过的作品已被作者删除，你的评论会在 {date} 随作品一起清除。",
+  "@notificationArticleDeleted": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationArticleDeletedNoDate": "你评论过的作品已被作者删除，你的评论会随作品一起清除。",
+  "notificationMessageReceived": "收到一条新的私信（应用内暂不支持查看会话）",
+  "notificationUnknown": "有一条新通知",
+  "notificationsOlderHidden": "最多显示最近 {limit} 条通知；更早的通知暂不可见。",
+  "@notificationsOlderHidden": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  }
 }

@@ -1,0 +1,324 @@
+import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/l10n/failure_l10n.dart';
+import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/utils/format_date.dart';
+import 'package:belog/core/utils/show_snackbar.dart';
+import 'package:belog/features/notifications/domain/entities/app_notification.dart';
+import 'package:belog/features/notifications/presentation/bloc/notification_inbox_cubit.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
+
+/// The signed-in account's notification inbox.
+///
+/// The server has no push channel and this app does not poll: the list is read
+/// when the page opens, on pull-to-refresh, and when the session changes. The
+/// only write is marking read - one row or all of them.
+class NotificationInboxPage extends StatelessWidget {
+  const NotificationInboxPage({super.key, this.cubit});
+
+  /// Injected by tests; production reads the page-scoped instance.
+  final NotificationInboxCubit? cubit;
+
+  @override
+  Widget build(BuildContext context) {
+    final injected = cubit;
+    if (injected != null) {
+      return BlocProvider<NotificationInboxCubit>.value(
+        value: injected,
+        child: const _NotificationInboxView(),
+      );
+    }
+    return BlocProvider<NotificationInboxCubit>(
+      create: (_) => GetIt.instance<NotificationInboxCubit>(),
+      child: const _NotificationInboxView(),
+    );
+  }
+}
+
+class _NotificationInboxView extends StatelessWidget {
+  const _NotificationInboxView();
+
+  Future<void> _markRead(BuildContext context, String id) async {
+    final failure = await context.read<NotificationInboxCubit>().markRead(id);
+    if (!context.mounted) return;
+    final message = failure == null
+        ? context.l10n.notificationsMarkedRead
+        : localizedFailure(context.l10n, failure);
+    showSnackBar(context, message);
+  }
+
+  Future<void> _markAllRead(BuildContext context) async {
+    final failure = await context.read<NotificationInboxCubit>().markAllRead();
+    if (!context.mounted) return;
+    if (failure != null) {
+      showSnackBar(context, localizedFailure(context.l10n, failure));
+      return;
+    }
+    showSnackBar(context, context.l10n.notificationsAllRead);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(context.l10n.notificationsTitle),
+        centerTitle: true,
+        actions: [
+          BlocBuilder<NotificationInboxCubit, NotificationInboxState>(
+            builder: (context, state) {
+              if (state is! NotificationInboxLoaded) {
+                return const SizedBox.shrink();
+              }
+              if (state.unreadCount == 0) return const SizedBox.shrink();
+              return TextButton(
+                onPressed: state.markingAll
+                    ? null
+                    : () => _markAllRead(context),
+                child: Text(context.l10n.notificationsMarkAllRead),
+              );
+            },
+          ),
+        ],
+      ),
+      body: BlocBuilder<NotificationInboxCubit, NotificationInboxState>(
+        builder: (context, state) {
+          if (state is NotificationInboxLoading) {
+            return Center(
+              child: CircularProgressIndicator(
+                semanticsLabel: context.l10n.loading,
+              ),
+            );
+          }
+          if (state is NotificationInboxSignedOut) {
+            return _EmptyInbox(
+              title: context.l10n.notificationsSignInTitle,
+              body: context.l10n.notificationsEmptyBody,
+              actionLabel: context.l10n.notificationsSignIn,
+              onAction: () => context.push('/login'),
+            );
+          }
+          if (state is NotificationInboxFailure) {
+            return _InboxError(failure: state.failure);
+          }
+          final loaded = state as NotificationInboxLoaded;
+          final capped =
+              loaded.items.length >= NotificationInboxCubit.pageLimit;
+          return RefreshIndicator(
+            onRefresh: () => context.read<NotificationInboxCubit>().load(
+              showLoading: false,
+            ),
+            child: loaded.isEmpty
+                ? ListView(
+                    children: [
+                      const SizedBox(height: 96),
+                      _EmptyInbox(
+                        title: context.l10n.notificationsEmptyTitle,
+                        body: context.l10n.notificationsEmptyBody,
+                      ),
+                    ],
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: loaded.items.length + 1 + (capped ? 1 : 0),
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return _UnreadSummary(count: loaded.unreadCount);
+                      }
+                      if (index > loaded.items.length) {
+                        return _OlderHidden(
+                          limit: NotificationInboxCubit.pageLimit,
+                        );
+                      }
+                      final item = loaded.items[index - 1];
+                      return _NotificationRow(
+                        item: item,
+                        marking: loaded.markingId == item.id,
+                        onMarkRead: () => _markRead(context, item.id),
+                      );
+                    },
+                  ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _UnreadSummary extends StatelessWidget {
+  const _UnreadSummary({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Text(
+        context.l10n.notificationsUnreadCount(count),
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+    );
+  }
+}
+
+/// Shown only when the app received a full page: the server offers no cursor,
+/// so anything older than this window is genuinely not reachable yet.
+class _OlderHidden extends StatelessWidget {
+  const _OlderHidden({required this.limit});
+
+  final int limit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: Text(
+        context.l10n.notificationsOlderHidden(limit),
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+    );
+  }
+}
+
+class _NotificationRow extends StatelessWidget {
+  const _NotificationRow({
+    required this.item,
+    required this.marking,
+    required this.onMarkRead,
+  });
+
+  final AppNotification item;
+  final bool marking;
+  final VoidCallback onMarkRead;
+
+  IconData get _icon => switch (item.kind) {
+    AppNotificationKind.articleDeleted => Icons.delete_outline,
+    AppNotificationKind.messageReceived => Icons.mail_outline,
+    AppNotificationKind.unknown => Icons.notifications_none,
+  };
+
+  /// The sentence this row states. Only shapes the app understands are named;
+  /// anything else says that a notification exists, without inventing details.
+  String _describe(BuildContext context) => switch (item.kind) {
+    AppNotificationKind.articleDeleted => _deletionSentence(context),
+    AppNotificationKind.messageReceived =>
+      context.l10n.notificationMessageReceived,
+    AppNotificationKind.unknown => context.l10n.notificationUnknown,
+  };
+
+  String _deletionSentence(BuildContext context) {
+    final purgesAt = item.purgesAt;
+    if (purgesAt == null) return context.l10n.notificationArticleDeletedNoDate;
+    final date = formatDate(Localizations.localeOf(context), purgesAt);
+    return context.l10n.notificationArticleDeleted(date);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = Localizations.localeOf(context);
+    return Container(
+      color: item.isRead
+          ? null
+          : Theme.of(context).colorScheme.surfaceContainerHighest,
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (item.isRead)
+            Icon(_icon, size: 20)
+          else
+            Semantics(
+              label: context.l10n.notificationsUnreadBadge,
+              child: Icon(_icon, size: 20),
+            ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_describe(context)),
+                const SizedBox(height: 4),
+                Text(
+                  formatDate(locale, item.createdAt),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          if (!item.isRead)
+            TextButton(
+              onPressed: marking ? null : onMarkRead,
+              child: Text(context.l10n.notificationsMarkRead),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InboxError extends StatelessWidget {
+  const _InboxError({required this.failure});
+
+  final Failure failure;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              localizedFailure(context.l10n, failure),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: () => context.read<NotificationInboxCubit>().load(),
+              child: Text(context.l10n.notificationsRetry),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyInbox extends StatelessWidget {
+  const _EmptyInbox({
+    required this.title,
+    required this.body,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String title;
+  final String body;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Text(body, textAlign: TextAlign.center),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: 16),
+              OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
