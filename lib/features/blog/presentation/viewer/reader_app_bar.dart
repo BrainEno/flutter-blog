@@ -32,12 +32,20 @@ class ReaderAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       actions: [
-        // Only share a canonical URL when WEB_BASE_URL is configured.
-        if (articleWebUrl(blog.id) != null)
+        // Only share a canonical URL when WEB_BASE_URL is configured, and
+        // never for the viewer's own draft: the public web page would not
+        // exist for the recipient (issue #21, "don't share drafts").
+        if (!blog.isDraft && articleWebUrl(blog.id) != null)
           IconButton(
             tooltip: context.l10n.shareArticleTooltip,
             icon: const Icon(Icons.share_outlined),
-            onPressed: () => shareArticle(title: blog.title, slug: blog.id),
+            onPressed: () => shareArticle(
+              title: blog.title,
+              slug: blog.id,
+              // Title, excerpt, canonical URL - what the issue asks the
+              // sheet to carry, and nothing that only exists on this device.
+              summary: shareSummary(blog.content, maxChars: 120),
+            ),
           ),
         BlocConsumer<BlogLikedBloc, BlogLikedState>(
           listener: (context, state) {

@@ -27,6 +27,28 @@
 		<string>$(FLUTTER_BUILD_NAME)</string>
 		<key>CFBundleSignature</key>
 		<string>????</string>
+		<!-- Article deep links (issue #21): `nowave://article/<slug>`. A custom
+		     scheme needs no Associated Domains entitlement or hosted
+		     apple-app-site-association file, so it works today; the canonical
+		     https link keeps opening the web article until that file is served
+		     from the web origin. -->
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLName</key>
+				<string>com.nodeman24.nowave.article</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>nowave</string>
+				</array>
+			</dict>
+		</array>
+		<!-- Deliver the received URL to Flutter so the router can rewrite it
+		     onto the reader (see core/utils/article_deep_link.dart). -->
+		<key>FlutterDeepLinkingEnabled</key>
+		<true/>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>LSRequiresIPhoneOS</key>

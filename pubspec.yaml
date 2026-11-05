@@ -54,9 +54,11 @@ dependencies:
   go_router: ^14.8.0
   equatable: ^2.0.7
   url_launcher: ^6.3.1
-  # Native share sheet (issue #21). Deep-link *receiving* is deferred
-  # until the web origin is deployed and association files can be
-  # hosted - see docs/supabase-to-nowave-migration.md and issue #21.
+  # Native share sheet (issue #21). Receiving works through the
+  # `nowave://article/<slug>` custom scheme, which needs no hosted
+  # association file; the canonical https link is parsed by the router too,
+  # but the OS only hands it over once the web origin serves
+  # assetlinks.json / apple-app-site-association (README「分享与深链」).
   share_plus: ^13.3.1
   # Real app version for the about page and the diagnostics header
   # (issue #49 follow-up); replaces a hardcoded, already-stale string.

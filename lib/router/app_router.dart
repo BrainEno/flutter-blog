@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
+import 'package:belog/core/utils/article_deep_link.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:belog/features/auth/presentation/pages/change_password_page.dart';
 import 'package:belog/features/auth/presentation/pages/login_page.dart';
@@ -121,6 +122,16 @@ GoRouter createAppRouter({
       ),
     ),
     redirect: (context, state) {
+      // An external link arrives as the route information itself: on a cold
+      // start it is `PlatformDispatcher.defaultRouteName`, while a warm start
+      // pushes it through the same provider (issue #21). Rewriting it here,
+      // before matching, is what turns `nowave://article/<slug>` or the
+      // canonical `https://<WEB_BASE_URL>/articles/<slug>` into the reader
+      // this app already has - and leaves every other URL untouched.
+      final deepLink = articleLocationFromDeepLink(state.uri);
+      if (deepLink != null && deepLink != state.uri.toString()) {
+        return deepLink;
+      }
       final loggedIn = appUserCubit.state is AppUserLoggedIn;
       final inAuthFlow =
           state.matchedLocation == '/login' ||
@@ -297,8 +308,12 @@ GoRouter createAppRouter({
 
 /// The viewer route, nested inside every tab branch so it pushes onto that
 /// tab's own navigator and keeps the bottom bar plus the tab's back stack.
-/// `/view/:id` (the copy in the feed branch) is the canonical deep-link
-/// path; `:id` is the article's public slug on the no-wave backend.
+/// `/view/:id` (the copy in the feed branch) is the in-app deep-link path,
+/// and `core/utils/article_deep_link.dart` rewrites the external forms
+/// (`nowave://article/<slug>`, `https://<WEB_BASE_URL>/articles/<slug>`) onto
+/// it. `:id` is the article's public slug on the no-wave backend: a link only
+/// addresses it, the server still decides whether it may be read, so a link
+/// to a draft or a deleted article fails in the viewer like any other fetch.
 GoRoute viewerRoute() {
   return GoRoute(
     path: 'view/:id',

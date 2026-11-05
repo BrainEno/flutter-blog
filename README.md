@@ -55,7 +55,9 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
   关注 / 取消关注由服务端校准（重复请求幂等，防连点；未登录引导登录；自己
   主页不显示关注按钮）。站点相对头像仍待 [#63](https://github.com/BrainEno/flutter-blog/issues/63)
 - 阅读：设备本地阅读历史（按账号隔离，退出时尽力清理），分享文章到系统
-  分享面板（链接指向 no-wave web 的文章页，需配置 `WEB_BASE_URL`）
+  分享面板（标题 + 摘要 + 指向 no-wave web 文章页的 canonical URL，需配置
+  `WEB_BASE_URL`），`nowave://article/<slug>` 深链在应用内打开同一篇文章
+  （见下文「分享与深链」）
 - 数据导出：个人资料及最多 100 篇简体中文已发布作品的部分文字导出为 JSON，
   经系统分享面板保存；不含服务端草稿、其他语言及完整正文格式或图片，**不是完整备份**
 - 草稿：按 API 后端、账号和文章隔离的本地草稿、恢复 / 丢弃对话框及 2 秒
@@ -69,6 +71,29 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
 - 语言与无障碍：简体中文 / 英文界面跟随系统语言；日期和数字按区域格式化，
   图片与操作提供语义标签，常用操作支持键盘与较大的字体；主题支持亮 / 暗 /
   跟随系统并在本地持久化
+
+## 分享与深链（#21）
+
+**出站分享（可用）**：阅读页的分享按钮只在配置了 `WEB_BASE_URL` 时出现，payload
+是**标题 + 一段纯文本摘要 + canonical URL**（`https://<WEB_BASE_URL>/articles/<slug>`）。
+摘要取正文第一条有内容的行，去掉标题/引用/列表/链接/强调标记后最多 120 字符；
+分享内容只由公开 slug 拼接，不含草稿、本机路径、token 或临时签名 URL。
+
+**入站深链（已接入，真机未验收）**：
+
+| 形式 | 今天的行为 |
+| --- | --- |
+| `nowave://article/<slug>` | 应用内打开文章。Android intent-filter 与 iOS `CFBundleURLTypes` 已声明，冷启动与运行中收到都会改写成 `/view/<slug>` |
+| `https://<WEB_BASE_URL>/articles/<slug>` | 应用会把**自己 web origin** 上的文章 URL 解析成同一篇文章；但系统目前仍把它交给浏览器。要让点击直接进 App 需要把 `assetlinks.json` / `apple-app-site-association` 托管在 web origin 并完成域名校验——本仓库没有这些文件，也不声称做过 |
+| 其它 scheme / 其它站点 / 缺少 slug | 不当成文章：按普通路由处理，未知路径落到「页面不存在 + 返回首页」 |
+| 文章不存在、已删除或未公开 | 链接只携带 slug，可见性仍由服务端决定：阅读页按普通取文失败展示本地化错误与重试，不因「来自链接」而绕过 |
+
+实现只有两处：`core/utils/article_deep_link.dart` 是纯函数（URL → 应用内位置，
+含 scheme/主机/路径段/编码/超长校验），`router/app_router.dart` 的 `redirect`
+在匹配前改写。`flutter test` 覆盖这些映射和「冷启动、运行中」两种进入方式，
+但不能代替真机：Android 用
+`adb shell am start -a android.intent.action.VIEW -d "nowave://article/<slug>"`，
+iOS 用 `xcrun simctl openurl booted "nowave://article/<slug>"`，各跑一次才算验收。
 
 ## 认证与会话（no-wave）
 
@@ -471,10 +496,11 @@ CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 
 - **P2 已落地**：Markdown 正文与编辑预览（#17）、阅读历史与有限数据导出（#22）、
   工程清理与图标配置修复（#25）、README/文档（#26）、中文文案与日期/阅读
   时长与中英双语本地化、无障碍适配（#24，仅剩真机读屏与视觉人工验收，见
-  [无障碍说明](docs/accessibility.md)）、分享（#21 出站部分）、评论（#19）、
-  作者主页与关注（#20）
-- **P2 进行中/延后**：分享深链接收（#21，等 web 部署 + association 文件
-  可验证）、离线发布队列（#23，文章创建步已
+  [无障碍说明](docs/accessibility.md)）、分享（#21 出站 + `nowave://` 入站）、
+  评论（#19）、作者主页与关注（#20）
+- **P2 进行中/延后**：分享的通用链接/App Links（#21，等 web origin 部署
+  `assetlinks.json` 与 `apple-app-site-association` 才可验证）、
+  离线发布队列（#23，文章创建步已
   解锁、封面媒体仍受 #47 阻塞，见上）、举报屏蔽（#18）、
   架构收敛的后续拆分（#107 的依赖规则、存储端口去 UI 类型、
   会话时序单元与 Isar 移除已完成；`nowave_api_client` 等仍有拆分空间）

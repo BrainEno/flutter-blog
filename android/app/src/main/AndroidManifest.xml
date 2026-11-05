@@ -42,9 +42,30 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Hand the received URI to Flutter as the initial/pushed route
+                 instead of letting MainActivity drop it. -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="true"
+              />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+            <!-- Article deep links (issue #21): `nowave://article/<slug>`.
+                 A custom scheme needs no hosted verification, so it works
+                 today. The canonical https link keeps opening the web
+                 article until the `assetlinks.json` file is served from the
+                 web origin; declaring an https intent-filter without it
+                 would only produce a broken verification. The app rewrites
+                 a received link onto `/view/<slug>` (see
+                 core/utils/article_deep_link.dart). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="nowave" android:host="article" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
