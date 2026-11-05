@@ -17,6 +17,8 @@
 
 - [未归属旧草稿](unclaimed-drafts.md)：保留、只读导出范围和降级风险。
 - [SQLite 存储](sqlite-storage.md)：schema 版本、迁移、Isar 移除与降级限制。
+- [发布队列](publish-queue.md)：离线/失败后的安全重试、幂等键、账号与后端隔离和
+  已知限制。
 - [会话生命周期](session-lifecycle.md)：refresh 单飞、账号 fence、花费策略与改动守则。
 - [no-wave 传输层](nowave-transport.md)：URL 组合、响应信封映射与 401 重放决策。
 - [首页最新分页](latest-feed-cursor.md)：游标、旧部署回退和密集边界。

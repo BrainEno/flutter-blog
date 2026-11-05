@@ -24,6 +24,7 @@ import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
 import 'package:belog/features/user/presentation/pages/author_page.dart';
 import 'package:belog/features/user/presentation/pages/author_relationships_page.dart';
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
+import 'package:belog/features/blog/presentation/pages/publish_queue_page.dart';
 import 'package:belog/features/blog/presentation/pages/recycle_bin_page.dart';
 import 'package:belog/features/blog/presentation/pages/saved_blogs_page.dart';
 import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
@@ -291,6 +292,11 @@ GoRouter createAppRouter({
                   GoRoute(
                     path: 'history',
                     builder: (context, state) => const ReadingHistoryPage(),
+                  ),
+                  // What this device still owes the server (issue #23).
+                  GoRoute(
+                    path: 'publish-queue',
+                    builder: (context, state) => const PublishQueuePage(),
                   ),
                   GoRoute(
                     path: 'sessions',

@@ -13,6 +13,10 @@ class UploadBlogEvent extends BlogUploadEvent {
   final List<String> tags;
   final NowaveSessionFence sessionFence;
 
+  /// Stable per publish intent (issue #23); the editor keeps it so a failure
+  /// can be queued and retried without creating a second article.
+  final String? idempotencyKey;
+
   const UploadBlogEvent({
     required this.image,
     required this.title,
@@ -20,6 +24,7 @@ class UploadBlogEvent extends BlogUploadEvent {
     required this.posterId,
     required this.tags,
     required this.sessionFence,
+    this.idempotencyKey,
   });
 
   @override
@@ -31,6 +36,7 @@ class UploadBlogEvent extends BlogUploadEvent {
     tags,
     sessionFence.userId,
     sessionFence.generation,
+    idempotencyKey,
   ];
 }
 

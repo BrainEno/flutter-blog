@@ -61,7 +61,12 @@ void main() {
       when(
         () => remote.uploadBlogImage(image: any(named: 'image')),
       ).thenAnswer((_) async => _kNewCoverUrl);
-      when(() => remote.uploadBlog(any())).thenAnswer(
+      when(
+        () => remote.uploadBlog(
+          any(),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).thenAnswer(
         (invocation) async => invocation.positionalArguments[0] as BlogModel,
       );
 
@@ -78,7 +83,10 @@ void main() {
       // cannot match calls the in-order check already consumed.
       final order = verifyInOrder([
         () => remote.uploadBlogImage(image: any(named: 'image')),
-        () => remote.uploadBlog(captureAny()),
+        () => remote.uploadBlog(
+          captureAny(),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
       ]);
       final created = order.last.captured.single as BlogModel;
       expect(created.imageUrl, _kNewCoverUrl);
@@ -86,7 +94,12 @@ void main() {
     });
 
     test('a coverless publish skips the media upload entirely (#17)', () async {
-      when(() => remote.uploadBlog(any())).thenAnswer(
+      when(
+        () => remote.uploadBlog(
+          any(),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).thenAnswer(
         (invocation) async => invocation.positionalArguments[0] as BlogModel,
       );
 
@@ -100,9 +113,14 @@ void main() {
 
       expect(result.isRight(), isTrue);
       verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
-      final created =
-          verify(() => remote.uploadBlog(captureAny())).captured.single
-              as BlogModel;
+      final captures =
+          verify(
+            () => remote.uploadBlog(
+              captureAny(),
+              idempotencyKey: any(named: 'idempotencyKey'),
+            ),
+          ).captured;
+      final created = captures.single as BlogModel;
       expect(created.imageUrl, '');
     });
 
@@ -112,7 +130,10 @@ void main() {
         () => remote.uploadBlogImage(image: any(named: 'image')),
       ).thenAnswer((_) async => _kNewCoverUrl);
       when(
-        () => remote.uploadBlog(any()),
+        () => remote.uploadBlog(
+          any(),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
       ).thenThrow(const ServerException('insert rejected'));
 
       final result = await repository.uploadBlog(
@@ -139,7 +160,12 @@ void main() {
 
       expect(result.isLeft(), isTrue);
       verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
-      verifyNever(() => remote.uploadBlog(any()));
+      verifyNever(
+        () => remote.uploadBlog(
+          any(),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      );
     });
   });
 

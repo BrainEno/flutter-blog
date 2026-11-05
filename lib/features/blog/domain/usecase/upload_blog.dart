@@ -19,6 +19,7 @@ class UploadBlog implements UseCase<Blog, UploadBlogParams> {
       posterId: params.posterId,
       tags: params.tags,
       sessionFence: params.sessionFence,
+      idempotencyKey: params.idempotencyKey,
     );
   }
 }
@@ -32,6 +33,13 @@ class UploadBlogParams {
   final List<String> tags;
   final NowaveSessionFence sessionFence;
 
+  /// Stable per publish intent (issue #23).
+  ///
+  /// A retry that reuses it lets the server replay the article it may have
+  /// already created instead of publishing a duplicate; a brand-new publish
+  /// must use a fresh key, or it would silently return the earlier article.
+  final String? idempotencyKey;
+
   UploadBlogParams({
     required this.image,
     required this.title,
@@ -39,5 +47,6 @@ class UploadBlogParams {
     required this.posterId,
     required this.tags,
     required this.sessionFence,
+    this.idempotencyKey,
   });
 }

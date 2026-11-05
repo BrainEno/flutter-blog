@@ -40,6 +40,7 @@ abstract interface class BlogRemoteDataSource {
   Future<BlogModel> uploadBlog(
     BlogModel blog, {
     NowaveSessionFence? sessionFence,
+    String? idempotencyKey,
   });
 
   /// Uploads a cover image (`POST /me/media`, raw bytes + MIME type) and
@@ -206,6 +207,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   Future<BlogModel> uploadBlog(
     BlogModel blog, {
     NowaveSessionFence? sessionFence,
+    String? idempotencyKey,
   }) {
     return _guard(() async {
       final tagIds = await _tags.resolveIds(blog.tags, sessionFence);
@@ -220,11 +222,19 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         'locale': _locale,
         if (tagIds.isNotEmpty) 'tagIds': tagIds,
       };
+      // The server replays a repeated `Idempotency-Key` instead of creating a
+      // second article, which is what makes a queued publish safe to retry
+      // after a lost response (#23). The key is stable per intent, so a 401
+      // refresh-and-replay keeps it too.
+      final headers = idempotencyKey == null || idempotencyKey.isEmpty
+          ? null
+          : <String, String>{'Idempotency-Key': idempotencyKey};
       final data = sessionFence == null
-          ? await client.postJson('/articles', body)
+          ? await client.postJson('/articles', body, extraHeaders: headers)
           : await client.postJson(
               '/articles',
               body,
+              extraHeaders: headers,
               sessionFence: sessionFence,
             );
       return BlogModel.fromNowaveArticle(articlePayloadMap(data));

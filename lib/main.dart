@@ -12,6 +12,7 @@ import 'package:belog/core/utils/global_snackbar.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/features/auth/auth_session_sync.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:belog/features/blog/data/publish/publish_queue_service.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/init_dependencies.dart';
 import 'package:belog/router/app_router.dart';
@@ -76,6 +77,11 @@ void main() async {
   // Keep the app-wide identity cubit in sync with out-of-band session
   // events (a failed background token refresh drops the session).
   serviceLocator<AuthSessionSync>().start();
+  // Publish queue (issue #23): repair what a killed process left behind and
+  // send anything the previous session could not. It does nothing while no
+  // account is signed in, and it is not awaited: boot must not wait for the
+  // network.
+  unawaited(serviceLocator<PublishQueueService>().start());
   runApp(
     MultiBlocProvider(
       providers: [

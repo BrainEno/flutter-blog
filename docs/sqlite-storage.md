@@ -15,7 +15,7 @@ session copy, profile cache and app metadata all live in `belog.sqlite`.
 
 ## Schema versions
 
-`schemaVersion` is 6. Migrations only ever add tables/columns/indexes; no user
+`schemaVersion` is 8. Migrations only ever add tables/columns/indexes; no user
 data is rewritten or dropped.
 
 | Version | Change |
@@ -26,8 +26,10 @@ data is rewritten or dropped.
 | 4 | `reading_history` |
 | 5 | `blog_cache.document_json` (structured bodies) and read-aloud preferences |
 | 6 | `account_drafts`, backend/owner columns for drafts, profile cache |
+| 7 | `blog_cache.content_locale`: both content languages cached side by side (#108) |
+| 8 | `publish_queue` and its due index: publishes the server has not accepted yet ([发布队列](publish-queue.md)) |
 
-Downgrade is not supported: an older build opening a v6 file may show rows in
+Downgrade is not supported: an older build opening a v8 file may show rows in
 the wrong scope. Back up the app data directory before experimenting with
 older builds.
 
