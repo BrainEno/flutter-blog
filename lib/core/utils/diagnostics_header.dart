@@ -12,6 +12,7 @@ String buildDiagnosticsHeader({
   required String operatingSystem,
   String? osVersion,
   required String locale,
+  String? apiOrigin,
 }) {
   return [
     'app $appName $version',
@@ -19,5 +20,10 @@ String buildDiagnosticsHeader({
     'platform $operatingSystem'
         '${osVersion == null || osVersion.isEmpty ? '' : ' ($osVersion)'}',
     'locale $locale',
+    // Which backend this build was compiled against, and whether that origin
+    // needs cleartext (`describeApiOrigin`). "It cannot connect" is usually
+    // answered here: a CI QA build carries `https://example.invalid`, and a
+    // release/profile build cannot use a plain-HTTP origin at all.
+    if (apiOrigin != null && apiOrigin.isNotEmpty) apiOrigin,
   ].join('\n');
 }

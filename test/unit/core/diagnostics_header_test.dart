@@ -20,6 +20,40 @@ void main() {
     expect(header.split('\n'), hasLength(4));
   });
 
+  test('the compiled API origin is appended when there is one', () {
+    final header = buildDiagnosticsHeader(
+      appName: 'belog',
+      version: '0.2.0+1',
+      buildMode: 'debug',
+      operatingSystem: 'android',
+      locale: 'zh',
+      apiOrigin: 'api origin: http://10.0.2.2:4000 '
+          '(http, debug build allows cleartext)',
+    );
+
+    expect(header.split('\n'), hasLength(5));
+    expect(
+      header,
+      contains('api origin: http://10.0.2.2:4000 '
+          '(http, debug build allows cleartext)'),
+    );
+  });
+
+  test('an unconfigured build adds no empty line', () {
+    for (final apiOrigin in [null, '']) {
+      final header = buildDiagnosticsHeader(
+        appName: 'belog',
+        version: '0.2.0+1',
+        buildMode: 'release',
+        operatingSystem: 'android',
+        locale: 'zh',
+        apiOrigin: apiOrigin,
+      );
+      expect(header.split('\n'), hasLength(4));
+      expect(header.contains('api origin'), isFalse);
+    }
+  });
+
   test('a missing OS version degrades without parentheses', () {
     final header = buildDiagnosticsHeader(
       appName: 'belog',

@@ -10,7 +10,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 /// header are assertable in tests.
 Future<PackageInfo> _fakePackageInfo() async => PackageInfo(
   appName: 'belog',
-  packageName: 'com.example.belog',
+  packageName: 'com.nodeman24.nowave',
   version: '9.9',
   buildNumber: '42',
 );
@@ -93,6 +93,9 @@ void main() {
     expect(report, contains('build debug'));
     expect(report, contains('platform android'));
     expect(report, contains('locale zh'));
+    // No API origin is compiled into the test binary, so the header must not
+    // invent an empty one.
+    expect(report.contains('api origin'), isFalse);
     expect(report, contains('refreshing the session failed'));
     expect(report, contains('GET /api/v1/articles -> 503'));
     // No credentials or personal data in what would be copied.

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/network/api_origin_report.dart';
+import 'package:belog/core/secrets/app_secrets.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/diagnostics_header.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
@@ -71,7 +73,19 @@ class _AboutPageState extends State<AboutPage> {
       operatingSystem: defaultTargetPlatform.name,
       osVersion: kIsWeb ? null : Platform.operatingSystemVersion,
       locale: WidgetsBinding.instance.platformDispatcher.locale.toString(),
+      apiOrigin: _apiOriginLine(),
     );
+  }
+
+  /// Which backend this build talks to. `API_BASE_URL` is compiled in, so this
+  /// is the fastest way to tell "wrong origin baked into the build" from
+  /// "backend down" without a developer console.
+  String? _apiOriginLine() {
+    final configured = AppSecrets.apiBaseUrl;
+    if (configured == null || configured.isEmpty) return null;
+    final uri = Uri.tryParse(configured);
+    if (uri == null || !uri.hasAuthority) return null;
+    return describeApiOrigin(uri, debugBuild: kDebugMode);
   }
 
   Future<void> _openLink(BuildContext context, Uri uri) async {

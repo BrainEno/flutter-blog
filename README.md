@@ -350,6 +350,17 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
   上只绑定 `::1`，而模拟器的 `10.0.2.2` 走 IPv4 回环，会被直接拒绝——改成监听
   `0.0.0.0`（或 `::`）。不想改绑定时，可 `adb reverse tcp:4000 tcp:4000`，再把
   `env.json` 的 `API_BASE_URL` 改成本机的 `http://127.0.0.1:4000`。
+- **先看这一行**：`API_BASE_URL` 是**编译期**注入的（`AppSecrets`），所以「连不上」先要确认
+  手上这个包到底指向哪个后端。debug 控制台启动时会打印
+  `api origin: http://10.0.2.2:4000 (http, debug build allows cleartext)`；同一个头部
+  行也出现在诊断信息里（登录页底部 / 「我的 → 关于我们 → 查看诊断信息」，或
+  `/about?diagnostics=1`），装好的包也能直接看到。读法：
+  - origin 是 `https://example.invalid` → 这是 CI 编出来的 QA 包（CI 固定用不可达的
+    假地址，见发布文档），它永远连不上你的后端，换成本地构建；
+  - 结尾是 `(http, release/profile builds block cleartext on Android and iOS)` →
+    这个包是 release/profile，系统会直接拦掉明文 HTTP，只能用 debug 构建或让后端走 HTTPS；
+  - origin 里是 `localhost`/`127.0.0.1` → 模拟器里那是模拟器自己，见下一条；
+  - 改过 `env.json` 后必须**重新构建**，热重启不会重新读取编译期常量。
 - **后端没有启动**：App 仍可正常启动，不会崩溃或卡死。首帧会话恢复最多等待
   3 秒；首页在没有缓存时显示本地化网络错误与“重试”，有缓存时先显示缓存并
   标注来源；登录、发布等操作以同样的本地化错误反馈。前置探测（所有构建模式）

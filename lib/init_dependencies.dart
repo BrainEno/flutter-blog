@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/network/api_connection_checker.dart';
+import 'package:belog/core/network/api_origin_report.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
@@ -92,6 +93,7 @@ import 'package:belog/features/user/domain/usecases/edit_user_usecase.dart';
 import 'package:belog/features/user/domain/usecases/export_user_data.dart';
 import 'package:belog/features/user/domain/usecases/get_author_relationships.dart';
 import 'package:belog/features/user/domain/usecases/search_authors.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:get_it/get_it.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -121,6 +123,13 @@ Future<void> initDependencies() async {
       '(e.g., https://api.example.com) without a query or fragment.',
     );
   }
+
+  // Say which backend this build targets before anything else can fail. The
+  // origin is compiled in, so "it cannot connect" is usually answered by this
+  // one line: a CI QA build carries `https://example.invalid`, and a
+  // release/profile build cannot use a plain-HTTP origin at all. The same line
+  // reaches the diagnostics report header (about page) for installed builds.
+  AppLogger.debug(describeApiOrigin(uri, debugBuild: kDebugMode));
 
   final directory = await getApplicationDocumentsDirectory();
   final database = AppDatabase.open(File('${directory.path}/belog.sqlite'));
