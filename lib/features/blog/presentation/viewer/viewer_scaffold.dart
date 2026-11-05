@@ -32,7 +32,7 @@ class ViewerScaffold extends StatefulWidget {
 
   final Blog blog;
   final VoidCallback onRequestLogin;
-  final GetRelatedArticles getRelatedArticles;
+  final GetRelatedArticles? getRelatedArticles;
   final SpeechCoordinator? speechCoordinator;
   final ReadAloudPreferences? readAloudPreferences;
   final RouteObserver<PageRoute<dynamic>>? readAloudRouteObserver;
@@ -52,7 +52,7 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
 
   Blog get blog => widget.blog;
   VoidCallback get onRequestLogin => widget.onRequestLogin;
-  GetRelatedArticles get getRelatedArticles => widget.getRelatedArticles;
+  GetRelatedArticles? get getRelatedArticles => widget.getRelatedArticles;
 
   @override
   void initState() {

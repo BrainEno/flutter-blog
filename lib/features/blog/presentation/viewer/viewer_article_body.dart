@@ -44,7 +44,7 @@ class ViewerArticleBody extends StatelessWidget {
   final List<GlobalKey> blockKeys;
 
   final ScrollController scrollController;
-  final GetRelatedArticles getRelatedArticles;
+  final GetRelatedArticles? getRelatedArticles;
   final VoidCallback onRequestLogin;
 
   @override
@@ -112,17 +112,18 @@ class ViewerArticleBody extends StatelessWidget {
                       headingStyle: NoWaveTypography.title(context),
                     ),
                     const SizedBox(height: 30),
-                    RelatedArticlesSection(
-                      getRelatedArticles: getRelatedArticles,
-                      slug: blog.id,
-                      onOpenArticle: (related) => context.push(
-                        shellBranchLocation(
-                          GoRouterState.of(context).uri,
-                          '/view/${Uri.encodeComponent(related.id)}',
+                    if (getRelatedArticles case final related?)
+                      RelatedArticlesSection(
+                        getRelatedArticles: related,
+                        slug: blog.id,
+                        onOpenArticle: (article) => context.push(
+                          shellBranchLocation(
+                            GoRouterState.of(context).uri,
+                            '/view/${Uri.encodeComponent(article.id)}',
+                          ),
+                          extra: article,
                         ),
-                        extra: related,
                       ),
-                    ),
                     CommentsSection(
                       slug: blog.id,
                       onRequestLogin: onRequestLogin,

@@ -97,6 +97,17 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
     context.push('/login?redirect=${Uri.encodeComponent(currentLocation)}');
   }
 
+  /// The related-articles use case is an optional decoration, not part of
+  /// reading the article: an unregistered one must hide that section rather
+  /// than throw a red screen over the whole page. The registration itself is
+  /// kept from drifting by `service_locator_registration_test`.
+  GetRelatedArticles? _relatedArticles() {
+    if (widget.getRelatedArticles != null) return widget.getRelatedArticles;
+    return GetIt.instance.isRegistered<GetRelatedArticles>()
+        ? GetIt.instance<GetRelatedArticles>()
+        : null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<BlogViewerCubit, BlogViewerState>(
@@ -121,9 +132,7 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
           return ViewerScaffold(
             blog: state.blog,
             onRequestLogin: _requestLogin,
-            getRelatedArticles:
-                widget.getRelatedArticles ??
-                GetIt.instance<GetRelatedArticles>(),
+            getRelatedArticles: _relatedArticles(),
             speechCoordinator:
                 widget.speechCoordinator ??
                 (GetIt.instance.isRegistered<SpeechCoordinator>()
