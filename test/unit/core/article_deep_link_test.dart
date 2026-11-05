@@ -85,9 +85,7 @@ void main() {
         isNull,
       );
       expect(
-        articleLocationFromDeepLink(
-          Uri.parse('nowave://article/${'a' * 201}'),
-        ),
+        articleLocationFromDeepLink(Uri.parse('nowave://article/${'a' * 201}')),
         isNull,
       );
     });
@@ -188,9 +186,7 @@ void main() {
         '/view/poetry-1a2b',
       );
       expect(
-        initialLocationForRoute(
-          'https://bot-thk.example/articles/poetry-1a2b',
-        ),
+        initialLocationForRoute('https://bot-thk.example/articles/poetry-1a2b'),
         '/',
         reason: 'WEB_BASE_URL 未配置时，未知来源的 https 链接按普通路由处理',
       );

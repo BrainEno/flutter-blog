@@ -60,16 +60,12 @@ void main() {
   group('shareSummary', () {
     test('unwraps the light Markdown a blurb needs', () {
       expect(
-        shareSummary(
-          '# 标题\n\n**正文** 第一段 [链接](https://example.invalid)',
-        ),
+        shareSummary('# 标题\n\n**正文** 第一段 [链接](https://example.invalid)'),
         '标题',
         reason: '取第一条有内容的行，不拼多行',
       );
       expect(
-        shareSummary(
-          '\n\n> 引用**重点** [网站](https://example.invalid)',
-        ),
+        shareSummary('\n\n> 引用**重点** [网站](https://example.invalid)'),
         '引用重点 网站',
       );
       expect(shareSummary('- 列表项一\n- 列表项二'), '列表项一');
@@ -77,10 +73,7 @@ void main() {
 
     test('fenced code is not prose', () {
       expect(shareSummary('```\nfinal x = 1;\n```'), isEmpty);
-      expect(
-        shareSummary('```\ncode\n```\n\n真正的摘要'),
-        '真正的摘要',
-      );
+      expect(shareSummary('```\ncode\n```\n\n真正的摘要'), '真正的摘要');
     });
 
     test('rules and blank bodies produce nothing', () {
@@ -89,16 +82,10 @@ void main() {
     });
 
     test('long lines are cut on a character boundary', () {
-      final summary = shareSummary(
-        '一二三四五六七八九十',
-        maxChars: 4,
-      );
+      final summary = shareSummary('一二三四五六七八九十', maxChars: 4);
       expect(summary, '一二三四…');
       // Emoji are surrogate pairs: cutting must not split one.
-      expect(
-        shareSummary('😀😀😀😀😀', maxChars: 2),
-        '😀😀…',
-      );
+      expect(shareSummary('😀😀😀😀😀', maxChars: 2), '😀😀…');
     });
   });
 }

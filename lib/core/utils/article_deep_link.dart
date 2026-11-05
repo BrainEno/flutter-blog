@@ -55,7 +55,8 @@ String articleDeepLink(String slug) {
 /// `articleWebUrl`.
 String? articleLocationFromDeepLink(Uri uri, {String? webBaseUrl}) {
   final slug =
-      _slugFromCustomScheme(uri) ?? _slugFromWebUrl(uri, webBaseUrl: webBaseUrl);
+      _slugFromCustomScheme(uri) ??
+      _slugFromWebUrl(uri, webBaseUrl: webBaseUrl);
   if (slug == null) return null;
   return '/view/${Uri.encodeComponent(slug)}';
 }
@@ -80,7 +81,9 @@ String initialLocationForRoute(String? routeName) {
 /// `nowave://article/<slug>` and `nowave:///article/<slug>`.
 String? _slugFromCustomScheme(Uri uri) {
   if (uri.scheme.toLowerCase() != kArticleDeepLinkScheme) return null;
-  var segments = uri.pathSegments.where((segment) => segment.isNotEmpty).toList();
+  var segments = uri.pathSegments
+      .where((segment) => segment.isNotEmpty)
+      .toList();
   if (uri.host == kArticleDeepLinkHost) {
     // nowave://article/<slug>
   } else if (uri.host.isEmpty &&

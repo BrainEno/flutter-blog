@@ -26,11 +26,7 @@ String shareArticleText({
   String? summary,
 }) {
   final blurb = (summary ?? '').trim();
-  return [
-    title.trim(),
-    if (blurb.isNotEmpty) blurb,
-    url,
-  ].join('\n\n');
+  return [title.trim(), if (blurb.isNotEmpty) blurb, url].join('\n\n');
 }
 
 /// A single plain-text paragraph from a Markdown body, for the share sheet.
