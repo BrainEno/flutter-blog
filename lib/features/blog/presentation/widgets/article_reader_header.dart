@@ -1,4 +1,5 @@
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
+import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
@@ -35,9 +36,7 @@ class ArticleReaderHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final name = blog.posterName?.trim().isNotEmpty == true
-        ? blog.posterName!
-        : l10n.anonymousAuthor;
+    final name = authorDisplayName(l10n, blog.posterName);
     final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

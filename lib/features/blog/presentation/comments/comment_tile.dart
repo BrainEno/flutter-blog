@@ -1,5 +1,6 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
+import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
@@ -35,9 +36,10 @@ class CommentTile extends StatelessWidget {
         ? appUserState.user.id
         : null;
     final isOwn = viewerId != null && viewerId == comment.authorId;
-    final authorName = comment.authorName.trim().isNotEmpty
-        ? comment.authorName
-        : context.l10n.anonymousReader;
+    final authorName = commentAuthorDisplayName(
+      context.l10n,
+      comment.authorName,
+    );
     final deleting = context.select<CommentBloc, bool>(
       (bloc) => bloc.state.deletingIds.contains(comment.id),
     );

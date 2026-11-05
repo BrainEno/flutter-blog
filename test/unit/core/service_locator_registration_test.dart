@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/source_files.dart';
+
 /// A type the app resolves from the container but never registered throws at the
 /// moment a page is built - the 2026-11-05 red screen: the article page asked
 /// for `GetRelatedArticles`, which `init_dependencies.dart` had never wired up.
@@ -16,7 +18,7 @@ void main() {
   test('every type the app resolves is wired up by init_dependencies', () {
     final wiring = File('lib/init_dependencies.dart').readAsStringSync();
     final missing = <String>[];
-    for (final file in _dartFiles('lib')) {
+    for (final file in dartFilesUnder('lib')) {
       if (file.path.endsWith('init_dependencies.dart')) continue;
       final lines = file.readAsLinesSync();
       for (var index = 0; index < lines.length; index++) {
@@ -40,7 +42,7 @@ void main() {
   test('the scan reaches the files it is meant to guard', () {
     final init = File('lib/init_dependencies.dart').readAsStringSync();
     expect(init.contains('registerFactory'), isTrue);
-    expect(_dartFiles('lib').length, greaterThan(50));
+    expect(dartFilesUnder('lib').length, greaterThan(50));
     // The guard must still be able to see a resolution site.
     expect(
       _resolvedType('      final useCase = GetIt.instance<SomeUseCase>();'),
@@ -60,15 +62,4 @@ String? _resolvedType(String line) {
     r'(?:serviceLocator|GetIt\.instance|GetIt\.I|sl)<([A-Za-z0-9_]+)>\(',
   ).firstMatch(line);
   return match?.group(1);
-}
-
-List<File> _dartFiles(String directory) {
-  final root = Directory(directory);
-  if (!root.existsSync()) return const [];
-  return root
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.dart'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
 }

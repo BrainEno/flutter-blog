@@ -1,3 +1,4 @@
+import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
@@ -33,9 +34,7 @@ class BlogCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final author = blog.posterName?.trim().isNotEmpty == true
-        ? blog.posterName!
-        : l10n.anonymousAuthor;
+    final author = authorDisplayName(l10n, blog.posterName);
     final authorLabel = labelAuthor ? l10n.posterLabel(author) : author;
     return Material(
       color: Colors.transparent,

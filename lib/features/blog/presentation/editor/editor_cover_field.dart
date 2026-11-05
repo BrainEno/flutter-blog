@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
-import 'package:belog/features/blog/presentation/utils/cover_url.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
@@ -62,8 +61,9 @@ class EditorCoverField extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: CachedNetworkImage(
-            // Cover URLs are immutable and shared with the reader.
-            imageUrl: coverUrlOf(published),
+            // Cover media are immutable on no-wave (each upload is a new
+            // asset id), so the URL is used as-is: no cache-busting suffix.
+            imageUrl: published.imageUrl,
             fit: BoxFit.cover,
           ),
         ),

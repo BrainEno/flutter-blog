@@ -1,6 +1,8 @@
 # Issue 勘误与完成度核对（2026-11-05）
 
-审查基线：`f471a87`（`main`，#129 合入之后）。
+审查基线：`f471a87`（`main`，#129 合入之后）；表格与行号均为该快照的值，之后 `#133`–`#136` 的改动没有回写行号，读路径时以文件为准。
+
+> **2026-11-05 结项状态**：第二节列出的 Issue 与 #21、#24 均已关闭，**当前仓库只剩 #18（举报与屏蔽）开放**，它需要 no-wave 侧新增接口与迁移，客户端无法单独完成。本文件因此转为历史核对记录，不再逐条维护。
 
 ## 为什么有这份文件
 
@@ -70,8 +72,19 @@
 
 - **#107**：`lib/core` → `lib/features` 为 0 命中，千行级单元已拆分，依赖规则由 `test/unit/core/layering_test.dart` 守住（`lib/core` 不得导入 `package:belog/features/`、`lib/core/storage` 不得导入 `package:flutter/`、`lib/core/**/*_store.dart` 不得导入 `package:flutter/{material,widgets,cupertino}.dart`，并断言扫描确实覆盖到文件）。原先最后一项残留——`lib/core/theme/` 以 Flutter `ThemeMode` 作为存储端口类型——已解除：端口改为纯 Dart 的 `AppThemeMode`（`lib/core/theme/app_theme_mode.dart`），`ThemeBloc` 在边界做双向转换。四条验收全部满足，可关闭。
 - **#109**：三项身份决定已落地（**Apache-2.0** + `NOTICE`、**`0.2.0+1`** 且发布 tag 必须是 `v0.2.0+1`、**`com.nodeman24.nowave`** 三端一致，由 `test/unit/core/release_identity_test.dart` 守住），`coverage/lcov.info` 已出库、覆盖率只作 CI 产物，升级/数据迁移影响记录在 `docs/releasing.md#upgrading-from-the-previous-identifier`。本次补上最后一条验收：`tool/ci/check_apk_assets.py` 在每次 Android release 构建后审计 APK 里的资源——是否被 pubspec 声明、是否被 `lib/` 或其它 manifest 段落引用（正是 `sffinks.png` 那类问题）、单文件是否超过 1 MiB 预算——报告 `apk-asset-audit.log` 随构建证据上传，逻辑由 `tool/ci/test_check_apk_assets.py` 覆盖。仓库侧唯一剩余动作在所有者手上：把 `production` 环境的变量 `ANDROID_APPLICATION_ID_APPROVED` 改成 `com.nodeman24.nowave`，否则 tag 发布会因 `tool/release/validate_release.py` 比对不一致而失败关闭。
-- **#24**：品牌文案（Belog / Bottom Think）与界面语言切换已清理完成；剩余的是无障碍与文案统一的长期项。
-- **#21 / #18**：功能类需求，需要单独排期。
+- **#24**：已关闭（PR #135）。品牌文案（Belog / Bottom Think）与界面语言切换
+  已清理完成，中文文案外泄由 `test/unit/core/ui_copy_literals_test.dart` 扫描
+  `lib/` 守住；剩余只有真机读屏与视觉效果的人工验收，属长期项，见
+  [无障碍说明](accessibility.md)。
+- **#21**：已关闭（PR #136）。出站分享沿用 `articleWebUrl`；入站接受
+  `nowave://article/<slug>`（冷启动走 `initialLocationForRoute`，运行中走
+  GoRouter redirect），并只对 `WEB_BASE_URL` 同源的 `/articles/<slug>` 做改写，
+  不劫持外部站点。https 通用链接（App Links / Universal Links）仍需 web 侧部署
+  `assetlinks.json` 与 `apple-app-site-association` 才能验证，该外部依赖没有变化。
+- **#18**：唯一仍开放的 issue。举报与屏蔽需要 no-wave 侧新增接口与持久化、
+  按租户/账号的权限约束（no-wave 已迁至 SQLite REST 层，不再有 Supabase RLS，
+  约束要落在路由与查询里），并配负向测试；客户端不能单独完成，也没有可先行的
+  半成品实现（硬编码管理员 UID 或 service_role key 都是明确禁止的）。
 
 ## 七、复核方式
 

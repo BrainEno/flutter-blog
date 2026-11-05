@@ -93,7 +93,9 @@ dev_dependencies:
   # package. See that file for information on deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
-  build_runner: ^2.4.13
+  # No code generation in this repo: the Drift schema is hand-written
+  # (`AppDatabase extends GeneratedDatabase`, no `part '*.g.dart'`), so
+  # `build_runner` had no builder to run and was removed in the 2026-11 audit.
   flutter_launcher_icons: ^0.14.3
   mocktail: ^1.0.4
 

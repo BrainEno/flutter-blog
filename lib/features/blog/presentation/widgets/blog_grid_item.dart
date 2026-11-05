@@ -1,3 +1,4 @@
+import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/extract_description.dart';
@@ -44,9 +45,7 @@ class BlogGridItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = blog.posterName?.trim().isNotEmpty == true
-        ? blog.posterName!
-        : context.l10n.anonymousAuthor;
+    final name = authorDisplayName(context.l10n, blog.posterName);
     final description = extractDescription(blog.content);
     final scheme = Theme.of(context).colorScheme;
     return Material(

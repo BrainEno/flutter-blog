@@ -1,6 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/source_files.dart';
 
 /// Guards the dependency direction that #107 established: `lib/core` is the
 /// bottom layer, so it may not import a feature, and the persistence code
@@ -47,7 +47,7 @@ void main() {
       'package:flutter/widgets.dart',
       'package:flutter/cupertino.dart',
     ];
-    final ports = _dartFiles(
+    final ports = dartFilesUnder(
       'lib/core',
     ).where((file) => file.path.endsWith('_store.dart')).toList();
     expect(ports, isNotEmpty);
@@ -74,8 +74,8 @@ void main() {
 
   test('the scan reaches the files it is meant to guard', () {
     // A guard that silently matches nothing would pass forever.
-    expect(_dartFiles('lib/core'), isNotEmpty);
-    expect(_dartFiles('lib/core/storage'), isNotEmpty);
+    expect(dartFilesUnder('lib/core'), isNotEmpty);
+    expect(dartFilesUnder('lib/core/storage'), isNotEmpty);
   });
 }
 
@@ -83,7 +83,7 @@ void main() {
 /// [isWanted], rendered as `path: directive` for the failure message.
 List<String> _importsOf(String directory, bool Function(String uri) isWanted) {
   final offenders = <String>[];
-  for (final file in _dartFiles(directory)) {
+  for (final file in dartFilesUnder(directory)) {
     for (final line in file.readAsLinesSync()) {
       final directive = line.trimLeft();
       if (!_isDirective(directive)) continue;
@@ -107,15 +107,4 @@ String? _uriOf(String directive) {
   final end = directive.lastIndexOf("'");
   if (start < 0 || end <= start) return null;
   return directive.substring(start + 1, end);
-}
-
-List<File> _dartFiles(String directory) {
-  final root = Directory(directory);
-  if (!root.existsSync()) return const [];
-  return root
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.dart'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
 }

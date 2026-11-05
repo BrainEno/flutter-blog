@@ -165,6 +165,23 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     contentLocale: contentLocale,
   );
 
+  /// Runs one request and translates every failure into this layer's
+  /// exception contract.
+  ///
+  /// Every public method here has the same boundary - transport and decoding
+  /// errors in, `ServerException` out - so the mapping lives in one place
+  /// instead of a `try`/`catch` wrapped around each body. The methods that
+  /// decide something *before* the first request keep their own handler:
+  /// `getOnlineFeed` chooses the path, `getArticlesByTag` adds a 404 case and
+  /// `resolveTag` normalises the query first.
+  Future<T> _guard<T>(Future<T> Function() body) async {
+    try {
+      return await body();
+    } catch (e) {
+      throw mapToServerException(e);
+    }
+  }
+
   /// The account a `/me`-scoped call is made for, right now.
   ///
   /// Refused when nobody is signed in: sending the request anyway would run it
@@ -189,8 +206,8 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   Future<BlogModel> uploadBlog(
     BlogModel blog, {
     NowaveSessionFence? sessionFence,
-  }) async {
-    try {
+  }) {
+    return _guard(() async {
       final tagIds = await _tags.resolveIds(blog.tags, sessionFence);
       final body = <String, dynamic>{
         'title': blog.title,
@@ -211,17 +228,15 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
               sessionFence: sessionFence,
             );
       return BlogModel.fromNowaveArticle(articlePayloadMap(data));
-    } catch (e) {
-      throw mapToServerException(e);
-    }
+    });
   }
 
   @override
   Future<String> uploadBlogImage({
     required ImageUpload image,
     NowaveSessionFence? sessionFence,
-  }) async {
-    try {
+  }) {
+    return _guard(() async {
       // A lost response does not prove the upload failed: the server may
       // already have stored a new asset. Media has no idempotency key yet,
       // so do not silently create another one on a transport retry.
@@ -233,14 +248,12 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
               sessionFence: sessionFence,
             );
       return client.mediaUri(asset.id).toString();
-    } catch (e) {
-      throw mapToServerException(e);
-    }
+    });
   }
 
   @override
-  Future<List<BlogModel>> getAllBlogs({required int page}) async {
-    try {
+  Future<List<BlogModel>> getAllBlogs({required int page}) {
+    return _guard(() async {
       final offset = (page - 1) * kBlogPageSize;
       final data = await retryOnConnectionClosed(
         () => client.getJson(
@@ -253,9 +266,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         ),
       );
       return articlePayloadList(data);
-    } catch (e) {
-      throw mapToServerException(e);
-    }
+    });
   }
 
   @override
@@ -330,8 +341,8 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   Future<BlogModel> getBlogById(
     String blogId, {
     NowaveSessionFence? sessionFence,
-  }) async {
-    try {
+  }) {
+    return _guard(() async {
       final data = sessionFence == null
           ? await client.getJson(
               '/articles/$blogId',
@@ -343,35 +354,29 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
               sessionFence: sessionFence,
             );
       return BlogModel.fromNowaveArticle(articlePayloadMap(data));
-    } catch (e) {
-      throw mapToServerException(e);
-    }
+    });
   }
 
   @override
-  Future<List<BlogModel>> getRelatedArticles(String slug) async {
-    try {
+  Future<List<BlogModel>> getRelatedArticles(String slug) {
+    return _guard(() async {
       final data = await client.getJson(
         '/articles/$slug/related',
         query: {'limit': '$_kRelatedLimit', 'locale': _locale},
       );
       return articlePayloadList(data);
-    } catch (e) {
-      throw mapToServerException(e);
-    }
+    });
   }
 
   @override
-  Future<List<BlogModel>> getBlogsByPosterId(String posterId) async {
-    try {
+  Future<List<BlogModel>> getBlogsByPosterId(String posterId) {
+    return _guard(() async {
       final data = await client.getJson(
         '/authors/${Uri.encodeComponent(posterId)}/articles',
         query: {'limit': '$_kListLimit', 'locale': _locale},
       );
       return articlePayloadList(data);
-    } catch (e) {
-      throw mapToServerException(e);
-    }
+    });
   }
 
   @override
@@ -465,8 +470,8 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   }
 
   @override
-  Future<List<BlogModel>> searchBlogs(String query) async {
-    try {
+  Future<List<BlogModel>> searchBlogs(String query) {
+    return _guard(() async {
       final sanitizedQuery = query.trim();
       if (sanitizedQuery.isEmpty) {
         return const <BlogModel>[];
@@ -480,17 +485,15 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         },
       );
       return articlePayloadList(data);
-    } catch (e) {
-      throw mapToServerException(e);
-    }
+    });
   }
 
   @override
   Future<BlogModel> editBlog(
     BlogModel blog, {
     NowaveSessionFence? sessionFence,
-  }) async {
-    try {
+  }) {
+    return _guard(() async {
       if (blog.articleId.isEmpty) {
         throw const ServerException(
           '该文章缺少服务端编号，无法更新，请尝试重新打开后再编辑',
@@ -529,14 +532,12 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
               sessionFence: sessionFence,
             );
       return BlogModel.fromNowaveArticle(articlePayloadMap(data));
-    } catch (e) {
-      throw mapToServerException(e);
-    }
+    });
   }
 
   @override
-  Future<bool> deleteArticle(String articleId) async {
-    try {
+  Future<bool> deleteArticle(String articleId) {
+    return _guard(() async {
       if (articleId.isEmpty) {
         throw const ServerException(
           '该文章缺少服务端编号，无法删除',
@@ -551,14 +552,12 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       final fence = identity == null ? null : requireActiveFence();
       await client.deleteJson('/articles/$articleId', sessionFence: fence);
       return true;
-    } catch (e) {
-      throw mapToServerException(e);
-    }
+    });
   }
 
   @override
-  Future<List<DeletedBlog>> getDeletedBlogs() async {
-    try {
+  Future<List<DeletedBlog>> getDeletedBlogs() {
+    return _guard(() async {
       final fence = identity == null ? null : requireActiveFence();
       final data = await retryOnConnectionClosed(
         () => fence == null
@@ -584,14 +583,12 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         code: 'server.parse',
         cause: data,
       );
-    } catch (e) {
-      throw mapToServerException(e);
-    }
+    });
   }
 
   @override
-  Future<BlogModel> restoreArticle(String articleId) async {
-    try {
+  Future<BlogModel> restoreArticle(String articleId) {
+    return _guard(() async {
       if (articleId.isEmpty) {
         throw const ServerException(
           '该文章缺少服务端编号，无法恢复',
@@ -608,14 +605,12 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         sessionFence: fence,
       );
       return BlogModel.fromNowaveArticle(articlePayloadMap(data));
-    } catch (e) {
-      throw mapToServerException(e);
-    }
+    });
   }
 
   @override
-  Future<List<BlogModel>> getUserLikedBlogs(String userId) async {
-    try {
+  Future<List<BlogModel>> getUserLikedBlogs(String userId) {
+    return _guard(() async {
       // `/me/liked-articles` answers for the token holder, so the requested
       // account and the active one must agree - otherwise B's likes would be
       // shown as A's page (#104).
@@ -634,9 +629,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
               ),
             );
       return articlePayloadList(data);
-    } catch (e) {
-      throw mapToServerException(e);
-    }
+    });
   }
 
   @override

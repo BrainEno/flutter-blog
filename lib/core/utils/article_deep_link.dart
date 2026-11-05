@@ -31,18 +31,6 @@ const String kArticleDeepLinkHost = 'article';
 /// Path segment the no-wave web app serves article pages under.
 const String kArticleWebPathSegment = 'articles';
 
-/// The shareable custom-scheme link for [slug].
-///
-/// Prefer [articleWebUrl] for anything a human will read or click: a
-/// `nowave://` link only opens on a device with the app installed. This form
-/// exists for in-app/QR/native handoff, where no browser is involved.
-String articleDeepLink(String slug) {
-  final trimmed = slug.trim();
-  if (trimmed.isEmpty) return '';
-  return '$kArticleDeepLinkScheme://$kArticleDeepLinkHost'
-      '/${Uri.encodeComponent(trimmed)}';
-}
-
 /// The in-app route for an incoming [uri], or null when the URI is not an
 /// article deep link.
 ///

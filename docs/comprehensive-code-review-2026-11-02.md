@@ -13,7 +13,7 @@
 
 - **#107 第一步已完成**（PR #122）：`lib/core` 不再导入 `lib/features`，`core/storage` 不再导入 Flutter UI 类型；`SqliteBlogCache`／`SqliteBlogDraftStore`／阅读历史实现移入 `features/blog`，主题偏好实现移入 `core/theme`，`AppDatabase` 只接受原始类型。`tool/ci/check_core_dependencies.py` 加 unittest 守护。第 119 行、第 96 行以及「架构与可维护性」一行里“core 仍依赖 feature model / Flutter 类型”的描述已不适用。
 - **Isar 依赖已彻底删除**：`isar_community*` 三个包、`lib/core/storage/legacy/` 生成代码（本文第 54 行的 3,991 行）、`tool/legacy_isar_fixture/`（第 56 行）、`test/fixtures/legacy_isar_3_1_0/`、一次性导入器与导入测试、`build.yaml` 全部移除，`docs/isar-to-sqlite-migration.md` 改写为 [sqlite-storage.md](sqlite-storage.md)。第 30 行、第 114 行关于“旧 Isar 复制导入”的正面评价不再适用（导入能力已不存在）。
-- 已关闭：#99、#103、#105、#106。仍开放：**#101、#104**（已实现但未关单）、#107（余下超大单元拆分）、#108、#109、#110。
+- **Issue 状态（2026-11-05）**：#99、#101、#103–#110 与 #21、#24 全部关闭，**仓库只剩 #18（举报与屏蔽）开放**，且它需要 no-wave 侧先提供接口。本文的 issue 表格与行号只反映 11-02 的状态，别再据此判断“仍开放”。
 - 当前债务清单以 [code-audit.md](code-audit.md) 为准；本文的 issue 表格只反映 11-02 的状态。
 
 ## 1. 执行摘要

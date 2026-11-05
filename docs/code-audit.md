@@ -50,6 +50,30 @@
 > 文档提示 / 朗读控件 / 正文 / 相关文章 / 评论，并在内部按当前 location 计算跳转）。
 > 这次是搬运而非重写：控件树、朗读逻辑与滚动数学原样保留，私有状态类仍私有。
 
+> 2026-11-05 更新（死代码清理与重复收敛）：删除了三处没有生产调用方的代码——
+> `articleDeepLink()`（深链只保留“解析”方向：分享用 web URL，`nowave://` 只被
+> 解析）、`coverUrlOf()`（返回参数自身字段的恒等函数）连同
+> `presentation/utils/cover_url.dart` 整个文件、以及 `dev_dependencies` 里的
+> `build_runner`（本仓库的 Drift 表结构是手写的，没有 `part '*.g.dart'`，也没有
+> 任何 builder 可跑）。重复逻辑收敛了两处：作者/评论作者的“空名字兜底”原先在
+> 9 个控件里各写一遍且写法不一（评论回复框只判 `isNotEmpty`、没有 `trim`，
+> 纯空白名字会渲染成空标签），现在统一走 `lib/core/l10n/display_name_l10n.dart`；
+> 4 个源码扫描测试各带一份完全相同的 `_dartFiles()`，现在统一走
+> `test/support/source_files.dart` 的 `dartFilesUnder()`。`blog_remote_data_source.dart`
+> 里“每个方法各自 `try`/`catch` 一次 `mapToServerException`”的 12 份模板收成私有
+> `_guard()`：异常到 `ServerException` 的边界只写一次；`getOnlineFeed`、
+> `getArticlesByTag`、`getAllBlogsAfter`、`getMyArticles` 因为要在首个请求之前
+> 决定路径、额外处理 404 或兼容旧部署，仍保留各自的 handler。
+>
+> 依赖没有升级：本环境无法访问 pub.dev（`curl https://pub.dev/api/packages/http`
+> → `SSL_ERROR_SYSCALL`），也没有 Flutter/Dart SDK，因此既不能确定各包的当前
+> 最新版本，也不能验证“升级后仍与固定的 Flutter 3.47.8 兼容”。在不猜版本号的
+> 前提下，本轮只做了一件可自证的事——移除没有 builder 的 `build_runner`；
+> `pubspec.lock` 仍是旧的解析结果（`flutter pub get` 会就地修剪，无需手工改）。
+> 需要升级时，请在一台能联网、装有 Flutter 3.47.8 的机器上执行
+> `flutter pub outdated` 后按提示改 `pubspec.yaml`，再用
+> `python3 -m unittest discover -s scripts/tests` 与 CI 一并验证。
+
 ## 本轮修复
 
 - 文章编辑页通过 domain 的 `BlogDraftStore` 接口访问草稿，个人中心通过
