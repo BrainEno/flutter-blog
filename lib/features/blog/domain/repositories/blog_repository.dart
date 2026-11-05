@@ -8,9 +8,23 @@ import 'package:fpdart/fpdart.dart';
 import 'package:belog/core/common/entities/image_upload.dart';
 
 abstract interface class BlogRepository {
+  /// Uploads a cover and returns the URL the server stored it at.
+  ///
+  /// Separate from [uploadBlog] so a retried publish can remember the asset it
+  /// already created: media is immutable, so the URL stays valid and the bytes
+  /// never need sending twice.
+  Future<Either<Failure, String>> uploadCover({
+    required ImageUpload image,
+    NowaveSessionFence? sessionFence,
+  });
+
   /// [image] is the picked cover; null publishes a text-only article.
+  ///
+  /// [uploadedCoverUrl] is used instead of uploading [image]: it is the answer
+  /// of an earlier [uploadCover], and takes precedence over the bytes.
   Future<Either<Failure, Blog>> uploadBlog({
     ImageUpload? image,
+    String? uploadedCoverUrl,
     required String title,
     required String content,
     required String posterId,

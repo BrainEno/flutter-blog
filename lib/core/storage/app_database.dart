@@ -15,7 +15,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -108,6 +108,22 @@ class AppDatabase extends GeneratedDatabase {
         // table is touched, and an empty queue behaves exactly like before.
         await _createPublishQueue();
       }
+      if (from < 9) {
+        // v9 remembers the cover a queued send already uploaded, so a retry
+        // reuses that URL instead of sending the bytes again and leaving an
+        // unreferenced asset behind. Existing rows get NULL, which reads as
+        // "not uploaded yet" - exactly what v8 did on every attempt.
+        if (await _tableExists('publish_queue')) {
+          await customStatement(
+            'ALTER TABLE publish_queue ADD COLUMN cover_url TEXT',
+          );
+        } else {
+          // A database that reached this step without the v8 table (a dropped
+          // table, a skipped version) still has to leave with it: the runner
+          // reads the queue unconditionally.
+          await _createPublishQueue();
+        }
+      }
     },
   );
 
@@ -144,15 +160,17 @@ class AppDatabase extends GeneratedDatabase {
   /// that queued it; `idempotency_key` is sent on every attempt so a retry
   /// replays the article the server may already have created. `cover_file` is
   /// a file name inside the app's own `publish_queue/` directory, never the
-  /// picker's temporary path.
+  /// picker's temporary path; `cover_url` is where an earlier attempt uploaded
+  /// those bytes, so a retry reuses the asset instead of uploading it again.
   Future<void> _createPublishQueue() async {
     await customStatement(
       'CREATE TABLE publish_queue ('
       'id TEXT PRIMARY KEY, backend TEXT NOT NULL, user_id TEXT NOT NULL, '
       'idempotency_key TEXT NOT NULL, title TEXT NOT NULL, '
       'content TEXT NOT NULL, tags TEXT NOT NULL, cover_file TEXT, '
-      'cover_mime TEXT, state TEXT NOT NULL, attempts INTEGER NOT NULL '
-      'DEFAULT 0, next_attempt_at INTEGER, last_error_code TEXT, '
+      'cover_mime TEXT, cover_url TEXT, state TEXT NOT NULL, '
+      'attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at INTEGER, '
+      'last_error_code TEXT, '
       'created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
     );
     await customStatement(

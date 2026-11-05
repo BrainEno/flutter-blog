@@ -56,14 +56,39 @@
 选图器给的是临时文件，可能在这条记录等待期间被清理，所以入队时把字节复制到应用
 目录 `publish_queue/<entry-id>.bin`，MIME 存在行里；成功或移除时删除文件。
 
-已知限制：no-wave 的媒体上传**没有幂等键**，所以一次重试会重新上传一次封面，可能
-在服务端留下一个未被引用的媒体资源。文章本身仍然只有一篇（幂等键保证）。孤儿
-清理属于服务端范围，客户端不做定时删除。
+### 封面只上传一次
+
+no-wave 的媒体上传**没有幂等键**，所以旧实现里每一次重试都会把同一张封面再传一遍，
+在服务端留下一个没人引用的资源。现在队列自己记住结果：
+
+1. 条目没有 `cover_url`、但存着封面字节时，先单独上传封面（`uploadCover`）；
+2. 拿到 URL 后**立刻**写回队列行（`recordCoverUrl`），**然后**才请求建文章；
+3. 之后的重试、崩溃恢复、手动重试，都直接用这条 `cover_url` 建文章，不再碰
+   `uploadBlogImage`。
+
+媒体资源是不可变的（URL 就指向那份字节），所以记下来的 URL 永远有效；顺序也是
+刻意的——先写 URL 再建文章，意味着「已上传、未建文章」之间崩溃时，下次 drain 只会
+复用，不会重传。文章本身仍然只有一篇（幂等键保证）。
+
+写回是尽力而为：写失败只记一条 debug 日志，发送照常进行（多传一次封面，好过因此
+丢掉一篇文章）。
+
+没有封面的条目完全走老路径（`cover_url` 一直是 NULL，不发任何媒体请求）。孤儿
+清理仍属于服务端范围，客户端不做定时删除。
+
+已知边界：
+
+- 失败项的「继续编辑」有意重新发布为**一次新的意图**，所以那时会按新内容的封面
+  重新上传一次——旧条目的 `cover_url` 属于那篇没发出去的文章。
+- 复用假设媒体资产长期有效（服务端把上传的字节重新编码为 WebP 后长期提供）。若某
+  次重试时该资产已被服务端清理，文章会带上一个失效的封面 URL；客户端不做可用性
+  探测，也不为此重传——重传才能发现的失败不值得每次都多传一次。
 
 ## 存储与代码位置
 
-- 表：`publish_queue`（schema v8），唯一主键 `id`，索引
-  `publish_queue_due(backend, user_id, state, created_at)`；
+- 表：`publish_queue`（schema v9），唯一主键 `id`，索引
+  `publish_queue_due(backend, user_id, state, created_at)`；v9 只加了一列
+  `cover_url TEXT`（v8 行升级后为 NULL，行为与升级前一致）；
 - 端口：`lib/features/blog/domain/repositories/publish_queue_store.dart`、
   `publish_queue_drainer.dart`；
 - SQLite 实现：`lib/features/blog/data/datasources/sqlite_publish_queue_store.dart`；
@@ -101,9 +126,12 @@
 ## 测试
 
 - `test/unit/storage/publish_queue_store_test.dart`：入库/抢占/退避/修复/清理、
-  账号与后端隔离、重开数据库后仍在；
+  账号与后端隔离、重开数据库后仍在、`cover_url` 落盘与 v8→v9 升级；
+- `test/unit/repositories/blog_repository_cover_test.dart`：`uploadCover` 的成败与
+  离线短路，`uploadBlog(uploadedCoverUrl:)` 复用 URL、不再上传字节；
 - `test/unit/publish/publish_queue_runner_test.dart`：带上幂等键发送、失败分类、
-  无会话不发、串账号不发、离线不消耗尝试、FIFO、并发 drain 只发一次；
+  无会话不发、串账号不发、离线不消耗尝试、FIFO、并发 drain 只发一次、封面只上传
+  一次（成功即写回，重试与已有 `cover_url` 的条目都不再上传）；
 - `test/widget/publish_queue_page_test.dart`：只有 `failed` 出现「继续编辑」，点进去
   带着该条目打开编辑器，返回后重新读一次队列；
 - `test/widget/blog_editor_resume_test.dart`：恢复的标题/正文/标签/封面，发布成功或

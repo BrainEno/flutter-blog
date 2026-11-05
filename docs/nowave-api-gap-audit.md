@@ -27,7 +27,7 @@
 | 粉丝/关注列表 `GET /users/:userId/{followers,following}` | 本次接入只读 | 不需要登录，不附带会话凭据，不持久化列表；服务端最多 100 条、无 offset/cursor/总数，达到上限提示可能还有更多。点击用户可在当前 tab 打开作者主页；站点相对头像仍待 #63。单点 `.` / `..` ID 因 URI 规范化无法安全寻址，会报错而不是访问其他路由。 |
 | 用户搜索 `GET /users?query=…` | 本次接入只读 | 无需登录，不附带会话凭据；关键词和公开结果资料不持久化，头像沿用现有图片缓存。服务端最多 100 条、无分页或总数，达到上限提示可能还有更多；不展示推测的关注状态。界面语言与固定 `zh-CN` 内容请求独立；站点相对头像仍待 #63。 |
 | 分类 `categories*`、编辑角色 `PUT /users/:id/role`、分类维护 | 未接入 | 最新后端规定分类由编辑共同维护；标签仍对登录作者开放。角色和权限由服务器强制，不能只靠隐藏按钮。 |
-| 媒体上传、读取及媒体库 | Flutter 未接入列表/删除 | 补充核对 no-wave [`13271b21`](https://github.com/BrainEno/no-wave/tree/13271b218b5c9194002c48273429db8d75e9b183)：已增加个人媒体库与手动删除，没有定时回收；版本化封面、头像及并发写入存在[误删风险](https://github.com/BrainEno/no-wave/issues/146)，修复前不要使用网页媒体库删除图片。上传仍无幂等键，断流后不安全地重试可能产生孤儿。客户端继续由资源 ID 构造 `/api/v1/media/:id`；站点相对头像 origin 问题另见 [#63](https://github.com/BrainEno/flutter-blog/issues/63)。 |
+| 媒体上传、读取及媒体库 | Flutter 未接入列表/删除 | 补充核对 no-wave [`13271b21`](https://github.com/BrainEno/no-wave/tree/13271b218b5c9194002c48273429db8d75e9b183)：已增加个人媒体库与手动删除，没有定时回收；版本化封面、头像及并发写入存在[误删风险](https://github.com/BrainEno/no-wave/issues/146)，修复前不要使用网页媒体库删除图片。上传仍无幂等键，断流后不安全地重试可能产生孤儿；发布队列已把上传成功的封面 URL 写回队列行以复用（[发布队列](publish-queue.md)），编辑器直发仍按原路径每次重传。客户端继续由资源 ID 构造 `/api/v1/media/:id`；站点相对头像 origin 问题另见 [#63](https://github.com/BrainEno/flutter-blog/issues/63)。 |
 | 新建文章 `Idempotency-Key` | 未接入 | 服务端支持相同 key + 相同请求重放，但自动 slug 碰撞后的重放仍有 [no-wave #137](https://github.com/BrainEno/no-wave/issues/137)；客户端普通发布尚未固化跨重试 key。离线 outbox 的独立草稿 PR 仍待评审，不能声称已可靠离线发布。 |
 
 ## 改密服务端兼容性风险

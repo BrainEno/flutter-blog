@@ -28,8 +28,30 @@ class BlogRepositoryImpl implements BlogRepository {
   );
 
   @override
+  Future<Either<Failure, String>> uploadCover({
+    required ImageUpload image,
+    NowaveSessionFence? sessionFence,
+  }) async {
+    try {
+      if (!await (connectionChecker.isConnected)) {
+        return left(Failure.networkOffline());
+      }
+      final url = sessionFence == null
+          ? await blogRemoteDataSource.uploadBlogImage(image: image)
+          : await blogRemoteDataSource.uploadBlogImage(
+              image: image,
+              sessionFence: sessionFence,
+            );
+      return right(url);
+    } catch (error) {
+      return left(mapErrorToFailure(error));
+    }
+  }
+
+  @override
   Future<Either<Failure, Blog>> uploadBlog({
     ImageUpload? image,
+    String? uploadedCoverUrl,
     required String title,
     required String content,
     required String posterId,
@@ -45,8 +67,12 @@ class BlogRepositoryImpl implements BlogRepository {
       // cover is uploaded first and the article row is created with it.
       // A failure between the two only leaves an unreferenced asset (the
       // backend has no delete endpoint; its lifecycle is managed
-      // server-side). A coverless publish (issue #17) skips the upload.
-      final imageUrl = image == null
+      // server-side) - which is exactly why a caller that already uploaded the
+      // cover passes [uploadedCoverUrl] instead of making a second asset.
+      // A coverless publish (issue #17) skips the upload.
+      final imageUrl = uploadedCoverUrl != null
+          ? uploadedCoverUrl
+          : image == null
           ? ''
           : sessionFence == null
           ? await blogRemoteDataSource.uploadBlogImage(image: image)

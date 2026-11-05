@@ -25,6 +25,10 @@ import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart
 /// - **Never silently twice.** Every attempt carries the entry's
 ///   `Idempotency-Key`, so a retry after a lost response replays the article
 ///   the server already created instead of publishing a second copy.
+/// - **One cover upload.** Media assets are immutable, so the URL an attempt
+///   uploaded the cover to is written back to the entry before the article is
+///   created: a retry (or a crash between the two steps) reuses that URL and
+///   never leaves a second unreferenced asset behind.
 /// - **Bounded retries.** Network, timeout and storage failures back off
 ///   (1m, 5m, 15m, 60m, 3h) up to [_kMaxAttempts]; content rejections stop
 ///   immediately and wait for a human. A missing session pauses the queue
@@ -86,29 +90,23 @@ class PublishQueueRunner implements PublishQueueDrainer {
   }
 
   Future<bool> _send(PublishQueueEntry entry) async {
-    ImageUpload? cover;
-    try {
-      cover = await store.readCover(entry);
-    } catch (error) {
-      AppLogger.debug('queued cover could not be read | $error');
-      await _fail(
-        entry,
-        Failure(
-          '封面文件无法读取',
-          kind: FailureKind.storage,
-          code: 'publish_queue.cover_unreadable',
-        ),
-      );
-      return false;
-    }
-
     final fence = NowaveSessionFence(
       userId: entry.userId,
       generation: identity.sessionGeneration,
     );
+
+    // An earlier attempt may already have uploaded the cover. Reuse that asset
+    // instead of sending the same bytes again (see [_uploadCover]).
+    var coverUrl = entry.coverUrl;
+    if (coverUrl == null) {
+      final uploaded = await _uploadCover(entry, fence);
+      if (uploaded == null) return false;
+      if (uploaded.isNotEmpty) coverUrl = uploaded;
+    }
+
     try {
       final result = await repository.uploadBlog(
-        image: cover,
+        uploadedCoverUrl: coverUrl,
         title: entry.title,
         content: entry.content,
         posterId: entry.userId,
@@ -132,6 +130,62 @@ class PublishQueueRunner implements PublishQueueDrainer {
       );
       return false;
     }
+  }
+
+  /// Uploads the entry's cover once and records the URL on the entry.
+  ///
+  /// Returns the URL to publish with, or an empty string when the entry has no
+  /// cover bytes at all (a text-only article). Returns null when the send must
+  /// stop here, because the cover is unreadable or the upload failed: the entry
+  /// has already been marked accordingly.
+  ///
+  /// Recording the URL *before* the article request is what makes a crash
+  /// between the two steps cheap: the next attempt reuses the asset instead of
+  /// uploading a second copy of the same bytes.
+  Future<String?> _uploadCover(
+    PublishQueueEntry entry,
+    NowaveSessionFence fence,
+  ) async {
+    ImageUpload? cover;
+    try {
+      cover = await store.readCover(entry);
+    } catch (error) {
+      AppLogger.debug('queued cover could not be read | $error');
+      await _fail(
+        entry,
+        Failure(
+          '封面文件无法读取',
+          kind: FailureKind.storage,
+          code: 'publish_queue.cover_unreadable',
+        ),
+      );
+      return null;
+    }
+    if (cover == null) return '';
+
+    final uploaded = await repository.uploadCover(
+      image: cover,
+      sessionFence: fence,
+    );
+    final failure = uploaded.fold<Failure?>((error) => error, (_) => null);
+    if (failure != null) {
+      await _fail(entry, failure);
+      return null;
+    }
+    final url = uploaded.fold((_) => '', (value) => value);
+    if (url.isEmpty) {
+      AppLogger.debug('queued cover upload returned no URL | ${entry.id}');
+      return '';
+    }
+
+    try {
+      await store.recordCoverUrl(entry.id, url: url);
+    } catch (error) {
+      // Best effort: losing the record only costs one more upload on a later
+      // attempt. Failing the whole send here would punish the article.
+      AppLogger.debug('queued cover URL could not be stored | $error');
+    }
+    return url;
   }
 
   Future<void> _fail(PublishQueueEntry entry, Failure failure) async {

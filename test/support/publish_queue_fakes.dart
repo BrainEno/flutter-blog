@@ -17,6 +17,7 @@ PublishQueueEntry queueEntry({
   String? lastErrorCode = 'network.offline',
   String? coverFileName,
   String? coverMimeType,
+  String? coverUrl,
 }) => PublishQueueEntry(
   id: id,
   userId: userId,
@@ -31,6 +32,7 @@ PublishQueueEntry queueEntry({
   lastErrorCode: lastErrorCode,
   coverFileName: coverFileName,
   coverMimeType: coverMimeType,
+  coverUrl: coverUrl,
 );
 
 /// A queue store that records calls instead of touching disk.
@@ -44,6 +46,9 @@ class FakePublishQueueStore implements PublishQueueStore {
 
   /// What [readCover] returns, whatever entry is asked for.
   ImageUpload? storedCover;
+
+  /// URLs recorded by [recordCoverUrl], by entry id.
+  final Map<String, String> coverUrls = {};
 
   final List<String> removed = [];
   final List<String> retried = [];
@@ -92,6 +97,13 @@ class FakePublishQueueStore implements PublishQueueStore {
 
   @override
   Future<ImageUpload?> readCover(PublishQueueEntry entry) async => storedCover;
+
+  @override
+  Future<void> recordCoverUrl(String id, {required String url}) async {
+    coverUrls[id] = url;
+    final index = rows.indexWhere((row) => row.id == id);
+    if (index >= 0) rows[index] = rows[index].copyWith(coverUrl: url);
+  }
 
   @override
   Future<void> complete(String id) async => completed.add(id);
