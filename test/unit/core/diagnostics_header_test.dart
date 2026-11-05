@@ -27,15 +27,18 @@ void main() {
       buildMode: 'debug',
       operatingSystem: 'android',
       locale: 'zh',
-      apiOrigin: 'api origin: http://10.0.2.2:4000 '
+      apiOrigin:
+          'api origin: http://10.0.2.2:4000 '
           '(http, debug build allows cleartext)',
     );
 
     expect(header.split('\n'), hasLength(5));
     expect(
       header,
-      contains('api origin: http://10.0.2.2:4000 '
-          '(http, debug build allows cleartext)'),
+      contains(
+        'api origin: http://10.0.2.2:4000 '
+        '(http, debug build allows cleartext)',
+      ),
     );
   });
 

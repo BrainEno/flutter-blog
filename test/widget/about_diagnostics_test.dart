@@ -123,9 +123,7 @@ void main() {
     expect(reportText.data, contains('GET /api/v1/articles -> 503'));
   });
 
-  testWidgets('openDiagnostics lands on the report directly', (
-    tester,
-  ) async {
+  testWidgets('openDiagnostics lands on the report directly', (tester) async {
     tester.platformDispatcher.localeTestValue = const Locale('zh');
     addTearDown(tester.platformDispatcher.clearLocaleTestValue);
     AppLogger.request('GET', '/api/v1/articles', 503, 1203);
