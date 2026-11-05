@@ -56,6 +56,7 @@ import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
 import 'package:belog/features/blog/domain/usecase/get_deleted_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
+import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_user_liked_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/is_blog_liked.dart';
 import 'package:belog/features/blog/domain/usecase/resolve_tag.dart';
@@ -338,6 +339,9 @@ Future<void> _initBlog(
     ..registerFactory(() => ResolveTag(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetArticlesByTag(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetDeletedBlogs(serviceLocator<BlogRepository>()))
+    ..registerFactory(
+      () => GetRelatedArticles(serviceLocator<BlogRepository>()),
+    )
     ..registerFactory(
       () => RestoreDeletedBlog(serviceLocator<BlogRepository>()),
     )
