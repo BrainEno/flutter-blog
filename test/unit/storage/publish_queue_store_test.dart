@@ -459,4 +459,39 @@ void main() {
         .getSingle();
     expect(version.read<int>('user_version'), 9);
   });
+
+  test('a pre-v8 database gains the queue already carrying cover_url', () async {
+    // The v8 step creates the table in its current shape, so the v9 step must
+    // not try to add the column a second time.
+    final file = File('${covers.path}/legacy-v7.sqlite');
+    final old = raw.sqlite3.open(file.path);
+    old.execute('PRAGMA user_version = 7');
+    old.close();
+
+    final upgraded = AppDatabase(NativeDatabase(file));
+    addTearDown(upgraded.close);
+    final legacyStore = SqlitePublishQueueStore(
+      upgraded,
+      apiBaseUrl: _firstBackend,
+      directory: covers,
+    );
+
+    expect(await legacyStore.entries(userId: 'alice'), isEmpty);
+    final entry = await legacyStore.enqueue(
+      userId: 'alice',
+      title: 'after the upgrade',
+      content: 'body',
+      tags: const [],
+      idempotencyKey: 'key-1',
+    );
+    expect(entry.coverUrl, isNull);
+    await legacyStore.recordCoverUrl(
+      entry.id,
+      url: 'https://cdn/after-upgrade.png',
+    );
+    expect(
+      (await legacyStore.entries(userId: 'alice')).single.coverUrl,
+      'https://cdn/after-upgrade.png',
+    );
+  });
 }

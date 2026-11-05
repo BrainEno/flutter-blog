@@ -113,15 +113,15 @@ class AppDatabase extends GeneratedDatabase {
         // reuses that URL instead of sending the bytes again and leaving an
         // unreferenced asset behind. Existing rows get NULL, which reads as
         // "not uploaded yet" - exactly what v8 did on every attempt.
-        if (await _tableExists('publish_queue')) {
+        //
+        // Both checks matter: a database older than v8 got the table from the
+        // step above, already in its v9 shape, and must not be altered again.
+        if (!await _tableExists('publish_queue')) {
+          await _createPublishQueue();
+        } else if (!await _columnExists('publish_queue', 'cover_url')) {
           await customStatement(
             'ALTER TABLE publish_queue ADD COLUMN cover_url TEXT',
           );
-        } else {
-          // A database that reached this step without the v8 table (a dropped
-          // table, a skipped version) still has to leave with it: the runner
-          // reads the queue unconditionally.
-          await _createPublishQueue();
         }
       }
     },
@@ -133,6 +133,11 @@ class AppDatabase extends GeneratedDatabase {
       variables: [Variable.withString(table)],
     ).get();
     return rows.isNotEmpty;
+  }
+
+  Future<bool> _columnExists(String table, String column) async {
+    final rows = await customSelect('PRAGMA table_info($table)').get();
+    return rows.any((row) => row.read<String>('name') == column);
   }
 
   /// New drafts are separate from the unattributed legacy table. Partial
