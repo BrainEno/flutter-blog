@@ -8,6 +8,7 @@ import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:belog/features/auth/presentation/pages/change_password_page.dart';
+import 'package:belog/core/theme/app_theme_mode.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
@@ -97,13 +98,13 @@ class MockAuthorRelationships extends Mock
     implements AuthorRelationshipRepository {}
 
 class MemoryThemeStore implements ThemePreferenceStore {
-  ThemeMode mode = ThemeMode.system;
+  AppThemeMode mode = AppThemeMode.system;
 
   @override
-  Future<ThemeMode> load() async => mode;
+  Future<AppThemeMode> load() async => mode;
 
   @override
-  Future<void> save(ThemeMode value) async => mode = value;
+  Future<void> save(AppThemeMode value) async => mode = value;
 }
 
 BlogModel sampleBlog(String id, String title, {bool isDraft = false}) =>

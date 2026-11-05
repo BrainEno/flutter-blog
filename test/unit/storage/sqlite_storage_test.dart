@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_blog_cache.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_draft_store.dart';
+import 'package:belog/core/theme/app_theme_mode.dart';
 import 'package:belog/core/theme/sqlite_theme_store.dart';
 import 'package:belog/features/auth/data/datasources/profile_cache_store.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
@@ -78,8 +79,8 @@ void main() {
 
   test('fresh database preserves themes, drafts and upserted cache', () async {
     final themes = SqliteThemePreferenceStore(db);
-    expect(await themes.load(), ThemeMode.system);
-    await themes.save(ThemeMode.dark);
+    expect(await themes.load(), AppThemeMode.system);
+    await themes.save(AppThemeMode.dark);
     final drafts = SqliteBlogDraftStore(
       db,
       apiBaseUrl: Uri.parse('https://api.example.invalid'),
@@ -104,7 +105,7 @@ void main() {
     expect(await drafts.discardIfUnchanged(draft), isTrue);
     await db.close();
     db = AppDatabase(NativeDatabase(File('${dir.path}/new.sqlite')));
-    expect(await SqliteThemePreferenceStore(db).load(), ThemeMode.dark);
+    expect(await SqliteThemePreferenceStore(db).load(), AppThemeMode.dark);
     expect(
       await SqliteBlogDraftStore(
         db,

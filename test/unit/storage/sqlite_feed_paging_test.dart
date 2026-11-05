@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_blog_cache.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_draft_store.dart';
+import 'package:belog/core/theme/app_theme_mode.dart';
 import 'package:belog/core/theme/sqlite_theme_store.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:drift/native.dart';
@@ -124,7 +125,7 @@ void main() {
   });
 
   test('v3 upgrade adds the feed index without changing existing data', () async {
-    await SqliteThemePreferenceStore(db).save(ThemeMode.dark);
+    await SqliteThemePreferenceStore(db).save(AppThemeMode.dark);
     // Populate the original ownerless table as a v3 installation did.
     await db.customStatement(
       'INSERT INTO drafts(blog_id, title, content, tags, updated_at) VALUES (?, ?, ?, ?, ?)',
@@ -147,7 +148,7 @@ void main() {
     old.close();
 
     db = AppDatabase(NativeDatabase(file));
-    expect(await SqliteThemePreferenceStore(db).load(), ThemeMode.dark);
+    expect(await SqliteThemePreferenceStore(db).load(), AppThemeMode.dark);
     final drafts = SqliteBlogDraftStore(
       db,
       apiBaseUrl: Uri.parse('https://api.example.invalid'),

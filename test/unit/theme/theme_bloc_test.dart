@@ -1,25 +1,26 @@
 import 'dart:async';
 
+import 'package:belog/core/theme/app_theme_mode.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class FakeThemeStore implements ThemePreferenceStore {
-  ThemeMode mode;
-  Completer<ThemeMode>? loadGate;
-  final List<ThemeMode> writes = [];
+  AppThemeMode mode;
+  Completer<AppThemeMode>? loadGate;
+  final List<AppThemeMode> writes = [];
 
   FakeThemeStore(this.mode);
 
   @override
-  Future<ThemeMode> load() async {
+  Future<AppThemeMode> load() async {
     if (loadGate != null) return loadGate!.future;
     return mode;
   }
 
   @override
-  Future<void> save(ThemeMode value) async {
+  Future<void> save(AppThemeMode value) async {
     writes.add(value);
     mode = value;
   }
@@ -27,7 +28,7 @@ class FakeThemeStore implements ThemePreferenceStore {
 
 void main() {
   test('first launch uses system and does not write a preference', () async {
-    final store = FakeThemeStore(ThemeMode.system);
+    final store = FakeThemeStore(AppThemeMode.system);
     final bloc = ThemeBloc(store);
     addTearDown(bloc.close);
     expect(bloc.state.themeMode, ThemeMode.system);
@@ -37,7 +38,7 @@ void main() {
   });
 
   test('changes survive a new bloc and support explicit system mode', () async {
-    final store = FakeThemeStore(ThemeMode.dark);
+    final store = FakeThemeStore(AppThemeMode.dark);
     final bloc = ThemeBloc(store);
     await bloc.stream.first;
     final light = bloc.stream.first;
@@ -51,11 +52,11 @@ void main() {
     final restarted = ThemeBloc(store);
     addTearDown(restarted.close);
     expect((await restarted.stream.first).themeMode, ThemeMode.system);
-    expect(store.writes, [ThemeMode.light, ThemeMode.system]);
+    expect(store.writes, [AppThemeMode.light, AppThemeMode.system]);
   });
 
   test('toggle from system uses the resolved device brightness', () async {
-    final store = FakeThemeStore(ThemeMode.system);
+    final store = FakeThemeStore(AppThemeMode.system);
     final bloc = ThemeBloc(store);
     addTearDown(bloc.close);
     await bloc.stream.first;
@@ -71,18 +72,18 @@ void main() {
   });
 
   test('initial load and rapid toggles are processed in order', () async {
-    final store = FakeThemeStore(ThemeMode.dark)
-      ..loadGate = Completer<ThemeMode>();
+    final store = FakeThemeStore(AppThemeMode.dark)
+      ..loadGate = Completer<AppThemeMode>();
     final bloc = ThemeBloc(store);
     addTearDown(bloc.close);
     final states = bloc.stream.take(3).toList();
     bloc.add(ToggleTheme());
     bloc.add(ToggleTheme());
-    store.loadGate!.complete(ThemeMode.dark);
+    store.loadGate!.complete(AppThemeMode.dark);
     expect(
       (await states).map((state) => state.themeMode),
       [ThemeMode.dark, ThemeMode.light, ThemeMode.dark],
     );
-    expect(store.writes, [ThemeMode.light, ThemeMode.dark]);
+    expect(store.writes, [AppThemeMode.light, AppThemeMode.dark]);
   });
 }

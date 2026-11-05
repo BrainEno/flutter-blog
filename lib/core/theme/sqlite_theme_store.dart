@@ -1,21 +1,19 @@
 import 'package:belog/core/storage/app_database.dart';
+import 'package:belog/core/theme/app_theme_mode.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
-import 'package:flutter/material.dart';
 
 class SqliteThemePreferenceStore implements ThemePreferenceStore {
   final AppDatabase database;
   SqliteThemePreferenceStore(this.database);
 
   @override
-  Future<ThemeMode> load() async {
+  Future<AppThemeMode> load() async {
     final row = await database
         .customSelect('SELECT mode FROM theme WHERE id = 0')
         .getSingleOrNull();
-    final name = row?.read<String>('mode');
-    return ThemeMode.values.where((mode) => mode.name == name).firstOrNull ??
-        ThemeMode.system;
+    return AppThemeMode.fromName(row?.read<String>('mode'));
   }
 
   @override
-  Future<void> save(ThemeMode mode) => database.setTheme(mode.name);
+  Future<void> save(AppThemeMode mode) => database.setTheme(mode.name);
 }
