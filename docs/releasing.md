@@ -57,6 +57,38 @@ PR CI and the mobile validation workflow set `BELOG_QA_BUILD=true` explicitly, c
 
 For owner-requested, downloadable AltStore IPA or Android APK builds without creating a tag, see [mobile-packages.md](mobile-packages.md). That manual Actions workflow separates iOS from Android signing, requires a public backend configuration, labels temporary debug APKs, and never publishes a GitHub Release.
 
+## Bundled asset and size audit
+
+Every Android release build (PR CI and the validation workflow) runs
+`tool/ci/check_apk_assets.py` over the built APK and attaches
+`apk-asset-audit.log` to the build evidence. The audit answers the only
+questions that matter for bundle hygiene, from the artifact rather than from
+memory:
+
+- **Is every bundled asset declared?** A file under
+  `assets/flutter_assets/assets/` that `pubspec.yaml` does not declare means the
+  build and the manifest disagree.
+- **Is every bundled asset referenced?** The scan looks for the path or the
+  file name in `lib/**/*.dart` and in the manifest *outside* the `assets:` list,
+  so `fonts:` and `flutter_launcher_icons:` count as usage while "it is inside a
+  declared directory" does not. This is what would have caught the ~1.1 MiB
+  image that motivated issue #109. Font license texts (`OFL-*.txt`) are
+  expected to have no code reference and are exempt, because the OFL requires
+  shipping them.
+- **Is it inside the budget?** One asset above 1 MiB
+  (`--budget-bytes`) fails the job: a near-megabyte asset has to be a
+  deliberate decision, not an accident.
+
+The log also breaks the APK down by bucket (`lib/<abi>`, `dex`, `res/`,
+declared assets, engine assets, signature) and lists the largest entries, so
+size questions are answered by the current build. Debug-signed QA APKs and the
+signed release APK are built from the same manifest, so the audit is meaningful
+on both; the signing key and the API base URL are the only differences.
+
+The checks are unit-tested (`tool/ci/test_check_apk_assets.py`, run by
+`config-contract`) against synthetic APKs, including the vacuous-pass case: an
+APK with no bundled assets fails instead of reporting success.
+
 ## Production Android release
 
 The separate tag workflow is the only publishing path. Configure a protected GitHub environment named `production` with required reviewers and restricted tag creation/updates before using it. Store the following **environment** values (do not commit them or put them in logs):

@@ -215,4 +215,10 @@ expect_failure 'Expected debug and release APKs' run_android_debug_fixture MOCK_
 rm "$tmp/android/gradlew"
 expect_failure 'Gradle wrapper is missing' run_android_debug_fixture
 
+# Every workflow that builds an Android release APK must audit its bundled
+# assets, or #109's size/resource acceptance silently stops being checked.
+for workflow in ci.yml dart.yml; do
+  grep -Fq 'tool/ci/check_apk_assets.py' "$tmp/.github/workflows/$workflow"
+done
+
 echo 'CI script tests passed.'
