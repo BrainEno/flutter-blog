@@ -103,8 +103,10 @@ class _NotificationInboxView extends StatelessWidget {
             return _InboxError(failure: state.failure);
           }
           final loaded = state as NotificationInboxLoaded;
+          final showSummary = loaded.unreadCount > 0;
           final capped =
               loaded.items.length >= NotificationInboxCubit.pageLimit;
+          final extra = (showSummary ? 1 : 0) + (capped ? 1 : 0);
           return RefreshIndicator(
             onRefresh: () =>
                 context.read<NotificationInboxCubit>().load(showLoading: false),
@@ -120,18 +122,19 @@ class _NotificationInboxView extends StatelessWidget {
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: loaded.items.length + 1 + (capped ? 1 : 0),
+                    itemCount: loaded.items.length + extra,
                     separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, index) {
-                      if (index == 0) {
+                      final row = index - (showSummary ? 1 : 0);
+                      if (row < 0) {
                         return _UnreadSummary(count: loaded.unreadCount);
                       }
-                      if (index > loaded.items.length) {
+                      if (row >= loaded.items.length) {
                         return _OlderHidden(
                           limit: NotificationInboxCubit.pageLimit,
                         );
                       }
-                      final item = loaded.items[index - 1];
+                      final item = loaded.items[row];
                       return _NotificationRow(
                         item: item,
                         marking: loaded.markingId == item.id,

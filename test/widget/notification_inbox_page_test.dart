@@ -176,6 +176,31 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a full page says that older notifications are hidden', (
+    tester,
+  ) async {
+    final harness = _Harness(
+      rows: [
+        for (var index = 0; index < 50; index++)
+          _notification(id: 'notification-$index'),
+      ],
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.settle();
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('older ones'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.textContaining('older ones are not available'),
+      300,
+    );
+    expect(
+      find.textContaining('Only the latest 50 notifications'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('marks one row read and says so', (tester) async {
     final harness = _Harness(
       rows: [
