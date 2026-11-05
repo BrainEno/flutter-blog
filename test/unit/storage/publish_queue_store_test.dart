@@ -460,7 +460,7 @@ void main() {
     expect(version.read<int>('user_version'), 9);
   });
 
-  test('a pre-v8 database gains the queue already carrying cover_url', () async {
+  test('a pre-v8 database gains the queue with cover_url', () async {
     // The v8 step creates the table in its current shape, so the v9 step must
     // not try to add the column a second time.
     final file = File('${covers.path}/legacy-v7.sqlite');
