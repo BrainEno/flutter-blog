@@ -433,5 +433,51 @@
   },
   "publishQueueResumeEditing": "继续编辑",
   "publishQueueEditEntry": "编辑已发布文章",
-  "publishQueueResumedNotice": "已载入队列中的内容；这次发布成功后，原条目会被移除。"
+  "publishQueueResumedNotice": "已载入队列中的内容；这次发布成功后，原条目会被移除。",
+  "messagesTitle": "私信",
+  "messagesMenuHint": "读者发来的私信",
+  "messagesEmptyTitle": "还没有私信",
+  "messagesEmptyBody": "在作者主页点「发私信」即可开始一次会话。应用不推送私信，打开页面读取最新状态。",
+  "messagesThreadTitle": "会话",
+  "messagesMissing": "会话不存在，或你不属于这个会话。",
+  "messagesUnreadCount": "{count} 条未读",
+  "@messagesUnreadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesMarkRead": "标为已读",
+  "messagesMarkReadHint": "服务端会把本会话截至此刻收到的消息全部标为已读，包括还没加载出来的部分。",
+  "messagesMarkedRead": "已标为已读",
+  "messagesLoadOlder": "加载更早的消息",
+  "messagesComposerHint": "写一条私信",
+  "messagesDraftKept": "草稿已保留，可以直接重试。",
+  "messagesThreadEmpty": "这个会话还没有消息。",
+  "messagesStart": "发私信",
+  "messagesStartTitle": "和 {name} 开始私信",
+  "@messagesStartTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "messagesStarting": "正在创建会话…",
+  "messagesUnknownParticipant": "未知读者",
+  "messagesYou": "你",
+  "messagesInboxCapped": "最多显示最近 {limit} 个会话。",
+  "@messagesInboxCapped": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesSendEmpty": "先写点什么再发送。",
+  "messagesInvalid": "会话内容不符合要求：消息不能为空，最多 20000 字。",
+  "messagesForbidden": "你没有权限查看这个会话。",
+  "messagesUnavailable": "此服务器暂不提供私信。请稍后重试或检查服务器版本。",
+  "notificationsOpenConversation": "打开会话"
 }

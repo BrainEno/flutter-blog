@@ -79,6 +79,12 @@ import 'package:belog/features/blog/presentation/blocs/publish_queue/publish_que
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
+import 'package:belog/features/messages/data/repositories/message_repository_impl.dart';
+import 'package:belog/features/messages/data/services/author_message_participant_names.dart';
+import 'package:belog/features/messages/domain/repositories/message_repository.dart';
+import 'package:belog/features/messages/domain/services/message_participant_names.dart';
+import 'package:belog/features/messages/presentation/bloc/message_inbox_cubit.dart';
+import 'package:belog/features/messages/presentation/bloc/message_thread_cubit_factory.dart';
 import 'package:belog/features/notifications/data/repositories/notification_repository_impl.dart';
 import 'package:belog/features/notifications/domain/repositories/notification_repository.dart';
 import 'package:belog/features/notifications/presentation/bloc/notification_badge_cubit.dart';
@@ -553,6 +559,30 @@ void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {
       () => NotificationBadgeCubit(
         repository: serviceLocator<NotificationRepository>(),
         identity: sessionManager,
+      ),
+    )
+    // Private conversations (#198 follow-up): read on open, never polled.
+    ..registerFactory<MessageRepository>(() => MessageRepositoryImpl(apiClient))
+    // Conversation ids are the only identities the API sends, so names come
+    // from the public author profile - bounded per screen, cached across
+    // sessions because they are public data either way.
+    ..registerLazySingleton<MessageParticipantNames>(
+      () => AuthorMessageParticipantNames(serviceLocator<AuthorRepository>()),
+    )
+    ..registerFactory(
+      () => MessageInboxCubit(
+        repository: serviceLocator<MessageRepository>(),
+        identity: sessionManager,
+        names: serviceLocator<MessageParticipantNames>(),
+      ),
+    )
+    // A conversation id comes from the route, so the container registers how
+    // to build a thread rather than one thread.
+    ..registerFactory(
+      () => MessageThreadCubitFactory(
+        repository: serviceLocator<MessageRepository>(),
+        identity: sessionManager,
+        names: serviceLocator<MessageParticipantNames>(),
       ),
     )
     // Usecases

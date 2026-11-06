@@ -135,10 +135,17 @@ class _NotificationInboxView extends StatelessWidget {
                         );
                       }
                       final item = loaded.items[row];
+                      final conversationId = item.conversationId;
                       return _NotificationRow(
                         item: item,
                         marking: loaded.markingId == item.id,
                         onMarkRead: () => _markRead(context, item.id),
+                        onOpenConversation: conversationId == null
+                            ? null
+                            : () => context.push(
+                                '/profile/messages/'
+                                '${Uri.encodeComponent(conversationId)}',
+                              ),
                       );
                     },
                   ),
@@ -190,11 +197,15 @@ class _NotificationRow extends StatelessWidget {
     required this.item,
     required this.marking,
     required this.onMarkRead,
+    this.onOpenConversation,
   });
 
   final AppNotification item;
   final bool marking;
   final VoidCallback onMarkRead;
+
+  /// Set when this notification points at a conversation the app can open.
+  final VoidCallback? onOpenConversation;
 
   IconData get _icon => switch (item.kind) {
     AppNotificationKind.articleDeleted => Icons.delete_outline,
@@ -250,6 +261,11 @@ class _NotificationRow extends StatelessWidget {
               ],
             ),
           ),
+          if (onOpenConversation != null)
+            TextButton(
+              onPressed: onOpenConversation,
+              child: Text(context.l10n.notificationsOpenConversation),
+            ),
           if (!item.isRead)
             TextButton(
               onPressed: marking ? null : onMarkRead,

@@ -179,6 +179,12 @@ class _ProfileView extends StatelessWidget {
                           ),
                         ),
                         NoWaveActionRow(
+                          icon: Icons.mail_outline,
+                          label: l10n.messagesTitle,
+                          description: l10n.messagesMenuHint,
+                          onTap: () => context.push('/profile/messages'),
+                        ),
+                        NoWaveActionRow(
                           icon: Icons.cloud_upload_outlined,
                           label: l10n.publishQueueTitle,
                           description: l10n.publishQueueMenuHint,

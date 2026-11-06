@@ -22,6 +22,8 @@ import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upl
 import 'package:belog/features/blog/presentation/pages/blog_editor_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
+import 'package:belog/features/messages/presentation/pages/message_inbox_page.dart';
+import 'package:belog/features/messages/presentation/pages/message_thread_page.dart';
 import 'package:belog/features/user/presentation/pages/author_page.dart';
 import 'package:belog/features/user/presentation/pages/author_relationships_page.dart';
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
@@ -294,6 +296,24 @@ GoRouter createAppRouter({
                   GoRoute(
                     path: 'notifications',
                     builder: (context, state) => const NotificationInboxPage(),
+                  ),
+                  // Private conversations. `?to=<userId>` comes from an
+                  // author page's "发私信": the inbox opens the conversation
+                  // that already exists with that person, or offers to create
+                  // one, instead of creating a duplicate.
+                  GoRoute(
+                    path: 'messages',
+                    builder: (context, state) => MessageInboxPage(
+                      startWith: state.uri.queryParameters['to'],
+                    ),
+                    routes: [
+                      GoRoute(
+                        path: ':id',
+                        builder: (context, state) => MessageThreadPage(
+                          conversationId: state.pathParameters['id']!,
+                        ),
+                      ),
+                    ],
                   ),
                   GoRoute(
                     path: 'history',
