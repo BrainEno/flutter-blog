@@ -6,6 +6,8 @@ import 'package:belog/core/common/widgets/no_wave_action_row.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:belog/features/auth/presentation/pages/change_password_page.dart';
 import 'package:belog/core/theme/app_theme_mode.dart';
@@ -58,6 +60,9 @@ import 'package:belog/features/blog/presentation/pages/user_blogs_page.dart';
 import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_grid_item.dart';
+import 'package:belog/features/notifications/domain/entities/app_notification.dart';
+import 'package:belog/features/notifications/domain/repositories/notification_repository.dart';
+import 'package:belog/features/notifications/presentation/bloc/notification_badge_cubit.dart';
 import 'package:belog/features/user/data/datasources/author_remote_data_source.dart';
 import 'package:belog/features/user/data/models/author_profile_model.dart';
 import 'package:belog/features/user/data/repositories/author_repository_impl.dart';
@@ -96,6 +101,47 @@ class MockAuthorRemote extends Mock implements AuthorRemoteDataSource {}
 
 class MockAuthorRelationships extends Mock
     implements AuthorRelationshipRepository {}
+
+/// The badge on the profile menu is page state; routing tests never sign in
+/// through it, so it starts and stays empty instead of mocking the count
+/// endpoint per test. The badge itself is covered by profile_page_test.
+class SignedOutBadgeIdentity implements NowaveSessionIdentity {
+  @override
+  String? get activeUserId => null;
+
+  @override
+  String? get accessToken => null;
+
+  @override
+  int get sessionGeneration => 0;
+
+  @override
+  Stream<void> get identityChanges => const Stream<void>.empty();
+}
+
+class SilentNotifications implements NotificationRepository {
+  @override
+  Future<Either<Failure, int>> unreadCount({
+    required NowaveSessionFence fence,
+  }) async => right(0);
+
+  @override
+  Future<Either<Failure, List<AppNotification>>> list({
+    required NowaveSessionFence fence,
+    int limit = 50,
+  }) async => right(const []);
+
+  @override
+  Future<Either<Failure, AppNotification>> markRead(
+    String id, {
+    required NowaveSessionFence fence,
+  }) async => throw UnimplementedError('the profile menu never marks a row');
+
+  @override
+  Future<Either<Failure, int>> markAllRead({
+    required NowaveSessionFence fence,
+  }) async => throw UnimplementedError('the profile menu never marks rows');
+}
 
 class MemoryThemeStore implements ThemePreferenceStore {
   AppThemeMode mode = AppThemeMode.system;
@@ -246,7 +292,13 @@ class Harness {
       ..registerFactory(() => GetAuthorProfile(authorRepository))
       ..registerFactory(() => FollowAuthor(authorRepository))
       ..registerFactory(() => UnfollowAuthor(authorRepository))
-      ..registerFactory(() => GetAuthorRelationships(relationships));
+      ..registerFactory(() => GetAuthorRelationships(relationships))
+      ..registerFactory(
+        () => NotificationBadgeCubit(
+          repository: SilentNotifications(),
+          identity: SignedOutBadgeIdentity(),
+        ),
+      );
 
     themeBloc = ThemeBloc(MemoryThemeStore());
     appUserCubit = AppUserCubit();

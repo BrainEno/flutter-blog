@@ -81,6 +81,7 @@ import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_art
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/features/notifications/data/repositories/notification_repository_impl.dart';
 import 'package:belog/features/notifications/domain/repositories/notification_repository.dart';
+import 'package:belog/features/notifications/presentation/bloc/notification_badge_cubit.dart';
 import 'package:belog/features/notifications/presentation/bloc/notification_inbox_cubit.dart';
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/data/datasources/author_relationship_remote_data_source.dart';
@@ -543,6 +544,13 @@ void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {
     )
     ..registerFactory(
       () => NotificationInboxCubit(
+        repository: serviceLocator<NotificationRepository>(),
+        identity: sessionManager,
+      ),
+    )
+    // The profile menu badge: one number, read when the screen opens.
+    ..registerFactory(
+      () => NotificationBadgeCubit(
         repository: serviceLocator<NotificationRepository>(),
         identity: sessionManager,
       ),

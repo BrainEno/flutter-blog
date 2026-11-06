@@ -10,12 +10,17 @@ class NoWaveActionRow extends StatelessWidget {
     required this.icon,
     required this.onTap,
     this.description,
+    this.trailing,
   });
 
   final String label;
   final String? description;
   final IconData icon;
   final VoidCallback onTap;
+
+  /// Shown between the label block and the chevron, for a count or a state the
+  /// row itself does not describe (an unread notification badge, say).
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +62,10 @@ class NoWaveActionRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
+              if (trailing != null) ...[
+                trailing!,
+                const SizedBox(width: 12),
+              ],
               const ExcludeSemantics(
                 child: Icon(Icons.arrow_forward, size: 20),
               ),
