@@ -1,8 +1,8 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
 import 'package:belog/core/design/components/no_wave_notice.dart';
 import 'package:belog/core/design/design_tokens.dart';
-import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/l10n/edition_l10n.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -206,11 +206,14 @@ class _UserBlogsPageState extends State<UserBlogsPage>
     }
     final hasDrafts = blogs.any((blog) => blog.isDraft);
     final editionsConfirmed = editions?.isConfirmed ?? false;
-    final editionHint = editions == null
-        ? null
-        : editionsConfirmed
-        ? l10n.myArticlesEditionsHint
-        : l10n.myArticlesEditionsUnavailable;
+    final String? editionHint;
+    if (editions == null) {
+      editionHint = null;
+    } else if (editionsConfirmed) {
+      editionHint = l10n.myArticlesEditionsHint;
+    } else {
+      editionHint = l10n.myArticlesEditionsUnavailable;
+    }
     return RefreshIndicator(
       onRefresh: () async {
         _fetchUserBlogs();

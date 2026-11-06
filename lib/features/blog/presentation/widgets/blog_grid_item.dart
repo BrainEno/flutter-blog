@@ -22,14 +22,15 @@ SliverGridDelegateWithFixedCrossAxisCount blogGridDelegate(
   final bodyScale = scaler.scale(14) / 14;
   final titleScale = scaler.scale(19) / 19;
   final scale = bodyScale > titleScale ? bodyScale : titleScale;
+  // Cover at its token aspect ratio, plus room for title and metadata that
+  // grows with the reader's text size instead of clipping.
+  final coverHeight = tileWidth / NoWaveSizes.coverAspect;
+  final textHeight = 180 * (scale < 1 ? 1 : scale);
   return SliverGridDelegateWithFixedCrossAxisCount(
     crossAxisCount: columns,
     crossAxisSpacing: gap,
     mainAxisSpacing: gap,
-    // Cover at its token aspect ratio, plus room for title and metadata that
-    // grows with the reader's text size instead of clipping.
-    mainAxisExtent:
-        tileWidth / NoWaveSizes.coverAspect + 180 * (scale < 1 ? 1 : scale),
+    mainAxisExtent: coverHeight + textHeight,
   );
 }
 
