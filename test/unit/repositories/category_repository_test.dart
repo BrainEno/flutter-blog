@@ -44,11 +44,22 @@ Map<String, dynamic> _article(String slug) => {
   ],
 };
 
-http.Response _data(Object? value, {int status = 200}) =>
-    http.Response(jsonEncode({'data': value}), status);
+/// A response for a JSON payload.
+///
+/// The charset matters: `http.Response` encodes a `String` body with the
+/// charset from `content-type`, which defaults to latin1 - and every category
+/// name in these fixtures is Chinese.
+http.Response _data(Object? value, {int status = 200}) => http.Response(
+  jsonEncode({'data': value}),
+  status,
+  headers: {'content-type': 'application/json; charset=utf-8'},
+);
 
-http.Response _error(int status) =>
-    http.Response('{"error":{"code":"SOMETHING"}}', status);
+http.Response _error(int status) => http.Response(
+  '{"error":{"code":"SOMETHING"}}',
+  status,
+  headers: {'content-type': 'application/json; charset=utf-8'},
+);
 
 CategoryRemoteDataSource _remote(MockClient client, {ContentLocale? locale}) =>
     CategoryRemoteDataSourceImpl(
