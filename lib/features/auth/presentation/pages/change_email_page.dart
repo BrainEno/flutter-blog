@@ -9,6 +9,7 @@ import 'package:belog/features/auth/domain/password_rules.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:belog/features/auth/presentation/password_validation_l10n.dart';
 import 'package:belog/l10n/app_localizations.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fpdart/fpdart.dart' show Either, left;
@@ -309,13 +310,11 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
                             ),
                             const SizedBox(height: 16),
                           ],
-                          FilledButton(
+                          NoWaveButton(
+                            label: _busy
+                                ? l10n.accountEmailUpdating
+                                : l10n.accountEmailAction,
                             onPressed: enabled ? _submit : null,
-                            child: Text(
-                              _busy
-                                  ? l10n.accountEmailUpdating
-                                  : l10n.accountEmailAction,
-                            ),
                           ),
                         ],
                       ),

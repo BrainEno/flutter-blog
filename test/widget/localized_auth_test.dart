@@ -1,5 +1,6 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
 import 'package:belog/features/auth/domain/usecases/current_user.dart';
@@ -70,7 +71,7 @@ void main() {
       '  exact password  ',
     );
     final l10n = lookupAppLocalizations(const Locale('en'));
-    final button = find.widgetWithText(ElevatedButton, l10n.loginTitle);
+    final button = find.widgetWithText(NoWaveButton, l10n.loginTitle);
     await tester.ensureVisible(button);
     await tester.tap(button);
     await tester.pumpAndSettle();
@@ -128,7 +129,7 @@ void main() {
       await tester.enterText(fields.at(1), ' user@example.invalid ');
       await tester.enterText(fields.at(2), '😀' * 11);
       final l10n = lookupAppLocalizations(const Locale('en'));
-      final button = find.widgetWithText(ElevatedButton, l10n.submit);
+      final button = find.widgetWithText(NoWaveButton, l10n.submit);
       await tester.ensureVisible(button);
       await tester.tap(button);
       await tester.pump();
@@ -226,7 +227,7 @@ void main() {
             find.bySemanticsLabel(RegExp(l10n.fieldPassword)),
             findsWidgets,
           );
-          final signIn = find.widgetWithText(ElevatedButton, l10n.loginTitle);
+          final signIn = find.widgetWithText(NoWaveButton, l10n.loginTitle);
           await tester.ensureVisible(signIn);
           await tester.tap(signIn);
           await tester.pumpAndSettle();

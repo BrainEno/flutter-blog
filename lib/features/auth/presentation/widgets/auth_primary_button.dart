@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 
 /// Authentication action using the shared, accessible no-wave button theme.
@@ -13,10 +14,10 @@ class AuthPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
+    return NoWaveButton(
+      label: buttonText,
       onPressed: onPressed,
-      style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-      child: Text(buttonText),
+      expand: true,
     );
   }
 }

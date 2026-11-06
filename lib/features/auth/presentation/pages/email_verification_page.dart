@@ -9,6 +9,7 @@ import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/auth/domain/email_verification.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:belog/l10n/app_localizations.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -252,13 +253,11 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                         ],
                         ..._statusSection(context, l10n),
                         const SizedBox(height: 24),
-                        FilledButton(
+                        NoWaveButton(
+                          label: _sending
+                              ? l10n.emailVerifySending
+                              : l10n.emailVerifySend,
                           onPressed: enabled && _canSend ? _send : null,
-                          child: Text(
-                            _sending
-                                ? l10n.emailVerifySending
-                                : l10n.emailVerifySend,
-                          ),
                         ),
                         if (_request != null) ...[
                           const SizedBox(height: 12),
@@ -303,15 +302,14 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        OutlinedButton(
+                        NoWaveButton(
+                          label: _confirming
+                              ? l10n.emailVerifyTokenConfirming
+                              : l10n.emailVerifyTokenConfirm,
+                          variant: NoWaveButtonVariant.secondary,
                           onPressed: enabled && _status?.isVerified != true
                               ? _confirm
                               : null,
-                          child: Text(
-                            _confirming
-                                ? l10n.emailVerifyTokenConfirming
-                                : l10n.emailVerifyTokenConfirm,
-                          ),
                         ),
                         if (_confirmed) ...[
                           const SizedBox(height: 12),

@@ -8,6 +8,7 @@ import 'package:belog/core/utils/avatar_url.dart';
 import 'package:belog/core/utils/pick_image.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
@@ -280,24 +281,10 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                     semanticsLabel: context.l10n.loading,
                   )
                 else
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _submit,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: Text(
-                        context.l10n.actionSaveChanges,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                  NoWaveButton(
+                    label: context.l10n.actionSaveChanges,
+                    onPressed: _submit,
+                    expand: true,
                   ),
               ],
             ),
