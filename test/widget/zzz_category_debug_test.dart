@@ -22,6 +22,8 @@ Map<String, dynamic> _row({String slug = 'essay-1a2b'}) => {
 http.Response _data(Object? value) =>
     http.Response(jsonEncode({'data': value}), 200);
 
+final messages = <String>[];
+
 void main() {
   Future<void> probe(String label, Object? payload) async {
     final client = MockClient((_) async => _data(payload));
@@ -35,10 +37,9 @@ void main() {
       connectionChecker: connection,
     );
     final result = await repository.listCategories();
-    print(
-      'PROBE $label right=${result.getRight().toNullable()} '
-      'code=${result.getLeft().toNullable()?.code} '
-      'cause=${result.getLeft().toNullable()?.cause}',
+    final failure = result.getLeft().toNullable();
+    messages.add(
+      '[$label] code=${failure?.code} cause=${failure?.cause}',
     );
   }
 
@@ -47,5 +48,6 @@ void main() {
     await probe('empty-slug', [_row(slug: '')]);
     await probe('not-list', {'categories': []});
     await probe('ints', [1, 2, 3]);
+    fail(messages.join(' ||| '));
   });
 }
