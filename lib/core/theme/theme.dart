@@ -202,6 +202,104 @@ abstract final class AppTheme {
         side: BorderSide(color: foreground, width: NoWaveStroke.hairline),
         shape: square,
       ),
+      // The containers below are not all used by a screen today; they are
+      // pinned here so the first screen that reaches for a sheet, a card, a
+      // list tile or a segmented control does not reintroduce M3's rounded,
+      // elevated, tinted defaults next to the editorial surfaces.
+      cardTheme: CardThemeData(
+        color: surface,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+        elevation: 0,
+        shape: square,
+      ),
+      listTileTheme: ListTileThemeData(
+        textColor: foreground,
+        iconColor: muted,
+        tileColor: Colors.transparent,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: NoWaveSpacing.medium,
+        ),
+        shape: square,
+        minTileHeight: NoWaveSizes.row,
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: background,
+        modalBackgroundColor: background,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        modalElevation: 0,
+        shape: square,
+        dragHandleColor: muted,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: dark ? AppPalette.paper : AppPalette.ink,
+        contentTextStyle: TextStyle(
+          color: dark ? AppPalette.ink : AppPalette.paper,
+          fontFamily: 'InterTight',
+        ),
+        actionTextColor: dark ? AppPalette.oxblood : AppPalette.orange,
+        elevation: 0,
+        shape: square,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith<Color?>(
+          (states) => states.contains(WidgetState.selected)
+              ? colorScheme.onPrimary
+              : muted,
+        ),
+        trackColor: WidgetStateProperty.resolveWith<Color?>(
+          (states) => states.contains(WidgetState.selected)
+              ? colorScheme.primary
+              : Colors.transparent,
+        ),
+        trackOutlineColor: WidgetStatePropertyAll<Color?>(muted),
+        materialTapTargetSize: MaterialTapTargetSize.padded,
+      ),
+      checkboxTheme: CheckboxThemeData(
+        shape: square,
+        // Unchecked boxes are an outline, checked ones are a filled accent
+        // square: the same rule the buttons follow.
+        side: WidgetStateProperty.resolveWith<BorderSide?>(
+          (states) => BorderSide(
+            color: states.contains(WidgetState.selected)
+                ? colorScheme.primary
+                : muted,
+            width: NoWaveStroke.hairline,
+          ),
+        ),
+        fillColor: WidgetStateProperty.resolveWith<Color?>(
+          (states) => states.contains(WidgetState.selected)
+              ? colorScheme.primary
+              : Colors.transparent,
+        ),
+        checkColor: WidgetStatePropertyAll<Color?>(colorScheme.onPrimary),
+        materialTapTargetSize: MaterialTapTargetSize.padded,
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith<Color?>(
+            (states) => states.contains(WidgetState.selected)
+                ? colorScheme.primary
+                : Colors.transparent,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith<Color?>(
+            (states) => states.contains(WidgetState.selected)
+                ? colorScheme.onPrimary
+                : foreground,
+          ),
+          side: WidgetStatePropertyAll<BorderSide?>(
+            BorderSide(color: muted, width: NoWaveStroke.hairline),
+          ),
+          shape: const WidgetStatePropertyAll<OutlinedBorder?>(square),
+          minimumSize: const WidgetStatePropertyAll<Size?>(
+            Size(NoWaveSizes.tapTarget, NoWaveSizes.tapTarget),
+          ),
+          textStyle: const WidgetStatePropertyAll<TextStyle?>(
+            TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
     );
   }
 }
