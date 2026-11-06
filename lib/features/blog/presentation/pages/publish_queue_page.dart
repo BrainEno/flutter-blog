@@ -193,9 +193,10 @@ class _QueueEntryCard extends StatelessWidget {
     }
   }
 
-  /// Opens the editor with this entry's text and cover. The editor deletes the
-  /// entry once the new attempt publishes or is queued again, so this screen
-  /// reloads on return instead of assuming either outcome.
+  /// Opens the editor with this entry's text and cover. An edit entry opens it
+  /// in update mode for the article it targets. The editor deletes the entry
+  /// once the new attempt is sent or is queued again, so this screen reloads on
+  /// return instead of assuming either outcome.
   Future<void> _resumeEditing(BuildContext context) async {
     await context.push<bool>('/profile/editor', extra: entry);
     if (!context.mounted) return;
@@ -234,6 +235,13 @@ class _QueueEntryCard extends StatelessWidget {
                 _StatusChip(label: _statusLabel(context), entry: entry),
               ],
             ),
+            if (entry.kind == PublishQueueKind.edit) ...[
+              const SizedBox(height: 4),
+              Text(
+                context.l10n.publishQueueEditEntry,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
             if (entry.attempts > 0) ...[
               const SizedBox(height: 8),
               Text(

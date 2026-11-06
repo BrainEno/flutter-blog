@@ -490,4 +490,158 @@ void main() {
       ),
     ).called(1);
   });
+
+  Future<PublishQueueEntry> enqueueEdit({
+    String key = 'key-edit',
+    String targetId = 'my-slug',
+    bool withCover = false,
+  }) {
+    return store.enqueue(
+      userId: 'alice',
+      title: 'edited title',
+      content: 'edited body',
+      tags: const ['tag'],
+      idempotencyKey: key,
+      kind: PublishQueueKind.edit,
+      targetId: targetId,
+      cover: withCover
+          ? ImageUpload(bytes: Uint8List.fromList(const [4, 5, 6]))
+          : null,
+    );
+  }
+
+  test('an edit entry updates its article instead of creating one', () async {
+    await enqueueEdit();
+    when(
+      () => repository.editBlog(
+        blogId: any(named: 'blogId'),
+        title: any(named: 'title'),
+        content: any(named: 'content'),
+        tags: any(named: 'tags'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+        sessionFence: any(named: 'sessionFence'),
+      ),
+    ).thenAnswer((_) async => right(_blog('edited title')));
+
+    expect(await runner.drain(), 1);
+
+    verify(
+      () => repository.editBlog(
+        blogId: 'my-slug',
+        title: 'edited title',
+        content: 'edited body',
+        tags: any(named: 'tags'),
+        uploadedCoverUrl: null,
+        sessionFence: any(named: 'sessionFence'),
+      ),
+    ).called(1);
+    verifyNever(
+      () => repository.uploadBlog(
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+        title: any(named: 'title'),
+        content: any(named: 'content'),
+        posterId: any(named: 'posterId'),
+        tags: any(named: 'tags'),
+        sessionFence: any(named: 'sessionFence'),
+        idempotencyKey: any(named: 'idempotencyKey'),
+      ),
+    );
+    expect(await store.entries(userId: 'alice'), isEmpty);
+  });
+
+  test('a failed edit is retried without publishing an article', () async {
+    await enqueueEdit();
+    when(
+      () => repository.editBlog(
+        blogId: any(named: 'blogId'),
+        title: any(named: 'title'),
+        content: any(named: 'content'),
+        tags: any(named: 'tags'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+        sessionFence: any(named: 'sessionFence'),
+      ),
+    ).thenAnswer((_) async => left(Failure.networkOffline()));
+
+    expect(await runner.drain(), 0);
+
+    final stored = (await store.entries(userId: 'alice')).single;
+    expect(stored.status, PublishQueueStatus.queued);
+    expect(stored.attempts, 1);
+    expect(stored.kind, PublishQueueKind.edit);
+    expect(stored.targetId, 'my-slug');
+  });
+
+  test('an edit uploads its new cover once and reuses it', () async {
+    await enqueueEdit(withCover: true);
+    when(
+      () => repository.uploadCover(
+        image: any(named: 'image'),
+        sessionFence: any(named: 'sessionFence'),
+      ),
+    ).thenAnswer((_) async => right(_kCoverUrl));
+    var updates = 0;
+    when(
+      () => repository.editBlog(
+        blogId: any(named: 'blogId'),
+        title: any(named: 'title'),
+        content: any(named: 'content'),
+        tags: any(named: 'tags'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+        sessionFence: any(named: 'sessionFence'),
+      ),
+    ).thenAnswer((_) async {
+      updates++;
+      return updates == 1
+          ? left(Failure.networkOffline())
+          : right(_blog('edited title'));
+    });
+
+    expect(await runner.drain(), 0);
+    expect((await store.entries(userId: 'alice')).single.coverUrl, _kCoverUrl);
+
+    const rearm = 'UPDATE publish_queue SET next_attempt_at = NULL';
+    await db.customStatement(rearm);
+    expect(await runner.drain(), 1);
+
+    verify(
+      () => repository.uploadCover(
+        image: any(named: 'image'),
+        sessionFence: any(named: 'sessionFence'),
+      ),
+    ).called(1);
+    verify(
+      () => repository.editBlog(
+        blogId: 'my-slug',
+        title: any(named: 'title'),
+        content: any(named: 'content'),
+        tags: any(named: 'tags'),
+        uploadedCoverUrl: _kCoverUrl,
+        sessionFence: any(named: 'sessionFence'),
+      ),
+    ).called(2);
+  });
+
+  test('an edit with no target stops for a human', () async {
+    // Enqueued through the store this cannot happen; the runner still refuses
+    // to guess rather than publishing a stray article.
+    final entry = await enqueueEdit();
+    await db.customStatement('UPDATE publish_queue SET target_id = NULL');
+    expect(entry.targetId, 'my-slug');
+
+    expect(await runner.drain(), 0);
+
+    final stored = (await store.entries(userId: 'alice')).single;
+    expect(stored.status, PublishQueueStatus.failed);
+    expect(stored.lastErrorCode, 'publish_queue.missing_target');
+    verifyNever(
+      () => repository.editBlog(
+        blogId: any(named: 'blogId'),
+        title: any(named: 'title'),
+        content: any(named: 'content'),
+        tags: any(named: 'tags'),
+        uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+        sessionFence: any(named: 'sessionFence'),
+      ),
+    );
+  });
 }

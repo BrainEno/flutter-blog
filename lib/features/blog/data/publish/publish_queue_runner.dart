@@ -4,10 +4,12 @@ import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/core/utils/app_logger.dart';
+import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
+import 'package:fpdart/fpdart.dart';
 
 /// Sends queued publishes, one at a time, for the account that is signed in
 /// right now (issue #23).
@@ -22,9 +24,11 @@ import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart
 /// - **One send at a time.** The store claims an entry before it is sent, so two
 ///   drains cannot publish the same entry, and a crash mid-send leaves a row
 ///   that the next launch repairs.
-/// - **Never silently twice.** Every attempt carries the entry's
-///   `Idempotency-Key`, so a retry after a lost response replays the article
-///   the server already created instead of publishing a second copy.
+/// - **Never silently twice.** A new article's every attempt carries the
+///   entry's `Idempotency-Key`, so a retry after a lost response replays the
+///   article the server already created instead of publishing a second copy.
+///   An edit needs no key of its own: it addresses one article id, so replaying
+///   it rewrites that article instead of creating another.
 /// - **One cover upload.** Media assets are immutable, so the URL an attempt
 ///   uploaded the cover to is written back to the entry before the article is
 ///   created: a retry (or a crash between the two steps) reuses that URL and
@@ -95,6 +99,21 @@ class PublishQueueRunner implements PublishQueueDrainer {
       generation: identity.sessionGeneration,
     );
 
+    final targetId = entry.targetId;
+    if (entry.kind == PublishQueueKind.edit && (targetId ?? '').isEmpty) {
+      // Nothing to update, and no retry can invent the article. Stop and let a
+      // human decide instead of spending the retry budget.
+      await _fail(
+        entry,
+        const Failure(
+          '这条队列缺少要更新的文章',
+          kind: FailureKind.validation,
+          code: 'publish_queue.missing_target',
+        ),
+      );
+      return false;
+    }
+
     // An earlier attempt may already have uploaded the cover. Reuse that asset
     // instead of sending the same bytes again (see [_uploadCover]).
     var coverUrl = entry.coverUrl;
@@ -105,15 +124,27 @@ class PublishQueueRunner implements PublishQueueDrainer {
     }
 
     try {
-      final result = await repository.uploadBlog(
-        uploadedCoverUrl: coverUrl,
-        title: entry.title,
-        content: entry.content,
-        posterId: entry.userId,
-        tags: entry.tags,
-        idempotencyKey: entry.idempotencyKey,
-        sessionFence: fence,
-      );
+      final Either<Failure, Blog> result;
+      if (entry.kind == PublishQueueKind.edit) {
+        result = await repository.editBlog(
+          blogId: targetId!,
+          title: entry.title,
+          content: entry.content,
+          tags: entry.tags,
+          uploadedCoverUrl: coverUrl,
+          sessionFence: fence,
+        );
+      } else {
+        result = await repository.uploadBlog(
+          uploadedCoverUrl: coverUrl,
+          title: entry.title,
+          content: entry.content,
+          posterId: entry.userId,
+          tags: entry.tags,
+          idempotencyKey: entry.idempotencyKey,
+          sessionFence: fence,
+        );
+      }
       final failure = result.fold<Failure?>((error) => error, (_) => null);
       if (failure == null) {
         await store.complete(entry.id);

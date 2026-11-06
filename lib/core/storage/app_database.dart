@@ -15,7 +15,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -124,6 +124,26 @@ class AppDatabase extends GeneratedDatabase {
           );
         }
       }
+      if (from < 10) {
+        // v10 lets the queue carry edits of published articles, not just new
+        // ones: `kind` says which, `target_id` is the article an edit updates.
+        // Existing rows are creates, which is what they were.
+        if (!await _tableExists('publish_queue')) {
+          await _createPublishQueue();
+        } else {
+          if (!await _columnExists('publish_queue', 'kind')) {
+            await customStatement(
+              "ALTER TABLE publish_queue ADD COLUMN kind TEXT NOT NULL "
+              "DEFAULT 'create'",
+            );
+          }
+          if (!await _columnExists('publish_queue', 'target_id')) {
+            await customStatement(
+              'ALTER TABLE publish_queue ADD COLUMN target_id TEXT',
+            );
+          }
+        }
+      }
     },
   );
 
@@ -167,13 +187,17 @@ class AppDatabase extends GeneratedDatabase {
   /// a file name inside the app's own `publish_queue/` directory, never the
   /// picker's temporary path; `cover_url` is where an earlier attempt uploaded
   /// those bytes, so a retry reuses the asset instead of uploading it again.
+  /// `kind` separates a new article from an edit of an existing one, whose
+  /// public id is `target_id`.
   Future<void> _createPublishQueue() async {
     await customStatement(
       'CREATE TABLE publish_queue ('
       'id TEXT PRIMARY KEY, backend TEXT NOT NULL, user_id TEXT NOT NULL, '
       'idempotency_key TEXT NOT NULL, title TEXT NOT NULL, '
       'content TEXT NOT NULL, tags TEXT NOT NULL, cover_file TEXT, '
-      'cover_mime TEXT, cover_url TEXT, state TEXT NOT NULL, '
+      'cover_mime TEXT, cover_url TEXT, '
+      "kind TEXT NOT NULL DEFAULT 'create', target_id TEXT, "
+      'state TEXT NOT NULL, '
       'attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at INTEGER, '
       'last_error_code TEXT, '
       'created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',

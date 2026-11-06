@@ -87,12 +87,17 @@ abstract interface class BlogRepository {
   /// feed, where a draft must not appear. The read is scoped to [userId].
   Future<Either<Failure, List<Blog>>> getMyArticles({required String userId});
 
+  /// Updates an existing article. The server addresses it by id, so replaying
+  /// an update rewrites the same article instead of creating another one.
+  ///
+  /// Without [image] or [uploadedCoverUrl] the current cover is kept.
   Future<Either<Failure, Blog>> editBlog({
     required String blogId,
     required String title,
     required String content,
     required List<String> tags,
     ImageUpload? image,
+    String? uploadedCoverUrl,
     NowaveSessionFence? sessionFence,
   });
 

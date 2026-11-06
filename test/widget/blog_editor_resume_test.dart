@@ -6,6 +6,7 @@ import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
+import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
@@ -90,6 +91,7 @@ class _RecordingUploadBloc extends Mock implements BlogUploadBloc {
 class _Harness {
   _Harness({
     this.queueEntry,
+    this.blog,
     List<PublishQueueEntry> rows = const [],
     ImageUpload? cover,
   }) : queue = FakePublishQueueStore(rows: rows, storedCover: cover),
@@ -110,6 +112,7 @@ class _Harness {
   }
 
   final PublishQueueEntry? queueEntry;
+  final Blog? blog;
   final FakePublishQueueStore queue;
   final _FakeDraftStore drafts;
   late final _Identity identity;
@@ -130,6 +133,7 @@ class _Harness {
             BlocProvider<AppUserCubit>.value(value: user),
           ],
           child: BlogEditorPage(
+            blog: blog,
             queueEntry: queueEntry,
             draftStore: drafts,
             sessionIdentity: identity,
@@ -148,6 +152,16 @@ class _Harness {
     await states.close();
   }
 }
+
+Blog publishedBlog() => Blog(
+  id: 'my-slug',
+  title: '已发布标题',
+  content: '已发布正文',
+  posterId: 'user',
+  imageUrl: 'https://cdn.example.invalid/old-cover.webp',
+  tags: const ['小说'],
+  updatedAt: DateTime.utc(2026, 10, 1),
+);
 
 String titleText(WidgetTester tester) => tester
     .widget<TextFormField>(find.byType(TextFormField).first)
@@ -256,5 +270,66 @@ void main() {
 
     expect(harness.queue.enqueued, hasLength(1));
     expect(harness.queue.removed, isEmpty);
+  });
+
+  testWidgets('a failed update is queued against the article it edits', (
+    tester,
+  ) async {
+    final harness = _Harness(blog: publishedBlog());
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+
+    await tester.enterText(find.byType(TextFormField).first, '改过的标题');
+    await tester.pump();
+    await tester.tap(find.text('发布'));
+    await tester.pump();
+    expect(harness.bloc.events.single, isA<UpdateBlogEvent>());
+
+    harness.states.add(
+      const BlogUploadFailure(
+        Failure(
+          '无法连接到网络，请检查网络设置',
+          kind: FailureKind.network,
+          code: 'network.unavailable',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(harness.queue.enqueued, hasLength(1));
+    final queued = harness.queue.enqueued.single;
+    expect(queued.kind, PublishQueueKind.edit);
+    expect(queued.targetId, 'my-slug');
+    expect(queued.title, '改过的标题');
+  });
+
+  testWidgets('a queued edit resumes as an update of that article', (
+    tester,
+  ) async {
+    final entry = queueEntry(
+      kind: PublishQueueKind.edit,
+      targetId: 'my-slug',
+      title: '待更新标题',
+      content: '待更新正文',
+    );
+    final harness = _Harness(queueEntry: entry, rows: [entry]);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = lookupAppLocalizations(const Locale('zh'));
+
+    // Update mode, not a new article: publishing must not create a second one.
+    expect(find.text(l10n.editorEditTitle), findsOneWidget);
+    expect(find.text(l10n.editorNewTitle), findsNothing);
+    expect(titleText(tester), '待更新标题');
+
+    await tester.tap(find.text('发布'));
+    await tester.pump();
+    final event = harness.bloc.events.single;
+    expect(event, isA<UpdateBlogEvent>());
+    expect((event as UpdateBlogEvent).blogId, 'my-slug');
+
+    harness.states.add(BlogUploadSuccess());
+    await tester.pumpAndSettle();
+    expect(harness.queue.removed, [entry.id]);
   });
 }
