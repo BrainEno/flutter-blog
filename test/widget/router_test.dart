@@ -8,6 +8,7 @@ import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
+import 'package:belog/features/auth/presentation/pages/change_email_page.dart';
 import 'package:belog/features/auth/presentation/pages/change_password_page.dart';
 import 'package:belog/core/theme/app_theme_mode.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
@@ -983,6 +984,31 @@ void main() {
     harness.appUserCubit.updateUser(sampleUser());
     await tester.pumpAndSettle();
     expect(find.byType(ChangePasswordPage), findsOneWidget);
+    expect(find.byType(LoginPage), findsNothing);
+  });
+
+  testWidgets('e-mail page is protected and restores after sign-in', (
+    tester,
+  ) async {
+    final harness = Harness()
+      ..buildRouter(initialLocation: '/profile/change-email');
+    final session = MockSessionManager();
+    when(() => session.activeUserId).thenReturn('user');
+    when(() => session.accessToken).thenReturn('fixture-token');
+    when(() => session.sessionGeneration).thenReturn(1);
+    GetIt.instance.registerSingleton<NowaveSessionManager>(session);
+    GetIt.instance.registerSingleton<AccountSecurityRepository>(
+      MockAccountSecurity(),
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginPage), findsOneWidget);
+    expect(find.byType(ChangeEmailPage), findsNothing);
+
+    harness.appUserCubit.updateUser(sampleUser());
+    await tester.pumpAndSettle();
+    expect(find.byType(ChangeEmailPage), findsOneWidget);
     expect(find.byType(LoginPage), findsNothing);
   });
 

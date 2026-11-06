@@ -49,6 +49,14 @@ class _Repository implements AccountSecurityRepository {
     ));
     return pending?.future ?? Future.value(result);
   }
+
+  @override
+  Future<Either<Failure, String>> changeEmail({
+    required String expectedUserId,
+    required int expectedSessionGeneration,
+    required String currentPassword,
+    required String newEmail,
+  }) async => throw UnimplementedError('the e-mail form owns this call');
 }
 
 User _user(String id) => User(

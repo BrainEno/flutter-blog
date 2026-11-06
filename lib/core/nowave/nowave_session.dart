@@ -149,6 +149,19 @@ class NowaveSessionManager
     await _persist();
   }
 
+  /// Records the address the account holds after a change.
+  ///
+  /// Unlike [updateUserId] this is not an identity change: the same account
+  /// stays signed in on the same tokens, so no identity listener is notified.
+  /// It is still persisted, because the offline start path reads the address
+  /// from the stored session.
+  Future<void> updateEmail(String email) async {
+    final session = _session;
+    if (session == null || email.isEmpty || session.email == email) return;
+    _session = session.copyWith(email: email);
+    await _persist();
+  }
+
   /// Rotates the refresh token via `POST /auth/refresh`.
   ///
   /// Single-flight per active session: concurrent callers share one
