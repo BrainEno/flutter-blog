@@ -197,7 +197,9 @@ void main() {
     );
 
     expect(find.textContaining('2025'), findsOneWidget);
-    final send = tester.widget<NoWaveButton>(find.byType(NoWaveButton));
+    final send = tester.widget<NoWaveButton>(
+      find.widgetWithText(NoWaveButton, l10n.emailVerifySend),
+    );
     expect(send.onPressed, isNull);
     final field = tester.widget<TextFormField>(find.byType(TextFormField));
     expect(field.enabled, isFalse);
