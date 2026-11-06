@@ -133,9 +133,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
       if (!_matchesSession) _invalidateEditor();
     });
     if (_target != null && !_invalidated) {
-      titleController.text = _target!.title;
-      contentController.text = _target!.content;
-      selectedTags = List.from(_target!.tags);
+      titleController.text = _target.title;
+      contentController.text = _target.content;
+      selectedTags = List.from(_target.tags);
     }
     final resumed = widget.queueEntry;
     if (resumed != null && !_invalidated) {
@@ -281,10 +281,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
   Future<void> loadDraft() async {
     final requestVersion = _draftRequestVersion;
     try {
-      final draft = await _draftStore.load(
-        _target?.id,
-        userId: _draftOwnerId!,
-      );
+      final draft = await _draftStore.load(_target?.id, userId: _draftOwnerId!);
       if (!mounted ||
           !_isCurrentEditor ||
           requestVersion != _draftRequestVersion ||
@@ -298,7 +295,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
       final choice = await showDraftRecoveryDialog(
         context,
         isOlderThanPublished:
-            _target != null && _target!.updatedAt.isAfter(draft.updatedAt),
+            _target != null && _target.updatedAt.isAfter(draft.updatedAt),
         onRouteCreated: (route) => _recoveryRoute = route,
       );
       _recoveryRoute = null;
@@ -554,7 +551,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     } else {
       context.read<BlogUploadBloc>().add(
         UpdateBlogEvent(
-          blogId: _target!.id,
+          blogId: _target.id,
           image: publishImage,
           title: draft.title.trim(),
           content: draft.content.trim(),
