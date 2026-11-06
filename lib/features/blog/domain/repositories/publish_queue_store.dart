@@ -13,6 +13,11 @@ abstract interface class PublishQueueStore {
   /// [cover], when present, is copied into the app's own storage before this
   /// future completes: the caller's bytes usually come from a picker cache
   /// that may be cleaned up while the entry waits.
+  ///
+  /// [kind] and [targetId] say whether this entry creates an article or
+  /// updates one. An [PublishQueueKind.edit] entry must name its article:
+  /// without a target there is nothing to update, so implementations reject it
+  /// the same way they reject a missing account.
   Future<PublishQueueEntry> enqueue({
     required String userId,
     required String title,
@@ -20,6 +25,8 @@ abstract interface class PublishQueueStore {
     required List<String> tags,
     required String idempotencyKey,
     ImageUpload? cover,
+    PublishQueueKind kind = PublishQueueKind.create,
+    String? targetId,
   });
 
   /// Every entry this account queued, oldest first, including failed ones.

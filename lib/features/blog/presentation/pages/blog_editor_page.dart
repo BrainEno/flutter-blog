@@ -36,9 +36,10 @@ import 'package:uuid/uuid.dart';
 /// published, updated or deleted, so the page below can refresh its list.
 ///
 /// A [queueEntry] resumes the text and cover of a *failed* publish that never
-/// reached the server. Editing it here is an ordinary new-article publish (new
-/// idempotency key, because the text changed), and the old entry is deleted
-/// once this one has a successor - published, or queued again.
+/// reached the server. A failed *edit* also resumes in update mode: it names
+/// the article it targets, so the text is written back to that article rather
+/// than published as a second one. Either way the old entry is deleted once
+/// this one has a successor - sent, or queued again.
 class BlogEditorPage extends StatefulWidget {
   final Blog? blog;
   final PublishQueueEntry? queueEntry;
@@ -106,12 +107,21 @@ class _BlogEditorState extends State<BlogEditorPage> {
   /// cleared when this intent is finished - accepted, or handed to the queue.
   String? _publishIdempotencyKey;
 
+  /// The article this editor updates, or null when it creates a new one.
+  ///
+  /// Normally [BlogEditorPage.blog]. A failed *edit* resumed from the queue
+  /// has no complete article to pass, so it is rebuilt from the entry: the id
+  /// is what makes the update address the same article instead of publishing
+  /// a second copy of it.
+  late final Blog? _target;
+
   @override
   void initState() {
     super.initState();
     _draftStore = widget.draftStore ?? GetIt.instance<BlogDraftStore>();
     _userCubit = context.read<AppUserCubit>();
     _session = widget.sessionIdentity ?? GetIt.instance<NowaveSessionManager>();
+    _target = widget.blog ?? _queuedEditTarget();
     final userState = _userCubit.state;
     _draftOwnerId = userState is AppUserLoggedIn ? userState.user.id : null;
     _editorGeneration = _session.sessionGeneration;
@@ -122,16 +132,20 @@ class _BlogEditorState extends State<BlogEditorPage> {
     _userSubscription = _userCubit.stream.listen((_) {
       if (!_matchesSession) _invalidateEditor();
     });
-    if (widget.blog != null && !_invalidated) {
-      titleController.text = widget.blog!.title;
-      contentController.text = widget.blog!.content;
-      selectedTags = List.from(widget.blog!.tags);
+    if (_target != null && !_invalidated) {
+      titleController.text = _target!.title;
+      contentController.text = _target!.content;
+      selectedTags = List.from(_target!.tags);
     }
     final resumed = widget.queueEntry;
-    if (resumed != null && widget.blog == null && !_invalidated) {
-      titleController.text = resumed.title;
-      contentController.text = resumed.content;
-      selectedTags = List.from(resumed.tags);
+    if (resumed != null && !_invalidated) {
+      // A resumed edit already filled the fields through [_target]; a resumed
+      // create has no article behind it, so its text comes from the entry.
+      if (_target == null) {
+        titleController.text = resumed.title;
+        contentController.text = resumed.content;
+        selectedTags = List.from(resumed.tags);
+      }
       unawaited(_loadQueuedCover(resumed));
     }
     // Attached after the initial text is in place, so pre-filling the
@@ -231,7 +245,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
 
   BlogDraft _currentDraft() => BlogDraft(
     userId: _draftOwnerId!,
-    blogId: widget.blog?.id,
+    blogId: _target?.id,
     title: titleController.text,
     content: contentController.text,
     tags: List.of(selectedTags),
@@ -268,7 +282,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     final requestVersion = _draftRequestVersion;
     try {
       final draft = await _draftStore.load(
-        widget.blog?.id,
+        _target?.id,
         userId: _draftOwnerId!,
       );
       if (!mounted ||
@@ -276,7 +290,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
           requestVersion != _draftRequestVersion ||
           draft == null ||
           draft.userId != _draftOwnerId ||
-          draft.blogId != widget.blog?.id) {
+          draft.blogId != _target?.id) {
         return;
       }
 
@@ -284,8 +298,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
       final choice = await showDraftRecoveryDialog(
         context,
         isOlderThanPublished:
-            widget.blog != null &&
-            widget.blog!.updatedAt.isAfter(draft.updatedAt),
+            _target != null && _target!.updatedAt.isAfter(draft.updatedAt),
         onRouteCreated: (route) => _recoveryRoute = route,
       );
       _recoveryRoute = null;
@@ -371,6 +384,30 @@ class _BlogEditorState extends State<BlogEditorPage> {
         : null;
   }
 
+  /// Rebuilds the article a queued edit targets, so a resumed edit updates
+  /// that article instead of creating a new one.
+  ///
+  /// Only the identity and the queued text are taken from the entry: the
+  /// update re-reads the real article (and its cover) before writing.
+  Blog? _queuedEditTarget() {
+    final entry = widget.queueEntry;
+    final targetId = entry?.targetId;
+    if (entry == null ||
+        entry.kind != PublishQueueKind.edit ||
+        (targetId ?? '').isEmpty) {
+      return null;
+    }
+    return Blog(
+      id: targetId!,
+      title: entry.title,
+      content: entry.content,
+      posterId: entry.userId,
+      imageUrl: entry.coverUrl ?? '',
+      tags: entry.tags,
+      updatedAt: entry.updatedAt,
+    );
+  }
+
   /// Restores the cover a failed entry kept inside the app's storage. The text
   /// is already on screen: a missing cover only leaves the slot empty.
   Future<void> _loadQueuedCover(PublishQueueEntry entry) async {
@@ -424,14 +461,16 @@ class _BlogEditorState extends State<BlogEditorPage> {
   ///
   /// The queued entry carries the same idempotency key as the attempt that
   /// just failed, so the server either creates the article once or replays the
-  /// one it already created - never a duplicate. Returns true when the entry
-  /// is safely stored, which is what lets the page report "queued" instead of
+  /// one it already created - never a duplicate. An edit is queued against the
+  /// article it updates instead: replaying an update rewrites that article, so
+  /// it cannot create a second one either. Returns true when the entry is
+  /// safely stored, which is what lets the page report "queued" instead of
   /// "failed".
   Future<bool> _queueFailedPublish() async {
     final snapshot = _publishedDraftSnapshot;
     final key = _publishIdempotencyKey;
     final store = _queueStore;
-    if (widget.blog != null) return false;
+    final target = _target;
     if (snapshot == null || key == null || store == null) return false;
     try {
       await store.enqueue(
@@ -441,6 +480,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
         tags: List.of(snapshot.tags),
         idempotencyKey: key,
         cover: _publishImageSnapshot,
+        kind: target == null ? PublishQueueKind.create : PublishQueueKind.edit,
+        targetId: target?.id,
       );
     } catch (_) {
       return false;
@@ -472,7 +513,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     _publishStartedAt = DateTime.now();
     _editedDuringPublish = false;
     final draft = _currentDraft();
-    final publishImage = widget.blog == null || isNewImageSelected
+    final publishImage = _target == null || isNewImageSelected
         ? imageUpload
         : null;
     final sessionFence = NowaveSessionFence(
@@ -498,7 +539,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     if (!mounted || !_isCurrentEditor) return;
     _hasUnsavedEdits = version != _draftRequestVersion;
     _publishedDraftSnapshot = draft;
-    if (widget.blog == null) {
+    if (_target == null) {
       context.read<BlogUploadBloc>().add(
         UploadBlogEvent(
           image: publishImage,
@@ -513,7 +554,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     } else {
       context.read<BlogUploadBloc>().add(
         UpdateBlogEvent(
-          blogId: widget.blog!.id,
+          blogId: _target!.id,
           image: publishImage,
           title: draft.title.trim(),
           content: draft.content.trim(),
@@ -529,7 +570,12 @@ class _BlogEditorState extends State<BlogEditorPage> {
   Future<void> _reportPublishFailure(BlogUploadFailure failure) async {
     if (_isWorthQueueing(failure.failure.kind) && await _queueFailedPublish()) {
       if (!mounted || !_isCurrentEditor) return;
-      showSnackBar(context, context.l10n.publishQueued);
+      showSnackBar(
+        context,
+        _target == null
+            ? context.l10n.publishQueued
+            : context.l10n.publishQueuedUpdate,
+      );
       Navigator.of(context).pop(true);
       return;
     }
@@ -589,7 +635,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     return Scaffold(
       backgroundColor: isDarkMode ? AppPalette.ink : AppPalette.paper,
       appBar: EditorAppBar(
-        isEditing: widget.blog != null,
+        isEditing: _target != null,
         onPublish: saveBlog,
         onSaveDraft: saveDraft,
         onCancel: () => Navigator.of(context).pop(),
@@ -606,7 +652,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
             // asset.
             showSnackBar(
               context,
-              widget.blog == null
+              _target == null
                   ? context.l10n.uploadSuccess
                   : context.l10n.updateSuccess,
             );
@@ -632,7 +678,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
             image: image,
             imageBytes: imageBytes,
             isNewImageSelected: isNewImageSelected,
-            blog: widget.blog,
+            blog: _target,
             hasUnclaimedDrafts: _hasUnclaimedDrafts,
             resumedFromQueue: widget.queueEntry != null,
             autoSaveStatus: _autoSaveStatus,

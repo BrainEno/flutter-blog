@@ -358,10 +358,11 @@
   "languageEnglish": "English",
   "languageSystemHint": "设备语言，不支持时用中文",
   "publishQueued": "已加入发布队列，联网后会自动发布",
+  "publishQueuedUpdate": "已加入发布队列，联网后会自动更新这篇文章",
   "publishQueueTitle": "发布队列",
-  "publishQueueMenuHint": "离线时发布的内容在这里等待发送",
+  "publishQueueMenuHint": "离线时发布或编辑的内容在这里等待发送",
   "publishQueueEmptyTitle": "队列是空的",
-  "publishQueueEmptyBody": "离线发布或网络失败的文章会出现在这里，联网后自动重试。",
+  "publishQueueEmptyBody": "离线发布、编辑，或网络失败的发送会出现在这里，联网后自动重试。",
   "publishQueueStatusQueued": "等待发送",
   "publishQueueStatusUploading": "正在发送",
   "publishQueueStatusFailed": "需要处理",
@@ -431,5 +432,6 @@
     }
   },
   "publishQueueResumeEditing": "继续编辑",
+  "publishQueueEditEntry": "编辑已发布文章",
   "publishQueueResumedNotice": "已载入队列中的内容；这次发布成功后，原条目会被移除。"
 }

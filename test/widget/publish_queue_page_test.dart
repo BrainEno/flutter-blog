@@ -124,4 +124,22 @@ void main() {
     expect(store.entriesCalls, greaterThan(readsBefore));
     expect(find.text('Continue editing'), findsOneWidget);
   });
+
+  testWidgets('an edit entry says it edits a published article', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      rows: [
+        queueEntry(id: 'create-entry'),
+        queueEntry(
+          id: 'edit-entry',
+          kind: PublishQueueKind.edit,
+          targetId: 'my-slug',
+        ),
+      ],
+    );
+
+    expect(find.text('Edits a published article'), findsOneWidget);
+  });
 }

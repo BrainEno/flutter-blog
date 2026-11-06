@@ -18,6 +18,8 @@ PublishQueueEntry queueEntry({
   String? coverFileName,
   String? coverMimeType,
   String? coverUrl,
+  PublishQueueKind kind = PublishQueueKind.create,
+  String? targetId,
 }) => PublishQueueEntry(
   id: id,
   userId: userId,
@@ -33,6 +35,8 @@ PublishQueueEntry queueEntry({
   coverFileName: coverFileName,
   coverMimeType: coverMimeType,
   coverUrl: coverUrl,
+  kind: kind,
+  targetId: targetId,
 );
 
 /// A queue store that records calls instead of touching disk.
@@ -66,6 +70,8 @@ class FakePublishQueueStore implements PublishQueueStore {
     required List<String> tags,
     required String idempotencyKey,
     ImageUpload? cover,
+    PublishQueueKind kind = PublishQueueKind.create,
+    String? targetId,
   }) async {
     final entry = queueEntry(
       id: 'queued-${enqueued.length + 1}',
@@ -77,6 +83,8 @@ class FakePublishQueueStore implements PublishQueueStore {
       status: PublishQueueStatus.queued,
       attempts: 0,
       lastErrorCode: null,
+      kind: kind,
+      targetId: targetId,
     );
     enqueued.add(entry);
     rows = [...rows, entry];

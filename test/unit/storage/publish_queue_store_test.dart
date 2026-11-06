@@ -494,4 +494,118 @@ void main() {
       'https://cdn/after-upgrade.png',
     );
   });
+
+  test('an edit entry keeps the article it updates', () async {
+    final file = File('${covers.path}/edit.sqlite');
+    final first = AppDatabase(NativeDatabase(file));
+    final firstStore = SqlitePublishQueueStore(
+      first,
+      apiBaseUrl: _firstBackend,
+      directory: covers,
+    );
+    final entry = await firstStore.enqueue(
+      userId: 'alice',
+      title: 'new title',
+      content: 'new body',
+      tags: const ['tag'],
+      idempotencyKey: 'key-edit',
+      kind: PublishQueueKind.edit,
+      targetId: 'my-slug',
+    );
+    expect(entry.kind, PublishQueueKind.edit);
+    expect(entry.targetId, 'my-slug');
+    await first.close();
+
+    final second = AppDatabase(NativeDatabase(file));
+    addTearDown(second.close);
+    final secondStore = SqlitePublishQueueStore(
+      second,
+      apiBaseUrl: _firstBackend,
+      directory: covers,
+    );
+    final reopened = (await secondStore.entries(userId: 'alice')).single;
+    expect(reopened.kind, PublishQueueKind.edit);
+    expect(reopened.targetId, 'my-slug');
+    expect(reopened.title, 'new title');
+  });
+
+  test('an edit without a target is refused', () async {
+    expect(
+      () => store.enqueue(
+        userId: 'alice',
+        title: 'orphan edit',
+        content: 'body',
+        tags: const [],
+        idempotencyKey: 'key-1',
+        kind: PublishQueueKind.edit,
+      ),
+      throwsArgumentError,
+    );
+    expect(await store.entries(userId: 'alice'), isEmpty);
+  });
+
+  test('a v9 queue upgrades and reads its rows as new articles', () async {
+    final file = File('${covers.path}/legacy-v9.sqlite');
+    final old = raw.sqlite3.open(file.path);
+    old.execute('PRAGMA user_version = 9');
+    old.execute(
+      'CREATE TABLE publish_queue (id TEXT PRIMARY KEY, backend TEXT NOT NULL, '
+      'user_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, '
+      'title TEXT NOT NULL, content TEXT NOT NULL, tags TEXT NOT NULL, '
+      'cover_file TEXT, cover_mime TEXT, cover_url TEXT, '
+      'state TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, '
+      'next_attempt_at INTEGER, last_error_code TEXT, '
+      'created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
+    );
+    old.execute(
+      'CREATE INDEX publish_queue_due '
+      'ON publish_queue(backend, user_id, state, created_at)',
+    );
+    old.execute(
+      'INSERT INTO publish_queue(id, backend, user_id, idempotency_key, '
+      'title, content, tags, cover_file, cover_mime, cover_url, state, '
+      'attempts, next_attempt_at, last_error_code, created_at, updated_at) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, 0, NULL, NULL, ?, ?)',
+      [
+        'v9-create',
+        backendKeyOf(_firstBackend),
+        'alice',
+        'key-v9',
+        'old row',
+        'body',
+        '[]',
+        'https://cdn/v9.png',
+        'queued',
+        DateTime.utc(2026, 11, 1).microsecondsSinceEpoch,
+        DateTime.utc(2026, 11, 1).microsecondsSinceEpoch,
+      ],
+    );
+    old.close();
+
+    final upgraded = AppDatabase(NativeDatabase(file));
+    addTearDown(upgraded.close);
+    final legacyStore = SqlitePublishQueueStore(
+      upgraded,
+      apiBaseUrl: _firstBackend,
+      directory: covers,
+    );
+
+    // A v9 row was a publish waiting to create an article; it stays one.
+    final row = (await legacyStore.entries(userId: 'alice')).single;
+    expect(row.kind, PublishQueueKind.create);
+    expect(row.targetId, isNull);
+    expect(row.coverUrl, 'https://cdn/v9.png');
+
+    // And the new columns are usable straight after the upgrade.
+    final edit = await legacyStore.enqueue(
+      userId: 'alice',
+      title: 'edited',
+      content: 'body',
+      tags: const [],
+      idempotencyKey: 'key-edit',
+      kind: PublishQueueKind.edit,
+      targetId: 'my-slug',
+    );
+    expect(edit.targetId, 'my-slug');
+  });
 }

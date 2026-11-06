@@ -309,6 +309,31 @@ void main() {
       expect(updated.title, '新标题');
     });
 
+    test('reuses an already uploaded cover for an edit', () async {
+      when(
+        () => remote.getBlogById('my-slug'),
+      ).thenAnswer((_) async => _blog());
+      when(() => remote.editBlog(any())).thenAnswer(
+        (invocation) async => invocation.positionalArguments[0] as BlogModel,
+      );
+
+      final result = await repository.editBlog(
+        blogId: 'my-slug',
+        uploadedCoverUrl: _kNewCoverUrl,
+        title: '新标题',
+        content: '新正文',
+        tags: const ['诗歌'],
+      );
+
+      expect(result.isRight(), isTrue);
+      verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
+      final BlogModel updated = verify(
+        () => remote.editBlog(captureAny()),
+      ).captured.single;
+      expect(updated.imageUrl, _kNewCoverUrl);
+      expect(updated.serverSummary, '作者的摘要');
+    });
+
     test('editing without a new image keeps the existing cover', () async {
       when(
         () => remote.getBlogById('my-slug'),

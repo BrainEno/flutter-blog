@@ -19,6 +19,19 @@ enum PublishQueueStatus {
   failed,
 }
 
+/// What a queued entry does once the server is reachable.
+enum PublishQueueKind {
+  /// Creates a new article. Safe to replay because every attempt carries the
+  /// entry's [PublishQueueEntry.idempotencyKey]: the server either creates the
+  /// article once or replays the one it already created.
+  create,
+
+  /// Updates an article that already exists ([PublishQueueEntry.targetId]).
+  /// Safe to replay because an update addresses one article id: sending it
+  /// twice rewrites the same article, it cannot create a second one.
+  edit,
+}
+
 /// One article waiting to be published from this device.
 ///
 /// [idempotencyKey] is created once, when the entry is queued, and is sent as
@@ -38,6 +51,8 @@ class PublishQueueEntry {
     required this.attempts,
     required this.createdAt,
     required this.updatedAt,
+    this.kind = PublishQueueKind.create,
+    this.targetId,
     this.coverFileName,
     this.coverMimeType,
     this.coverUrl,
@@ -57,7 +72,18 @@ class PublishQueueEntry {
   final List<String> tags;
 
   /// Stable per queued intent; see the class doc.
+  ///
+  /// Only [PublishQueueKind.create] sends it. An edit is identified by the
+  /// article it targets, so the queue keeps the value as a local identifier
+  /// and does not put it on the wire.
   final String idempotencyKey;
+
+  /// Whether this entry creates an article or updates one.
+  final PublishQueueKind kind;
+
+  /// The public article id (slug) a [PublishQueueKind.edit] entry updates.
+  /// Always null for [PublishQueueKind.create].
+  final String? targetId;
 
   final PublishQueueStatus status;
 
@@ -105,6 +131,8 @@ class PublishQueueEntry {
       content: content,
       tags: tags,
       idempotencyKey: idempotencyKey,
+      kind: kind,
+      targetId: targetId,
       status: status ?? this.status,
       attempts: attempts ?? this.attempts,
       createdAt: createdAt,

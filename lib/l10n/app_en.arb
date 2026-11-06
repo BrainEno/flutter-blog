@@ -512,10 +512,11 @@
   "languageEnglish": "English",
   "languageSystemHint": "Device language, else Chinese",
   "publishQueued": "Added to the publish queue; it will publish when you are online",
+  "publishQueuedUpdate": "Added to the publish queue; this article will be updated when you are online",
   "publishQueueTitle": "Publish queue",
-  "publishQueueMenuHint": "Publishes made offline wait here",
+  "publishQueueMenuHint": "Publishes and edits made offline wait here",
   "publishQueueEmptyTitle": "Nothing is waiting",
-  "publishQueueEmptyBody": "Articles you publish offline, or that fail on the network, land here and retry automatically.",
+  "publishQueueEmptyBody": "Publishes and edits made offline, or that fail on the network, land here and retry automatically.",
   "publishQueueStatusQueued": "Waiting to send",
   "publishQueueStatusUploading": "Sending",
   "publishQueueStatusFailed": "Needs attention",
@@ -585,5 +586,6 @@
     }
   },
   "publishQueueResumeEditing": "Continue editing",
+  "publishQueueEditEntry": "Edits a published article",
   "publishQueueResumedNotice": "Loaded from the queue. The original entry is removed once this publishes."
 }

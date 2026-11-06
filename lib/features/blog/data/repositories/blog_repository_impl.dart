@@ -311,6 +311,7 @@ class BlogRepositoryImpl implements BlogRepository {
     required String content,
     required List<String> tags,
     ImageUpload? image,
+    String? uploadedCoverUrl,
     NowaveSessionFence? sessionFence,
   }) async {
     try {
@@ -338,14 +339,11 @@ class BlogRepositoryImpl implements BlogRepository {
           ),
         );
       }
-      if (image != null) {
-        final newImageUrl = sessionFence == null
-            ? await blogRemoteDataSource.uploadBlogImage(image: image)
-            : await blogRemoteDataSource.uploadBlogImage(
-                image: image,
-                sessionFence: sessionFence,
-              );
-        blogToUpdate = blogToUpdate.copyWith(imageUrl: newImageUrl);
+      // An empty URL means "no new cover": the fetched article keeps its own.
+      final coverUrl =
+          uploadedCoverUrl ?? await _uploadCoverBytes(image, sessionFence);
+      if (coverUrl.isNotEmpty) {
+        blogToUpdate = blogToUpdate.copyWith(imageUrl: coverUrl);
       }
       blogToUpdate = blogToUpdate.copyWith(
         title: title,

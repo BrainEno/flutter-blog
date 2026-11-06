@@ -48,12 +48,17 @@ class SqlitePublishQueueStore implements PublishQueueStore {
     required List<String> tags,
     required String idempotencyKey,
     ImageUpload? cover,
+    PublishQueueKind kind = PublishQueueKind.create,
+    String? targetId,
   }) {
     if (userId.isEmpty) {
       throw ArgumentError('A queued publish needs the account that asked.');
     }
     if (idempotencyKey.isEmpty) {
       throw ArgumentError('A queued publish needs an idempotency key.');
+    }
+    if (kind == PublishQueueKind.edit && (targetId ?? '').isEmpty) {
+      throw ArgumentError('A queued edit needs the article it updates.');
     }
     final id = _uuid.v4();
     // Copy the bytes before the write waits for its turn: the caller may drop
@@ -71,9 +76,10 @@ class SqlitePublishQueueStore implements PublishQueueStore {
       }
       await database.customInsert(
         'INSERT INTO publish_queue(id, backend, user_id, idempotency_key, '
-        'title, content, tags, cover_file, cover_mime, cover_url, state, '
-        'attempts, next_attempt_at, last_error_code, created_at, updated_at) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?)',
+        'title, content, tags, cover_file, cover_mime, cover_url, kind, '
+        'target_id, state, attempts, next_attempt_at, last_error_code, '
+        'created_at, updated_at) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?)',
         variables: [
           Variable<String>(id),
           Variable<String>(_backend),
@@ -85,6 +91,8 @@ class SqlitePublishQueueStore implements PublishQueueStore {
           Variable<String>(coverFileName),
           Variable<String>(coverMime),
           Variable<String>(null),
+          Variable<String>(kind.name),
+          Variable<String>(kind == PublishQueueKind.edit ? targetId : null),
           Variable<String>(PublishQueueStatus.queued.name),
           Variable<int>(now.microsecondsSinceEpoch),
           Variable<int>(now.microsecondsSinceEpoch),
@@ -97,6 +105,8 @@ class SqlitePublishQueueStore implements PublishQueueStore {
         content: content,
         tags: List<String>.unmodifiable(tags),
         idempotencyKey: idempotencyKey,
+        kind: kind,
+        targetId: kind == PublishQueueKind.edit ? targetId : null,
         status: PublishQueueStatus.queued,
         attempts: 0,
         createdAt: now,
@@ -317,6 +327,11 @@ class SqlitePublishQueueStore implements PublishQueueStore {
       coverFileName: row.readNullable<String>('cover_file'),
       coverMimeType: row.readNullable<String>('cover_mime'),
       coverUrl: row.readNullable<String>('cover_url'),
+      kind: PublishQueueKind.values.firstWhere(
+        (value) => value.name == row.read<String>('kind'),
+        orElse: () => PublishQueueKind.create,
+      ),
+      targetId: row.readNullable<String>('target_id'),
       nextAttemptAt: _timeOf(row.readNullable<int>('next_attempt_at')),
       lastErrorCode: row.readNullable<String>('last_error_code'),
     );
