@@ -32,6 +32,8 @@ void main() {
   late _Connection connection;
   late BlogRepositoryImpl repository;
 
+  setUpAll(() => registerFallbackValue(_blog('zh-CN')));
+
   setUp(() {
     remote = _Remote();
     local = _Local();
