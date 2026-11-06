@@ -605,7 +605,11 @@ void main() {
           bodies.add(
             await request.fold<int>(0, (sum, chunk) => sum + chunk.length),
           );
-          request.response.write(jsonEncode({'data': {'ok': true}}));
+          request.response.write(
+            jsonEncode({
+              'data': {'ok': true},
+            }),
+          );
           await request.response.close();
         });
         final rawClient = HttpClient()..findProxy = (_) => 'DIRECT';

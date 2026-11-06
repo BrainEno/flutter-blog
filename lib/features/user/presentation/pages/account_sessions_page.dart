@@ -344,10 +344,7 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
                       ],
                       if (_notice != null) ...[
                         const SizedBox(height: 12),
-                        _NoticeMessage(
-                          text: _notice!,
-                          isError: _noticeIsError,
-                        ),
+                        _NoticeMessage(text: _notice!, isError: _noticeIsError),
                       ],
                       const SizedBox(height: 16),
                       if (sessions.isEmpty)

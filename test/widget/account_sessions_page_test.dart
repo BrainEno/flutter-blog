@@ -406,10 +406,7 @@ void main() {
     await tester.tap(find.text('End'));
     await tester.pumpAndSettle();
     expect(find.text('End this session?'), findsOneWidget);
-    expect(
-      find.textContaining('This device stays signed in'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('This device stays signed in'), findsOneWidget);
     // Cancelling sends nothing.
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
@@ -510,10 +507,7 @@ void main() {
 
     await tester.tap(find.text('End other sessions'));
     await tester.pumpAndSettle();
-    expect(
-      find.textContaining('may end this device too'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('may end this device too'), findsOneWidget);
     expect(find.textContaining('This device stays signed in'), findsNothing);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
