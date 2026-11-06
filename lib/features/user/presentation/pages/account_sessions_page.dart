@@ -8,6 +8,7 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/user/domain/entities/account_session.dart';
+import 'package:belog/features/user/domain/entities/session_revoke_outcome.dart';
 import 'package:belog/features/user/domain/repositories/account_session_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -42,6 +43,13 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
   bool _loading = false;
   bool _invalidated = false;
   int _loadVersion = 0;
+
+  /// The row (or `null` for "every other session") currently being ended, plus
+  /// the one sentence this page is allowed to claim afterwards.
+  String? _revokingId;
+  bool _revokingOthers = false;
+  String? _notice;
+  bool _noticeIsError = false;
 
   @override
   void initState() {
@@ -98,6 +106,9 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
       _sessions = const [];
       _failure = null;
       _loading = false;
+      _revokingId = null;
+      _revokingOthers = false;
+      _notice = null;
     });
   }
 
@@ -136,6 +147,137 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
     }
   }
 
+  /// Asks for confirmation, then ends one session.
+  ///
+  /// Ending a session is not a credential change and not undoable, so it gets a
+  /// dialog rather than a swipe: the row that disappears is a device someone
+  /// will have to sign in on again.
+  Future<void> _confirmEndOne(AccountSession session) async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.accountSessionsEndThisTitle),
+        content: Text(l10n.accountSessionsEndThisBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.actionCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.accountSessionsEndConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _endOne(session);
+  }
+
+  Future<void> _confirmEndOthers() async {
+    final l10n = context.l10n;
+    final currentUnknown =
+        _sessions.isNotEmpty && !_sessions.any((session) => session.current);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.accountSessionsEndOthersTitle),
+        content: Text(
+          currentUnknown
+              ? l10n.accountSessionsEndOthersUnknownCurrent
+              : l10n.accountSessionsEndOthersBody,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.actionCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.accountSessionsEndConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _endOthers();
+  }
+
+  Future<void> _endOne(AccountSession session) async {
+    final fence = _fence;
+    if (_busy || fence == null || !_matchesFence) {
+      _invalidate();
+      return;
+    }
+    setState(() {
+      _revokingId = session.id;
+      _notice = null;
+      _noticeIsError = false;
+    });
+    try {
+      final result = await _repository.revokeSession(fence, session.id);
+      if (!mounted) return;
+      setState(() {
+        _revokingId = null;
+        result.fold(
+          (failure) => _notice = localizedFailure(context.l10n, failure),
+          (outcome) => _notice = outcome == SessionRevokeOutcome.ended
+              ? context.l10n.accountSessionsEndedOne
+              : context.l10n.accountSessionsAlreadyEnded,
+        );
+        _noticeIsError = result.isLeft();
+      });
+      // The list is the server's claim; re-read it instead of removing a row
+      // locally and hoping that matches.
+      await _reload();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _revokingId = null;
+        _notice = context.l10n.accountSessionsEndUnknown;
+        _noticeIsError = true;
+      });
+    }
+  }
+
+  Future<void> _endOthers() async {
+    final fence = _fence;
+    if (_busy || fence == null || !_matchesFence) {
+      _invalidate();
+      return;
+    }
+    setState(() {
+      _revokingOthers = true;
+      _notice = null;
+      _noticeIsError = false;
+    });
+    try {
+      final result = await _repository.revokeOtherSessions(fence);
+      if (!mounted) return;
+      setState(() {
+        _revokingOthers = false;
+        result.fold(
+          (failure) => _notice = localizedFailure(context.l10n, failure),
+          (count) => _notice = count == 0
+              ? context.l10n.accountSessionsEndedNone
+              : context.l10n.accountSessionsEndedOthers(count),
+        );
+        _noticeIsError = result.isLeft();
+      });
+      await _reload();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _revokingOthers = false;
+        _notice = context.l10n.accountSessionsEndUnknown;
+        _noticeIsError = true;
+      });
+    }
+  }
+
+  bool get _busy => _revokingId != null || _revokingOthers;
+
   @override
   void dispose() {
     _loadVersion++;
@@ -157,7 +299,7 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
           if (_matchesFence)
             IconButton(
               tooltip: l10n.accountSessionsRefresh,
-              onPressed: _loading ? null : _reload,
+              onPressed: _loading || _busy ? null : _reload,
               icon: const Icon(Icons.refresh),
             ),
         ],
@@ -200,12 +342,38 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
                         const SizedBox(height: 12),
                         Text(l10n.accountSessionsCurrentUnknown),
                       ],
+                      if (_notice != null) ...[
+                        const SizedBox(height: 12),
+                        _NoticeMessage(
+                          text: _notice!,
+                          isError: _noticeIsError,
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       if (sessions.isEmpty)
                         NoWaveStatus(message: l10n.accountSessionsEmpty)
-                      else
+                      else ...[
+                        // The lost-phone answer: everything else goes, this
+                        // device stays. Offered before the rows because it is
+                        // the reason most people open this page.
+                        OutlinedButton(
+                          onPressed: _busy ? null : _confirmEndOthers,
+                          child: Text(
+                            _revokingOthers
+                                ? l10n.accountSessionsEnding
+                                : l10n.accountSessionsEndOthers,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         for (final session in sessions)
-                          _SessionCard(session: session),
+                          _SessionCard(
+                            session: session,
+                            busy: _revokingId == session.id,
+                            onEnd: session.current || _busy
+                                ? null
+                                : () => _confirmEndOne(session),
+                          ),
+                      ],
                     ],
                   ),
                 ),
@@ -217,23 +385,67 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
     );
   }
 
-  Widget _status(BuildContext context, String message, {VoidCallback? retry}) =>
-      Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: NoWaveStatus(
-            message: message,
-            actionLabel: retry == null ? null : context.l10n.actionRetry,
-            onAction: retry,
-          ),
+  Widget _status(BuildContext context, String message, {VoidCallback? retry}) {
+    final notice = _notice;
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // What already happened stays visible even when the follow-up read
+            // of the list failed; otherwise an ended session would look like a
+            // failed one.
+            if (notice != null) ...[
+              _NoticeMessage(text: notice, isError: _noticeIsError),
+              const SizedBox(height: 16),
+            ],
+            NoWaveStatus(
+              message: message,
+              actionLabel: retry == null ? null : context.l10n.actionRetry,
+              onAction: retry,
+            ),
+          ],
         ),
-      );
+      ),
+    );
+  }
+}
+
+/// One sentence about what the last revocation did (or failed to do).
+class _NoticeMessage extends StatelessWidget {
+  const _NoticeMessage({required this.text, required this.isError});
+
+  final String text;
+  final bool isError;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    child: Text(
+      text,
+      style: TextStyle(
+        color: isError ? Theme.of(context).colorScheme.error : null,
+      ),
+    ),
+  );
 }
 
 class _SessionCard extends StatelessWidget {
-  const _SessionCard({required this.session});
+  const _SessionCard({
+    required this.session,
+    required this.busy,
+    required this.onEnd,
+  });
 
   final AccountSession session;
+
+  /// True while *this* row is being ended; the label changes so the row itself
+  /// says what is happening.
+  final bool busy;
+
+  /// Null while any revocation is in flight, which disables the button.
+  final VoidCallback? onEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -266,6 +478,22 @@ class _SessionCard extends StatelessWidget {
                   : l10n.accountSessionsRefreshed(time(lastRefreshed)),
             ),
             Text(l10n.accountSessionsExpires(time(session.expiresAt))),
+            // The session in use has no button: ending it is what the sign-out
+            // button does, and that needs a different confirmation.
+            if (!session.current) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: TextButton(
+                  onPressed: onEnd,
+                  child: Text(
+                    busy
+                        ? l10n.accountSessionsEnding
+                        : l10n.accountSessionsEndThis,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

@@ -7,6 +7,7 @@ import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/user/data/repositories/account_session_repository_impl.dart';
 import 'package:belog/features/user/domain/entities/account_session.dart';
+import 'package:belog/features/user/domain/entities/session_revoke_outcome.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:http/http.dart' as http;
@@ -73,8 +74,24 @@ Map<String, dynamic> _row({
 http.Response _data(Object? value) =>
     http.Response(jsonEncode({'data': value}), 200);
 
+http.Response _error(int status) =>
+    http.Response('{"error":{"code":"UNTRUSTED"}}', status);
+
 Failure? _failure(Either<Failure, List<AccountSession>> result) =>
     result.fold((failure) => failure, (_) => null);
+
+Failure? _revokeFailure(Either<Failure, SessionRevokeOutcome> result) =>
+    result.fold((failure) => failure, (_) => null);
+
+SessionRevokeOutcome? _revokeOutcome(
+  Either<Failure, SessionRevokeOutcome> result,
+) => result.fold((_) => null, (outcome) => outcome);
+
+Failure? _countFailure(Either<Failure, int> result) =>
+    result.fold((failure) => failure, (_) => null);
+
+int? _count(Either<Failure, int> result) =>
+    result.fold((_) => null, (count) => count);
 
 List<AccountSession>? _sessions(Either<Failure, List<AccountSession>> result) =>
     result.fold((_) => null, (sessions) => sessions);
@@ -390,6 +407,237 @@ void main() {
       final failure = _failure(await invalidJson.listSessions(_fence));
       expect(failure?.code, 'client.parse');
       expect(failure?.message, isNot(contains('private')));
+    },
+  );
+
+  test('ending one session names it in the path and sends no body', () async {
+    final auth = _Auth();
+    final seen = <http.Request>[];
+    final repository = _repository(
+      auth,
+      MockClient((request) async {
+        seen.add(request);
+        return _data({'ok': true});
+      }),
+    );
+
+    final result = await repository.revokeSession(_fence, 'session-2');
+
+    expect(_revokeOutcome(result), SessionRevokeOutcome.ended);
+    expect(seen.single.method, 'DELETE');
+    expect(seen.single.url.path, '/api/v1/me/sessions/session-2');
+    expect(seen.single.body, isEmpty);
+    expect(seen.single.headers.containsKey('content-type'), isFalse);
+    expect(seen.single.followRedirects, isFalse);
+    expect(seen.single.headers['authorization'], 'Bearer fake-token-a');
+  });
+
+  test('an id is encoded and never resolves to another route', () async {
+    final seen = <http.Request>[];
+    final repository = _repository(
+      _Auth(),
+      MockClient((request) async {
+        seen.add(request);
+        return _data({'ok': true});
+      }),
+    );
+
+    await repository.revokeSession(_fence, 'a/b?c#d');
+    expect(seen.single.url.path, '/api/v1/me/sessions/a%2Fb%3Fc%23d');
+
+    for (final bad in ['', ' session-2', 'session-2 ', '.', '..']) {
+      final failure = _revokeFailure(
+        await repository.revokeSession(_fence, bad),
+      );
+      expect(failure?.code, 'sessions.invalidSession', reason: bad);
+    }
+    expect(seen, hasLength(1));
+  });
+
+  test(
+    'a session that is already gone is the goal state, not an error',
+    () async {
+      final repository = _repository(
+        _Auth(),
+        MockClient((_) async => _error(404)),
+      );
+
+      final result = await repository.revokeSession(_fence, 'session-2');
+
+      expect(_revokeOutcome(result), SessionRevokeOutcome.alreadyEnded);
+    },
+  );
+
+  test('revocation failures carry a code, never the raw answer', () async {
+    final cases = <int, String>{
+      400: 'sessions.revokeRejected',
+      401: 'server.UNAUTHENTICATED',
+      403: 'server.permission',
+      405: 'sessions.revokeUnavailable',
+      429: 'server.RATE_LIMITED',
+      500: 'sessions.revokeUnknown',
+      503: 'sessions.revokeUnknown',
+    };
+    for (final entry in cases.entries) {
+      final repository = _repository(
+        _Auth(),
+        MockClient((_) async => _error(entry.key)),
+      );
+      final failure = _revokeFailure(
+        await repository.revokeSession(_fence, 'session-2'),
+      );
+      expect(failure?.code, entry.value, reason: '${entry.key}');
+      expect(failure?.cause, isNull, reason: '${entry.key}');
+    }
+  });
+
+  test('a lost answer is uncertain: the session may already be gone', () async {
+    for (final repository in [
+      _repository(
+        _Auth(),
+        MockClient((_) async => throw const SocketException('fixture')),
+      ),
+      _repository(_Auth(), MockClient((_) async => _data({'ok': false}))),
+    ]) {
+      final failure = _revokeFailure(
+        await repository.revokeSession(_fence, 'session-2'),
+      );
+      expect(failure?.code, 'sessions.revokeUnknown');
+    }
+  });
+
+  test('a stale fence never reaches the server', () async {
+    final auth = _Auth();
+    var calls = 0;
+    final repository = _repository(
+      auth,
+      MockClient((_) async {
+        calls++;
+        return _data({'ok': true});
+      }),
+    );
+    auth.replace();
+
+    final failure = _revokeFailure(
+      await repository.revokeSession(_fence, 'session-2'),
+    );
+
+    expect(failure?.code, 'auth.sessionChanged');
+    expect(failure?.kind, FailureKind.auth);
+    expect(calls, 0);
+  });
+
+  test('ending the others reports how many went', () async {
+    final seen = <http.Request>[];
+    final repository = _repository(
+      _Auth(),
+      MockClient((request) async {
+        seen.add(request);
+        return _data({'ok': true, 'revokedSessions': 3});
+      }),
+    );
+
+    final result = await repository.revokeOtherSessions(_fence);
+
+    expect(_count(result), 3);
+    expect(seen.single.method, 'DELETE');
+    expect(seen.single.url.path, '/api/v1/me/sessions');
+    expect(seen.single.followRedirects, isFalse);
+
+    final none = _repository(
+      _Auth(),
+      MockClient((_) async => _data({'ok': true, 'revokedSessions': 0})),
+    );
+    expect(_count(await none.revokeOtherSessions(_fence)), 0);
+  });
+
+  test('an unreadable count is not reported as zero', () async {
+    for (final payload in [
+      {'ok': true},
+      {'ok': true, 'revokedSessions': 'three'},
+      {'ok': true, 'revokedSessions': -1},
+      {'ok': false, 'revokedSessions': 2},
+    ]) {
+      final repository = _repository(
+        _Auth(),
+        MockClient((_) async => _data(payload)),
+      );
+      expect(
+        _countFailure(await repository.revokeOtherSessions(_fence))?.code,
+        'sessions.revokeUnknown',
+        reason: '$payload',
+      );
+    }
+  });
+
+  test(
+    'an old deployment says "not supported", not "nothing to end"',
+    () async {
+      for (final status in [404, 405]) {
+        final repository = _repository(
+          _Auth(),
+          MockClient((_) async => _error(status)),
+        );
+        expect(
+          _countFailure(await repository.revokeOtherSessions(_fence))?.code,
+          'sessions.revokeUnavailable',
+          reason: '$status',
+        );
+      }
+    },
+  );
+
+  test(
+    'the real IO client sends a bodyless DELETE the server accepts',
+    () async {
+      await HttpOverrides.runWithHttpOverrides(() async {
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        final methods = <String>[];
+        final lengths = <String?>[];
+        final encodings = <String?>[];
+        final bodies = <int>[];
+        final subscription = server.listen((request) async {
+          methods.add(request.method);
+          lengths.add(request.headers.value(HttpHeaders.contentLengthHeader));
+          encodings.add(
+            request.headers.value(HttpHeaders.transferEncodingHeader),
+          );
+          bodies.add(
+            await request.fold<int>(0, (sum, chunk) => sum + chunk.length),
+          );
+          request.response.write(jsonEncode({'data': {'ok': true}}));
+          await request.response.close();
+        });
+        final rawClient = HttpClient()..findProxy = (_) => 'DIRECT';
+        try {
+          final repository = AccountSessionRepositoryImpl(
+            NowaveApiClient(
+              baseUrl: Uri.parse('http://127.0.0.1:${server.port}'),
+              authenticator: _Auth(),
+              httpClient: IOClient(rawClient),
+              timeout: const Duration(seconds: 5),
+            ),
+          );
+          expect(
+            _revokeOutcome(await repository.revokeSession(_fence, 'session-2')),
+            SessionRevokeOutcome.ended,
+          );
+          // This fixture has no count, so the second call is unreadable.
+          expect(
+            _countFailure(await repository.revokeOtherSessions(_fence))?.code,
+            'sessions.revokeUnknown',
+          );
+        } finally {
+          await subscription.cancel();
+          await server.close(force: true);
+        }
+        // `DELETE /me/sessions/:id` answers 400 to any request carrying a body
+        // header, so the transport must not add `content-length: 0`.
+        expect(methods, ['DELETE', 'DELETE']);
+        expect(lengths, [null, null]);
+        expect(encodings, [null, null]);
+        expect(bodies, [0, 0]);
+      }, _LoopbackHttpOverrides());
     },
   );
 }

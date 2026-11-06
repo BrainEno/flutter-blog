@@ -133,6 +133,15 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
       return l10n.errorArticleIdRestore;
 
     // Feature-specific failures.
+    // Ending a session (see account_sessions_page.dart).
+    case 'sessions.revokeUnavailable':
+      return l10n.accountSessionsEndUnsupported;
+    case 'sessions.revokeRejected':
+      return l10n.accountSessionsEndRejected;
+    case 'sessions.revokeUnknown':
+      return l10n.accountSessionsEndUnknown;
+    case 'sessions.invalidSession':
+      return l10n.accountSessionsInvalidSession;
     case 'sessions.unavailable':
       return l10n.accountSessionsUnavailable;
     case 'notifications.unavailable':
