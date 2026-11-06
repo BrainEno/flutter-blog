@@ -260,14 +260,7 @@ abstract final class AppTheme {
         shape: square,
         // Unchecked boxes are an outline, checked ones are a filled accent
         // square: the same rule the buttons follow.
-        side: WidgetStateProperty.resolveWith<BorderSide?>(
-          (states) => BorderSide(
-            color: states.contains(WidgetState.selected)
-                ? colorScheme.primary
-                : muted,
-            width: NoWaveStroke.hairline,
-          ),
-        ),
+        side: BorderSide(color: muted, width: NoWaveStroke.hairline),
         fillColor: WidgetStateProperty.resolveWith<Color?>(
           (states) => states.contains(WidgetState.selected)
               ? colorScheme.primary

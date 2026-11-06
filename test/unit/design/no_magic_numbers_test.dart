@@ -80,14 +80,15 @@ void main() {
   };
 
   // Paths are relative to `lib/`, which keeps the budget readable.
-  final files = Directory('lib')
-      .listSync(recursive: true)
-      .whereType<File>()
-      .map((file) => file.path.replaceAll(Platform.pathSeparator, '/'))
-      .map((path) => path.replaceFirst('lib/', ''))
-      .where((path) => path.endsWith('.dart'))
-      .toList()
-    ..sort();
+  final files =
+      Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .map((file) => file.path.replaceAll(Platform.pathSeparator, '/'))
+          .map((path) => path.replaceFirst('lib/', ''))
+          .where((path) => path.endsWith('.dart'))
+          .toList()
+        ..sort();
 
   test('the design system itself has no spacing literals', () {
     final offenders = <String>[];

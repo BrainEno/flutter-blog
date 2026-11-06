@@ -154,10 +154,7 @@ void main() {
           theme.checkboxTheme.fillColor?.resolve({WidgetState.selected}),
           theme.colorScheme.primary,
         );
-        expect(
-          theme.checkboxTheme.fillColor?.resolve({}),
-          Colors.transparent,
-        );
+        expect(theme.checkboxTheme.fillColor?.resolve({}), Colors.transparent);
         expect(
           theme.switchTheme.trackColor?.resolve({WidgetState.selected}),
           theme.colorScheme.primary,
