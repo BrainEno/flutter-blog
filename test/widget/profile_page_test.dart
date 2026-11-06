@@ -132,6 +132,7 @@ class _Harness {
               'edit',
               'change-password',
               'change-email',
+              'email-verification',
               'my-articles',
               'history',
               'notifications',
@@ -240,6 +241,7 @@ void main() {
             l10n.menuEditProfile,
             l10n.menuChangePassword,
             l10n.accountEmailTitle,
+            l10n.emailVerifyTitle,
             l10n.menuMyArticles,
             l10n.menuReadingHistory,
             l10n.notificationsTitle,
@@ -253,7 +255,7 @@ void main() {
             await tester.scrollUntilVisible(find.text(label), 140);
             expect(find.text(label), findsOneWidget);
           }
-          expect(find.byType(NoWaveActionRow), findsNWidgets(12));
+          expect(find.byType(NoWaveActionRow), findsNWidgets(13));
           expect(tester.takeException(), isNull);
         } finally {
           semantics.dispose();
@@ -288,6 +290,7 @@ void main() {
       'Edit profile': 'edit',
       'Change password': 'change-password',
       'Change e-mail': 'change-email',
+      'Verify e-mail': 'email-verification',
       'My articles': 'my-articles',
       'Reading history': 'history',
       'Messages': 'messages',

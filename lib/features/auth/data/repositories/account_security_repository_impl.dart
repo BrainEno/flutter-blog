@@ -5,6 +5,7 @@ import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/features/auth/domain/email_rules.dart';
+import 'package:belog/features/auth/domain/email_verification.dart';
 import 'package:belog/features/auth/domain/password_rules.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:fpdart/fpdart.dart';
@@ -226,6 +227,160 @@ class AccountSecurityRepositoryImpl implements AccountSecurityRepository {
       _inFlight = false;
     }
   }
+
+  @override
+  Future<Either<Failure, AccountEmailStatus>> readEmailStatus({
+    required String expectedUserId,
+    required int expectedSessionGeneration,
+  }) async {
+    bool sameSession() =>
+        expectedUserId.isNotEmpty &&
+        _session.activeUserId == expectedUserId &&
+        _session.sessionGeneration == expectedSessionGeneration &&
+        (_session.accessToken?.isNotEmpty ?? false);
+
+    if (!sameSession()) return left(_sessionChanged);
+    try {
+      if (!await _connectionChecker.isConnected) {
+        return left(Failure.networkOffline());
+      }
+      if (!sameSession()) return left(_sessionChanged);
+      final me = await _client.getJsonForViewer(
+        '/me',
+        expectedUserId: expectedUserId,
+      );
+      if (!sameSession()) return left(_sessionChanged);
+      if (me is! Map || me['id'] != expectedUserId) {
+        return left(_emailIdentityUnconfirmed);
+      }
+      return right(AccountEmailStatus.fromMe(me));
+    } on NowaveApiException catch (error) {
+      if (error.code == 'SESSION_CHANGED') return left(_sessionChanged);
+      if (error.statusCode == HttpStatus.unauthorized) {
+        return left(_verificationRejected);
+      }
+      if (error.statusCode == HttpStatus.notFound ||
+          error.statusCode == HttpStatus.methodNotAllowed) {
+        return left(_emailUnsupported);
+      }
+      return left(_statusUnavailable);
+    } catch (_) {
+      // A read changed nothing, so an unknown answer is just a failed read.
+      return left(_statusUnavailable);
+    }
+  }
+
+  @override
+  Future<Either<Failure, EmailVerificationRequest>> requestEmailVerification({
+    required String expectedUserId,
+    required int expectedSessionGeneration,
+  }) async {
+    if (_inFlight) return left(_emailInProgress);
+    _inFlight = true;
+    try {
+      bool sameSession() =>
+          expectedUserId.isNotEmpty &&
+          _session.activeUserId == expectedUserId &&
+          _session.sessionGeneration == expectedSessionGeneration &&
+          (_session.accessToken?.isNotEmpty ?? false);
+
+      if (!sameSession()) return left(_sessionChanged);
+      try {
+        if (!await _connectionChecker.isConnected) {
+          return left(Failure.networkOffline());
+        }
+        if (!sameSession()) return left(_sessionChanged);
+        // No preflight read here: the only account this can affect is the
+        // signed-in one, and the mail goes to its own address. The fence below
+        // is what keeps one account's answer from being shown as another's.
+        final data = await _client.postJsonForViewerOnce(
+          '/me/email-verification',
+          const <String, Object?>{},
+          expectedUserId: expectedUserId,
+          expectedSessionGeneration: expectedSessionGeneration,
+        );
+        if (!sameSession()) return left(_sessionChanged);
+        if (data is Map && data['ok'] == true) {
+          return right(
+            data['alreadyVerified'] == true
+                ? EmailVerificationRequest.alreadyVerified
+                : EmailVerificationRequest.sent,
+          );
+        }
+        return left(_verificationOutcomeUnknown);
+      } on NowaveApiException catch (error) {
+        if (error.code == 'SESSION_CHANGED') return left(_sessionChanged);
+        // A permanent "this deployment has no mail" answer, not an outage.
+        if (error.code == 'MAIL_DISABLED') return left(_mailDisabled);
+        if (error.statusCode == HttpStatus.unauthorized) {
+          return left(_verificationRejected);
+        }
+        if (error.statusCode == HttpStatus.tooManyRequests) {
+          return left(_rateLimited);
+        }
+        if (error.statusCode == HttpStatus.notFound ||
+            error.statusCode == HttpStatus.methodNotAllowed) {
+          return left(_verificationUnsupported);
+        }
+        if (error.statusCode == HttpStatus.badRequest) {
+          return left(_verificationInvalidInput);
+        }
+        if (error.statusCode == HttpStatus.forbidden) {
+          return left(Failure.permission());
+        }
+        // A later 5xx may hide a request that did send the mail.
+        return left(_verificationOutcomeUnknown);
+      } catch (_) {
+        // Timeout or connection loss after sending: the link may exist.
+        return left(_verificationOutcomeUnknown);
+      }
+    } finally {
+      _inFlight = false;
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> verifyEmailToken({
+    required String token,
+  }) async {
+    // The server refuses anything but 32 bytes of base64url, so a bad paste is
+    // answered here instead of spending an attempt from the IP's budget.
+    if (!isVerificationToken(token)) return left(_verificationTokenInvalid);
+    try {
+      if (!await _connectionChecker.isConnected) {
+        return left(Failure.networkOffline());
+      }
+      final data = await _client.postJson(
+        '/auth/verify-email',
+        {'token': token},
+        // The token is the credential; a session must not ride along, and no
+        // 401 replay may resend a token that the server already consumed.
+        authenticate: false,
+        followRedirects: false,
+      );
+      if (data is Map && data['ok'] == true) return right(null);
+      return left(_verificationOutcomeUnknown);
+    } on NowaveApiException catch (error) {
+      if (error.statusCode == HttpStatus.unauthorized) {
+        return left(_verificationTokenRejected);
+      }
+      if (error.statusCode == HttpStatus.tooManyRequests) {
+        return left(_rateLimited);
+      }
+      if (error.statusCode == HttpStatus.notFound ||
+          error.statusCode == HttpStatus.methodNotAllowed) {
+        return left(_verificationUnsupported);
+      }
+      if (error.statusCode == HttpStatus.badRequest) {
+        return left(_verificationTokenInvalid);
+      }
+      return left(_verificationOutcomeUnknown);
+    } catch (_) {
+      // The token may already be spent; the reader must re-check the state
+      // rather than resubmit the same code.
+      return left(_verificationOutcomeUnknown);
+    }
+  }
 }
 
 const _emailTaken = Failure(
@@ -257,6 +412,46 @@ const _emailInvalidInput = Failure(
   '邮箱或当前密码不符合要求，请检查后重试',
   kind: FailureKind.validation,
   code: 'account.emailInvalid',
+);
+const _verificationRejected = Failure(
+  '登录已失效，请重新登录后再试',
+  kind: FailureKind.auth,
+  code: 'account.verificationRejected',
+);
+const _mailDisabled = Failure(
+  '当前服务器未启用邮件投递，暂时无法通过邮件验证邮箱',
+  kind: FailureKind.server,
+  code: 'account.verificationMailDisabled',
+);
+const _verificationUnsupported = Failure(
+  '当前服务器不支持邮箱验证，请联系服务提供方',
+  kind: FailureKind.server,
+  code: 'account.verificationUnsupported',
+);
+const _verificationInvalidInput = Failure(
+  '验证请求不符合要求，请稍后重试',
+  kind: FailureKind.validation,
+  code: 'account.verificationInvalidInput',
+);
+const _verificationTokenInvalid = Failure(
+  '确认码格式不正确，请从邮件里的链接重新复制',
+  kind: FailureKind.validation,
+  code: 'account.verificationTokenInvalid',
+);
+const _verificationTokenRejected = Failure(
+  '该确认链接无效、已被使用或已过期',
+  kind: FailureKind.auth,
+  code: 'account.verificationTokenRejected',
+);
+const _verificationOutcomeUnknown = Failure(
+  '无法确认结果：验证邮件可能已经发出，或者这个确认码已经用掉。请先检查邮箱或刷新状态，不要连续重试。',
+  kind: FailureKind.unknown,
+  code: 'account.verificationOutcomeUnknown',
+);
+const _statusUnavailable = Failure(
+  '暂时无法读取邮箱状态，请稍后重试',
+  kind: FailureKind.server,
+  code: 'account.emailStatusUnavailable',
 );
 const _emailInProgress = Failure(
   '已有账户安全修改正在处理，请等待结果',

@@ -171,6 +171,7 @@ class NowaveApiClient {
     Object? body, {
     Map<String, String>? query,
     bool authenticate = true,
+    bool followRedirects = true,
     Map<String, String>? extraHeaders,
     NowaveSessionFence? sessionFence,
   }) {
@@ -180,6 +181,7 @@ class NowaveApiClient {
       query: query,
       body: body,
       authenticate: authenticate,
+      followRedirects: followRedirects,
       extraHeaders: extraHeaders,
       sessionFence: sessionFence,
     );
@@ -243,6 +245,51 @@ class NowaveApiClient {
       );
     } finally {
       // The old write may have reached the server even on a transport error.
+      ensureSameViewer();
+    }
+  }
+
+  /// Sends one viewer-scoped POST, with no 401 replay or redirect.
+  ///
+  /// Same contract as [putJsonForViewerOnce]: a 401 on an endpoint that takes
+  /// no credential of its own says the session is gone, not that a refresh
+  /// would help, and replaying it would burn another rate-limit slot (or send a
+  /// second mail). Redirects are off so nothing is forwarded to a new origin.
+  Future<dynamic> postJsonForViewerOnce(
+    String path,
+    Object? body, {
+    required String expectedUserId,
+    required int expectedSessionGeneration,
+  }) async {
+    final auth = _authenticator;
+    bool matches() =>
+        auth is NowaveViewerAuthenticator &&
+        expectedUserId.isNotEmpty &&
+        auth.activeUserId == expectedUserId &&
+        auth.sessionGeneration == expectedSessionGeneration &&
+        (auth.accessToken?.isNotEmpty ?? false);
+
+    void ensureSameViewer() {
+      if (!matches()) {
+        throw const NowaveApiException(
+          statusCode: HttpStatus.conflict,
+          code: 'SESSION_CHANGED',
+          message: 'Session changed during a viewer-scoped write.',
+        );
+      }
+    }
+
+    ensureSameViewer();
+    try {
+      return await _request(
+        'POST',
+        path,
+        body: body,
+        allowRefresh: false,
+        followRedirects: false,
+      );
+    } finally {
+      // The request may have reached the server even on a transport error.
       ensureSameViewer();
     }
   }
