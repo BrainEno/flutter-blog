@@ -457,7 +457,7 @@ void main() {
     final version = await upgraded
         .customSelect('PRAGMA user_version')
         .getSingle();
-    expect(version.read<int>('user_version'), 10);
+    expect(version.read<int>('user_version'), 11);
   });
 
   test('a pre-v8 database gains the queue with cover_url', () async {
@@ -596,6 +596,10 @@ void main() {
     expect(row.targetId, isNull);
     expect(row.coverUrl, 'https://cdn/v9.png');
 
+    // The v9 row predates editions, so nothing is recorded and a retry falls
+    // back to the content language.
+    expect(row.locale, isNull);
+
     // And the new columns are usable straight after the upgrade.
     final edit = await legacyStore.enqueue(
       userId: 'alice',
@@ -605,7 +609,59 @@ void main() {
       idempotencyKey: 'key-edit',
       kind: PublishQueueKind.edit,
       targetId: 'my-slug',
+      locale: 'en',
     );
     expect(edit.targetId, 'my-slug');
+    expect(edit.locale, 'en');
+    expect((await legacyStore.entries(userId: 'alice')).last.locale, 'en');
+  });
+
+  test('a queued edit keeps the edition it was queued for', () async {
+    final edit = await store.enqueue(
+      userId: 'alice',
+      title: 'edited',
+      content: 'body',
+      tags: const [],
+      idempotencyKey: 'key-edit',
+      kind: PublishQueueKind.edit,
+      targetId: 'my-slug',
+      locale: ' zh-TW ',
+    );
+
+    // Normalized on the way in, so a blank value cannot masquerade as an
+    // edition and a padded one still names the right translation.
+    expect(edit.locale, 'zh-TW');
+    final stored = (await store.entries(userId: 'alice')).single;
+    expect(stored.locale, 'zh-TW');
+  });
+
+  test('a blank edition is stored as unknown', () async {
+    final edit = await store.enqueue(
+      userId: 'alice',
+      title: 'edited',
+      content: 'body',
+      tags: const [],
+      idempotencyKey: 'key-edit',
+      kind: PublishQueueKind.edit,
+      targetId: 'my-slug',
+      locale: '   ',
+    );
+
+    expect(edit.locale, isNull);
+    expect((await store.entries(userId: 'alice')).single.locale, isNull);
+  });
+
+  test('a create never carries an edition', () async {
+    final entry = await store.enqueue(
+      userId: 'alice',
+      title: 'new',
+      content: 'body',
+      tags: const [],
+      idempotencyKey: 'key-create',
+      locale: 'en',
+    );
+
+    // A create names its language in the request body, not in the queue row.
+    expect(entry.locale, isNull);
   });
 }

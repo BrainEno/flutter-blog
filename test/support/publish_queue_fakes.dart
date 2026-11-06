@@ -72,6 +72,7 @@ class FakePublishQueueStore implements PublishQueueStore {
     ImageUpload? cover,
     PublishQueueKind kind = PublishQueueKind.create,
     String? targetId,
+    String? locale,
   }) async {
     final entry = queueEntry(
       id: 'queued-${enqueued.length + 1}',
