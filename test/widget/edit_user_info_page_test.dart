@@ -9,6 +9,7 @@ import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/domain/usecases/edit_user_usecase.dart';
 import 'package:belog/features/user/presentation/pages/edit_user_info_page.dart';
 import 'package:belog/l10n/app_localizations.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -117,7 +118,7 @@ void main() {
 
     await pumpPage(tester);
     await tester.enterText(find.byType(TextFormField).at(0), '新名字');
-    await tester.tap(find.byType(ElevatedButton));
+    await tester.tap(find.byType(NoWaveButton));
     await tester.pumpAndSettle();
 
     final params =
@@ -134,7 +135,7 @@ void main() {
   ) async {
     await pumpPage(tester);
     await tester.enterText(find.byType(TextFormField).at(2), 'example.invalid');
-    await tester.tap(find.byType(ElevatedButton));
+    await tester.tap(find.byType(NoWaveButton));
     await tester.pumpAndSettle();
 
     verifyNever(() => useCase(any()));

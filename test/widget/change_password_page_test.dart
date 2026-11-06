@@ -9,6 +9,7 @@ import 'package:belog/features/auth/domain/email_verification.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:belog/features/auth/presentation/pages/change_password_page.dart';
 import 'package:belog/l10n/app_localizations.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -124,7 +125,7 @@ Future<void> _enter(WidgetTester tester, int index, String value) async {
 }
 
 Future<void> _tapSubmit(WidgetTester tester, AppLocalizations l10n) async {
-  final button = find.widgetWithText(FilledButton, l10n.passwordChangeAction);
+  final button = find.widgetWithText(NoWaveButton, l10n.passwordChangeAction);
   await tester.ensureVisible(button);
   await tester.pumpAndSettle();
   await tester.tap(button);
@@ -242,8 +243,8 @@ void main() {
       expect(repository.calls.single.generation, 1);
       expect(repository.calls.single.current, ' current password ');
       expect(repository.calls.single.next, '  new password  ');
-      final updating = tester.widget<FilledButton>(
-        find.widgetWithText(FilledButton, l10n.passwordChanging),
+      final updating = tester.widget<NoWaveButton>(
+        find.widgetWithText(NoWaveButton, l10n.passwordChanging),
       );
       expect(updating.onPressed, isNull);
       expect(
@@ -333,8 +334,8 @@ void main() {
     expect(find.text(l10n.passwordChangeSuccess), findsNothing);
     expect(find.text(l10n.errorAuthSessionChanged), findsOneWidget);
     expect(repository.calls.single.userId, 'user-a');
-    final button = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, l10n.passwordChangeAction),
+    final button = tester.widget<NoWaveButton>(
+      find.widgetWithText(NoWaveButton, l10n.passwordChangeAction),
     );
     expect(button.onPressed, isNull);
     for (final field in tester.widgetList<TextFormField>(

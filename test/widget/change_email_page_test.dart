@@ -9,6 +9,7 @@ import 'package:belog/features/auth/domain/email_verification.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:belog/features/auth/presentation/pages/change_email_page.dart';
 import 'package:belog/l10n/app_localizations.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -124,7 +125,7 @@ Future<void> _enter(WidgetTester tester, int index, String value) async {
 }
 
 Future<void> _tapSubmit(WidgetTester tester, AppLocalizations l10n) async {
-  final button = find.widgetWithText(FilledButton, l10n.accountEmailAction);
+  final button = find.widgetWithText(NoWaveButton, l10n.accountEmailAction);
   await tester.ensureVisible(button);
   await tester.pumpAndSettle();
   await tester.tap(button);
@@ -344,7 +345,7 @@ void main() {
     await tester.pump();
 
     expect(find.text(l10n.accountEmailUpdating), findsOneWidget);
-    final button = tester.widget<FilledButton>(find.byType(FilledButton));
+    final button = tester.widget<NoWaveButton>(find.byType(NoWaveButton));
     expect(button.onPressed, isNull);
 
     repository.pending!.complete(right('new@example.invalid'));
@@ -381,7 +382,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(l10n.errorAuthSessionChanged), findsOneWidget);
-    final button = tester.widget<FilledButton>(find.byType(FilledButton));
+    final button = tester.widget<NoWaveButton>(find.byType(NoWaveButton));
     expect(button.onPressed, isNull);
     await _tapSubmit(tester, l10n);
     await tester.pumpAndSettle();

@@ -7,6 +7,7 @@ import 'package:belog/features/auth/domain/email_verification.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:belog/features/auth/presentation/pages/email_verification_page.dart';
 import 'package:belog/l10n/app_localizations.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -196,7 +197,9 @@ void main() {
     );
 
     expect(find.textContaining('2025'), findsOneWidget);
-    final send = tester.widget<FilledButton>(find.byType(FilledButton));
+    final send = tester.widget<NoWaveButton>(
+      find.widgetWithText(NoWaveButton, l10n.emailVerifySend),
+    );
     expect(send.onPressed, isNull);
     final field = tester.widget<TextFormField>(find.byType(TextFormField));
     expect(field.enabled, isFalse);
@@ -372,11 +375,19 @@ void main() {
 
     expect(find.text(l10n.errorAuthSessionChanged), findsOneWidget);
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester
+          .widget<NoWaveButton>(
+            find.widgetWithText(NoWaveButton, l10n.emailVerifySend),
+          )
+          .onPressed,
       isNull,
     );
     expect(
-      tester.widget<OutlinedButton>(find.byType(OutlinedButton)).onPressed,
+      tester
+          .widget<NoWaveButton>(
+            find.widgetWithText(NoWaveButton, l10n.emailVerifyTokenConfirm),
+          )
+          .onPressed,
       isNull,
     );
     // Nothing typed survives the switch.
