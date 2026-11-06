@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:flutter/material.dart';
@@ -29,20 +30,24 @@ class NoWaveActionRow extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        focusColor: AppPalette.orange.withAlpha(55),
+        focusColor: AppPalette.orange.withAlpha(NoWaveOpacity.focusAlpha),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 64),
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          constraints: const BoxConstraints(minHeight: NoWaveSizes.row),
+          padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.medium),
           decoration: BoxDecoration(
             border: Border(
-              top: BorderSide(color: scheme.onSurface.withAlpha(100)),
+              top: BorderSide(
+                color: scheme.onSurface.withAlpha(NoWaveOpacity.dividerAlpha),
+              ),
             ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ExcludeSemantics(child: Icon(icon, size: 22)),
-              const SizedBox(width: 16),
+              ExcludeSemantics(
+                child: Icon(icon, size: NoWaveIconSize.action),
+              ),
+              const SizedBox(width: NoWaveSpacing.medium),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,7 +57,7 @@ class NoWaveActionRow extends StatelessWidget {
                       style: NoWaveTypography.title(context, size: 20),
                     ),
                     if (description != null) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: NoWaveSpacing.xs),
                       Text(
                         description!,
                         style: Theme.of(context).textTheme.bodySmall,
@@ -61,10 +66,13 @@ class NoWaveActionRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              if (trailing != null) ...[trailing!, const SizedBox(width: 12)],
+              const SizedBox(width: NoWaveSpacing.small),
+              if (trailing != null) ...[
+                trailing!,
+                const SizedBox(width: NoWaveSpacing.small),
+              ],
               const ExcludeSemantics(
-                child: Icon(Icons.arrow_forward, size: 20),
+                child: Icon(Icons.arrow_forward, size: NoWaveIconSize.row),
               ),
             ],
           ),

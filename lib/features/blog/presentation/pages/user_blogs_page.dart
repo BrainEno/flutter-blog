@@ -1,4 +1,7 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
+import 'package:belog/core/design/components/no_wave_notice.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/l10n/edition_l10n.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
@@ -87,24 +90,16 @@ class _UserBlogsPageState extends State<UserBlogsPage>
   /// still be restored until the server purge.
   Future<void> _confirmDelete(Blog blog) async {
     final l10n = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.deleteArticleTitle),
-        content: Text(l10n.deleteArticleBody(blog.title)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.actionCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.actionDelete),
-          ),
-        ],
-      ),
+    // The shared dialog owns the destructive styling and the "dismissed means
+    // no" rule; this screen only supplies the wording.
+    final confirmed = await showNoWaveConfirmDialog(
+      context,
+      title: l10n.deleteArticleTitle,
+      message: l10n.deleteArticleBody(blog.title),
+      cancelLabel: l10n.actionCancel,
+      confirmLabel: l10n.actionDelete,
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     context.read<BlogUploadBloc>().add(DeleteBlogEvent(blogId: blog.id));
   }
 
@@ -204,15 +199,16 @@ class _UserBlogsPageState extends State<UserBlogsPage>
     if (blogs.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(NoWaveSpacing.page),
           child: NoWaveStatus(message: l10n.noArticlesYet),
         ),
       );
     }
     final hasDrafts = blogs.any((blog) => blog.isDraft);
+    final editionsConfirmed = editions?.isConfirmed ?? false;
     final editionHint = editions == null
         ? null
-        : editions.isConfirmed
+        : editionsConfirmed
         ? l10n.myArticlesEditionsHint
         : l10n.myArticlesEditionsUnavailable;
     return RefreshIndicator(
@@ -231,25 +227,36 @@ class _UserBlogsPageState extends State<UserBlogsPage>
           if (hasDrafts)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Text(
-                  l10n.myArticlesDraftsHint,
-                  style: Theme.of(context).textTheme.bodySmall,
+                padding: const EdgeInsets.fromLTRB(
+                  NoWaveSpacing.page,
+                  NoWaveSpacing.page,
+                  NoWaveSpacing.page,
+                  0,
                 ),
+                child: NoWaveNotice(message: l10n.myArticlesDraftsHint),
               ),
             ),
           if (editionHint != null)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Text(
-                  editionHint,
-                  style: Theme.of(context).textTheme.bodySmall,
+                padding: const EdgeInsets.fromLTRB(
+                  NoWaveSpacing.page,
+                  NoWaveSpacing.page,
+                  NoWaveSpacing.page,
+                  0,
+                ),
+                child: NoWaveNotice(
+                  message: editionHint,
+                  // An older deployment is a limit the reader has to know
+                  // about, not a failure.
+                  tone: editionsConfirmed
+                      ? NoWaveNoticeTone.info
+                      : NoWaveNoticeTone.warning,
                 ),
               ),
             ),
           SliverPadding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(NoWaveSpacing.page),
             sliver: SliverGrid.builder(
               gridDelegate: blogGridDelegate(context),
               itemCount: blogs.length,

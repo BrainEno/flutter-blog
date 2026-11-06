@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:flutter/material.dart';
 
@@ -25,20 +26,23 @@ class NoWaveStatus extends StatelessWidget {
           ExcludeSemantics(
             child: Text(
               '—',
-              style: NoWaveTypography.title(context, size: 48).copyWith(
+              style: NoWaveTypography.title(
+                context,
+                size: NoWaveIconSize.display,
+              ).copyWith(
                 fontStyle: FontStyle.italic,
                 fontWeight: FontWeight.w400,
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: NoWaveSpacing.small),
           Text(
             message,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           if (onAction != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: NoWaveSpacing.small),
             TextButton(onPressed: onAction, child: Text(actionLabel!)),
           ],
         ],

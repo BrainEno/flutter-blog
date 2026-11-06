@@ -1,3 +1,5 @@
+import 'package:belog/core/design/components/no_wave_badge.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
@@ -13,21 +15,21 @@ SliverGridDelegateWithFixedCrossAxisCount blogGridDelegate(
   BuildContext context,
 ) {
   final width = MediaQuery.sizeOf(context).width;
-  final columns = width >= 900
-      ? 4
-      : width >= 600
-      ? 3
-      : 2;
-  final tileWidth = (width - 16 * (columns - 1)) / columns;
+  final columns = NoWaveBreakpoints.columnsFor(width);
+  final gap = NoWaveSpacing.medium;
+  final tileWidth = (width - gap * (columns - 1)) / columns;
   final scaler = MediaQuery.textScalerOf(context);
   final bodyScale = scaler.scale(14) / 14;
   final titleScale = scaler.scale(19) / 19;
   final scale = bodyScale > titleScale ? bodyScale : titleScale;
   return SliverGridDelegateWithFixedCrossAxisCount(
     crossAxisCount: columns,
-    crossAxisSpacing: 16,
-    mainAxisSpacing: 16,
-    mainAxisExtent: tileWidth * 3 / 4 + 180 * (scale < 1 ? 1 : scale),
+    crossAxisSpacing: gap,
+    mainAxisSpacing: gap,
+    // Cover at its token aspect ratio, plus room for title and metadata that
+    // grows with the reader's text size instead of clipping.
+    mainAxisExtent:
+        tileWidth / NoWaveSizes.coverAspect + 180 * (scale < 1 ? 1 : scale),
   );
 }
 
@@ -55,7 +57,6 @@ class BlogGridItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = authorDisplayName(context.l10n, blog.posterName);
     final description = extractDescription(blog.content);
-    final scheme = Theme.of(context).colorScheme;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -69,28 +70,25 @@ class BlogGridItem extends StatelessWidget {
                 ArticleCover(
                   title: blog.title,
                   imageUrl: blog.imageUrl,
-                  aspectRatio: 4 / 3,
+                  aspectRatio: NoWaveSizes.coverAspect,
                 ),
                 if (blog.isDraft || editionLabel != null)
                   Positioned(
-                    top: 8,
-                    left: 8,
+                    top: NoWaveSpacing.small,
+                    left: NoWaveSpacing.small,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (blog.isDraft)
-                          _TileBadge(
+                          NoWaveBadge(
                             label: context.l10n.myArticlesDraftBadge,
-                            background: scheme.secondaryContainer,
-                            foreground: scheme.onSecondaryContainer,
                           ),
                         if (blog.isDraft && editionLabel != null)
-                          const SizedBox(height: 4),
+                          const SizedBox(height: NoWaveSpacing.xs),
                         if (editionLabel != null)
-                          _TileBadge(
+                          NoWaveBadge(
                             label: editionLabel!,
-                            background: scheme.surfaceContainerHighest,
-                            foreground: scheme.onSurfaceVariant,
+                            tone: NoWaveBadgeTone.neutral,
                           ),
                       ],
                     ),
@@ -107,7 +105,7 @@ class BlogGridItem extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: NoWaveSpacing.small),
             Text(
               blog.title,
               maxLines: 2,
@@ -115,7 +113,7 @@ class BlogGridItem extends StatelessWidget {
               style: NoWaveTypography.title(context, size: 19),
             ),
             if (description.isNotEmpty) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: NoWaveSpacing.xs),
               Text(
                 description,
                 maxLines: 2,
@@ -123,7 +121,7 @@ class BlogGridItem extends StatelessWidget {
                 style: NoWaveTypography.meta(context),
               ),
             ],
-            const SizedBox(height: 6),
+            const SizedBox(height: NoWaveSpacing.xs),
             Text(
               name,
               maxLines: 1,
@@ -137,39 +135,6 @@ class BlogGridItem extends StatelessWidget {
               style: NoWaveTypography.meta(context),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// A small label laid over the cover: draft state, language edition.
-class _TileBadge extends StatelessWidget {
-  const _TileBadge({
-    required this.label,
-    required this.background,
-    required this.foreground,
-  });
-
-  final String label;
-  final Color background;
-  final Color foreground;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(2),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: foreground,
-            letterSpacing: 0.5,
-          ),
         ),
       ),
     );

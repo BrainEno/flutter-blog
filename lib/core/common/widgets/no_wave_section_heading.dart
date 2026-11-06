@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:flutter/material.dart';
 
@@ -22,12 +23,12 @@ class NoWaveSectionHeading extends StatelessWidget {
       children: [
         if (eyebrow != null) ...[
           Text(eyebrow!, style: NoWaveTypography.meta(context)),
-          const SizedBox(height: 8),
+          const SizedBox(height: NoWaveSpacing.small),
         ],
         Semantics(
           header: true,
           child: Wrap(
-            spacing: 12,
+            spacing: NoWaveSpacing.small,
             crossAxisAlignment: WrapCrossAlignment.end,
             children: [
               Text(title, style: titleStyle),
