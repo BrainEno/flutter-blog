@@ -66,11 +66,8 @@ Conversation testConversation({
 
 /// A message the viewer just stored: a fresh id, so a test can tell it apart
 /// from the page it already had.
-ConversationMessage _sentMessage(int count, String body) => testMessage(
-  id: 'sent-$count',
-  body: body,
-  senderId: 'user-a',
-);
+ConversationMessage _sentMessage(int count, String body) =>
+    testMessage(id: 'sent-$count', body: body, senderId: 'user-a');
 
 ConversationMessage testMessage({
   String id = 'message-1',
