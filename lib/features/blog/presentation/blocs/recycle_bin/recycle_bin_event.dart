@@ -8,7 +8,12 @@ final class RecycleBinRequested extends RecycleBinEvent {}
 final class RecycleBinRestoreRequested extends RecycleBinEvent {
   final String articleId;
 
-  RecycleBinRestoreRequested({required this.articleId});
+  /// The edition the tombstone is in; null means the content language in
+  /// effect. The bin lists one language, but the value is carried explicitly
+  /// so a restore can never address a translation the work does not have.
+  final String? locale;
+
+  RecycleBinRestoreRequested({required this.articleId, this.locale});
 }
 
 /// The active account changed (sign-in, sign-out or a switch).

@@ -707,6 +707,11 @@
   "categoryArticlesTitle": "Category",
   "categoryArticlesEmpty": "Nothing is filed under {name} yet",
   "@categoryArticlesEmpty": {"placeholders": {"name": {"type": "String"}}},
+  "myArticlesAllLocales": "All language editions",
+  "myArticlesSingleLocale": "Only the current language",
+  "myArticlesEditionsHint": "Up to 50 works per language, newest first; each language edition of a work is its own row.",
+  "myArticlesEditionsUnavailable": "This deployment only lists the current language, so other editions stay hidden.",
+  "languageChineseTraditional": "Chinese (Traditional)",
   "categoryNotFound": "This category was not found; it may have been removed.",
   "@accountEmailSuccess": {
     "placeholders": {

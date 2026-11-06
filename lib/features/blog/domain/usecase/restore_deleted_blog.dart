@@ -11,7 +11,10 @@ class RestoreDeletedBlog implements UseCase<Blog, RestoreDeletedBlogParams> {
 
   @override
   Future<Either<Failure, Blog>> call(RestoreDeletedBlogParams params) async {
-    return await blogRepository.restoreDeletedBlog(params.articleId);
+    return await blogRepository.restoreDeletedBlog(
+      params.articleId,
+      locale: params.locale,
+    );
   }
 }
 
@@ -20,5 +23,10 @@ class RestoreDeletedBlogParams {
   /// answers to its slug).
   final String articleId;
 
-  RestoreDeletedBlogParams({required this.articleId});
+  /// The edition the tombstone is in; null means the current content
+  /// language. Restoring the wrong translation reports "not found" for a row
+  /// the user can see in the bin.
+  final String? locale;
+
+  RestoreDeletedBlogParams({required this.articleId, this.locale});
 }

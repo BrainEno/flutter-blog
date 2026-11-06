@@ -24,6 +24,7 @@ class BlogModel extends Blog {
     this.publishedAt,
     this.serverSummary,
     this.plainEditorCompatible = false,
+    super.locale,
   });
 
   /// The no-wave server article id (UUID). [Blog.id] is the public slug;
@@ -57,6 +58,7 @@ class BlogModel extends Blog {
     DateTime? updatedAt,
     String? posterName,
     String? posterAvatar,
+    String? locale,
   }) {
     return BlogModel(
       id: id ?? this.id,
@@ -77,6 +79,7 @@ class BlogModel extends Blog {
       posterName: posterName ?? this.posterName,
       posterAvatar: posterAvatar ?? this.posterAvatar,
       isDraft: isDraft,
+      locale: locale ?? this.locale,
     );
   }
 
@@ -110,6 +113,10 @@ class BlogModel extends Blog {
       // `status` is only present on the author's own rows; the public lists
       // serialize published work and never carry a draft.
       isDraft: map['status'] == 'draft',
+      // The edition this row is, not the language it was requested in: the
+      // server may answer a fallback edition under a different locale than the
+      // query asked for, and writes must follow the body.
+      locale: map['locale'] as String? ?? '',
       id: map['slug'] as String? ?? '',
       articleId: map['id'] as String? ?? '',
       publishedAt: map['publishedAt'] is String

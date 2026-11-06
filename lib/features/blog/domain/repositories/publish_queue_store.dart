@@ -18,6 +18,10 @@ abstract interface class PublishQueueStore {
   /// updates one. An [PublishQueueKind.edit] entry must name its article:
   /// without a target there is nothing to update, so implementations reject it
   /// the same way they reject a missing account.
+  ///
+  /// [locale] is the language edition an edit writes. Without it a replay
+  /// falls back to whatever content language is in effect then, which for a
+  /// non-default edition means rewriting the wrong translation.
   Future<PublishQueueEntry> enqueue({
     required String userId,
     required String title,
@@ -27,6 +31,7 @@ abstract interface class PublishQueueStore {
     ImageUpload? cover,
     PublishQueueKind kind = PublishQueueKind.create,
     String? targetId,
+    String? locale,
   });
 
   /// Every entry this account queued, oldest first, including failed ones.

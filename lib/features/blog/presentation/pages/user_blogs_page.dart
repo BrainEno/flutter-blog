@@ -1,8 +1,10 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/l10n/edition_l10n.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
+import 'package:belog/features/blog/domain/entities/article_editions.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
@@ -20,6 +22,13 @@ class UserBlogsPage extends StatefulWidget {
 
 class _UserBlogsPageState extends State<UserBlogsPage>
     with WidgetsBindingObserver {
+  /// Whether the list is read across every language edition.
+  ///
+  /// Off by default: the single-language list is one row per work, which is
+  /// what most readers of their own archive expect. Turning it on is how an
+  /// author finds the `en` or legacy `zh-TW` edition they meant to edit.
+  bool _allEditions = false;
+
   @override
   void initState() {
     super.initState();
@@ -46,10 +55,18 @@ class _UserBlogsPageState extends State<UserBlogsPage>
       // `/me/articles` instead of the public author list: a restored or
       // demoted work is a server-side draft and would otherwise be invisible
       // here, with no way to publish it again.
+      final userId = appUserState.user.id;
       context.read<BlogByBloc>().add(
-        GetMyArticlesEvent(userId: appUserState.user.id),
+        _allEditions
+            ? GetMyArticleEditionsEvent(userId: userId)
+            : GetMyArticlesEvent(userId: userId),
       );
     }
+  }
+
+  void _toggleEditions() {
+    setState(() => _allEditions = !_allEditions);
+    _fetchUserBlogs();
   }
 
   Future<void> _editBlog(Blog blog) async {
@@ -99,6 +116,14 @@ class _UserBlogsPageState extends State<UserBlogsPage>
         centerTitle: true,
         actions: [
           IconButton(
+            tooltip: _allEditions
+                ? context.l10n.myArticlesSingleLocale
+                : context.l10n.myArticlesAllLocales,
+            isSelected: _allEditions,
+            icon: const Icon(Icons.translate),
+            onPressed: _toggleEditions,
+          ),
+          IconButton(
             tooltip: context.l10n.recycleBinTooltip,
             icon: const Icon(Icons.delete_outline),
             onPressed: _openRecycleBin,
@@ -143,57 +168,10 @@ class _UserBlogsPageState extends State<UserBlogsPage>
                   semanticsLabel: context.l10n.loadingArticles,
                 ),
               );
+            } else if (state is GetMyArticleEditionsSuccess) {
+              return _buildList(state.blogs, editions: state.editions);
             } else if (state is GetBlogsByUserSuccess) {
-              final blogs = state.blogs;
-              if (blogs.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: NoWaveStatus(message: context.l10n.noArticlesYet),
-                  ),
-                );
-              }
-              final hasDrafts = blogs.any((blog) => blog.isDraft);
-              return RefreshIndicator(
-                onRefresh: () async {
-                  _fetchUserBlogs();
-                  await context.read<BlogByBloc>().stream.firstWhere(
-                    (newState) =>
-                        newState is GetBlogsByUserSuccess ||
-                        newState is GetBlogsByUserFailure,
-                  );
-                },
-                child: CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    if (hasDrafts)
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                          child: Text(
-                            context.l10n.myArticlesDraftsHint,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                      ),
-                    SliverPadding(
-                      padding: const EdgeInsets.all(16),
-                      sliver: SliverGrid.builder(
-                        gridDelegate: blogGridDelegate(context),
-                        itemCount: blogs.length,
-                        itemBuilder: (context, index) {
-                          final blog = blogs[index];
-                          return BlogGridItem(
-                            blog: blog,
-                            onTap: () => _editBlog(blog),
-                            onLongPress: () => _confirmDelete(blog),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              );
+              return _buildList(state.blogs);
             }
             if (state is GetBlogsByUserFailure) {
               return Center(
@@ -210,6 +188,85 @@ class _UserBlogsPageState extends State<UserBlogsPage>
             return Center(child: Text(context.l10n.myArticlesLoadFailed));
           },
         ),
+      ),
+    );
+  }
+
+  /// The archive itself: one tile per row, with an edition badge when the
+  /// list spans languages.
+  ///
+  /// [editions] is null for the single-language read. When it is present but
+  /// unconfirmed (`locales == null`) the deployment ignored `allLocales`, so
+  /// the list is the current language only and the header says exactly that
+  /// instead of implying the archive is complete.
+  Widget _buildList(List<Blog> blogs, {ArticleEditions? editions}) {
+    final l10n = context.l10n;
+    if (blogs.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: NoWaveStatus(message: l10n.noArticlesYet),
+        ),
+      );
+    }
+    final hasDrafts = blogs.any((blog) => blog.isDraft);
+    final editionHint = editions == null
+        ? null
+        : editions.isConfirmed
+        ? l10n.myArticlesEditionsHint
+        : l10n.myArticlesEditionsUnavailable;
+    return RefreshIndicator(
+      onRefresh: () async {
+        _fetchUserBlogs();
+        await context.read<BlogByBloc>().stream.firstWhere(
+          (newState) =>
+              newState is GetBlogsByUserSuccess ||
+              newState is GetMyArticleEditionsSuccess ||
+              newState is GetBlogsByUserFailure,
+        );
+      },
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          if (hasDrafts)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Text(
+                  l10n.myArticlesDraftsHint,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ),
+          if (editionHint != null)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Text(
+                  editionHint,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ),
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverGrid.builder(
+              gridDelegate: blogGridDelegate(context),
+              itemCount: blogs.length,
+              itemBuilder: (context, index) {
+                final blog = blogs[index];
+                return BlogGridItem(
+                  blog: blog,
+                  editionLabel: editions == null
+                      ? null
+                      : contentEditionLabel(l10n, blog.locale),
+                  onTap: () => _editBlog(blog),
+                  onLongPress: () => _confirmDelete(blog),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

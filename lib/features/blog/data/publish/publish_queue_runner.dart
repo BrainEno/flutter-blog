@@ -126,14 +126,29 @@ class PublishQueueRunner implements PublishQueueDrainer {
     try {
       final Either<Failure, Blog> result;
       if (entry.kind == PublishQueueKind.edit) {
-        result = await repository.editBlog(
-          blogId: targetId!,
-          title: entry.title,
-          content: entry.content,
-          tags: entry.tags,
-          uploadedCoverUrl: coverUrl,
-          sessionFence: fence,
-        );
+        // The edition the entry was queued for. An entry from an earlier build
+        // (or a default-language one) has none, and then the argument is left
+        // off so the repository uses the content language in effect - exactly
+        // what it did before editions were recorded.
+        final locale = (entry.locale ?? '').trim();
+        result = locale.isEmpty
+            ? await repository.editBlog(
+                blogId: targetId!,
+                title: entry.title,
+                content: entry.content,
+                tags: entry.tags,
+                uploadedCoverUrl: coverUrl,
+                sessionFence: fence,
+              )
+            : await repository.editBlog(
+                blogId: targetId!,
+                title: entry.title,
+                content: entry.content,
+                tags: entry.tags,
+                uploadedCoverUrl: coverUrl,
+                locale: locale,
+                sessionFence: fence,
+              );
       } else {
         result = await repository.uploadBlog(
           uploadedCoverUrl: coverUrl,

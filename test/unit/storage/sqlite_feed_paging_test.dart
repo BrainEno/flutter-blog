@@ -182,7 +182,8 @@ void main() {
       (await db.customSelect('PRAGMA user_version').get()).single.read<int>(
         'user_version',
       ),
-      10,
+      // The upgrade runs every later step too, so this is the current schema.
+      11,
     );
 
     await db.close();

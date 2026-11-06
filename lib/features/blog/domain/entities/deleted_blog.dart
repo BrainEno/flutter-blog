@@ -21,11 +21,20 @@ class DeletedBlog {
   /// the backend could not compute a promise.
   final DateTime? purgesAt;
 
+  /// The language edition this tombstone holds (`zh-CN`, `zh-TW`, `en`), or
+  /// an empty string when the source could not say.
+  ///
+  /// Restore is addressed by article id plus locale: naming a translation the
+  /// work does not have reports "not found" for a row the author is looking at
+  /// in the bin.
+  final String locale;
+
   DeletedBlog({
     required this.articleId,
     required this.title,
     required this.imageUrl,
     required this.deletedAt,
     required this.purgesAt,
+    this.locale = '',
   });
 }

@@ -37,11 +37,19 @@ class BlogGridItem extends StatelessWidget {
     required this.blog,
     required this.onTap,
     this.onLongPress,
+    this.editionLabel,
   });
 
   final Blog blog;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+
+  /// Language edition label, shown next to the draft badge.
+  ///
+  /// Only the cross-language "my articles" view needs it: everywhere else the
+  /// list is one language by construction, and a badge on every tile would be
+  /// noise. Null renders no badge.
+  final String? editionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -63,29 +71,28 @@ class BlogGridItem extends StatelessWidget {
                   imageUrl: blog.imageUrl,
                   aspectRatio: 4 / 3,
                 ),
-                if (blog.isDraft)
+                if (blog.isDraft || editionLabel != null)
                   Positioned(
                     top: 8,
                     left: 8,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: scheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        child: Text(
-                          context.l10n.myArticlesDraftBadge,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: scheme.onSecondaryContainer,
-                                letterSpacing: 0.5,
-                              ),
-                        ),
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (blog.isDraft)
+                          _TileBadge(
+                            label: context.l10n.myArticlesDraftBadge,
+                            background: scheme.secondaryContainer,
+                            foreground: scheme.onSecondaryContainer,
+                          ),
+                        if (blog.isDraft && editionLabel != null)
+                          const SizedBox(height: 4),
+                        if (editionLabel != null)
+                          _TileBadge(
+                            label: editionLabel!,
+                            background: scheme.surfaceContainerHighest,
+                            foreground: scheme.onSurfaceVariant,
+                          ),
+                      ],
                     ),
                   ),
                 if (onLongPress != null)
@@ -130,6 +137,39 @@ class BlogGridItem extends StatelessWidget {
               style: NoWaveTypography.meta(context),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A small label laid over the cover: draft state, language edition.
+class _TileBadge extends StatelessWidget {
+  const _TileBadge({
+    required this.label,
+    required this.background,
+    required this.foreground,
+  });
+
+  final String label;
+  final Color background;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: foreground,
+            letterSpacing: 0.5,
+          ),
         ),
       ),
     );

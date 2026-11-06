@@ -18,6 +18,7 @@ class UpdateBlog implements UseCase<Blog, UpdateBlogParams> {
       title: params.title,
       content: params.content,
       tags: params.tags,
+      locale: params.locale,
       sessionFence: params.sessionFence,
     );
   }
@@ -31,6 +32,11 @@ class UpdateBlogParams {
   final List<String> tags;
   final NowaveSessionFence sessionFence;
 
+  /// The edition this save belongs to (the article's own `locale`). Null means
+  /// the current content language; naming the wrong one rewrites the wrong
+  /// translation, because the server replaces exactly that edition.
+  final String? locale;
+
   UpdateBlogParams({
     required this.blogId,
     this.image,
@@ -38,5 +44,6 @@ class UpdateBlogParams {
     required this.content,
     required this.tags,
     required this.sessionFence,
+    this.locale,
   });
 }

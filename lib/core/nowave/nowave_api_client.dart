@@ -129,6 +129,23 @@ class NowaveApiClient {
     required String expectedUserId,
     Map<String, String>? query,
   }) async {
+    return (await getEnvelopeForViewer(
+      path,
+      expectedUserId: expectedUserId,
+      query: query,
+    )).data;
+  }
+
+  /// Like [getJsonForViewer], but keeps the envelope's `meta` object.
+  ///
+  /// The `meta` marker is the only way to tell a documented multi-language
+  /// list from an older deployment that ignored the parameter and answered a
+  /// single language: both are a 200 with a `data` array.
+  Future<EnvelopeData> getEnvelopeForViewer(
+    String path, {
+    required String expectedUserId,
+    Map<String, String>? query,
+  }) async {
     final auth = _authenticator;
     if (auth is! NowaveViewerAuthenticator ||
         expectedUserId.isEmpty ||
@@ -142,7 +159,7 @@ class NowaveApiClient {
     }
     final generation = auth.sessionGeneration;
     try {
-      return await _request(
+      return await _requestEnvelope(
         'GET',
         path,
         query: query,
@@ -346,7 +363,40 @@ class NowaveApiClient {
     }
   }
 
+  /// Runs one request and returns only the unwrapped `data` payload.
   Future<dynamic> _request(
+    String method,
+    String path, {
+    Object? body,
+    Uint8List? rawBody,
+    String? contentType,
+    Map<String, String>? query,
+    bool authenticate = true,
+    bool allowRefresh = true,
+    bool followRedirects = true,
+    Duration? timeout,
+    Map<String, String>? extraHeaders,
+    NowaveSessionFence? sessionFence,
+  }) async {
+    final envelope = await _requestEnvelope(
+      method,
+      path,
+      body: body,
+      rawBody: rawBody,
+      contentType: contentType,
+      query: query,
+      authenticate: authenticate,
+      allowRefresh: allowRefresh,
+      followRedirects: followRedirects,
+      timeout: timeout,
+      extraHeaders: extraHeaders,
+      sessionFence: sessionFence,
+    );
+    return envelope.data;
+  }
+
+  /// The transport itself: same request, same failures, full envelope back.
+  Future<EnvelopeData> _requestEnvelope(
     String method,
     String path, {
     Object? body,
@@ -584,7 +634,7 @@ class NowaveApiClient {
   /// The mapping itself lives in [decodeEnvelope]; this method only logs the
   /// fixed diagnostic token for an unreadable body (issue #49) before
   /// rethrowing, so callers keep seeing one exception type for every failure.
-  dynamic _decode(String method, Uri uri, http.Response response) {
+  EnvelopeData _decode(String method, Uri uri, http.Response response) {
     final outcome = decodeEnvelope(
       statusCode: response.statusCode,
       bodyBytes: response.bodyBytes,
@@ -593,8 +643,8 @@ class NowaveApiClient {
       requestUri: '$method $uri',
     );
     switch (outcome) {
-      case EnvelopeData(data: final data):
-        return data;
+      case EnvelopeData():
+        return outcome;
       case EnvelopeFailure(error: final error, fault: final fault):
         if (fault != null) {
           AppLogger.responseMalformed(

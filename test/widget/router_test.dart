@@ -31,6 +31,8 @@ import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/data/models/comment_model.dart';
 import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart';
 import 'package:belog/features/blog/data/repositories/comment_repository_impl.dart';
+import 'package:belog/features/blog/domain/entities/article_editions.dart';
+import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_deleted_blogs.dart';
@@ -40,6 +42,7 @@ import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
+import 'package:belog/features/blog/domain/usecase/get_my_article_editions.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_user_liked_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/is_blog_liked.dart';
@@ -84,6 +87,9 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import '../support/locale_test_support.dart';
+
+/// The header the cross-language "my articles" list carries.
+const _kEditionsHint = '每种语言最多列出 50 篇，按更新时间排序；同一篇文章的不同语言版本会各占一条。';
 
 class MockBlogRemote extends Mock implements BlogRemoteDataSource {}
 
@@ -223,6 +229,14 @@ class Harness {
       () => remote.getMyArticles(userId: any(named: 'userId')),
     ).thenAnswer((_) async => <BlogModel>[]);
     when(
+      () => remote.getMyArticleEditions(userId: any(named: 'userId')),
+    ).thenAnswer(
+      (_) async => const ArticleEditions(
+        blogs: <Blog>[],
+        locales: ['zh-CN', 'zh-TW', 'en'],
+      ),
+    );
+    when(
       () => local.uploadLocalBlogs(blogs: any(named: 'blogs')),
     ).thenAnswer((_) async {});
     when(
@@ -253,6 +267,7 @@ class Harness {
       ..registerFactory(() => DeleteBlog(repository))
       ..registerFactory(() => GetBlogsByPoster(repository))
       ..registerFactory(() => GetMyArticles(repository))
+      ..registerFactory(() => GetMyArticleEditions(repository))
       ..registerFactory(() => GetRelatedArticles(repository))
       ..registerFactory(() => BlogBloc(getAllBlogs: sl<GetAllBlogs>()))
       ..registerFactory(() => BlogSearchBloc(searchBlogs: sl<SearchBlogs>()))
@@ -274,6 +289,7 @@ class Harness {
         () => BlogByBloc(
           getBlogsByPoster: sl<GetBlogsByPoster>(),
           getMyArticles: sl<GetMyArticles>(),
+          getMyArticleEditions: sl<GetMyArticleEditions>(),
         ),
       );
 
@@ -919,6 +935,77 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('草稿只有你自己能看到；在编辑器中打开并发布后才会公开。'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('my articles can list every language edition', (tester) async {
+    final harness = Harness();
+    addTearDown(harness.dispose);
+    when(() => harness.remote.getMyArticleEditions(userId: 'user')).thenAnswer(
+      (_) async => ArticleEditions(
+        blogs: [
+          sampleBlog('essay', '随笔').copyWith(locale: 'zh-CN'),
+          sampleBlog('essay', 'An essay').copyWith(locale: 'en'),
+        ],
+        locales: const ['zh-CN', 'zh-TW', 'en'],
+      ),
+    );
+    harness.appUserCubit.updateUser(sampleUser());
+    harness.buildRouter(initialLocation: '/profile/my-articles');
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+
+    // The archive is one language by default.
+    verifyNever(
+      () => harness.remote.getMyArticleEditions(userId: any(named: 'userId')),
+    );
+    await tester.tap(find.byTooltip('全部语言版本'));
+    await tester.pumpAndSettle();
+
+    verify(() => harness.remote.getMyArticleEditions(userId: 'user')).called(1);
+    expect(find.text('随笔'), findsOneWidget);
+    expect(find.text('An essay'), findsOneWidget);
+    // Each row says which edition it is, so two rows with one title are
+    // distinguishable.
+    expect(
+      find.descendant(of: find.byType(BlogGridItem), matching: find.text('中文')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(BlogGridItem),
+        matching: find.text('English'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text(_kEditionsHint), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('an older deployment says it lists one language only', (
+    tester,
+  ) async {
+    final harness = Harness();
+    addTearDown(harness.dispose);
+    // No `meta.locales`: the parameter was ignored, so the answer is the
+    // current language and the page must not imply the archive is complete.
+    when(() => harness.remote.getMyArticleEditions(userId: 'user')).thenAnswer(
+      (_) async => ArticleEditions(
+        blogs: [sampleBlog('essay', '随笔').copyWith(locale: 'zh-CN')],
+        locales: null,
+      ),
+    );
+    harness.appUserCubit.updateUser(sampleUser());
+    harness.buildRouter(initialLocation: '/profile/my-articles');
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('全部语言版本'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('随笔'), findsOneWidget);
+    expect(find.text('这套部署只能列出当前语言的文章，看不到其他语言版本。'), findsOneWidget);
+    expect(find.text(_kEditionsHint), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

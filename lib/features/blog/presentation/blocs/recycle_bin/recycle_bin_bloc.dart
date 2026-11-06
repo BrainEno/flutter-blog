@@ -98,7 +98,10 @@ class RecycleBinBloc extends Bloc<RecycleBinEvent, RecycleBinState> {
     final generation = _generation;
     emit(current.copyWith(restoringArticleId: event.articleId));
     final res = await _restoreDeletedBlog(
-      RestoreDeletedBlogParams(articleId: event.articleId),
+      RestoreDeletedBlogParams(
+        articleId: event.articleId,
+        locale: event.locale,
+      ),
     );
     // The restore was issued for the previous account; its list must not
     // come back for the new one.

@@ -50,6 +50,7 @@ class SqlitePublishQueueStore implements PublishQueueStore {
     ImageUpload? cover,
     PublishQueueKind kind = PublishQueueKind.create,
     String? targetId,
+    String? locale,
   }) {
     if (userId.isEmpty) {
       throw ArgumentError('A queued publish needs the account that asked.');
@@ -77,9 +78,10 @@ class SqlitePublishQueueStore implements PublishQueueStore {
       await database.customInsert(
         'INSERT INTO publish_queue(id, backend, user_id, idempotency_key, '
         'title, content, tags, cover_file, cover_mime, cover_url, kind, '
-        'target_id, state, attempts, next_attempt_at, last_error_code, '
-        'created_at, updated_at) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?)',
+        'target_id, locale, state, attempts, next_attempt_at, '
+        'last_error_code, created_at, updated_at) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, 0, NULL, '
+        'NULL, ?, ?)',
         variables: [
           Variable<String>(id),
           Variable<String>(_backend),
@@ -90,9 +92,11 @@ class SqlitePublishQueueStore implements PublishQueueStore {
           Variable<String>(jsonEncode(tags)),
           Variable<String>(coverFileName),
           Variable<String>(coverMime),
-          Variable<String>(null),
           Variable<String>(kind.name),
           Variable<String>(kind == PublishQueueKind.edit ? targetId : null),
+          Variable<String>(
+            kind == PublishQueueKind.edit ? _normalizedLocale(locale) : null,
+          ),
           Variable<String>(PublishQueueStatus.queued.name),
           Variable<int>(now.microsecondsSinceEpoch),
           Variable<int>(now.microsecondsSinceEpoch),
@@ -107,6 +111,9 @@ class SqlitePublishQueueStore implements PublishQueueStore {
         idempotencyKey: idempotencyKey,
         kind: kind,
         targetId: kind == PublishQueueKind.edit ? targetId : null,
+        locale: kind == PublishQueueKind.edit
+            ? _normalizedLocale(locale)
+            : null,
         status: PublishQueueStatus.queued,
         attempts: 0,
         createdAt: now,
@@ -332,9 +339,17 @@ class SqlitePublishQueueStore implements PublishQueueStore {
         orElse: () => PublishQueueKind.create,
       ),
       targetId: row.readNullable<String>('target_id'),
+      locale: row.readNullable<String>('locale'),
       nextAttemptAt: _timeOf(row.readNullable<int>('next_attempt_at')),
       lastErrorCode: row.readNullable<String>('last_error_code'),
     );
+  }
+
+  /// An empty or blank locale is "unknown", stored as null so a retry reads
+  /// the content language instead of a meaningless empty string.
+  static String? _normalizedLocale(String? locale) {
+    final trimmed = locale?.trim() ?? '';
+    return trimmed.isEmpty ? null : trimmed;
   }
 
   static DateTime? _timeOf(int? microseconds) {

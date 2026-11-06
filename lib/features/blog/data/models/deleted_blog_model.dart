@@ -11,6 +11,7 @@ class DeletedBlogModel extends DeletedBlog {
     required super.imageUrl,
     required super.deletedAt,
     required super.purgesAt,
+    super.locale,
   });
 
   /// Builds a tombstone from a serialized no-wave deleted article. The
@@ -30,6 +31,8 @@ class DeletedBlogModel extends DeletedBlog {
       // Absent when the backend could not read the tombstone timestamp -
       // the entry is still listed, it just carries no expiry promise.
       purgesAt: DateTime.tryParse(map['purgesAt'] as String? ?? ''),
+      // The edition the tombstone is, so restore can name it.
+      locale: map['locale'] as String? ?? '',
     );
   }
 }

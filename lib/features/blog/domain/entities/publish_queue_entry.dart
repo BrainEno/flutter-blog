@@ -53,6 +53,7 @@ class PublishQueueEntry {
     required this.updatedAt,
     this.kind = PublishQueueKind.create,
     this.targetId,
+    this.locale,
     this.coverFileName,
     this.coverMimeType,
     this.coverUrl,
@@ -84,6 +85,15 @@ class PublishQueueEntry {
   /// The public article id (slug) a [PublishQueueKind.edit] entry updates.
   /// Always null for [PublishQueueKind.create].
   final String? targetId;
+
+  /// The language edition a [PublishQueueKind.edit] entry writes.
+  ///
+  /// An article id is a work and `(id, locale)` is one of its translations, so
+  /// a replay that guessed the language from whatever the app displays later
+  /// would rewrite a different edition. Null means "the content language in
+  /// effect when the retry runs" - what every entry queued before this field
+  /// existed does, and only correct for the default edition.
+  final String? locale;
 
   final PublishQueueStatus status;
 
@@ -133,6 +143,7 @@ class PublishQueueEntry {
       idempotencyKey: idempotencyKey,
       kind: kind,
       targetId: targetId,
+      locale: locale,
       status: status ?? this.status,
       attempts: attempts ?? this.attempts,
       createdAt: createdAt,

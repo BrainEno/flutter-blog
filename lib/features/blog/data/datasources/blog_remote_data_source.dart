@@ -13,6 +13,7 @@ import 'package:belog/features/blog/data/datasources/tag_resolver.dart';
 import 'package:belog/features/blog/data/datasources/nowave_article_codec.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/data/models/deleted_blog_model.dart';
+import 'package:belog/features/blog/domain/entities/article_editions.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/domain/entities/tag_ref.dart';
@@ -64,9 +65,14 @@ abstract interface class BlogRemoteDataSource {
   });
 
   /// Loads an article by its public slug ([Blog.id]).
+  ///
+  /// [locale] names the edition to read. Null means the current content
+  /// language; pass the edition's own locale when a caller already knows it,
+  /// or the body it gets back may belong to a different translation.
   Future<BlogModel> getBlogById(
     String blogId, {
     NowaveSessionFence? sessionFence,
+    String? locale,
   });
 
   /// Same-topic articles the server recommends next to [slug]
@@ -82,6 +88,16 @@ abstract interface class BlogRemoteDataSource {
   /// not follow redirects, which would forward the bearer token. Drafts are
   /// private content and are never written to the shared article cache.
   Future<List<BlogModel>> getMyArticles({required String userId});
+
+  /// The same account-scoped list read across every language edition
+  /// (`GET /me/articles?allLocales=true`).
+  ///
+  /// The server returns each edition independently, newest update first, and
+  /// marks the locales it read in `meta.locales`. A deployment that predates
+  /// the parameter ignores it and answers the single current language with no
+  /// marker; [ArticleEditions.locales] is null in that case, so the caller can
+  /// say "only one language here" instead of implying a complete list.
+  Future<ArticleEditions> getMyArticleEditions({required String userId});
 
   /// Resolves a stored tag name to its server taxonomy.
   ///
@@ -116,7 +132,7 @@ abstract interface class BlogRemoteDataSource {
   /// Restores a tombstone (`POST /articles/:articleId/restore`); the
   /// article comes back as a draft with its original slug reclaimed
   /// when it is still free.
-  Future<BlogModel> restoreArticle(String articleId);
+  Future<BlogModel> restoreArticle(String articleId, {String? locale});
   Future<List<BlogModel>> getUserLikedBlogs(String userId);
 
   /// Sets the like to the opposite of the current server state and returns
@@ -127,6 +143,11 @@ abstract interface class BlogRemoteDataSource {
 
 /// Upper bound for author/tag/liked listings (the API caps `limit` at 100).
 const int _kListLimit = 100;
+
+/// How many editions one language may contribute to the cross-language
+/// "my articles" read. The server applies `limit` per locale there, so this
+/// is a per-language cap, not a total (three locales can return 150 rows).
+const int _kEditionsPerLocaleLimit = 50;
 
 /// How many taxonomy pages a name lookup may walk before giving up.
 const int _kTagLookupPages = 5;
@@ -351,20 +372,32 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   Future<BlogModel> getBlogById(
     String blogId, {
     NowaveSessionFence? sessionFence,
+    String? locale,
   }) {
     return _guard(() async {
+      final edition = _editionLocale(locale);
       final data = sessionFence == null
           ? await client.getJson(
               '/articles/$blogId',
-              query: {'locale': _locale},
+              query: {'locale': edition},
             )
           : await client.getJson(
               '/articles/$blogId',
-              query: {'locale': _locale},
+              query: {'locale': edition},
               sessionFence: sessionFence,
             );
       return BlogModel.fromNowaveArticle(articlePayloadMap(data));
     });
+  }
+
+  /// The locale a write must name: the edition a caller handed us when it
+  /// knows one, otherwise the content language in effect.
+  ///
+  /// The server treats an omitted `locale` on an article write as `zh-CN`, so
+  /// silently dropping the edition would rewrite the wrong translation.
+  String _editionLocale(String? locale) {
+    final trimmed = locale?.trim() ?? '';
+    return trimmed.isEmpty ? _locale : trimmed;
   }
 
   @override
@@ -409,6 +442,63 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     } catch (e) {
       throw mapToServerException(e);
     }
+  }
+
+  @override
+  Future<ArticleEditions> getMyArticleEditions({required String userId}) async {
+    try {
+      final envelope = await client.getEnvelopeForViewer(
+        '/me/articles',
+        expectedUserId: userId,
+        query: {'limit': '$_kEditionsPerLocaleLimit', 'allLocales': 'true'},
+      );
+      final data = envelope.data;
+      if (data is! List) {
+        throw ServerException(
+          '服务器返回了无法解析的数据',
+          kind: FailureKind.server,
+          code: 'server.parse',
+          cause: data,
+        );
+      }
+      final blogs = data
+          .whereType<Map<String, dynamic>>()
+          .map(BlogModel.fromNowaveArticle)
+          .toList();
+      return ArticleEditions(
+        blogs: blogs,
+        locales: _metaLocales(envelope.meta),
+      );
+    } on NowaveApiException catch (error) {
+      // Same fallback as the single-locale list: a deployment without the
+      // account-scoped route still serves the public author list, which has no
+      // editions to tell apart, so the marker stays absent.
+      if (error.statusCode == 404 || error.statusCode == 405) {
+        return ArticleEditions(
+          blogs: await getBlogsByPosterId(userId),
+          locales: null,
+        );
+      }
+      throw mapToServerException(error);
+    } catch (e) {
+      throw mapToServerException(e);
+    }
+  }
+
+  /// The `meta.locales` marker, or null when the answer did not carry one.
+  ///
+  /// An older deployment ignores `allLocales` and answers the current language
+  /// with no marker; treating that as a complete multi-language list would
+  /// hide every other edition behind a confident empty result.
+  List<String>? _metaLocales(Map<String, dynamic>? meta) {
+    final raw = meta?['locales'];
+    if (raw is! List) return null;
+    final locales = raw
+        .whereType<String>()
+        .map((locale) => locale.trim())
+        .where((locale) => locale.isNotEmpty)
+        .toList();
+    return locales.isEmpty ? null : locales;
   }
 
   @override
@@ -531,7 +621,10 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         ),
         'contentBlocksVersion': 0,
         'publish': true,
-        'locale': _locale,
+        // The edition this body belongs to, not the language the app happens
+        // to display right now: `PUT` inserts or replaces exactly the named
+        // translation.
+        'locale': _editionLocale(blog.locale),
         if (tagIds.isNotEmpty) 'tagIds': tagIds,
       };
       final data = sessionFence == null
@@ -597,7 +690,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   }
 
   @override
-  Future<BlogModel> restoreArticle(String articleId) {
+  Future<BlogModel> restoreArticle(String articleId, {String? locale}) {
     return _guard(() async {
       if (articleId.isEmpty) {
         throw const ServerException(
@@ -606,12 +699,14 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           code: 'article.idRestore',
         );
       }
-      // The restore route reads the locale from the query string.
+      // The restore route reads the locale from the query string, and a
+      // tombstone of a non-default edition must name its own language or the
+      // server looks for a translation that is not the one in the bin.
       final fence = identity == null ? null : requireActiveFence();
       final data = await client.postJson(
         '/articles/$articleId/restore',
         null,
-        query: {'locale': _locale},
+        query: {'locale': _editionLocale(locale)},
         sessionFence: fence,
       );
       return BlogModel.fromNowaveArticle(articlePayloadMap(data));
