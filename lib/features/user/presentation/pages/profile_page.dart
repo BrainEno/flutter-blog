@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/common/widgets/no_wave_action_row.dart';
@@ -12,6 +14,7 @@ import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:belog/features/notifications/presentation/bloc/notification_badge_cubit.dart';
 import 'package:belog/features/user/domain/usecases/export_user_data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -19,8 +22,46 @@ import 'package:fpdart/fpdart.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 
+/// The signed-in account's own page: identity, the way into every account
+/// screen, and a badge with how many notifications are still unread.
+///
+/// The badge is page-scoped state ([NotificationBadgeCubit]): it is read when
+/// the page opens, when the account changes, and when the inbox is closed -
+/// never on a timer, because this client has no push channel and a polling
+/// badge would spend requests to stay stale.
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+  const ProfilePage({super.key, this.badgeCubit});
+
+  /// Injected by tests; production reads the shared instance.
+  final NotificationBadgeCubit? badgeCubit;
+
+  @override
+  Widget build(BuildContext context) {
+    final injected = badgeCubit;
+    if (injected != null) {
+      return BlocProvider<NotificationBadgeCubit>.value(
+        value: injected,
+        child: const _ProfileView(),
+      );
+    }
+    return BlocProvider<NotificationBadgeCubit>(
+      create: (_) => GetIt.instance<NotificationBadgeCubit>(),
+      child: const _ProfileView(),
+    );
+  }
+}
+
+class _ProfileView extends StatelessWidget {
+  const _ProfileView();
+
+  /// Opens the inbox and re-reads the badge on the way back: reading
+  /// notifications there is the only thing on this page that changes the count.
+  Future<void> _openInbox(BuildContext context) async {
+    final badge = context.read<NotificationBadgeCubit>();
+    await context.push('/profile/notifications');
+    if (!context.mounted) return;
+    unawaited(badge.refresh());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -126,11 +167,16 @@ class ProfilePage extends StatelessWidget {
                           label: l10n.menuReadingHistory,
                           onTap: () => context.push('/profile/history'),
                         ),
-                        NoWaveActionRow(
-                          icon: Icons.notifications_none,
-                          label: l10n.notificationsTitle,
-                          description: l10n.notificationsMenuHint,
-                          onTap: () => context.push('/profile/notifications'),
+                        BlocBuilder<NotificationBadgeCubit, int>(
+                          builder: (context, unread) => NoWaveActionRow(
+                            icon: Icons.notifications_none,
+                            label: l10n.notificationsTitle,
+                            description: l10n.notificationsMenuHint,
+                            onTap: () => _openInbox(context),
+                            trailing: unread > 0
+                                ? _UnreadBadge(count: unread)
+                                : null,
+                          ),
                         ),
                         NoWaveActionRow(
                           icon: Icons.cloud_upload_outlined,
@@ -207,6 +253,41 @@ class ProfilePage extends StatelessWidget {
     result.fold(
       (failure) => showSnackBar(context, localizedFailure(l10n, failure)),
       (_) => showSnackBar(context, l10n.exportDone),
+    );
+  }
+}
+
+/// The unread count as a pill. The number is announced as "3 unread" rather
+/// than as a bare digit, and it is capped so a long count cannot stretch the
+/// row at large text sizes.
+class _UnreadBadge extends StatelessWidget {
+  const _UnreadBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final label = count > 99 ? '99+' : '$count';
+    return Semantics(
+      label: context.l10n.notificationsUnreadCount(count),
+      excludeSemantics: true,
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 26),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: scheme.primary,
+          borderRadius: BorderRadius.circular(13),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: scheme.onPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
     );
   }
 }

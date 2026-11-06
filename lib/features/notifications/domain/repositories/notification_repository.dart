@@ -23,4 +23,10 @@ abstract interface class NotificationRepository {
 
   /// Marks every unread notification read; returns how many changed.
   Future<Either<Failure, int>> markAllRead({required NowaveSessionFence fence});
+
+  /// How many notifications this account has not read yet.
+  ///
+  /// Asked for by the profile menu badge, which needs one number and not a
+  /// page of rows: the list only knows the unread count of the newest 50.
+  Future<Either<Failure, int>> unreadCount({required NowaveSessionFence fence});
 }

@@ -85,6 +85,24 @@ class NotificationRepositoryImpl implements NotificationRepository {
     }
   }
 
+  @override
+  Future<Either<Failure, int>> unreadCount({
+    required NowaveSessionFence fence,
+  }) async {
+    try {
+      final data = await client.getJson(
+        '/me/notifications/unread-count',
+        sessionFence: fence,
+      );
+      if (data is! int || data < 0) {
+        throw const FormatException('Invalid unread count');
+      }
+      return right(data);
+    } catch (error) {
+      return left(_failureOf(error));
+    }
+  }
+
   List<AppNotification> _parseList(dynamic data, int limit) {
     if (data is! List || data.length > limit) {
       throw const FormatException('Invalid notification list');

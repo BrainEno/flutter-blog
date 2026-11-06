@@ -197,6 +197,85 @@ void main() {
     expect(failure?.code, 'auth.sessionChanged');
   });
 
+  group('unread count', () {
+    test('asks the dedicated endpoint and returns the number', () async {
+      final seen = <http.Request>[];
+      final repository = _repository(
+        _Auth(),
+        MockClient((request) async {
+          seen.add(request);
+          return _data(3);
+        }),
+      );
+
+      final result = await repository.unreadCount(fence: _fence);
+
+      expect(result.fold((_) => null, (count) => count), 3);
+      expect(seen.single.method, 'GET');
+      expect(seen.single.url.path, '/api/v1/me/notifications/unread-count');
+      expect(seen.single.url.query, isEmpty);
+      expect(seen.single.headers['authorization'], 'Bearer fake-token-a');
+    });
+
+    test('an empty inbox is zero', () async {
+      final repository = _repository(
+        _Auth(),
+        MockClient((_) async => _data(0)),
+      );
+
+      final result = await repository.unreadCount(fence: _fence);
+
+      expect(result.fold((_) => null, (count) => count), 0);
+    });
+
+    for (final entry in <String, http.Response>{
+      'a negative count': _data(-1),
+      'a count that is a string': _data('3'),
+      'a count that is an object': _data({'count': 3}),
+      'a body that is not JSON': http.Response('not json', 200),
+    }.entries) {
+      test('${entry.key} is a parse failure', () async {
+        final repository = _repository(
+          _Auth(),
+          MockClient((_) async => entry.value),
+        );
+
+        final failure = _failure(await repository.unreadCount(fence: _fence));
+
+        expect(failure?.code, 'client.parse');
+      });
+    }
+
+    test('an older deployment answers 404: unavailable, not zero', () async {
+      final repository = _repository(
+        _Auth(),
+        MockClient((_) async => http.Response('missing', 404)),
+      );
+
+      final failure = _failure(await repository.unreadCount(fence: _fence));
+
+      expect(failure?.code, 'notifications.unavailable');
+    });
+
+    test('a replaced account cannot read the old count', () async {
+      final auth = _Auth();
+      var requests = 0;
+      final repository = _repository(
+        auth,
+        MockClient((_) async {
+          requests++;
+          return _data(7);
+        }),
+      );
+      auth.replace();
+
+      final failure = _failure(await repository.unreadCount(fence: _fence));
+
+      expect(requests, 0);
+      expect(failure?.code, 'auth.sessionChanged');
+    });
+  });
+
   test('marks one notification read with an empty body', () async {
     final seen = <http.Request>[];
     final repository = _repository(

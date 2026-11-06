@@ -93,6 +93,16 @@ class _Repository implements NotificationRepository {
     if (failure != null) return left(failure);
     return right(1);
   }
+
+  /// The inbox screen never asks for this: the list it already holds is the
+  /// source of its unread count.
+  @override
+  Future<Either<Failure, int>> unreadCount({
+    required NowaveSessionFence fence,
+  }) async {
+    calls.add('unreadCount');
+    return right(0);
+  }
 }
 
 AppNotification _notification({

@@ -71,6 +71,15 @@ class _Repository implements NotificationRepository {
     calls.add('markAllRead');
     return right(rows.where((row) => !row.isRead).length);
   }
+
+  /// The inbox counts its own page; the badge endpoint belongs to the profile.
+  @override
+  Future<Either<Failure, int>> unreadCount({
+    required NowaveSessionFence fence,
+  }) async {
+    calls.add('unreadCount');
+    return right(rows.where((row) => !row.isRead).length);
+  }
 }
 
 AppNotification _notification({

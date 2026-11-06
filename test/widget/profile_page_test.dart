@@ -5,6 +5,8 @@ import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/common/widgets/no_wave_action_row.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/core/theme/app_theme_mode.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
@@ -15,6 +17,9 @@ import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:belog/features/notifications/domain/entities/app_notification.dart';
+import 'package:belog/features/notifications/domain/repositories/notification_repository.dart';
+import 'package:belog/features/notifications/presentation/bloc/notification_badge_cubit.dart';
 import 'package:belog/features/user/domain/usecases/export_user_data.dart';
 import 'package:belog/features/user/presentation/pages/profile_page.dart';
 import 'package:belog/l10n/app_localizations.dart';
@@ -41,8 +46,62 @@ class _ThemeStore implements ThemePreferenceStore {
   Future<void> save(AppThemeMode value) async => mode = value;
 }
 
+/// A signed-in session for the badge, with no stream traffic: these tests
+/// navigate, they do not switch accounts.
+class _BadgeIdentity implements NowaveSessionIdentity {
+  @override
+  String? get activeUserId => 'viewer';
+
+  @override
+  String? get accessToken => 'fake-token';
+
+  @override
+  int get sessionGeneration => 1;
+
+  @override
+  Stream<void> get identityChanges => const Stream<void>.empty();
+}
+
+/// Only the count matters here; the other inbox calls are never reached from
+/// the profile page.
+class _BadgeRepository implements NotificationRepository {
+  _BadgeRepository({this.count = 3});
+
+  int count;
+  int calls = 0;
+
+  @override
+  Future<Either<Failure, int>> unreadCount({
+    required NowaveSessionFence fence,
+  }) async {
+    calls++;
+    return right(count);
+  }
+
+  @override
+  Future<Either<Failure, List<AppNotification>>> list({
+    required NowaveSessionFence fence,
+    int limit = 50,
+  }) async => right(const []);
+
+  @override
+  Future<Either<Failure, AppNotification>> markRead(
+    String id, {
+    required NowaveSessionFence fence,
+  }) async => throw UnimplementedError('not asked from the profile page');
+
+  @override
+  Future<Either<Failure, int>> markAllRead({
+    required NowaveSessionFence fence,
+  }) async => throw UnimplementedError('not asked from the profile page');
+}
+
 class _Harness {
-  _Harness(this.user, {AppThemeMode mode = AppThemeMode.light}) {
+  _Harness(
+    this.user, {
+    AppThemeMode mode = AppThemeMode.light,
+    int unread = 3,
+  }) {
     store = _ThemeStore(mode);
     theme = ThemeBloc(store);
     appUser = AppUserCubit()..updateUser(user);
@@ -57,18 +116,24 @@ class _Harness {
       hasActiveSession: () => false,
       isCurrentSessionUser: (_) => true,
     );
+    notifications = _BadgeRepository(count: unread);
+    badge = NotificationBadgeCubit(
+      repository: notifications,
+      identity: _BadgeIdentity(),
+    );
     router = GoRouter(
       initialLocation: '/profile',
       routes: [
         GoRoute(
           path: '/profile',
-          builder: (_, _) => const ProfilePage(),
+          builder: (_, _) => ProfilePage(badgeCubit: badge),
           routes: [
             for (final path in [
               'edit',
               'change-password',
               'my-articles',
               'history',
+              'notifications',
               'sessions',
               'about',
             ])
@@ -87,6 +152,8 @@ class _Harness {
   late final ThemeBloc theme;
   late final AppUserCubit appUser;
   late final AuthBloc auth;
+  late final _BadgeRepository notifications;
+  late final NotificationBadgeCubit badge;
   late final GoRouter router;
 
   Future<void> pump(
@@ -125,6 +192,7 @@ class _Harness {
 
   Future<void> dispose() async {
     router.dispose();
+    await badge.close();
     await auth.close();
     await appUser.close();
     await theme.close();
@@ -228,6 +296,84 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ProfilePage), findsOneWidget);
     }
+  });
+
+  testWidgets('the notification row shows the server unread count', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    final harness = _Harness(_user(), unread: 3);
+    addTearDown(harness.dispose);
+    try {
+      await harness.pump(tester);
+      final l10n = lookupAppLocalizations(const Locale('en'));
+
+      await tester.scrollUntilVisible(find.text(l10n.notificationsTitle), 100);
+
+      // The number comes from the count endpoint, not from a loaded page.
+      expect(harness.notifications.calls, 1);
+      expect(find.text('3'), findsOneWidget);
+      // A screen reader hears the meaning, not just "3".
+      expect(
+        find.bySemanticsLabel(
+          RegExp(RegExp.escape(l10n.notificationsUnreadCount(3))),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    } finally {
+      // A handle left open fails the test even when every expectation passed.
+      semantics.dispose();
+    }
+  });
+
+  testWidgets('a clear inbox shows no badge at all', (tester) async {
+    final harness = _Harness(_user(), unread: 0);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = lookupAppLocalizations(const Locale('en'));
+
+    await tester.scrollUntilVisible(find.text(l10n.notificationsTitle), 100);
+
+    expect(harness.notifications.calls, 1);
+    expect(find.text('0'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a large count is capped so the row stays one line', (
+    tester,
+  ) async {
+    final harness = _Harness(_user(), unread: 150);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = lookupAppLocalizations(const Locale('en'));
+
+    await tester.scrollUntilVisible(find.text(l10n.notificationsTitle), 100);
+
+    expect(find.text('99+'), findsOneWidget);
+    expect(find.text('150'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('closing the inbox re-reads the count', (tester) async {
+    final harness = _Harness(_user(), unread: 3);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = lookupAppLocalizations(const Locale('en'));
+
+    await tester.scrollUntilVisible(find.text(l10n.notificationsTitle), 100);
+    await tester.tap(find.text(l10n.notificationsTitle));
+    await tester.pumpAndSettle();
+    expect(find.text('destination: notifications'), findsOneWidget);
+
+    // Reading notifications there is what changes the count.
+    harness.notifications.count = 0;
+    harness.router.pop();
+    await tester.pumpAndSettle();
+
+    expect(harness.notifications.calls, 2);
+    expect(find.text('3'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('export remains guarded while in flight and reports failures', (
