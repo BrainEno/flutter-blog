@@ -78,9 +78,10 @@ class SqlitePublishQueueStore implements PublishQueueStore {
       await database.customInsert(
         'INSERT INTO publish_queue(id, backend, user_id, idempotency_key, '
         'title, content, tags, cover_file, cover_mime, cover_url, kind, '
-        'target_id, state, attempts, next_attempt_at, last_error_code, '
-        'created_at, updated_at) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?)',
+        'target_id, locale, state, attempts, next_attempt_at, '
+        'last_error_code, created_at, updated_at) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, 0, NULL, '
+        'NULL, ?, ?)',
         variables: [
           Variable<String>(id),
           Variable<String>(_backend),
@@ -91,7 +92,6 @@ class SqlitePublishQueueStore implements PublishQueueStore {
           Variable<String>(jsonEncode(tags)),
           Variable<String>(coverFileName),
           Variable<String>(coverMime),
-          Variable<String>(null),
           Variable<String>(kind.name),
           Variable<String>(kind == PublishQueueKind.edit ? targetId : null),
           Variable<String>(

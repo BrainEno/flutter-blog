@@ -20,6 +20,7 @@ PublishQueueEntry queueEntry({
   String? coverUrl,
   PublishQueueKind kind = PublishQueueKind.create,
   String? targetId,
+  String? locale,
 }) => PublishQueueEntry(
   id: id,
   userId: userId,
@@ -37,6 +38,7 @@ PublishQueueEntry queueEntry({
   coverUrl: coverUrl,
   kind: kind,
   targetId: targetId,
+  locale: locale,
 );
 
 /// A queue store that records calls instead of touching disk.
@@ -86,6 +88,7 @@ class FakePublishQueueStore implements PublishQueueStore {
       lastErrorCode: null,
       kind: kind,
       targetId: targetId,
+      locale: locale,
     );
     enqueued.add(entry);
     rows = [...rows, entry];

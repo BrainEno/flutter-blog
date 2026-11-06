@@ -468,7 +468,10 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
           .whereType<Map<String, dynamic>>()
           .map(BlogModel.fromNowaveArticle)
           .toList();
-      return ArticleEditions(blogs: blogs, locales: _metaLocales(envelope.meta));
+      return ArticleEditions(
+        blogs: blogs,
+        locales: _metaLocales(envelope.meta),
+      );
     } on NowaveApiException catch (error) {
       // Same fallback as the single-locale list: a deployment without the
       // account-scoped route still serves the public author list, which has no
