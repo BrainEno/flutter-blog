@@ -18,11 +18,7 @@ import 'package:go_router/go_router.dart';
 /// in the current content language. A slug the server does not know is an
 /// explicit state, never an unfiltered list.
 class CategoryArticlesPage extends StatefulWidget {
-  const CategoryArticlesPage({
-    super.key,
-    required this.slug,
-    this.knownName,
-  });
+  const CategoryArticlesPage({super.key, required this.slug, this.knownName});
 
   final String slug;
 

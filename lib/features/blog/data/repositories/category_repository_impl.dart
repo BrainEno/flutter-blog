@@ -59,9 +59,7 @@ class CategoryRepositoryImpl implements CategoryRepository {
       if (!await connectionChecker.isConnected) {
         return left(Failure.networkOffline());
       }
-      return right(
-        await remote.getArticlesByCategory(wanted, offset: offset),
-      );
+      return right(await remote.getArticlesByCategory(wanted, offset: offset));
     } catch (error) {
       return left(mapErrorToFailure(error));
     }

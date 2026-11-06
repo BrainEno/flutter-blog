@@ -67,10 +67,8 @@ void main() {
       routes: [
         GoRoute(
           path: '/categories',
-          builder: (context, state) => BlocProvider.value(
-            value: cubit,
-            child: const CategoriesPage(),
-          ),
+          builder: (context, state) =>
+              BlocProvider.value(value: cubit, child: const CategoriesPage()),
         ),
         GoRoute(
           path: '/category/:slug',
@@ -138,9 +136,8 @@ void main() {
   ) async {
     final cubit = newCubit();
     when(() => getCategories(any())).thenAnswer(
-      (_) async => right([
-        for (var i = 0; i < 100; i++) _category('cat-$i', '分类 $i'),
-      ]),
+      (_) async =>
+          right([for (var i = 0; i < 100; i++) _category('cat-$i', '分类 $i')]),
     );
 
     await pumpPage(tester, cubit);

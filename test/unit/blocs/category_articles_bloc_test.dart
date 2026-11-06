@@ -155,9 +155,7 @@ void main() {
   });
 
   test('a category that vanished mid-session is reported as missing', () async {
-    when(
-      () => getArticlesByCategory(any()),
-    ).thenAnswer(
+    when(() => getArticlesByCategory(any())).thenAnswer(
       (_) async => left(
         const Failure(
           '这个分类已不存在',

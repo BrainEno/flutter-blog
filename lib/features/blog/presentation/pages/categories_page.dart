@@ -65,9 +65,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
           }
           if (state is CategoriesSuccess) {
             if (state.isEmpty) {
-              return _status(
-                NoWaveStatus(message: l10n.categoriesEmpty),
-              );
+              return _status(NoWaveStatus(message: l10n.categoriesEmpty));
             }
             return RefreshIndicator(onRefresh: _refresh, child: _list(state));
           }
@@ -80,8 +78,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
   Future<void> _refresh() async {
     final cubit = context.read<CategoriesCubit>();
     final settled = cubit.stream.firstWhere(
-      (state) =>
-          state is CategoriesSuccess || state is CategoriesFailure,
+      (state) => state is CategoriesSuccess || state is CategoriesFailure,
     );
     cubit.load();
     await settled;

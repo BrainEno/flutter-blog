@@ -50,14 +50,12 @@ http.Response _data(Object? value, {int status = 200}) =>
 http.Response _error(int status) =>
     http.Response('{"error":{"code":"SOMETHING"}}', status);
 
-CategoryRemoteDataSource _remote(
-  MockClient client, {
-  ContentLocale? locale,
-}) => CategoryRemoteDataSourceImpl(
-  baseUrl: Uri.parse('https://api.example.invalid'),
-  httpClient: client,
-  contentLocale: locale,
-);
+CategoryRemoteDataSource _remote(MockClient client, {ContentLocale? locale}) =>
+    CategoryRemoteDataSourceImpl(
+      baseUrl: Uri.parse('https://api.example.invalid'),
+      httpClient: client,
+      contentLocale: locale,
+    );
 
 CategoryRepository _repository(MockClient client, {bool connected = true}) {
   final connection = _Connection();
@@ -97,9 +95,7 @@ void main() {
   });
 
   test('a category without a blurb is still a category', () async {
-    final client = MockClient(
-      (_) async => _data([_row(description: null)]),
-    );
+    final client = MockClient((_) async => _data([_row(description: null)]));
 
     final result = await _repository(client).listCategories();
 
@@ -179,10 +175,7 @@ void main() {
 
     for (final bad in ['', '   ', ' essay-1a2b', 'essay-1a2b ', '.', '..']) {
       final missing = await repository.getCategory(bad);
-      final articles = await repository.getArticlesByCategory(
-        bad,
-        offset: 0,
-      );
+      final articles = await repository.getArticlesByCategory(bad, offset: 0);
       expect(missing.getLeft().toNullable()?.code, 'client.validation');
       expect(articles.getLeft().toNullable()?.code, 'client.validation');
     }
