@@ -64,6 +64,14 @@ Conversation testConversation({
       ),
 );
 
+/// A message the viewer just stored: a fresh id, so a test can tell it apart
+/// from the page it already had.
+ConversationMessage _sentMessage(int count, String body) => testMessage(
+  id: 'sent-$count',
+  body: body,
+  senderId: 'user-a',
+);
+
 ConversationMessage testMessage({
   String id = 'message-1',
   String conversationId = 'conversation-1',
@@ -206,7 +214,8 @@ class FakeMessageRepository implements MessageRepository {
     sendRequests.add((body: body, key: idempotencyKey));
     final failure = sendFailure;
     if (failure != null) return left(failure);
-    return right(sendResult ?? testMessage(body: body, senderId: 'user-a'));
+    final message = sendResult ?? _sentMessage(sendRequests.length, body);
+    return right(message);
   }
 }
 

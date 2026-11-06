@@ -46,8 +46,11 @@ class Conversation {
     ];
   }
 
-  /// The newest thing that happened here, used for the row's timestamp.
-  DateTime? get lastEventAt => lastMessage?.createdAt ?? lastActivityAt;
+  /// The newest thing that happened here, used for the row's timestamp. A
+  /// conversation with no messages yet still has a creation time, so the row
+  /// is never left without a date.
+  DateTime? get lastEventAt =>
+      lastMessage?.createdAt ?? lastActivityAt ?? createdAt;
 
   Conversation copyWith({int? unreadCount}) {
     return Conversation(

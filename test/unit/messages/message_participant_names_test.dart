@@ -113,7 +113,9 @@ void main() {
       // A second resolve picks up where the budget stopped, no re-ask.
       final second = await names.resolve(ids, limit: 5);
       expect(second, hasLength(10));
-      verify(() => authors.getAuthorProfile(any())).called(10);
+      // `verify` consumes the calls it matched, so this counts only the five
+      // the second resolve started - which is the point: no re-asking.
+      verify(() => authors.getAuthorProfile(any())).called(5);
     },
   );
 

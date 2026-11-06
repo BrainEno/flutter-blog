@@ -78,8 +78,13 @@ Map<String, dynamic> _conversationRow({
   'lastMessage': withLastMessage ? (lastMessage ?? _messageRow()) : null,
 };
 
-http.Response _data(Object? value, {int status = 200}) =>
-    http.Response(jsonEncode({'data': value}), status);
+/// The real server always labels its JSON as UTF-8. Without the label
+/// `http.Response` encodes the string as Latin-1 and throws on Chinese text.
+http.Response _data(Object? value, {int status = 200}) => http.Response(
+  jsonEncode({'data': value}),
+  status,
+  headers: const {'content-type': 'application/json; charset=utf-8'},
+);
 
 Failure? _failure(Either<Failure, Object?> result) =>
     result.fold((failure) => failure, (_) => null);
