@@ -112,20 +112,14 @@ void main() {
         contentLocale: _contentLocale(ContentLanguage.en),
       );
       when(
-        () => client.getJson(
-          '/articles/my-slug',
-          query: any(named: 'query'),
-        ),
+        () => client.getJson('/articles/my-slug', query: any(named: 'query')),
       ).thenAnswer((_) async => _articleMap(locale: 'zh-TW'));
 
       final blog = await dataSource.getBlogById('my-slug', locale: 'zh-TW');
 
       expect(blog.locale, 'zh-TW');
       verify(
-        () => client.getJson(
-          '/articles/my-slug',
-          query: {'locale': 'zh-TW'},
-        ),
+        () => client.getJson('/articles/my-slug', query: {'locale': 'zh-TW'}),
       ).called(1);
     });
 

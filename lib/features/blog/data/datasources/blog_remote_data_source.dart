@@ -450,10 +450,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       final envelope = await client.getEnvelopeForViewer(
         '/me/articles',
         expectedUserId: userId,
-        query: {
-          'limit': '$_kEditionsPerLocaleLimit',
-          'allLocales': 'true',
-        },
+        query: {'limit': '$_kEditionsPerLocaleLimit', 'allLocales': 'true'},
       );
       final data = envelope.data;
       if (data is! List) {

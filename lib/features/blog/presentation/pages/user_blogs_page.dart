@@ -169,10 +169,7 @@ class _UserBlogsPageState extends State<UserBlogsPage>
                 ),
               );
             } else if (state is GetMyArticleEditionsSuccess) {
-              return _buildList(
-                state.blogs,
-                editions: state.editions,
-              );
+              return _buildList(state.blogs, editions: state.editions);
             } else if (state is GetBlogsByUserSuccess) {
               return _buildList(state.blogs);
             }

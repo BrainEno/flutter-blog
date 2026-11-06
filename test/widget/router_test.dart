@@ -89,8 +89,7 @@ import 'package:mocktail/mocktail.dart';
 import '../support/locale_test_support.dart';
 
 /// The header the cross-language "my articles" list carries.
-const _kEditionsHint =
-    '每种语言最多列出 50 篇，按更新时间排序；同一篇文章的不同语言版本会各占一条。';
+const _kEditionsHint = '每种语言最多列出 50 篇，按更新时间排序；同一篇文章的不同语言版本会各占一条。';
 
 class MockBlogRemote extends Mock implements BlogRemoteDataSource {}
 
@@ -1005,10 +1004,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('随笔'), findsOneWidget);
-    expect(
-      find.text('这套部署只能列出当前语言的文章，看不到其他语言版本。'),
-      findsOneWidget,
-    );
+    expect(find.text('这套部署只能列出当前语言的文章，看不到其他语言版本。'), findsOneWidget);
     expect(find.text(_kEditionsHint), findsNothing);
     expect(tester.takeException(), isNull);
   });
