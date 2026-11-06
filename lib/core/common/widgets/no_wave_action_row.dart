@@ -44,9 +44,7 @@ class NoWaveActionRow extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ExcludeSemantics(
-                child: Icon(icon, size: NoWaveIconSize.action),
-              ),
+              ExcludeSemantics(child: Icon(icon, size: NoWaveIconSize.action)),
               const SizedBox(width: NoWaveSpacing.medium),
               Expanded(
                 child: Column(

@@ -81,9 +81,7 @@ class BlogGridItem extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (blog.isDraft)
-                          NoWaveBadge(
-                            label: context.l10n.myArticlesDraftBadge,
-                          ),
+                          NoWaveBadge(label: context.l10n.myArticlesDraftBadge),
                         if (blog.isDraft && editionLabel != null)
                           const SizedBox(height: NoWaveSpacing.xs),
                         if (editionLabel != null)

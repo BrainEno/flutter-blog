@@ -91,9 +91,9 @@ class NoWaveNotice extends StatelessWidget {
                   children: [
                     Text(
                       message,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: color,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: color),
                     ),
                     if (onAction != null) ...[
                       const SizedBox(height: NoWaveSpacing.xs),

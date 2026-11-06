@@ -31,8 +31,10 @@ enum NoWaveButtonVariant {
 /// screens kept getting wrong:
 ///
 /// - **Busy.** [isLoading] keeps the label in the layout (so the button does
-///   not jump), blocks presses, and exposes "busy" to screen readers instead
-///   of silently ignoring the tap.
+///   not jump) and blocks presses, and it reports as unavailable to screen
+///   readers instead of staying "pressable but ignoring you". Flutter's
+///   semantics has no busy flag in this version, so the state is carried by
+///   the disabled announcement plus the visible spinner.
 /// - **Disabled.** A null [onPressed] still keeps the 48pt target so a row of
 ///   buttons does not reflow when one of them becomes unavailable.
 class NoWaveButton extends StatelessWidget {
@@ -75,21 +77,13 @@ class NoWaveButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final (background, foreground, border) = switch (variant) {
-      NoWaveButtonVariant.primary => (
-        scheme.primary,
-        scheme.onPrimary,
-        null,
-      ),
+      NoWaveButtonVariant.primary => (scheme.primary, scheme.onPrimary, null),
       NoWaveButtonVariant.secondary => (
         Colors.transparent,
         scheme.onSurface,
         BorderSide(color: scheme.onSurface, width: NoWaveStroke.hairline),
       ),
-      NoWaveButtonVariant.quiet => (
-        Colors.transparent,
-        scheme.onSurface,
-        null,
-      ),
+      NoWaveButtonVariant.quiet => (Colors.transparent, scheme.onSurface, null),
       NoWaveButtonVariant.destructive => (
         Colors.transparent,
         scheme.error,
@@ -124,8 +118,10 @@ class NoWaveButton extends StatelessWidget {
     final content = _content(context, scheme);
     return Semantics(
       button: true,
+      // Busy reports as "not available" rather than as a pressable button that
+      // ignores you. There is no busy flag in this Flutter's semantics; keeping
+      // the label and the disabled state is what a screen reader can act on.
       enabled: _enabled,
-      busy: isLoading,
       label: semanticLabel,
       excludeSemantics: semanticLabel != null,
       child: TextButton(
@@ -143,8 +139,8 @@ class NoWaveButton extends StatelessWidget {
             height: NoWaveIconSize.inline,
             child: CircularProgressIndicator(
               strokeWidth: NoWaveStroke.focus,
-              // Screen readers get the busy state from Semantics above; a
-              // second live region on every button is noise.
+              // The button's own state is announced above; a second live
+              // region on every button would be noise.
               semanticsLabel: '',
             ),
           )

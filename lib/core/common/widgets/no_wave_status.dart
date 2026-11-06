@@ -26,13 +26,14 @@ class NoWaveStatus extends StatelessWidget {
           ExcludeSemantics(
             child: Text(
               '—',
-              style: NoWaveTypography.title(
-                context,
-                size: NoWaveIconSize.display,
-              ).copyWith(
-                fontStyle: FontStyle.italic,
-                fontWeight: FontWeight.w400,
-              ),
+              style:
+                  NoWaveTypography.title(
+                    context,
+                    size: NoWaveIconSize.display,
+                  ).copyWith(
+                    fontStyle: FontStyle.italic,
+                    fontWeight: FontWeight.w400,
+                  ),
             ),
           ),
           const SizedBox(height: NoWaveSpacing.small),

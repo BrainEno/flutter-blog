@@ -5,7 +5,6 @@ import 'package:belog/core/design/components/no_wave_notice.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Widget testApp(
@@ -68,7 +67,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('a busy button keeps its label, blocks taps and says busy', (
+    testWidgets('a busy button keeps its label and reports unavailable', (
       tester,
     ) async {
       final semantics = tester.ensureSemantics();
@@ -76,11 +75,7 @@ void main() {
       var taps = 0;
       await tester.pumpWidget(
         testApp(
-          NoWaveButton(
-            label: '发布',
-            isLoading: true,
-            onPressed: () => taps++,
-          ),
+          NoWaveButton(label: '发布', isLoading: true, onPressed: () => taps++),
         ),
       );
 
@@ -92,10 +87,10 @@ void main() {
       await tester.pump();
       expect(taps, 0);
 
-      final node = tester.getSemantics(find.byType(TextButton));
-      expect(node.label, contains('发布'));
-      expect(node.hasFlag(SemanticsFlag.isBusy), isTrue);
-      expect(node.hasFlag(SemanticsFlag.hasTapAction), isFalse);
+      // The button is no longer pressable and the label is still announced.
+      final textButton = tester.widget<TextButton>(find.byType(TextButton));
+      expect(textButton.onPressed, isNull);
+      expect(tester.getSemantics(find.text('发布')).label, contains('发布'));
     });
 
     testWidgets('the destructive variant uses the error colour', (
@@ -184,10 +179,7 @@ void main() {
 
       // The visible text is unchanged; only the announced label differs.
       expect(find.text('删除'), findsOneWidget);
-      expect(
-        tester.getSemantics(find.byType(NoWaveButton)).label,
-        '删除《城与季节》',
-      );
+      expect(tester.getSemantics(find.byType(NoWaveButton)).label, '删除《城与季节》');
     });
   });
 
@@ -269,8 +261,9 @@ void main() {
       );
 
       final node = tester.getSemantics(find.byType(NoWaveNotice));
-      expect(node.hasFlag(SemanticsFlag.isLiveRegion), isFalse);
-      expect(node.label, contains('草稿只有你自己能看到。'));
+      final data = node.getSemanticsData();
+      expect(data.flagsCollection.isLiveRegion, isFalse);
+      expect(data.label, contains('草稿只有你自己能看到。'));
     });
 
     testWidgets('a live notice announces itself', (tester) async {
@@ -281,7 +274,8 @@ void main() {
       );
 
       final node = tester.getSemantics(find.byType(NoWaveNotice));
-      expect(node.hasFlag(SemanticsFlag.isLiveRegion), isTrue);
+      final data = node.getSemanticsData();
+      expect(data.flagsCollection.isLiveRegion, isTrue);
     });
 
     testWidgets('an action needs both a label and a handler', (tester) async {

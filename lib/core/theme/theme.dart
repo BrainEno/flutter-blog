@@ -52,13 +52,10 @@ abstract final class AppTheme {
     OutlineInputBorder border(
       Color color, {
       double width = NoWaveStroke.hairline,
-    }) =>
-        OutlineInputBorder(
-          borderRadius: const BorderRadius.all(
-            Radius.circular(NoWaveRadius.none),
-          ),
-          borderSide: BorderSide(color: color, width: width),
-        );
+    }) => OutlineInputBorder(
+      borderRadius: const BorderRadius.all(Radius.circular(NoWaveRadius.none)),
+      borderSide: BorderSide(color: color, width: width),
+    );
 
     const square = RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(NoWaveRadius.none)),
@@ -173,10 +170,7 @@ abstract final class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: foreground,
-          minimumSize: const Size(
-            NoWaveSizes.tapTarget,
-            NoWaveSizes.tapTarget,
-          ),
+          minimumSize: const Size(NoWaveSizes.tapTarget, NoWaveSizes.tapTarget),
           textStyle: const TextStyle(fontWeight: FontWeight.w700),
           shape: square,
           side: BorderSide(color: foreground, width: NoWaveStroke.hairline),
@@ -185,20 +179,14 @@ abstract final class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: foreground,
-          minimumSize: const Size(
-            NoWaveSizes.tapTarget,
-            NoWaveSizes.tapTarget,
-          ),
+          minimumSize: const Size(NoWaveSizes.tapTarget, NoWaveSizes.tapTarget),
           textStyle: const TextStyle(fontWeight: FontWeight.w700),
           shape: square,
         ),
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
-          minimumSize: const Size(
-            NoWaveSizes.tapTarget,
-            NoWaveSizes.tapTarget,
-          ),
+          minimumSize: const Size(NoWaveSizes.tapTarget, NoWaveSizes.tapTarget),
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(

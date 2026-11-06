@@ -104,10 +104,7 @@ void main() {
             const BorderRadius.all(Radius.circular(NoWaveRadius.none)),
           );
           final minSize = style?.minimumSize?.resolve({});
-          expect(
-            minSize?.height,
-            greaterThanOrEqualTo(NoWaveSizes.tapTarget),
-          );
+          expect(minSize?.height, greaterThanOrEqualTo(NoWaveSizes.tapTarget));
         }
       });
 
