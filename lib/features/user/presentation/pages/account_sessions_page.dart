@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -154,24 +155,14 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
   /// will have to sign in on again.
   Future<void> _confirmEndOne(AccountSession session) async {
     final l10n = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.accountSessionsEndThisTitle),
-        content: Text(l10n.accountSessionsEndThisBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.actionCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.accountSessionsEndConfirm),
-          ),
-        ],
-      ),
+    final confirmed = await showNoWaveConfirmDialog(
+      context,
+      title: l10n.accountSessionsEndThisTitle,
+      message: l10n.accountSessionsEndThisBody,
+      cancelLabel: l10n.actionCancel,
+      confirmLabel: l10n.accountSessionsEndConfirm,
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     await _endOne(session);
   }
 
@@ -179,28 +170,16 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
     final l10n = context.l10n;
     final currentUnknown =
         _sessions.isNotEmpty && !_sessions.any((session) => session.current);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.accountSessionsEndOthersTitle),
-        content: Text(
-          currentUnknown
-              ? l10n.accountSessionsEndOthersUnknownCurrent
-              : l10n.accountSessionsEndOthersBody,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.actionCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.accountSessionsEndConfirm),
-          ),
-        ],
-      ),
+    final confirmed = await showNoWaveConfirmDialog(
+      context,
+      title: l10n.accountSessionsEndOthersTitle,
+      message: currentUnknown
+          ? l10n.accountSessionsEndOthersUnknownCurrent
+          : l10n.accountSessionsEndOthersBody,
+      cancelLabel: l10n.actionCancel,
+      confirmLabel: l10n.accountSessionsEndConfirm,
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     await _endOthers();
   }
 
