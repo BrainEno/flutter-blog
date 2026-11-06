@@ -73,7 +73,7 @@ void main() {
     'features/user/presentation/pages/author_page.dart': 17,
     'features/user/presentation/pages/author_relationships_page.dart': 9,
     'features/user/presentation/pages/author_search_page.dart': 10,
-    'features/user/presentation/pages/edit_user_info_page.dart': 8,
+    'features/user/presentation/pages/edit_user_info_page.dart': 7,
     'features/user/presentation/pages/profile_page.dart': 8,
     'features/user/presentation/pages/reading_history_page.dart': 6,
     'router/app_router.dart': 2,
@@ -131,7 +131,7 @@ void main() {
       total += _spacingLiterals(File('lib/$path').readAsStringSync());
     }
     // Lower this when a page is migrated; never raise it.
-    const ceiling = 365;
+    const ceiling = 364;
     expect(
       total,
       lessThanOrEqualTo(ceiling),
