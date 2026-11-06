@@ -6,6 +6,7 @@ import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/user/domain/entities/account_session.dart';
+import 'package:belog/features/user/domain/entities/session_revoke_outcome.dart';
 import 'package:belog/features/user/domain/repositories/account_session_repository.dart';
 import 'package:belog/features/user/presentation/pages/account_sessions_page.dart';
 import 'package:belog/l10n/app_localizations.dart';
@@ -43,6 +44,10 @@ class _Identity implements NowaveSessionIdentity {
 class _Repository implements AccountSessionRepository {
   final fences = <NowaveSessionFence>[];
   final pending = <Completer<Either<Failure, List<AccountSession>>>>[];
+  final revoked = <({NowaveSessionFence fence, String id})>[];
+  final revokePending = <Completer<Either<Failure, SessionRevokeOutcome>>>[];
+  final othersFences = <NowaveSessionFence>[];
+  final othersPending = <Completer<Either<Failure, int>>>[];
 
   @override
   Future<Either<Failure, List<AccountSession>>> listSessions(
@@ -51,6 +56,25 @@ class _Repository implements AccountSessionRepository {
     fences.add(fence);
     final result = Completer<Either<Failure, List<AccountSession>>>();
     pending.add(result);
+    return result.future;
+  }
+
+  @override
+  Future<Either<Failure, SessionRevokeOutcome>> revokeSession(
+    NowaveSessionFence fence,
+    String sessionId,
+  ) {
+    revoked.add((fence: fence, id: sessionId));
+    final result = Completer<Either<Failure, SessionRevokeOutcome>>();
+    revokePending.add(result);
+    return result.future;
+  }
+
+  @override
+  Future<Either<Failure, int>> revokeOtherSessions(NowaveSessionFence fence) {
+    othersFences.add(fence);
+    final result = Completer<Either<Failure, int>>();
+    othersPending.add(result);
     return result.future;
   }
 }
@@ -62,13 +86,17 @@ User _user(String id) => User(
   updatedAt: DateTime.utc(2025),
 );
 
-AccountSession _session({bool current = true, bool refreshed = true}) =>
-    AccountSession(
-      createdAt: DateTime.utc(2026, 10, 30, 1),
-      lastRefreshedAt: refreshed ? DateTime.utc(2026, 10, 31, 2, 30) : null,
-      expiresAt: DateTime.utc(2026, 12, 30, 1),
-      current: current,
-    );
+AccountSession _session({
+  String id = 'session-current',
+  bool current = true,
+  bool refreshed = true,
+}) => AccountSession(
+  id: id,
+  createdAt: DateTime.utc(2026, 10, 30, 1),
+  lastRefreshedAt: refreshed ? DateTime.utc(2026, 10, 31, 2, 30) : null,
+  expiresAt: DateTime.utc(2026, 12, 30, 1),
+  current: current,
+);
 
 class _Harness {
   final identity = _Identity();
@@ -348,4 +376,175 @@ void main() {
       }
     });
   }
+
+  testWidgets('only the other rows offer "End"; the current one does not', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.repository.pending.single.complete(
+      right([_session(), _session(id: 'session-other', current: false)]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('End'), findsOneWidget);
+    expect(find.text('End other sessions'), findsOneWidget);
+  });
+
+  testWidgets('ending one row asks first, then re-reads the list', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.repository.pending.single.complete(
+      right([_session(), _session(id: 'session-other', current: false)]),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('End'));
+    await tester.pumpAndSettle();
+    expect(find.text('End this session?'), findsOneWidget);
+    expect(find.textContaining('This device stays signed in'), findsOneWidget);
+    // Cancelling sends nothing.
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(harness.repository.revoked, isEmpty);
+
+    await tester.tap(find.text('End'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('End sessions'));
+    await tester.pumpAndSettle();
+    expect(harness.repository.revoked.single.id, 'session-other');
+    expect(harness.repository.revoked.single.fence.userId, 'user-a');
+    // In flight: the row says so and the bulk action is disabled.
+    expect(find.text('Ending…'), findsOneWidget);
+    final others = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'End other sessions'),
+    );
+    expect(others.onPressed, isNull);
+
+    harness.repository.revokePending.single.complete(
+      right(SessionRevokeOutcome.ended),
+    );
+    await tester.pump();
+    await tester.pump();
+    // The list is re-read rather than edited locally.
+    expect(harness.repository.pending, hasLength(2));
+    harness.repository.pending.last.complete(right([_session()]));
+    await tester.pumpAndSettle();
+    expect(find.text('That session was ended.'), findsOneWidget);
+    expect(find.text('End'), findsNothing);
+  });
+
+  testWidgets('a session that is already gone is not reported as an error', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.repository.pending.single.complete(
+      right([_session(), _session(id: 'session-other', current: false)]),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('End'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('End sessions'));
+    await tester.pumpAndSettle();
+    harness.repository.revokePending.single.complete(
+      right(SessionRevokeOutcome.alreadyEnded),
+    );
+    await tester.pump();
+    await tester.pump();
+    harness.repository.pending.last.complete(right([_session()]));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('already gone'), findsOneWidget);
+    expect(find.text('That session was ended.'), findsNothing);
+  });
+
+  testWidgets('ending the others says how many went and warns when unknown', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.repository.pending.single.complete(
+      right([_session(), _session(id: 'session-other', current: false)]),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('End other sessions'));
+    await tester.pumpAndSettle();
+    expect(find.text('End every other session?'), findsOneWidget);
+    expect(find.textContaining('This device stays signed in'), findsOneWidget);
+    await tester.tap(find.text('End sessions'));
+    await tester.pumpAndSettle();
+    expect(harness.repository.othersFences.single.generation, 1);
+
+    harness.repository.othersPending.single.complete(right(3));
+    await tester.pump();
+    await tester.pump();
+    harness.repository.pending.last.complete(right([_session()]));
+    await tester.pumpAndSettle();
+    expect(find.text('Ended 3 other sessions.'), findsOneWidget);
+  });
+
+  testWidgets('without an identified current session the warning is honest', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    // No `current: true` row: the token may not name its own session, so the
+    // server could end this device too.
+    harness.repository.pending.single.complete(
+      right([_session(id: 'session-other', current: false)]),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('End other sessions'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('may end this device too'), findsOneWidget);
+    expect(find.textContaining('This device stays signed in'), findsNothing);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('an old deployment says so instead of failing silently', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.repository.pending.single.complete(
+      right([_session(), _session(id: 'session-other', current: false)]),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('End other sessions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('End sessions'));
+    await tester.pumpAndSettle();
+    harness.repository.othersPending.single.complete(
+      left(
+        const Failure(
+          '不显示此原始文字',
+          kind: FailureKind.server,
+          code: 'sessions.revokeUnavailable',
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    harness.repository.pending.last.complete(right([_session()]));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('This server cannot end sessions'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('不显示此原始文字'), findsNothing);
+  });
 }
