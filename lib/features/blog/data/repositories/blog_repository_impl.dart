@@ -8,6 +8,7 @@ import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/data/repositories/blog_feed_loader.dart';
+import 'package:belog/features/blog/domain/entities/article_editions.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
@@ -169,6 +170,26 @@ class BlogRepositoryImpl implements BlogRepository {
   }
 
   @override
+  Future<Either<Failure, ArticleEditions>> getMyArticleEditions({
+    required String userId,
+  }) async {
+    if (userId.isEmpty) return left(Failure.auth('请先登录账户'));
+    try {
+      // Cross-language reads are account-scoped too, and an offline fallback
+      // would answer from the public cache while claiming to be the author's
+      // own list.
+      if (!await (connectionChecker.isConnected)) {
+        return left(Failure.networkOffline());
+      }
+      return right(
+        await blogRemoteDataSource.getMyArticleEditions(userId: userId),
+      );
+    } catch (error) {
+      return left(mapErrorToFailure(error));
+    }
+  }
+
+  @override
   Future<Either<Failure, Blog>> getBlogById(String blogId) async {
     try {
       if (!await connectionChecker.isConnected) {
@@ -293,12 +314,25 @@ class BlogRepositoryImpl implements BlogRepository {
   }
 
   @override
-  Future<Either<Failure, Blog>> restoreDeletedBlog(String articleId) async {
+  Future<Either<Failure, Blog>> restoreDeletedBlog(
+    String articleId, {
+    String? locale,
+  }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
         return left(Failure.networkOffline());
       }
-      return right(await blogRemoteDataSource.restoreArticle(articleId));
+      // Name the edition when it is known; an unknown one leaves the argument
+      // off so the data source's default (content language) applies.
+      final edition = (locale ?? '').trim();
+      return right(
+        edition.isEmpty
+            ? await blogRemoteDataSource.restoreArticle(articleId)
+            : await blogRemoteDataSource.restoreArticle(
+                articleId,
+                locale: edition,
+              ),
+      );
     } catch (error) {
       return left(mapErrorToFailure(error));
     }
@@ -312,6 +346,7 @@ class BlogRepositoryImpl implements BlogRepository {
     required List<String> tags,
     ImageUpload? image,
     String? uploadedCoverUrl,
+    String? locale,
     NowaveSessionFence? sessionFence,
   }) async {
     try {
@@ -321,12 +356,28 @@ class BlogRepositoryImpl implements BlogRepository {
       // Fetch the current article first: the update addresses the server
       // article id carried on the model, and the existing cover is kept
       // when no new one was picked.
-      var blogToUpdate = sessionFence == null
-          ? await blogRemoteDataSource.getBlogById(blogId)
-          : await blogRemoteDataSource.getBlogById(
-              blogId,
-              sessionFence: sessionFence,
-            );
+      // Read the edition being edited, not whichever translation the current
+      // content language resolves to: the write below replaces exactly the
+      // translation named in its body. An unknown edition leaves the argument
+      // off, so the data source's own default applies.
+      final edition = (locale ?? '').trim();
+      var blogToUpdate = edition.isEmpty
+          ? (sessionFence == null
+                ? await blogRemoteDataSource.getBlogById(blogId)
+                : await blogRemoteDataSource.getBlogById(
+                    blogId,
+                    sessionFence: sessionFence,
+                  ))
+          : (sessionFence == null
+                ? await blogRemoteDataSource.getBlogById(
+                    blogId,
+                    locale: edition,
+                  )
+                : await blogRemoteDataSource.getBlogById(
+                    blogId,
+                    sessionFence: sessionFence,
+                    locale: edition,
+                  ));
       if (!blogToUpdate.plainEditorCompatible ||
           blogToUpdate.serverSummary == null) {
         // Reject before uploading a cover or mutating anything: flattening a

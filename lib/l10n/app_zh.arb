@@ -550,6 +550,11 @@
   "categoriesUnavailable": "此服务器暂不提供分类。请稍后重试或检查服务器版本。",
   "categoryArticlesTitle": "分类",
   "categoryArticlesEmpty": "「{name}」下还没有文章",
+  "myArticlesAllLocales": "全部语言版本",
+  "myArticlesSingleLocale": "只看当前语言",
+  "myArticlesEditionsHint": "每种语言最多列出 50 篇，按更新时间排序；同一篇文章的不同语言版本会各占一条。",
+  "myArticlesEditionsUnavailable": "这套部署只能列出当前语言的文章，看不到其他语言版本。",
+  "languageChineseTraditional": "繁體中文",
   "categoryNotFound": "找不到这个分类，可能已被删除。",
   "@accountEmailSuccess": {
     "placeholders": {

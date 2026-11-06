@@ -1,5 +1,6 @@
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/features/blog/domain/entities/article_editions.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
@@ -43,8 +44,12 @@ abstract interface class BlogRepository {
   Future<Either<Failure, List<DeletedBlog>>> getDeletedBlogs();
 
   /// Restores a tombstone by its server article id; the article comes
-  /// back as a draft.
-  Future<Either<Failure, Blog>> restoreDeletedBlog(String articleId);
+  /// back as a draft. [locale] names the edition the tombstone is in; null
+  /// means the current content language.
+  Future<Either<Failure, Blog>> restoreDeletedBlog(
+    String articleId, {
+    String? locale,
+  });
 
   /// Fetches a 1-based feed page. With no [source], the repository chooses
   /// the network or falls back to the local cache on a connectivity failure.
@@ -87,10 +92,24 @@ abstract interface class BlogRepository {
   /// feed, where a draft must not appear. The read is scoped to [userId].
   Future<Either<Failure, List<Blog>>> getMyArticles({required String userId});
 
+  /// The same list read across every language edition the account has
+  /// (`?allLocales=true`), newest update first.
+  ///
+  /// [ArticleEditions.locales] is null when the deployment did not confirm the
+  /// cross-language read, which means the answer is probably the current
+  /// language only - a caller must say so rather than claim completeness.
+  Future<Either<Failure, ArticleEditions>> getMyArticleEditions({
+    required String userId,
+  });
+
   /// Updates an existing article. The server addresses it by id, so replaying
   /// an update rewrites the same article instead of creating another one.
   ///
   /// Without [image] or [uploadedCoverUrl] the current cover is kept.
+  ///
+  /// [locale] is the edition to write. Null means the current content
+  /// language; pass the edition the article was opened from, because the
+  /// server inserts or replaces exactly the translation named in the body.
   Future<Either<Failure, Blog>> editBlog({
     required String blogId,
     required String title,
@@ -98,6 +117,7 @@ abstract interface class BlogRepository {
     required List<String> tags,
     ImageUpload? image,
     String? uploadedCoverUrl,
+    String? locale,
     NowaveSessionFence? sessionFence,
   });
 

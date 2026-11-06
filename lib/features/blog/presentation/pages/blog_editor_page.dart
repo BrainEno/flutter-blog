@@ -479,6 +479,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
         cover: _publishImageSnapshot,
         kind: target == null ? PublishQueueKind.create : PublishQueueKind.edit,
         targetId: target?.id,
+        // Persist the edition with the edit: a retry days later must not guess
+        // the language from whatever the app displays then.
+        locale: target?.locale,
       );
     } catch (_) {
       return false;
@@ -557,6 +560,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
           content: draft.content.trim(),
           tags: List.of(draft.tags),
           sessionFence: sessionFence,
+          // Save the edition this editor was opened on, not the language the
+          // interface happens to be showing now.
+          locale: _target.locale,
         ),
       );
     }

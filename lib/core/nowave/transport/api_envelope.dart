@@ -22,9 +22,18 @@ sealed class EnvelopeOutcome {
 
 /// The unwrapped `data` payload (null when the endpoint sent none).
 final class EnvelopeData extends EnvelopeOutcome {
-  const EnvelopeData(this.data);
+  const EnvelopeData(this.data, {this.meta});
 
   final dynamic data;
+
+  /// The envelope's `meta` object, when the endpoint sent one.
+  ///
+  /// Only a few routes document it (`GET /me/articles?allLocales=true` marks
+  /// the locales it read, which is how a client tells a complete list from an
+  /// older deployment that ignored the parameter and answered one language).
+  /// Null covers both "no meta" and "not an object": neither is an error, and
+  /// callers that need the marker must treat its absence as "unknown".
+  final Map<String, dynamic>? meta;
 }
 
 /// The request failed: either the backend's `{error: ...}` body, or a body
@@ -107,7 +116,11 @@ EnvelopeOutcome decodeEnvelope({
         ),
       );
     }
-    return EnvelopeData(body['data']);
+    final meta = body['meta'];
+    return EnvelopeData(
+      body['data'],
+      meta: meta is Map<String, dynamic> ? meta : null,
+    );
   }
   if (statusCode >= 400) {
     return EnvelopeFailure(

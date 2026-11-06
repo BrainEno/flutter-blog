@@ -108,6 +108,8 @@ class SqliteBlogCache implements BlogLocalDataSource {
       ),
       posterName: data['poster_name'] as String?,
       posterAvatar: data['poster_avatar'] as String?,
+      // The row was fetched in this language, so the body is that edition.
+      locale: data['content_locale'] as String? ?? '',
     );
   }
 }

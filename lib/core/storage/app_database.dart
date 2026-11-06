@@ -15,7 +15,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -144,6 +144,20 @@ class AppDatabase extends GeneratedDatabase {
           }
         }
       }
+      if (from < 11) {
+        // v11 records the language edition a queued edit writes. An article id
+        // is a work, and `(id, locale)` is one translation of it, so a replay
+        // without the edition would rewrite whichever language the app
+        // displayed at retry time. Existing rows get NULL, which reads as
+        // "use the content language in effect" - exactly what v10 did.
+        if (!await _tableExists('publish_queue')) {
+          await _createPublishQueue();
+        } else if (!await _columnExists('publish_queue', 'locale')) {
+          await customStatement(
+            'ALTER TABLE publish_queue ADD COLUMN locale TEXT',
+          );
+        }
+      }
     },
   );
 
@@ -188,7 +202,8 @@ class AppDatabase extends GeneratedDatabase {
   /// picker's temporary path; `cover_url` is where an earlier attempt uploaded
   /// those bytes, so a retry reuses the asset instead of uploading it again.
   /// `kind` separates a new article from an edit of an existing one, whose
-  /// public id is `target_id`.
+  /// public id is `target_id`; `locale` is the language edition an edit
+  /// writes, so a retry cannot rewrite a different translation.
   Future<void> _createPublishQueue() async {
     await customStatement(
       'CREATE TABLE publish_queue ('
@@ -196,7 +211,7 @@ class AppDatabase extends GeneratedDatabase {
       'idempotency_key TEXT NOT NULL, title TEXT NOT NULL, '
       'content TEXT NOT NULL, tags TEXT NOT NULL, cover_file TEXT, '
       'cover_mime TEXT, cover_url TEXT, '
-      "kind TEXT NOT NULL DEFAULT 'create', target_id TEXT, "
+      "kind TEXT NOT NULL DEFAULT 'create', target_id TEXT, locale TEXT, "
       'state TEXT NOT NULL, '
       'attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at INTEGER, '
       'last_error_code TEXT, '

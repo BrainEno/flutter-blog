@@ -64,6 +64,7 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
         content: event.content,
         tags: event.tags,
         sessionFence: event.sessionFence,
+        locale: event.locale,
       ),
     );
     res.fold(

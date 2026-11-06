@@ -48,6 +48,11 @@ class UpdateBlogEvent extends BlogUploadEvent {
   final List<String> tags;
   final NowaveSessionFence sessionFence;
 
+  /// The edition being edited (the opened article's `locale`). The server
+  /// replaces exactly this translation, so it must not be guessed from the
+  /// interface language.
+  final String? locale;
+
   const UpdateBlogEvent({
     required this.blogId,
     this.image,
@@ -55,6 +60,7 @@ class UpdateBlogEvent extends BlogUploadEvent {
     required this.content,
     required this.tags,
     required this.sessionFence,
+    this.locale,
   });
 
   @override
@@ -66,6 +72,7 @@ class UpdateBlogEvent extends BlogUploadEvent {
     tags,
     sessionFence.userId,
     sessionFence.generation,
+    locale,
   ];
 }
 

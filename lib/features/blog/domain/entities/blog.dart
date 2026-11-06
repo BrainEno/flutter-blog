@@ -28,6 +28,18 @@ class Blog {
   final String? posterName;
   final String? posterAvatar;
 
+  /// The server edition this body came from (`zh-CN`, `zh-TW` or `en`), or
+  /// an empty string when the source could not say.
+  ///
+  /// An article id is a *work*; `(id, locale)` is one of its translations, and
+  /// the same slug can answer in more than one language. A write has to name
+  /// the edition it means: the server treats an omitted `locale` on
+  /// `PUT /articles/:articleId` as `zh-CN`, so echoing the *current* content
+  /// language instead of this value would rewrite the wrong translation.
+  /// Empty means unknown (an older cache row, a legacy local draft); callers
+  /// that must not guess fall back to the content language and say so.
+  final String locale;
+
   /// True only for the viewer's own server-side draft. Drafts never appear on
   /// public pages or in the shared cache; they are visible through the
   /// account-scoped "my articles" list, and saving one from the editor
@@ -46,5 +58,6 @@ class Blog {
     this.posterName,
     this.posterAvatar,
     this.isDraft = false,
+    this.locale = '',
   });
 }

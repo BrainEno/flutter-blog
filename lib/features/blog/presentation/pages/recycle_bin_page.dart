@@ -152,6 +152,7 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                           onPressed: () => context.read<RecycleBinBloc>().add(
                             RecycleBinRestoreRequested(
                               articleId: blog.articleId,
+                              locale: blog.locale,
                             ),
                           ),
                           child: Text(context.l10n.actionRestore),
