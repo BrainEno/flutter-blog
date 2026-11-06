@@ -14,10 +14,6 @@ class AuthPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return NoWaveButton(
-      label: buttonText,
-      onPressed: onPressed,
-      expand: true,
-    );
+    return NoWaveButton(label: buttonText, onPressed: onPressed, expand: true);
   }
 }
