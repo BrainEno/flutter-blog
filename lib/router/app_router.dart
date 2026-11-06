@@ -19,11 +19,16 @@ import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_viewer/blog_viewer_cubit.dart';
+import 'package:belog/features/blog/presentation/blocs/categories/categories_cubit.dart';
+import 'package:belog/features/blog/presentation/blocs/category_articles/bloc/category_articles_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/blog_editor_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
+import 'package:belog/features/blog/presentation/pages/categories_page.dart';
+import 'package:belog/features/blog/presentation/pages/category_articles_page.dart';
+import 'package:belog/features/blog/presentation/category_navigation.dart';
 import 'package:belog/features/messages/presentation/pages/message_inbox_page.dart';
 import 'package:belog/features/messages/presentation/pages/message_thread_page.dart';
 import 'package:belog/features/user/presentation/pages/author_page.dart';
@@ -215,6 +220,8 @@ GoRouter createAppRouter({
                   viewerRoute(),
                   authorRoute(),
                   tagRoute(),
+                  categoriesRoute(),
+                  categoryRoute(),
                   GoRoute(
                     path: 'authors',
                     builder: (context, state) => BlocProvider(
@@ -433,6 +440,40 @@ GoRoute authorRoute() {
           ),
         ),
     ],
+  );
+}
+
+/// The public category catalog, reached from the search tab.
+///
+/// Categories are the editors' filing system: the names are translated per
+/// content language and the client keeps no copy, so the page reads the catalog
+/// once per visit.
+GoRoute categoriesRoute() {
+  return GoRoute(
+    path: 'categories',
+    builder: (context, state) => BlocProvider(
+      create: (_) => serviceLocator<CategoriesCubit>(),
+      child: const CategoriesPage(),
+    ),
+  );
+}
+
+/// One category's articles. `:slug` is the server's opaque taxonomy slug, the
+/// only address the route accepts; a tap may pass the resolved [CategoryRef]
+/// through `extra` so the title does not have to wait for a lookup.
+GoRoute categoryRoute() {
+  return GoRoute(
+    path: 'category/:slug',
+    builder: (context, state) {
+      final slug = categorySlugFromRoute(state.pathParameters['slug']!);
+      return BlocProvider(
+        create: (_) => serviceLocator<CategoryArticlesBloc>(),
+        child: CategoryArticlesPage(
+          slug: slug,
+          knownName: categoryFromExtra(state.extra)?.name,
+        ),
+      );
+    },
   );
 }
 

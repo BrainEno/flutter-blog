@@ -542,6 +542,15 @@
   "emailVerifyTokenConfirm": "在应用内确认",
   "emailVerifyTokenConfirming": "正在确认…",
   "emailVerifyTokenDone": "已确认，这个邮箱现在处于已验证状态。",
+  "categoriesTitle": "分类",
+  "categoriesBrowse": "浏览分类",
+  "categoriesDescription": "分类由编辑维护，名称按你当前浏览的内容语言显示；服务器最多返回 100 个。",
+  "categoriesEmpty": "服务器未返回分类。",
+  "categoriesCapped": "只显示前 100 个分类，可能还有更多。",
+  "categoriesUnavailable": "此服务器暂不提供分类。请稍后重试或检查服务器版本。",
+  "categoryArticlesTitle": "分类",
+  "categoryArticlesEmpty": "「{name}」下还没有文章",
+  "categoryNotFound": "找不到这个分类，可能已被删除。",
   "@accountEmailSuccess": {
     "placeholders": {
       "email": {
