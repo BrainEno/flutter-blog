@@ -282,9 +282,7 @@ class _UnreadBadge extends StatelessWidget {
         child: Text(
           label,
           textAlign: TextAlign.center,
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
             color: scheme.onPrimary,
             fontWeight: FontWeight.bold,
           ),

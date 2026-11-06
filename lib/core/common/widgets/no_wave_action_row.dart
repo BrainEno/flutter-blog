@@ -62,10 +62,7 @@ class NoWaveActionRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              if (trailing != null) ...[
-                trailing!,
-                const SizedBox(width: 12),
-              ],
+              if (trailing != null) ...[trailing!, const SizedBox(width: 12)],
               const ExcludeSemantics(
                 child: Icon(Icons.arrow_forward, size: 20),
               ),

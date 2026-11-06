@@ -63,12 +63,9 @@ class NotificationBadgeCubit extends Cubit<int> {
     // A response that arrives after a sign-in switch belongs to the account
     // that asked, not to the one looking at the screen now.
     if (isClosed || !_stillCurrent(fence)) return;
-    result.fold(
-      (_) {},
-      (count) {
-        if (!isClosed) emit(count < 0 ? 0 : count);
-      },
-    );
+    result.fold((_) {}, (count) {
+      if (!isClosed) emit(count < 0 ? 0 : count);
+    });
   }
 
   @override
