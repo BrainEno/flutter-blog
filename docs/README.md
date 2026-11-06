@@ -32,6 +32,8 @@
 
 ## 开发与审计快照
 
+- [界面设计系统](design-system.md)：色板与间距 token、共用组件目录、无障碍契约，
+  以及新增组件时要守的规则。
 - [no-wave API 差距](nowave-api-gap-audit.md)：记录审计 SHA、已接入与未接入能力。
 - [Supabase 到 no-wave 的迁移](supabase-to-nowave-migration.md)：历史迁移背景；
   旧快照的接口结论以较新的 API 差距审计和当前源码为准。

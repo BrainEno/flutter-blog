@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+// Spacing and the rest of the geometry live with the design tokens; this
+// export keeps the screens that only import the palette compiling.
+export 'package:belog/core/design/design_tokens.dart' show NoWaveSpacing;
+
 /// The paper-and-ink palette shared with no-wave's editorial design system.
 ///
 /// Orange is used for large surfaces and focus indicators; small accent text
@@ -15,13 +19,4 @@ abstract final class AppPalette {
   static const surfaceOnPaper = Color(0xFFE9E3D8);
   static const surfaceOnInk = Color(0xFF211E1B);
   static const errorOnInk = Color(0xFFFFB4A5);
-}
-
-/// Common mobile spacing; large text is allowed to reflow rather than clipped.
-abstract final class NoWaveSpacing {
-  static const page = 16.0;
-  static const small = 8.0;
-  static const medium = 16.0;
-  static const large = 24.0;
-  static const section = 32.0;
 }
