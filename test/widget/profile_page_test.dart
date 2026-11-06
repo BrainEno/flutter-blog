@@ -367,8 +367,16 @@ void main() {
     await harness.pump(tester);
     final l10n = lookupAppLocalizations(const Locale('en'));
 
-    await tester.scrollUntilVisible(find.text(l10n.notificationsTitle), 100);
-    await tester.tap(find.text(l10n.notificationsTitle));
+    // Scroll it fully into view, not merely on screen: a row clipped by the
+    // viewport edge takes the tap with it and nothing navigates.
+    final inboxRow = find.widgetWithText(
+      NoWaveActionRow,
+      l10n.notificationsTitle,
+    );
+    await tester.scrollUntilVisible(inboxRow, 100);
+    await tester.ensureVisible(inboxRow);
+    await tester.pumpAndSettle();
+    await tester.tap(inboxRow);
     await tester.pumpAndSettle();
     expect(find.text('destination: notifications'), findsOneWidget);
 
@@ -402,7 +410,7 @@ void main() {
       await GetIt.instance.reset();
     });
     await harness.pump(tester);
-    // The export row is the second to last of eight menu rows; on the default
+    // The export row is second to last in the menu; on the default
     // test surface it sits below the fold, so it has to be scrolled fully into
     // view before the tap can reach it.
     await tester.ensureVisible(find.text(l10n.exportMyData));
