@@ -11,6 +11,7 @@ import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart'
     show kMaxSearchResults;
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
+import 'package:belog/features/blog/presentation/category_navigation.dart';
 import 'package:belog/features/blog/presentation/tag_navigation.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:flutter/material.dart';
@@ -115,10 +116,23 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                     ),
                     Align(
                       alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                        onPressed: () => context.push('/search/authors'),
-                        icon: const Icon(Icons.person_search_outlined),
-                        label: Text(l10n.authorSearchTitle),
+                      child: Wrap(
+                        alignment: WrapAlignment.end,
+                        spacing: 8,
+                        children: [
+                          // Both are browsing doors out of search: the editor's
+                          // categories, and the public author directory.
+                          TextButton.icon(
+                            onPressed: () => openCategories(context),
+                            icon: const Icon(Icons.category_outlined),
+                            label: Text(l10n.categoriesBrowse),
+                          ),
+                          TextButton.icon(
+                            onPressed: () => context.push('/search/authors'),
+                            icon: const Icon(Icons.person_search_outlined),
+                            label: Text(l10n.authorSearchTitle),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 8),

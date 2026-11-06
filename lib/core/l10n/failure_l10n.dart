@@ -144,6 +144,11 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
       return l10n.accountSessionsInvalidSession;
     case 'sessions.unavailable':
       return l10n.accountSessionsUnavailable;
+    // Category browsing (see categories_page.dart).
+    case 'categories.unavailable':
+      return l10n.categoriesUnavailable;
+    case 'category.notFound':
+      return l10n.categoryNotFound;
     case 'notifications.unavailable':
       return l10n.notificationsUnavailable;
     case 'feed.sourceChanged':

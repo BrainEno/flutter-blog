@@ -698,6 +698,16 @@
   "emailVerifyTokenConfirm": "Confirm here",
   "emailVerifyTokenConfirming": "Confirming…",
   "emailVerifyTokenDone": "Confirmed. This address is now verified.",
+  "categoriesTitle": "Categories",
+  "categoriesBrowse": "Browse categories",
+  "categoriesDescription": "Categories are maintained by the editors. Names follow the language you are browsing, and the server returns at most 100.",
+  "categoriesEmpty": "No categories were returned.",
+  "categoriesCapped": "Showing the first 100 categories; there may be more.",
+  "categoriesUnavailable": "This server does not provide categories. Try again later or check the server version.",
+  "categoryArticlesTitle": "Category",
+  "categoryArticlesEmpty": "Nothing is filed under {name} yet",
+  "@categoryArticlesEmpty": {"placeholders": {"name": {"type": "String"}}},
+  "categoryNotFound": "This category was not found; it may have been removed.",
   "@accountEmailSuccess": {
     "placeholders": {
       "email": {

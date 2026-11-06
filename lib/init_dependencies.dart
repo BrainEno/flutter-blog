@@ -35,6 +35,7 @@ import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
+import 'package:belog/features/blog/data/datasources/category_remote_data_source.dart';
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_blog_cache.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_draft_store.dart';
@@ -45,10 +46,12 @@ import 'package:belog/features/blog/data/publish/publish_queue_service.dart';
 import 'package:belog/features/blog/data/read_aloud/platform_speech_engine.dart';
 import 'package:belog/features/blog/data/read_aloud/sqlite_read_aloud_preferences.dart';
 import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart';
+import 'package:belog/features/blog/data/repositories/category_repository_impl.dart';
 import 'package:belog/features/blog/data/repositories/comment_repository_impl.dart';
 import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
+import 'package:belog/features/blog/domain/repositories/category_repository.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
@@ -57,6 +60,8 @@ import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/get_articles_by_tag.dart';
+import 'package:belog/features/blog/domain/usecase/get_articles_by_category.dart';
+import 'package:belog/features/blog/domain/usecase/get_categories.dart';
 import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
 import 'package:belog/features/blog/domain/usecase/get_deleted_blogs.dart';
@@ -75,6 +80,8 @@ import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
+import 'package:belog/features/blog/presentation/blocs/categories/categories_cubit.dart';
+import 'package:belog/features/blog/presentation/blocs/category_articles/bloc/category_articles_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/publish_queue/publish_queue_cubit.dart';
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
@@ -188,6 +195,7 @@ Future<void> initDependencies() async {
   await _initBlog(apiClient, sessionManager);
   _initComments(apiClient);
   _initAuthors(apiClient, uri);
+  _initCategories(uri);
   _initUser(apiClient, sessionManager);
 
   serviceLocator.registerLazySingleton(() => database);
@@ -466,6 +474,43 @@ void _initComments(NowaveApiClient apiClient) {
     ..registerFactory(() => DeleteComment(serviceLocator<CommentRepository>()));
   // CommentBloc is page-scoped and built by the viewer route with the
   // article's slug, like BlogViewerCubit.
+}
+
+/// Public category browsing. One app-lifetime client without an authenticator:
+/// a category request never carries a reader's token, so a 401 cannot start a
+/// refresh and an anonymous reader gets the same answer.
+void _initCategories(Uri apiBaseUrl) {
+  serviceLocator
+    // Datasource
+    ..registerLazySingleton<CategoryRemoteDataSource>(
+      () => CategoryRemoteDataSourceImpl(
+        baseUrl: apiBaseUrl,
+        contentLocale: serviceLocator<ContentLocale>(),
+      ),
+    )
+    // Repository
+    ..registerFactory<CategoryRepository>(
+      () => CategoryRepositoryImpl(
+        remote: serviceLocator<CategoryRemoteDataSource>(),
+        connectionChecker: serviceLocator<ConnectionChecker>(),
+      ),
+    )
+    // Usecases
+    ..registerFactory(() => GetCategories(serviceLocator<CategoryRepository>()))
+    ..registerFactory(() => GetCategory(serviceLocator<CategoryRepository>()))
+    ..registerFactory(
+      () => GetArticlesByCategory(serviceLocator<CategoryRepository>()),
+    )
+    // Cubit and bloc
+    ..registerFactory(
+      () => CategoriesCubit(getCategories: serviceLocator<GetCategories>()),
+    )
+    ..registerFactory(
+      () => CategoryArticlesBloc(
+        getCategory: serviceLocator<GetCategory>(),
+        getArticlesByCategory: serviceLocator<GetArticlesByCategory>(),
+      ),
+    );
 }
 
 void _initAuthors(NowaveApiClient apiClient, Uri apiBaseUrl) {
