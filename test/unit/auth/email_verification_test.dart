@@ -15,7 +15,7 @@ void main() {
       '${'a' * 42}=',
       '${'a' * 42}!',
       '${'a' * 42} ',
-      'AbCdEfGh-IjKlMnOpQrStUvWxYz0123456789_abCd0', // 43 characters
+      'AbCdEfGh-IjKlMnOpQrStUvWxYz0123456789_abCd', // 42 characters
     ]) {
       expect(isVerificationToken(bad), isFalse, reason: bad);
     }
