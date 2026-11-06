@@ -150,20 +150,16 @@ class MessageInboxCubit extends Cubit<MessageInboxState> {
     if (isClosed || !_stillCurrent(fence)) return;
     final state = result.fold<MessageInboxState>(
       MessageInboxFailure.new,
-      (rows) => MessageInboxLoaded(
-        viewerId: fence.userId,
-        conversations: rows,
-      ),
+      (rows) => MessageInboxLoaded(viewerId: fence.userId, conversations: rows),
     );
     emit(state);
     if (state is! MessageInboxLoaded) return;
 
     // Names arrive afterwards: the list is usable without them, and waiting
     // for a dozen public profiles before showing anything would be wrong.
-    final resolved = await names.resolve(
-      [for (final row in state.conversations) ...row.others(fence.userId)],
-      limit: MessageInboxCubit.nameLookupBudget,
-    );
+    final resolved = await names.resolve([
+      for (final row in state.conversations) ...row.others(fence.userId),
+    ], limit: MessageInboxCubit.nameLookupBudget);
     if (isClosed || !_stillCurrent(fence)) return;
     final latest = this.state;
     if (latest is! MessageInboxLoaded) return;

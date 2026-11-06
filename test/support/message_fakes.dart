@@ -15,8 +15,9 @@ class MessageTestIdentity implements NowaveSessionIdentity {
   String? userId = 'user-a';
   String? token = 'fake-token-a';
   int generation = 1;
-  final StreamController<void> controller =
-      StreamController<void>.broadcast(sync: true);
+  final StreamController<void> controller = StreamController<void>.broadcast(
+    sync: true,
+  );
 
   @override
   String? get activeUserId => userId;

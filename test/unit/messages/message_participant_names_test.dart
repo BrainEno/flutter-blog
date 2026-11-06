@@ -96,9 +96,9 @@ void main() {
   test(
     'resolve returns what it knows and only starts the budgeted lookups',
     () async {
-      when(
-        () => authors.getAuthorProfile(any()),
-      ).thenAnswer((invocation) async {
+      when(() => authors.getAuthorProfile(any())).thenAnswer((
+        invocation,
+      ) async {
         final userId = invocation.positionalArguments.first as String;
         return right(_profile(userId, 'name-$userId'));
       });
@@ -139,9 +139,7 @@ void main() {
   });
 
   test('the cache is capped instead of growing without a bound', () async {
-    when(
-      () => authors.getAuthorProfile(any()),
-    ).thenAnswer((invocation) async {
+    when(() => authors.getAuthorProfile(any())).thenAnswer((invocation) async {
       final userId = invocation.positionalArguments.first as String;
       return right(_profile(userId, 'name-$userId'));
     });

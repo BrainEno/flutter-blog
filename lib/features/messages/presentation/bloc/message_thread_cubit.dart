@@ -104,9 +104,7 @@ final class MessageThreadLoaded extends MessageThreadState {
       conversation: conversation ?? this.conversation,
       messages: messages ?? this.messages,
       hasMore: hasMore ?? this.hasMore,
-      olderCursor: clearOlderCursor
-          ? null
-          : (olderCursor ?? this.olderCursor),
+      olderCursor: clearOlderCursor ? null : (olderCursor ?? this.olderCursor),
       participants: participants ?? this.participants,
       loadingOlder: loadingOlder ?? this.loadingOlder,
       olderFailure: clearOlderFailure
@@ -234,9 +232,8 @@ class MessageThreadCubit extends Cubit<MessageThreadState> {
     final latest = state;
     if (latest is! MessageThreadLoaded) return;
     page.fold(
-      (failure) => emit(
-        latest.copyWith(loadingOlder: false, olderFailure: failure),
-      ),
+      (failure) =>
+          emit(latest.copyWith(loadingOlder: false, olderFailure: failure)),
       (rows) {
         // Prepending keeps the reading position: the messages already on
         // screen stay where they are and the older ones go above them.
@@ -368,9 +365,7 @@ class MessageThreadCubit extends Cubit<MessageThreadState> {
 
   /// Replaces a message with the same id instead of listing it twice: a
   /// replayed send returns the original row.
-  static List<ConversationMessage> _dedupe(
-    List<ConversationMessage> messages,
-  ) {
+  static List<ConversationMessage> _dedupe(List<ConversationMessage> messages) {
     final byId = <String, ConversationMessage>{};
     final order = <String>[];
     for (final message in messages) {

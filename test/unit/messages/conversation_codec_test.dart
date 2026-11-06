@@ -1,6 +1,5 @@
 import 'package:belog/features/messages/data/datasources/conversation_codec.dart';
 import 'package:belog/features/messages/domain/entities/conversation.dart';
-import 'package:belog/features/messages/domain/entities/conversation_message.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> _message({
@@ -99,16 +98,12 @@ void main() {
         ..['lastActivityAt'] = '2026-11-05T04:30:00',
       'a last message that is not a row': _conversation()
         ..['lastMessage'] = 'hello',
-      'a creator that is not a string': _conversation()
-        ..['createdBy'] = 42,
+      'a creator that is not a string': _conversation()..['createdBy'] = 42,
     };
 
     for (final entry in cases.entries) {
       test(entry.key, () {
-        expect(
-          () => conversationFromRow(entry.value),
-          throwsFormatException,
-        );
+        expect(() => conversationFromRow(entry.value), throwsFormatException);
       });
     }
   });

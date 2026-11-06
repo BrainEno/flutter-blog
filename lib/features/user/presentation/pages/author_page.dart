@@ -82,9 +82,7 @@ class _AuthorPageState extends State<AuthorPage> {
       _requestLogin();
       return;
     }
-    context.push(
-      '/profile/messages?to=${Uri.encodeComponent(widget.userId)}',
-    );
+    context.push('/profile/messages?to=${Uri.encodeComponent(widget.userId)}');
   }
 
   void _onFollowTap() {

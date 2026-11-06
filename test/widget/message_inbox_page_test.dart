@@ -213,9 +213,7 @@ void main() {
     expect(find.text('thread: created'), findsOneWidget);
   });
 
-  testWidgets('a start that fails says why and keeps the card', (
-    tester,
-  ) async {
+  testWidgets('a start that fails says why and keeps the card', (tester) async {
     final harness = _Harness(startWith: 'user-b');
     harness.repository.startFailure = testOffline;
     addTearDown(harness.dispose);

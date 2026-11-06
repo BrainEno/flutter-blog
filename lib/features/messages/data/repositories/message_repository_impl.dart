@@ -44,9 +44,7 @@ class MessageRepositoryImpl implements MessageRepository {
       if (data is! List || data.length > bounded) {
         throw const FormatException('Invalid conversation list');
       }
-      return right(
-        List.unmodifiable(data.map(conversationFromRow)),
-      );
+      return right(List.unmodifiable(data.map(conversationFromRow)));
     } catch (error) {
       return left(_failureOf(error));
     }
@@ -95,10 +93,7 @@ class MessageRepositoryImpl implements MessageRepository {
     try {
       final data = await client.getJson(
         '/conversations/${Uri.encodeComponent(conversationId)}/messages',
-        query: {
-          'limit': '$bounded',
-          if (before != null) 'before': before,
-        },
+        query: {'limit': '$bounded', if (before != null) 'before': before},
         sessionFence: fence,
         followRedirects: false,
       );

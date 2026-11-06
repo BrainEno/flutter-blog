@@ -116,10 +116,8 @@ class _MessageInboxViewState extends State<_MessageInboxView> {
     );
     if (!mounted) return;
     result.fold(
-      (failure) => showSnackBar(
-        context,
-        localizedFailure(context.l10n, failure),
-      ),
+      (failure) =>
+          showSnackBar(context, localizedFailure(context.l10n, failure)),
       (conversationId) => _openThread(conversationId),
     );
   }
@@ -137,9 +135,7 @@ class _MessageInboxViewState extends State<_MessageInboxView> {
           if (state is MessageInboxLoaded) _handlePendingStart(state);
           if (state is MessageInboxLoading) {
             return Center(
-              child: CircularProgressIndicator(
-                semanticsLabel: l10n.loading,
-              ),
+              child: CircularProgressIndicator(semanticsLabel: l10n.loading),
             );
           }
           if (state is MessageInboxSignedOut) {
@@ -250,9 +246,7 @@ class _StartConversationCard extends StatelessWidget {
           const SizedBox(height: 8),
           FilledButton(
             onPressed: starting ? null : onStart,
-            child: Text(
-              starting ? l10n.messagesStarting : l10n.messagesStart,
-            ),
+            child: Text(starting ? l10n.messagesStarting : l10n.messagesStart),
           ),
         ],
       ),

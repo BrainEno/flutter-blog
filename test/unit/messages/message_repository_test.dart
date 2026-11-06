@@ -75,9 +75,7 @@ Map<String, dynamic> _conversationRow({
   'createdAt': '2026-11-05T04:00:00.000Z',
   'lastActivityAt': '2026-11-05T04:30:00.000Z',
   'unreadCount': unreadCount,
-  'lastMessage': withLastMessage
-      ? (lastMessage ?? _messageRow())
-      : null,
+  'lastMessage': withLastMessage ? (lastMessage ?? _messageRow()) : null,
 };
 
 http.Response _data(Object? value, {int status = 200}) =>
@@ -314,10 +312,7 @@ void main() {
     final cases = <String, ({String body, String key})>{
       'an empty body': (body: '', key: 'key-2'),
       'a body with edge whitespace': (body: ' 你好 ', key: 'key-2'),
-      'a body over 20000 characters': (
-        body: 'a' * 20001,
-        key: 'key-2',
-      ),
+      'a body over 20000 characters': (body: 'a' * 20001, key: 'key-2'),
       'a missing key': (body: '你好', key: ''),
     };
 
@@ -456,15 +451,11 @@ void main() {
             (repository) => repository.conversations(fence: _fence),
           ),
           'a conversation without participants': (
-            _data([
-              _conversationRow()..remove('participantIds'),
-            ]),
+            _data([_conversationRow()..remove('participantIds')]),
             (repository) => repository.conversations(fence: _fence),
           ),
           'a conversation with a negative unread count': (
-            _data([
-              _conversationRow(unreadCount: -1),
-            ]),
+            _data([_conversationRow(unreadCount: -1)]),
             (repository) => repository.conversations(fence: _fence),
           ),
           'a conversation with a naive timestamp': (
@@ -474,9 +465,7 @@ void main() {
             (repository) => repository.conversations(fence: _fence),
           ),
           'a message row without a body': (
-            _data([
-              _messageRow()..remove('body'),
-            ]),
+            _data([_messageRow()..remove('body')]),
             (repository) =>
                 repository.messages('conversation-1', fence: _fence),
           ),
@@ -506,10 +495,7 @@ void main() {
         MockClient((_) async => _data([_conversationRow()])),
       );
 
-      expect(
-        (await repository.conversations(fence: _fence)).isRight(),
-        isTrue,
-      );
+      expect((await repository.conversations(fence: _fence)).isRight(), isTrue);
     });
   });
 

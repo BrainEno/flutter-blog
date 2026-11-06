@@ -562,9 +562,7 @@ void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {
       ),
     )
     // Private conversations (#198 follow-up): read on open, never polled.
-    ..registerFactory<MessageRepository>(
-      () => MessageRepositoryImpl(apiClient),
-    )
+    ..registerFactory<MessageRepository>(() => MessageRepositoryImpl(apiClient))
     // Conversation ids are the only identities the API sends, so names come
     // from the public author profile - bounded per screen, cached across
     // sessions because they are public data either way.

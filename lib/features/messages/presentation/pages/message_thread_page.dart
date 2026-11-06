@@ -99,10 +99,7 @@ class _MessageThreadViewState extends State<_MessageThreadView> {
     if (body.isEmpty) return;
     final cubit = context.read<MessageThreadCubit>();
     final sent = body;
-    final failure = await cubit.send(
-      body: sent,
-      idempotencyKey: _keyFor(sent),
-    );
+    final failure = await cubit.send(body: sent, idempotencyKey: _keyFor(sent));
     if (!mounted) return;
     if (failure != null) return; // the draft stays, with its key
     _pendingKey = null;
