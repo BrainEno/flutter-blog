@@ -303,27 +303,28 @@ void main() {
   ) async {
     final semantics = tester.ensureSemantics();
     final harness = _Harness(_user(), unread: 3);
-    addTearDown(() async {
+    addTearDown(harness.dispose);
+    try {
+      await harness.pump(tester);
+      final l10n = lookupAppLocalizations(const Locale('en'));
+
+      await tester.scrollUntilVisible(find.text(l10n.notificationsTitle), 100);
+
+      // The number comes from the count endpoint, not from a loaded page.
+      expect(harness.notifications.calls, 1);
+      expect(find.text('3'), findsOneWidget);
+      // A screen reader hears the meaning, not just "3".
+      expect(
+        find.bySemanticsLabel(
+          RegExp(RegExp.escape(l10n.notificationsUnreadCount(3))),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    } finally {
+      // A handle left open fails the test even when every expectation passed.
       semantics.dispose();
-      await harness.dispose();
-    });
-    await harness.pump(tester);
-    final l10n = lookupAppLocalizations(const Locale('en'));
-
-    await tester.scrollUntilVisible(find.text(l10n.notificationsTitle), 100);
-
-    // The number comes from the count endpoint, not from a loaded page.
-    expect(harness.notifications.calls, 1);
-    expect(find.text('3'), findsOneWidget);
-
-    // A screen reader hears the meaning, not just "3".
-    expect(
-      find.bySemanticsLabel(
-        RegExp(RegExp.escape(l10n.notificationsUnreadCount(3))),
-      ),
-      findsOneWidget,
-    );
-    expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('a clear inbox shows no badge at all', (tester) async {
