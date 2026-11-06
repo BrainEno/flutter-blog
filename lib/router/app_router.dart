@@ -6,6 +6,7 @@ import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/utils/article_deep_link.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:belog/features/auth/presentation/pages/change_email_page.dart';
+import 'package:belog/features/auth/presentation/pages/email_verification_page.dart';
 import 'package:belog/features/auth/presentation/pages/change_password_page.dart';
 import 'package:belog/features/auth/presentation/pages/login_page.dart';
 import 'package:belog/features/auth/presentation/pages/signup_page.dart';
@@ -293,6 +294,13 @@ GoRouter createAppRouter({
                   GoRoute(
                     path: 'change-email',
                     builder: (context, state) => ChangeEmailPage(
+                      repository: serviceLocator<AccountSecurityRepository>(),
+                      session: serviceLocator<NowaveSessionManager>(),
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'email-verification',
+                    builder: (context, state) => EmailVerificationPage(
                       repository: serviceLocator<AccountSecurityRepository>(),
                       session: serviceLocator<NowaveSessionManager>(),
                     ),

@@ -164,6 +164,12 @@ class _ProfileView extends StatelessWidget {
                           onTap: () => context.push('/profile/change-email'),
                         ),
                         NoWaveActionRow(
+                          icon: Icons.mark_email_unread_outlined,
+                          label: l10n.emailVerifyTitle,
+                          onTap: () =>
+                              context.push('/profile/email-verification'),
+                        ),
+                        NoWaveActionRow(
                           icon: Icons.article_outlined,
                           label: l10n.menuMyArticles,
                           onTap: () => context.push('/profile/my-articles'),

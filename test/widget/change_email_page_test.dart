@@ -5,6 +5,7 @@ import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/theme/theme.dart';
+import 'package:belog/features/auth/domain/email_verification.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:belog/features/auth/presentation/pages/change_email_page.dart';
 import 'package:belog/l10n/app_localizations.dart';
@@ -57,6 +58,23 @@ class _Repository implements AccountSecurityRepository {
     ));
     return pending?.future ?? Future.value(result);
   }
+
+  @override
+  Future<Either<Failure, AccountEmailStatus>> readEmailStatus({
+    required String expectedUserId,
+    required int expectedSessionGeneration,
+  }) async => throw UnimplementedError('not asked from this page');
+
+  @override
+  Future<Either<Failure, EmailVerificationRequest>> requestEmailVerification({
+    required String expectedUserId,
+    required int expectedSessionGeneration,
+  }) async => throw UnimplementedError('not asked from this page');
+
+  @override
+  Future<Either<Failure, void>> verifyEmailToken({
+    required String token,
+  }) async => throw UnimplementedError('not asked from this page');
 }
 
 User _user({String email = 'old@example.invalid'}) => User(

@@ -65,6 +65,23 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
       return l10n.accountEmailInvalidInput;
     case 'account.changeInProgress':
       return l10n.accountEmailInProgress;
+    // E-mail verification (see email_verification_page.dart).
+    case 'account.emailStatusUnavailable':
+      return l10n.emailVerifyStatusUnavailable;
+    case 'account.verificationRejected':
+      return l10n.emailVerifySessionExpired;
+    case 'account.verificationMailDisabled':
+      return l10n.emailVerifyMailDisabled;
+    case 'account.verificationUnsupported':
+      return l10n.emailVerifyUnsupported;
+    case 'account.verificationInvalidInput':
+      return l10n.emailVerifyRejectedInput;
+    case 'account.verificationTokenInvalid':
+      return l10n.emailVerifyTokenMalformed;
+    case 'account.verificationTokenRejected':
+      return l10n.emailVerifyTokenRejected;
+    case 'account.verificationOutcomeUnknown':
+      return l10n.emailVerifyOutcomeUnknown;
     case 'auth.parse':
       return l10n.errorLoginParse;
     case 'auth.parse.missingUser':

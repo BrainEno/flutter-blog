@@ -7,6 +7,7 @@ import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/auth/data/repositories/account_security_repository_impl.dart';
+import 'package:belog/features/auth/domain/email_verification.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:http/http.dart' as http;
@@ -112,6 +113,25 @@ Future<Either<Failure, String>> _changeEmail(
 
 Failure? _emailFailure(Either<Failure, String> result) =>
     result.fold<Failure?>((failure) => failure, (_) => null);
+
+Future<Either<Failure, AccountEmailStatus>> _status(
+  AccountSecurityRepositoryImpl repository, {
+  String userId = 'user-a',
+  int generation = 1,
+}) => repository.readEmailStatus(
+  expectedUserId: userId,
+  expectedSessionGeneration: generation,
+);
+
+Future<Either<Failure, EmailVerificationRequest>> _requestMail(
+  AccountSecurityRepositoryImpl repository, {
+  String userId = 'user-a',
+  int generation = 1,
+}) => repository.requestEmailVerification(
+  expectedUserId: userId,
+  expectedSessionGeneration: generation,
+);
+
 
 void main() {
   test(
@@ -752,4 +772,327 @@ void main() {
       );
     });
   });
+
+  group('readEmailStatus', () {
+    test('reports the address and the moment the server proved it', () async {
+      final repository = _repository(
+        _Session(),
+        MockClient(
+          (request) async => _ok({
+            'id': 'user-a',
+            'email': 'a@example.invalid',
+            'emailVerifiedAt': '2025-01-02T03:04:05.000Z',
+            'isEditor': false,
+          }),
+        ),
+      );
+
+      final status = (await _status(repository)).fold((_) => null, (s) => s);
+
+      expect(status?.email, 'a@example.invalid');
+      expect(status?.isVerified, isTrue);
+      expect(status?.verifiedAt, DateTime.utc(2025, 1, 2, 3, 4, 5));
+    });
+
+    test('a null verification is unverified, never assumed verified', () async {
+      final repository = _repository(
+        _Session(),
+        MockClient(
+          (request) async => _ok({
+            'id': 'user-a',
+            'email': 'a@example.invalid',
+            'emailVerifiedAt': null,
+          }),
+        ),
+      );
+
+      final status = (await _status(repository)).fold((_) => null, (s) => s);
+
+      expect(status?.isVerified, isFalse);
+      expect(status?.verifiedAt, isNull);
+    });
+
+    test('another account on the server is not reported as this one', () async {
+      final repository = _repository(
+        _Session(),
+        MockClient((request) async => _ok({'id': 'user-b', 'email': 'b@x.y'})),
+      );
+
+      expect(
+        _emailFailureStatus(await _status(repository)),
+        'account.emailIdentityUnconfirmed',
+      );
+    });
+
+    test('a status read never turns a 401 into a write', () async {
+      final session = _Session();
+      final methods = <String>[];
+      final repository = _repository(
+        session,
+        MockClient((request) async {
+          methods.add(request.method);
+          return _error(401, 'UNAUTHENTICATED');
+        }),
+      );
+
+      final failure = _emailFailureStatus(await _status(repository));
+
+      // The verification page says "sign in again", not "wrong password".
+      expect(failure, 'account.verificationRejected');
+      // A read may refresh and ask once more, but it never turns into a write.
+      expect(methods.toSet(), {'GET'});
+    });
+
+    test('offline and a changed account read nothing', () async {
+      final connection = _Connection(false);
+      var calls = 0;
+      final repository = _repository(
+        _Session(),
+        MockClient((_) async {
+          calls++;
+          return _ok({'id': 'user-a'});
+        }),
+        connection: connection,
+      );
+
+      expect(_emailFailureStatus(await _status(repository)), 'network.offline');
+      expect(calls, 0);
+
+      connection.connected = true;
+      expect(
+        _emailFailureStatus(await _status(repository, generation: 4)),
+        'auth.sessionChanged',
+      );
+      expect(calls, 0);
+    });
+  });
+
+  group('requestEmailVerification', () {
+    test('posts once to the account endpoint and reports acceptance', () async {
+      final session = _Session();
+      final requests = <http.Request>[];
+      final repository = _repository(
+        session,
+        MockClient((request) async {
+          requests.add(request);
+          return http.Response(
+            jsonEncode({
+              'data': {'ok': true, 'alreadyVerified': false},
+            }),
+            202,
+          );
+        }),
+      );
+
+      final result = await _requestMail(repository);
+
+      expect(
+        result.fold((_) => null, (r) => r),
+        EmailVerificationRequest.sent,
+      );
+      expect(requests.single.method, 'POST');
+      expect(requests.single.url.path, '/api/v1/me/email-verification');
+      expect(requests.single.headers['authorization'], 'Bearer access-a');
+      expect(requests.single.followRedirects, isFalse);
+      expect(session.refreshCalls, 0);
+    });
+
+    test('an already verified account did not get a second mail', () async {
+      final repository = _repository(
+        _Session(),
+        MockClient(
+          (request) async => http.Response(
+            jsonEncode({
+              'data': {'ok': true, 'alreadyVerified': true},
+            }),
+            202,
+          ),
+        ),
+      );
+
+      expect(
+        (await _requestMail(repository)).fold((_) => null, (r) => r),
+        EmailVerificationRequest.alreadyVerified,
+      );
+    });
+
+    test('a deployment without mail is final, not an outage', () async {
+      final repository = _repository(
+        _Session(),
+        MockClient((request) async => _error(409, 'MAIL_DISABLED')),
+      );
+
+      final failure = _emailFailure(await _requestMail(repository));
+
+      expect(failure?.code, 'account.verificationMailDisabled');
+      expect(failure?.kind, FailureKind.server);
+      expect(failure?.cause, isNull);
+    });
+
+    test('a lost answer is uncertain: the mail may already be out', () async {
+      for (final client in [
+        MockClient((request) async => _error(500, 'INTERNAL_SERVER_ERROR')),
+        MockClient((request) async => throw const SocketException('fixture')),
+        MockClient((request) async => _ok({'ok': false})),
+      ]) {
+        final repository = _repository(_Session(), client);
+        expect(
+          _emailFailure(await _requestMail(repository))?.code,
+          'account.verificationOutcomeUnknown',
+        );
+      }
+    });
+
+    test('status codes map without leaking causes', () async {
+      final cases = <int, String>{
+        400: 'account.verificationInvalidInput',
+        401: 'account.verificationRejected',
+        403: 'server.permission',
+        404: 'account.verificationUnsupported',
+        405: 'account.verificationUnsupported',
+        429: 'auth.rateLimited',
+      };
+      for (final entry in cases.entries) {
+        final repository = _repository(
+          _Session(),
+          MockClient((request) async => _error(entry.key, 'UNTRUSTED')),
+        );
+        final failure = _emailFailure(await _requestMail(repository));
+        expect(failure?.code, entry.value, reason: '${entry.key}');
+        expect(failure?.cause, isNull, reason: '${entry.key}');
+      }
+    });
+
+    test('the credential guard also covers asking for a link', () async {
+      final started = Completer<void>();
+      final reply = Completer<http.Response>();
+      var puts = 0;
+      final repository = _repository(
+        _Session(),
+        MockClient((request) async {
+          if (request.method == 'GET') return _ok({'id': 'user-a'});
+          puts++;
+          if (puts == 1) {
+            started.complete();
+            return reply.future;
+          }
+          return http.Response(
+            jsonEncode({
+              'data': {'ok': true, 'alreadyVerified': false},
+            }),
+            202,
+          );
+        }),
+      );
+
+      final pending = _change(repository);
+      await started.future;
+
+      expect(
+        _emailFailure(await _requestMail(repository))?.code,
+        'account.changeInProgress',
+      );
+      expect(puts, 1);
+
+      reply.complete(_ok({'ok': true}));
+      expect((await pending).isRight(), isTrue);
+      expect((await _requestMail(repository)).isRight(), isTrue);
+    });
+  });
+
+  group('verifyEmailToken', () {
+    test('redeems the code without sending the session with it', () async {
+      final requests = <http.Request>[];
+      final repository = _repository(
+        _Session(),
+        MockClient((request) async {
+          requests.add(request);
+          return _ok({'ok': true});
+        }),
+      );
+      final token = 'a' * 43;
+
+      final result = await repository.verifyEmailToken(token: token);
+      expect(result.isRight(), isTrue);
+
+      expect(requests.single.method, 'POST');
+      expect(requests.single.url.path, '/api/v1/auth/verify-email');
+      expect(jsonDecode(requests.single.body), {'token': token});
+      // The token is the credential; the viewer's bearer must not ride along.
+      expect(requests.single.headers['authorization'], isNull);
+      expect(requests.single.followRedirects, isFalse);
+    });
+
+    test('a malformed code is refused before it costs an attempt', () async {
+      var calls = 0;
+      final repository = _repository(
+        _Session(),
+        MockClient((_) async {
+          calls++;
+          return _ok({'ok': true});
+        }),
+      );
+
+      for (final token in ['', 'short', 'a' * 44, '${'a' * 42}!']) {
+        final failure = (await repository.verifyEmailToken(
+          token: token,
+        )).fold((f) => f, (_) => null);
+        expect(
+          failure?.code,
+          'account.verificationTokenInvalid',
+          reason: token,
+        );
+      }
+      expect(calls, 0);
+    });
+
+    test('a used, expired or unknown code is one honest answer', () async {
+      final repository = _repository(
+        _Session(),
+        MockClient((request) async => _error(401, 'UNAUTHENTICATED')),
+      );
+
+      final failure = (await repository.verifyEmailToken(
+        token: 'a' * 43,
+      )).fold((f) => f, (_) => null);
+
+      expect(failure?.code, 'account.verificationTokenRejected');
+      expect(failure?.kind, FailureKind.auth);
+    });
+
+    test('a lost answer never invites resubmitting the same code', () async {
+      for (final client in [
+        MockClient((request) async => _error(503, 'SERVICE_UNAVAILABLE')),
+        MockClient((request) async => throw const SocketException('fixture')),
+      ]) {
+        final repository = _repository(_Session(), client);
+        final failure = (await repository.verifyEmailToken(
+          token: 'a' * 43,
+        )).fold((f) => f, (_) => null);
+        expect(failure?.code, 'account.verificationOutcomeUnknown');
+      }
+    });
+
+    test('a rate limit and an unsupported deployment stay separate', () async {
+      final cases = <int, String>{
+        400: 'account.verificationTokenInvalid',
+        404: 'account.verificationUnsupported',
+        405: 'account.verificationUnsupported',
+        429: 'auth.rateLimited',
+      };
+      for (final entry in cases.entries) {
+        final repository = _repository(
+          _Session(),
+          MockClient((request) async => _error(entry.key, 'UNTRUSTED')),
+        );
+        final failure = (await repository.verifyEmailToken(
+          token: 'a' * 43,
+        )).fold((f) => f, (_) => null);
+        expect(failure?.code, entry.value, reason: '${entry.key}');
+      }
+    });
+  });
 }
+
+String? _emailFailureStatus(Either<Failure, AccountEmailStatus> result) =>
+    result.fold((failure) => failure.code, (_) => null);

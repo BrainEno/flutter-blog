@@ -8,7 +8,9 @@ import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
+import 'package:belog/features/auth/domain/email_verification.dart';
 import 'package:belog/features/auth/presentation/pages/change_email_page.dart';
+import 'package:belog/features/auth/presentation/pages/email_verification_page.dart';
 import 'package:belog/features/auth/presentation/pages/change_password_page.dart';
 import 'package:belog/core/theme/app_theme_mode.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
@@ -1009,6 +1011,44 @@ void main() {
     harness.appUserCubit.updateUser(sampleUser());
     await tester.pumpAndSettle();
     expect(find.byType(ChangeEmailPage), findsOneWidget);
+    expect(find.byType(LoginPage), findsNothing);
+  });
+
+  testWidgets('verification page is protected and restores after sign-in', (
+    tester,
+  ) async {
+    final harness = Harness()
+      ..buildRouter(initialLocation: '/profile/email-verification');
+    final session = MockSessionManager();
+    when(() => session.activeUserId).thenReturn('user');
+    when(() => session.accessToken).thenReturn('fixture-token');
+    when(() => session.sessionGeneration).thenReturn(1);
+    final security = MockAccountSecurity();
+    when(
+      () => security.readEmailStatus(
+        expectedUserId: 'user',
+        expectedSessionGeneration: 1,
+      ),
+    ).thenAnswer(
+      (_) async => right(
+        const AccountEmailStatus(
+          email: 'user@example.invalid',
+          verifiedAt: null,
+        ),
+      ),
+    );
+    GetIt.instance.registerSingleton<NowaveSessionManager>(session);
+    GetIt.instance.registerSingleton<AccountSecurityRepository>(security);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginPage), findsOneWidget);
+    expect(find.byType(EmailVerificationPage), findsNothing);
+
+    harness.appUserCubit.updateUser(sampleUser());
+    await tester.pumpAndSettle();
+    expect(find.byType(EmailVerificationPage), findsOneWidget);
+    expect(find.text('user@example.invalid'), findsOneWidget);
     expect(find.byType(LoginPage), findsNothing);
   });
 
