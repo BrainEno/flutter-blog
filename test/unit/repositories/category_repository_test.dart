@@ -184,13 +184,28 @@ void main() {
       }),
     );
 
-    for (final bad in ['', '   ', ' essay-1a2b', 'essay-1a2b ', '.', '..']) {
+    for (final bad in ['', '   ', '.', '..']) {
       final missing = await repository.getCategory(bad);
       final articles = await repository.getArticlesByCategory(bad, offset: 0);
       expect(missing.getLeft().toNullable()?.code, 'client.validation');
       expect(articles.getLeft().toNullable()?.code, 'client.validation');
     }
     expect(calls, 0);
+  });
+
+  test('padding around a slug is trimmed, not sent', () async {
+    final seen = <http.Request>[];
+    final client = MockClient((request) async {
+      seen.add(request);
+      return _data([_article('a1')]);
+    });
+
+    final result = await _repository(
+      client,
+    ).getArticlesByCategory('  essay-1a2b  ', offset: 0);
+
+    expect(result.isRight(), isTrue);
+    expect(seen.single.url.path, '/api/v1/categories/essay-1a2b/articles');
   });
 
   test('one page of a category carries the paging it was asked for', () async {
