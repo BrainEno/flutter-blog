@@ -71,7 +71,6 @@ void main() {
       tester,
     ) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
       var taps = 0;
       await tester.pumpWidget(
         testApp(
@@ -91,6 +90,7 @@ void main() {
       final textButton = tester.widget<TextButton>(find.byType(TextButton));
       expect(textButton.onPressed, isNull);
       expect(tester.getSemantics(find.text('发布')).label, contains('发布'));
+      semantics.dispose();
     });
 
     testWidgets('the destructive variant uses the error colour', (
@@ -165,7 +165,6 @@ void main() {
       tester,
     ) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
       await tester.pumpWidget(
         testApp(
           NoWaveButton(
@@ -180,6 +179,7 @@ void main() {
       // The visible text is unchanged; only the announced label differs.
       expect(find.text('删除'), findsOneWidget);
       expect(tester.getSemantics(find.byType(NoWaveButton)).label, '删除《城与季节》');
+      semantics.dispose();
     });
   });
 
@@ -255,7 +255,6 @@ void main() {
 
     testWidgets('a static note does not interrupt the reader', (tester) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
       await tester.pumpWidget(
         testApp(const NoWaveNotice(message: '草稿只有你自己能看到。')),
       );
@@ -264,11 +263,11 @@ void main() {
       final data = node.getSemanticsData();
       expect(data.flagsCollection.isLiveRegion, isFalse);
       expect(data.label, contains('草稿只有你自己能看到。'));
+      semantics.dispose();
     });
 
     testWidgets('a live notice announces itself', (tester) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
       await tester.pumpWidget(
         testApp(const NoWaveNotice(message: '已保存', isLive: true)),
       );
@@ -276,6 +275,7 @@ void main() {
       final node = tester.getSemantics(find.byType(NoWaveNotice));
       final data = node.getSemanticsData();
       expect(data.flagsCollection.isLiveRegion, isTrue);
+      semantics.dispose();
     });
 
     testWidgets('an action needs both a label and a handler', (tester) async {

@@ -65,10 +65,11 @@ abstract final class AppTheme {
       scaffoldBackgroundColor: background,
       textTheme: textTheme,
       dividerColor: foreground.withAlpha(NoWaveOpacity.dividerAlpha),
+      // Thickness only: the gap around a divider is layout, and pages that
+      // want a compact rule already pass an explicit `height`.
       dividerTheme: DividerThemeData(
         color: foreground.withAlpha(NoWaveOpacity.dividerAlpha),
         thickness: NoWaveStroke.hairline,
-        space: NoWaveStroke.hairline,
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: background,
