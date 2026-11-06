@@ -1,3 +1,4 @@
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:belog/features/messages/domain/entities/conversation.dart';
 import 'package:belog/features/messages/presentation/bloc/message_inbox_cubit.dart';
@@ -15,8 +16,11 @@ class _Harness {
     String? startWith,
     bool signedIn = true,
     String? defaultName = '读者乙',
+    Failure? conversationsFailure,
   }) : startWith = startWith {
     repository.conversationsResult = conversations;
+    // Before the cubit exists: its constructor reads immediately.
+    repository.conversationsFailure = conversationsFailure;
     names.names.clear();
     if (defaultName != null) names.names['user-b'] = defaultName;
     identity = MessageTestIdentity();
@@ -152,8 +156,7 @@ void main() {
   });
 
   testWidgets('a failed read offers a retry that asks again', (tester) async {
-    final harness = _Harness();
-    harness.repository.conversationsFailure = testOffline;
+    final harness = _Harness(conversationsFailure: testOffline);
     addTearDown(harness.dispose);
     await harness.pump(tester);
     final l10n = lookupAppLocalizations(const Locale('en'));

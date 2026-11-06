@@ -329,12 +329,21 @@ class _ConversationRow extends StatelessWidget {
                       ),
                       if (lastEventAt != null) ...[
                         const SizedBox(width: 8),
-                        Text(
-                          formatDate(
-                            Localizations.localeOf(context),
-                            lastEventAt,
+                        // Shares the row with the name instead of owning its
+                        // width: at 2x text a localized date alone is wider
+                        // than a 320px screen allows.
+                        Flexible(
+                          child: Text(
+                            formatDate(
+                              Localizations.localeOf(context),
+                              lastEventAt,
+                            ),
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.end,
+                            style: NoWaveTypography.meta(context),
                           ),
-                          style: NoWaveTypography.meta(context),
                         ),
                       ],
                     ],

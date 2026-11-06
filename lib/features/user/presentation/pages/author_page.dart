@@ -165,20 +165,27 @@ class _AuthorPageState extends State<AuthorPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _FollowButton(
-                        loaded: loaded,
-                        isSelf: isSelf,
-                        onTap: _onFollowTap,
-                      ),
-                      if (!isSelf)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: _messageAuthor,
-                            icon: const Icon(Icons.mail_outline, size: 16),
-                            label: Text(context.l10n.messagesStart),
+                      // Side by side rather than stacked: the follow button
+                      // already sets this row's height, and growing the header
+                      // pushes the article list out of reach on small screens.
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          _FollowButton(
+                            loaded: loaded,
+                            isSelf: isSelf,
+                            onTap: _onFollowTap,
                           ),
-                        ),
+                          if (!isSelf)
+                            TextButton.icon(
+                              onPressed: _messageAuthor,
+                              icon: const Icon(Icons.mail_outline, size: 16),
+                              label: Text(context.l10n.messagesStart),
+                            ),
+                        ],
+                      ),
                       const SizedBox(height: 32),
                       const Divider(height: 1),
                       const SizedBox(height: 16),
@@ -358,10 +365,9 @@ class _FollowButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isSelf) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Chip(label: Text(context.l10n.thisIsYou)),
-      );
+      // No Align: a wrapping parent lays this out by its own width, and an
+      // Align would claim the whole line.
+      return Chip(label: Text(context.l10n.thisIsYou));
     }
 
     final following = loaded.profile.isFollowing;
@@ -376,26 +382,23 @@ class _FollowButton extends StatelessWidget {
       ),
     );
 
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Semantics(
-        toggled: following,
-        child: following
-            ? OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(shape: shape),
-                onPressed: inFlight ? null : onTap,
-                icon: inFlight ? progress : const Icon(Icons.check, size: 16),
-                label: Text(context.l10n.followingButton),
-              )
-            : FilledButton.icon(
-                style: FilledButton.styleFrom(shape: shape),
-                onPressed: inFlight ? null : onTap,
-                icon: inFlight
-                    ? progress
-                    : const Icon(Icons.person_add_alt_1, size: 16),
-                label: Text(context.l10n.followButton),
-              ),
-      ),
+    return Semantics(
+      toggled: following,
+      child: following
+          ? OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(shape: shape),
+              onPressed: inFlight ? null : onTap,
+              icon: inFlight ? progress : const Icon(Icons.check, size: 16),
+              label: Text(context.l10n.followingButton),
+            )
+          : FilledButton.icon(
+              style: FilledButton.styleFrom(shape: shape),
+              onPressed: inFlight ? null : onTap,
+              icon: inFlight
+                  ? progress
+                  : const Icon(Icons.person_add_alt_1, size: 16),
+              label: Text(context.l10n.followButton),
+            ),
     );
   }
 }
