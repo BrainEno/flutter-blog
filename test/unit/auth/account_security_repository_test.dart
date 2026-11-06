@@ -72,7 +72,8 @@ AccountSecurityRepositoryImpl _repository(
   ),
   session: session,
   connectionChecker: connection ?? _Connection(true),
-  rememberEmail: rememberEmail ??
+  rememberEmail:
+      rememberEmail ??
       (remembered == null
           ? null
           : (email) async {
@@ -555,37 +556,31 @@ void main() {
       500: 'account.emailOutcomeUnknown',
       503: 'account.emailOutcomeUnknown',
     }.entries) {
-      test(
-        'email endpoint status ${entry.key} is safely classified',
-        () async {
-          final session = _Session();
-          var puts = 0;
-          final repository = _repository(
-            session,
-            MockClient((request) async {
-              if (request.method == 'GET') return _ok({'id': 'user-a'});
-              puts++;
-              return _error(entry.key, 'UNTRUSTED');
-            }),
-          );
-          AppLogger.clearDiagnostics();
+      test('email endpoint status ${entry.key} is safely classified', () async {
+        final session = _Session();
+        var puts = 0;
+        final repository = _repository(
+          session,
+          MockClient((request) async {
+            if (request.method == 'GET') return _ok({'id': 'user-a'});
+            puts++;
+            return _error(entry.key, 'UNTRUSTED');
+          }),
+        );
+        AppLogger.clearDiagnostics();
 
-          final failure = _emailFailure(await _changeEmail(repository));
+        final failure = _emailFailure(await _changeEmail(repository));
 
-          expect(failure?.code, entry.value);
-          expect(failure?.cause, isNull);
-          expect(
-            failure.toString(),
-            isNot(contains('current password')),
-          );
-          expect(
-            AppLogger.diagnosticsReport(),
-            isNot(contains('current password')),
-          );
-          expect(puts, 1);
-          expect(session.refreshCalls, 0);
-        },
-      );
+        expect(failure?.code, entry.value);
+        expect(failure?.cause, isNull);
+        expect(failure.toString(), isNot(contains('current password')));
+        expect(
+          AppLogger.diagnosticsReport(),
+          isNot(contains('current password')),
+        );
+        expect(puts, 1);
+        expect(session.refreshCalls, 0);
+      });
     }
 
     test('an unreadable 2xx is an unknown outcome, never a success', () async {

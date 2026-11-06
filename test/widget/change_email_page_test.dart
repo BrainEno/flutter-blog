@@ -190,8 +190,10 @@ void main() {
     final state = user.state;
     expect(state, isA<AppUserLoggedIn>());
     expect((state as AppUserLoggedIn).user.email, 'new@example.invalid');
-    expect(find.text(l10n.accountEmailSuccess('new@example.invalid')),
-        findsOneWidget);
+    expect(
+      find.text(l10n.accountEmailSuccess('new@example.invalid')),
+      findsOneWidget,
+    );
     // The server sends no mail, and the screen must not imply that it does.
     expect(find.text(l10n.accountEmailUnverified), findsOneWidget);
   });
@@ -329,8 +331,10 @@ void main() {
 
     repository.pending!.complete(right('new@example.invalid'));
     await tester.pumpAndSettle();
-    expect(find.text(l10n.accountEmailSuccess('new@example.invalid')),
-        findsOneWidget);
+    expect(
+      find.text(l10n.accountEmailSuccess('new@example.invalid')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('an account switch locks the form before any request', (

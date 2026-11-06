@@ -150,31 +150,28 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
     }
     setState(() {
       _busy = false;
-      result.fold(
-        (failure) => _failure = failure.forPresentation(),
-        (email) {
-          _storedEmail = email;
-          _currentEmail = email;
-          _email.clear();
-          // The account object carries the address the rest of the app shows;
-          // the server is the one that decided its final form.
-          final state = context.read<AppUserCubit>().state;
-          if (state is AppUserLoggedIn) {
-            final user = state.user;
-            context.read<AppUserCubit>().updateUser(
-              User(
-                id: user.id,
-                email: email,
-                name: user.name,
-                bio: user.bio,
-                avatarUrl: user.avatarUrl,
-                website: user.website,
-                updatedAt: user.updatedAt,
-              ),
-            );
-          }
-        },
-      );
+      result.fold((failure) => _failure = failure.forPresentation(), (email) {
+        _storedEmail = email;
+        _currentEmail = email;
+        _email.clear();
+        // The account object carries the address the rest of the app shows;
+        // the server is the one that decided its final form.
+        final state = context.read<AppUserCubit>().state;
+        if (state is AppUserLoggedIn) {
+          final user = state.user;
+          context.read<AppUserCubit>().updateUser(
+            User(
+              id: user.id,
+              email: email,
+              name: user.name,
+              bio: user.bio,
+              avatarUrl: user.avatarUrl,
+              website: user.website,
+              updatedAt: user.updatedAt,
+            ),
+          );
+        }
+      });
     });
   }
 
@@ -299,9 +296,7 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    l10n.accountEmailSuccess(_storedEmail!),
-                                  ),
+                                  Text(l10n.accountEmailSuccess(_storedEmail!)),
                                   const SizedBox(height: 4),
                                   Text(
                                     l10n.accountEmailUnverified,
