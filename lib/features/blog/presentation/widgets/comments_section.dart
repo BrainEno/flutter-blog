@@ -1,4 +1,5 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/format_date.dart';
@@ -70,31 +71,18 @@ class _CommentsSectionState extends State<CommentsSection> {
     setState(() => _replyTo = null);
   }
 
-  Future<bool> _confirmDelete(BuildContext context) async {
+  Future<bool> _confirmDelete(BuildContext context) {
     final l10n = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.commentDeleteTitle),
-        content: Text(l10n.commentDeleteBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.actionCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(
-              l10n.actionDelete,
-              style: TextStyle(
-                color: Theme.of(dialogContext).colorScheme.error,
-              ),
-            ),
-          ),
-        ],
-      ),
+    // Deleting someone's comment cannot be undone, so it goes through the
+    // shared destructive dialog: error-coloured confirm, cancel first, and a
+    // barrier tap counts as "no".
+    return showNoWaveConfirmDialog(
+      context,
+      title: l10n.commentDeleteTitle,
+      message: l10n.commentDeleteBody,
+      cancelLabel: l10n.actionCancel,
+      confirmLabel: l10n.actionDelete,
     );
-    return confirmed ?? false;
   }
 
   void _submit() {

@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:flutter/material.dart';
 
@@ -22,18 +23,23 @@ Future<DraftRecoveryChoice?> showDraftRecoveryDialog(
             : context.l10n.draftReplaceBody,
       ),
       actions: [
-        TextButton(
+        NoWaveButton(
+          label: context.l10n.draftKeepCurrent,
+          variant: NoWaveButtonVariant.quiet,
           onPressed: () =>
               Navigator.pop(context, DraftRecoveryChoice.keepCurrent),
-          child: Text(context.l10n.draftKeepCurrent),
         ),
-        TextButton(
+        // Discarding is the one choice here that destroys something the reader
+        // cannot get back, so it carries the error colour.
+        NoWaveButton(
+          label: context.l10n.draftDiscardAction,
+          variant: NoWaveButtonVariant.destructive,
           onPressed: () => Navigator.pop(context, DraftRecoveryChoice.discard),
-          child: Text(context.l10n.draftDiscardAction),
         ),
-        TextButton(
+        NoWaveButton(
+          label: context.l10n.draftRestoreAction,
+          variant: NoWaveButtonVariant.primary,
           onPressed: () => Navigator.pop(context, DraftRecoveryChoice.restore),
-          child: Text(context.l10n.draftRestoreAction),
         ),
       ],
     ),

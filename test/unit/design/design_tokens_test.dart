@@ -133,6 +133,47 @@ void main() {
         );
       });
 
+      test('$label: containers are flat, square and on the page surface', () {
+        expect(theme.cardTheme.elevation, 0);
+        expect(theme.cardTheme.surfaceTintColor, Colors.transparent);
+        expect(
+          (theme.cardTheme.shape! as RoundedRectangleBorder).borderRadius,
+          const BorderRadius.all(Radius.circular(NoWaveRadius.none)),
+        );
+        expect(
+          theme.bottomSheetTheme.backgroundColor,
+          theme.scaffoldBackgroundColor,
+        );
+        expect(theme.bottomSheetTheme.elevation, 0);
+        expect(theme.listTileTheme.minTileHeight, NoWaveSizes.row);
+        expect(theme.snackBarTheme.shape, isA<RoundedRectangleBorder>());
+      });
+
+      test('$label: selection controls follow the accent rule', () {
+        expect(
+          theme.checkboxTheme.fillColor?.resolve({WidgetState.selected}),
+          theme.colorScheme.primary,
+        );
+        expect(theme.checkboxTheme.fillColor?.resolve({}), Colors.transparent);
+        expect(
+          theme.switchTheme.trackColor?.resolve({WidgetState.selected}),
+          theme.colorScheme.primary,
+        );
+        final segmented = theme.segmentedButtonTheme.style;
+        expect(
+          segmented?.minimumSize?.resolve({})?.height,
+          NoWaveSizes.tapTarget,
+        );
+        expect(
+          segmented?.side?.resolve({WidgetState.selected})?.width,
+          NoWaveStroke.hairline,
+        );
+        expect(
+          segmented?.backgroundColor?.resolve({WidgetState.selected}),
+          theme.colorScheme.primary,
+        );
+      });
+
       test('$label: the divider is the token opacity', () {
         expect(
           theme.dividerTheme.color,

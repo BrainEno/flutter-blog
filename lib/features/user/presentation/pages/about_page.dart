@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/network/api_origin_report.dart';
 import 'package:belog/core/secrets/app_secrets.dart';
@@ -224,20 +226,23 @@ class _AboutPageState extends State<AboutPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: NoWaveSpacing.small),
                   Text(l10n.diagnosticsPrivacyNote),
                 ],
               ),
             ),
             actions: [
-              TextButton(
+              NoWaveButton(
+                label: l10n.actionClear,
+                variant: NoWaveButtonVariant.quiet,
                 onPressed: () {
                   AppLogger.clearDiagnostics();
                   setState(() => report = _composeReport(info));
                 },
-                child: Text(l10n.actionClear),
               ),
-              TextButton(
+              NoWaveButton(
+                label: l10n.actionShare,
+                variant: NoWaveButtonVariant.quiet,
                 onPressed: () async {
                   Navigator.of(dialogContext).pop();
                   try {
@@ -258,19 +263,20 @@ class _AboutPageState extends State<AboutPage> {
                     }
                   }
                 },
-                child: Text(l10n.actionShare),
               ),
-              TextButton(
+              NoWaveButton(
+                label: l10n.actionCopy,
+                variant: NoWaveButtonVariant.quiet,
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: report));
                   Navigator.of(dialogContext).pop();
                   showSnackBar(context, l10n.diagnosticsCopied);
                 },
-                child: Text(l10n.actionCopy),
               ),
-              TextButton(
+              NoWaveButton(
+                label: l10n.actionClose,
+                variant: NoWaveButtonVariant.secondary,
                 onPressed: () => Navigator.of(dialogContext).pop(),
-                child: Text(l10n.actionClose),
               ),
             ],
           ),

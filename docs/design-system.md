@@ -88,7 +88,13 @@
 - 填充/描边/文字/图标按钮：方角，最小高度 ≥ 48，主按钮 52；
 - 输入框：`medium` 内边距，1pt 边框，聚焦 2pt；
 - 对话框：底色同页面，方角，标题 20/w700；
-- 分隔线：`dividerAlpha` + 1pt；`Chip`：方角 1pt 描边。
+- 分隔线：`dividerAlpha` + 1pt；`Chip`：方角 1pt 描边；
+- 卡片：0 阴影、0 色调、方角、`surface` 底色；列表项：`NoWaveSizes.row` 最小
+  高度、`medium` 内边距、方角；
+- 底部面板：底色同页面、0 阴影、方角；SnackBar：浅色下墨底纸字、深色下纸底墨字，
+  方角 0 阴影，行动文字用强调色（深色用橙、浅色用牛血红）；
+- 开关/复选框/分段按钮：选中态为强调色填充 + `onPrimary` 前景，未选中为 1pt
+  `muted` 描边，方角，≥48pt。
 
 ## 三、组件
 
@@ -141,6 +147,8 @@
 - 取消路径永远可达：点遮罩、返回手势、Esc 都返回 `false`；**没有选择不等于同
   意**，调用方拿到的一定是 `true`/`false`。
 - 文案由调用方从 ARB 取；组件不内置任何界面文案。
+- 目前接入它的是：删除评论、结束单个/其他会话、清空阅读历史；草稿恢复与诊断信息
+  两个对话框有各自的多个出口，保留自有结构，但按钮用 `NoWaveButton`。
 
 ## 四、无障碍契约（组件层已锁）
 
@@ -161,13 +169,29 @@
    在浅色与深色下各跑一遍，并断言 `takeException()` 为空。
 6. 本文的表格同步更新——文档落后于组件，比没有文档更糟。
 
-## 六、已知缺口
+## 六、守卫：`test/unit/design/no_magic_numbers_test.dart`
 
-- **没有强制「页面不许写魔法数字」的检查。** 目前靠评审和本页约定；旧页面里仍有
-  `SizedBox(height: 8)`、`EdgeInsets.all(16)` 这类字面量，改到的文件顺手换成 token。
-- **没有骨架屏/占位组件。** 加载态仍用 `Loader` 或进度条。
+口径变成门禁：`lib/` 里 `SizedBox(width|height: N)`、`EdgeInsets.*`、
+`Wrap/Flex` 的 `spacing`、写死的 `BorderSide(width:)` 都算「间距字面量」，`0` 不
+算。三条断言：
+
+1. `lib/core/design/`、`lib/core/common/widgets/`、`lib/core/theme/` 必须为 0；
+2. 其他文件不得**超过**登记在测试里的预算（新增文件默认 0）；
+3. 总量只会减少，测试里有一个只许下调的 `ceiling`。
+
+真的需要一个非 token 数值时，在那一行加 `// design-token-ok: <理由>`，它会被跳过
+并留下解释。迁移完成、计数下降后把预算调低（或删掉那一行）——**不要**只把数字
+往上调。
+
+## 七、已知缺口
+
+- **骨架屏/占位组件缺失。** 加载态仍用 `Loader` 或进度条。
 - **暗色模式没有独立插画或位图**，只有色板翻转。
 - **没有 golden 测试。** 一致性的回归靠 `design_tokens_test.dart` 的约束断言与页面
   级 widget 测试，而不是像素比对。
-- **组件迁移是渐进的**：`ElevatedButton`、`OutlinedButton`、`FilledButton` 在部分
-  页面仍直接使用；它们由主题兜住形状与尺寸，但忙碌态和语义仍需迁到 `NoWaveButton`。
+- **页面级按钮尚未迁移完**：`ElevatedButton`、`OutlinedButton`、`FilledButton` 在
+  登录、改邮箱、改密码、邮箱验证、编辑资料等页面仍直接使用；主题兜住了形状、线宽
+  与最小高度，但忙碌态与语义仍需逐个迁到 `NoWaveButton`（迁移会同时改到对应
+  widget 测试里断言的按钮类型，所以按页面分批做）。
+- **间距预算仍高**：`no_magic_numbers_test.dart` 的 `ceiling` 是 365，主要分布在
+  未迁移页面，越往下改越低。

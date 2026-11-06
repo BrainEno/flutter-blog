@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/router/app_router.dart';
@@ -128,24 +129,14 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
     if (userId == null || userId != _entriesUserId) return;
     final version = _accountVersion;
     final l10n = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.clearHistoryTitle),
-        content: Text(l10n.clearHistoryBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(l10n.actionCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(l10n.actionClear),
-          ),
-        ],
-      ),
+    final confirmed = await showNoWaveConfirmDialog(
+      context,
+      title: l10n.clearHistoryTitle,
+      message: l10n.clearHistoryBody,
+      cancelLabel: l10n.actionCancel,
+      confirmLabel: l10n.actionClear,
     );
-    if (confirmed != true ||
+    if (!confirmed ||
         !mounted ||
         _userId != userId ||
         version != _accountVersion) {
