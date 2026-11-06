@@ -263,7 +263,8 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                         if (_request != null) ...[
                           const SizedBox(height: 12),
                           _Notice(
-                            text: _request ==
+                            text:
+                                _request ==
                                     EmailVerificationRequest.alreadyVerified
                                 ? l10n.emailVerifyAlreadyVerified
                                 : l10n.emailVerifySent,
@@ -303,8 +304,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                         ),
                         const SizedBox(height: 12),
                         OutlinedButton(
-                          onPressed:
-                              enabled && _status?.isVerified != true
+                          onPressed: enabled && _status?.isVerified != true
                               ? _confirm
                               : null,
                           child: Text(
@@ -346,18 +346,12 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     final status = _status;
     if (_loadingStatus) {
       return [
-        Semantics(
-          liveRegion: true,
-          child: Text(l10n.emailVerifyRefreshing),
-        ),
+        Semantics(liveRegion: true, child: Text(l10n.emailVerifyRefreshing)),
       ];
     }
     if (_statusFailure != null) {
       return [
-        _Notice(
-          text: localizedFailure(l10n, _statusFailure!),
-          isError: true,
-        ),
+        _Notice(text: localizedFailure(l10n, _statusFailure!), isError: true),
         const SizedBox(height: 8),
         Align(
           alignment: AlignmentDirectional.centerStart,
@@ -384,10 +378,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
           ),
         )
       else
-        Semantics(
-          liveRegion: true,
-          child: Text(l10n.emailVerifyUnverified),
-        ),
+        Semantics(liveRegion: true, child: Text(l10n.emailVerifyUnverified)),
       const SizedBox(height: 8),
       Align(
         alignment: AlignmentDirectional.centerStart,

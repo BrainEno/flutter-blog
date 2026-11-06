@@ -34,8 +34,9 @@ class _Repository implements AccountSecurityRepository {
   final sendCalls = <({String userId, int generation})>[];
   final tokenCalls = <String>[];
   Either<Failure, AccountEmailStatus> status = right(_unverified);
-  Either<Failure, EmailVerificationRequest> send =
-      right(EmailVerificationRequest.sent);
+  Either<Failure, EmailVerificationRequest> send = right(
+    EmailVerificationRequest.sent,
+  );
   Either<Failure, void> token = right(null);
   void Function()? afterSend;
   void Function()? afterToken;
@@ -69,8 +70,7 @@ class _Repository implements AccountSecurityRepository {
   }
 
   @override
-  Future<Either<Failure, EmailVerificationRequest>>
-  requestEmailVerification({
+  Future<Either<Failure, EmailVerificationRequest>> requestEmailVerification({
     required String expectedUserId,
     required int expectedSessionGeneration,
   }) async {
@@ -363,12 +363,7 @@ void main() {
     final session = _Session();
     final l10n = lookupAppLocalizations(const Locale('en'));
 
-    await _pump(
-      tester,
-      repository: repository,
-      session: session,
-      user: user,
-    );
+    await _pump(tester, repository: repository, session: session, user: user);
     await tester.enterText(find.byType(TextFormField), _token);
 
     session.generation = 2;

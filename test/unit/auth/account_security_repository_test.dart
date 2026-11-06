@@ -114,6 +114,9 @@ Future<Either<Failure, String>> _changeEmail(
 Failure? _emailFailure(Either<Failure, String> result) =>
     result.fold<Failure?>((failure) => failure, (_) => null);
 
+Failure? _requestFailure(Either<Failure, EmailVerificationRequest> result) =>
+    result.fold<Failure?>((failure) => failure, (_) => null);
+
 Future<Either<Failure, AccountEmailStatus>> _status(
   AccountSecurityRepositoryImpl repository, {
   String userId = 'user-a',
@@ -131,7 +134,6 @@ Future<Either<Failure, EmailVerificationRequest>> _requestMail(
   expectedUserId: userId,
   expectedSessionGeneration: generation,
 );
-
 
 void main() {
   test(
@@ -886,10 +888,7 @@ void main() {
 
       final result = await _requestMail(repository);
 
-      expect(
-        result.fold((_) => null, (r) => r),
-        EmailVerificationRequest.sent,
-      );
+      expect(result.fold((_) => null, (r) => r), EmailVerificationRequest.sent);
       expect(requests.single.method, 'POST');
       expect(requests.single.url.path, '/api/v1/me/email-verification');
       expect(requests.single.headers['authorization'], 'Bearer access-a');
@@ -922,7 +921,7 @@ void main() {
         MockClient((request) async => _error(409, 'MAIL_DISABLED')),
       );
 
-      final failure = _emailFailure(await _requestMail(repository));
+      final failure = _requestFailure(await _requestMail(repository));
 
       expect(failure?.code, 'account.verificationMailDisabled');
       expect(failure?.kind, FailureKind.server);
@@ -937,7 +936,7 @@ void main() {
       ]) {
         final repository = _repository(_Session(), client);
         expect(
-          _emailFailure(await _requestMail(repository))?.code,
+          _requestFailure(await _requestMail(repository))?.code,
           'account.verificationOutcomeUnknown',
         );
       }
@@ -957,7 +956,7 @@ void main() {
           _Session(),
           MockClient((request) async => _error(entry.key, 'UNTRUSTED')),
         );
-        final failure = _emailFailure(await _requestMail(repository));
+        final failure = _requestFailure(await _requestMail(repository));
         expect(failure?.code, entry.value, reason: '${entry.key}');
         expect(failure?.cause, isNull, reason: '${entry.key}');
       }
@@ -989,7 +988,7 @@ void main() {
       await started.future;
 
       expect(
-        _emailFailure(await _requestMail(repository))?.code,
+        _requestFailure(await _requestMail(repository))?.code,
         'account.changeInProgress',
       );
       expect(puts, 1);
