@@ -70,6 +70,23 @@ class _AuthorPageState extends State<AuthorPage> {
     );
   }
 
+  /// Opens the private-message flow with this author.
+  ///
+  /// The inbox behind `/profile/messages` decides whether a conversation
+  /// already exists: creating one here would open a second thread with the
+  /// same person, because the server treats every create as a new conversation.
+  void _messageAuthor() {
+    final appUserState = context.read<AppUserCubit>().state;
+    if (appUserState is! AppUserLoggedIn) {
+      showSnackBar(context, context.l10n.signInRequired);
+      _requestLogin();
+      return;
+    }
+    context.push(
+      '/profile/messages?to=${Uri.encodeComponent(widget.userId)}',
+    );
+  }
+
   void _onFollowTap() {
     final appUserState = context.read<AppUserCubit>().state;
     if (appUserState is! AppUserLoggedIn) {
@@ -155,6 +172,15 @@ class _AuthorPageState extends State<AuthorPage> {
                         isSelf: isSelf,
                         onTap: _onFollowTap,
                       ),
+                      if (!isSelf)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: _messageAuthor,
+                            icon: const Icon(Icons.mail_outline, size: 16),
+                            label: Text(context.l10n.messagesStart),
+                          ),
+                        ),
                       const SizedBox(height: 32),
                       const Divider(height: 1),
                       const SizedBox(height: 16),

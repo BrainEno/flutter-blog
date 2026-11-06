@@ -134,6 +134,7 @@ class _Harness {
               'my-articles',
               'history',
               'notifications',
+              'messages',
               'sessions',
               'about',
             ])
@@ -240,6 +241,7 @@ void main() {
             l10n.menuMyArticles,
             l10n.menuReadingHistory,
             l10n.notificationsTitle,
+            l10n.messagesTitle,
             l10n.publishQueueTitle,
             l10n.accountSessionsTitle,
             l10n.menuAbout,
@@ -249,7 +251,7 @@ void main() {
             await tester.scrollUntilVisible(find.text(label), 140);
             expect(find.text(label), findsOneWidget);
           }
-          expect(find.byType(NoWaveActionRow), findsNWidgets(10));
+          expect(find.byType(NoWaveActionRow), findsNWidgets(11));
           expect(tester.takeException(), isNull);
         } finally {
           semantics.dispose();
@@ -285,6 +287,7 @@ void main() {
       'Change password': 'change-password',
       'My articles': 'my-articles',
       'Reading history': 'history',
+      'Messages': 'messages',
       'Sign-in sessions': 'sessions',
       'About': 'about',
     }.entries) {

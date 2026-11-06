@@ -21,6 +21,8 @@
   已知限制。
 - [通知收件箱](notifications.md)：进页面读一次、无推送与轮询、账号围栏、已读语义、
   服务端无分页的限制。
+- [私信](messages.md)：会话与消息游标、幂等键（建会话与发送）、显式已读、参与者名字
+  解析与「暂不提供私信」的旧部署降级。
 - [会话生命周期](session-lifecycle.md)：refresh 单飞、账号 fence、花费策略与改动守则。
 - [no-wave 传输层](nowave-transport.md)：URL 组合、响应信封映射与 401 重放决策。
 - [首页最新分页](latest-feed-cursor.md)：游标、旧部署回退和密集边界。

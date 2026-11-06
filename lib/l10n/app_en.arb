@@ -575,7 +575,7 @@
     }
   },
   "notificationArticleDeletedNoDate": "A work you commented on was deleted by its author; your comment will be removed with it.",
-  "notificationMessageReceived": "You received a private message (conversations are not available in the app yet)",
+  "notificationMessageReceived": "You received a private message",
   "notificationUnknown": "You have a new notification",
   "notificationsOlderHidden": "Only the latest {limit} notifications are shown; older ones are not available yet.",
   "@notificationsOlderHidden": {
@@ -587,5 +587,51 @@
   },
   "publishQueueResumeEditing": "Continue editing",
   "publishQueueEditEntry": "Edits a published article",
-  "publishQueueResumedNotice": "Loaded from the queue. The original entry is removed once this publishes."
+  "publishQueueResumedNotice": "Loaded from the queue. The original entry is removed once this publishes.",
+  "messagesTitle": "Messages",
+  "messagesMenuHint": "Private messages from readers",
+  "messagesEmptyTitle": "No messages yet",
+  "messagesEmptyBody": "Start a conversation with \"Message\" on an author's page. This app does not push messages; open the page to read the latest state.",
+  "messagesThreadTitle": "Conversation",
+  "messagesMissing": "This conversation does not exist, or you are not part of it.",
+  "messagesUnreadCount": "{count} unread",
+  "@messagesUnreadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesMarkRead": "Mark as read",
+  "messagesMarkReadHint": "The server marks every message this conversation has received so far as read, including any that are not loaded here yet.",
+  "messagesMarkedRead": "Marked as read",
+  "messagesLoadOlder": "Load older messages",
+  "messagesComposerHint": "Write a message",
+  "messagesDraftKept": "Your draft is kept, so you can retry directly.",
+  "messagesThreadEmpty": "This conversation has no messages yet.",
+  "messagesStart": "Message",
+  "messagesStartTitle": "Start a conversation with {name}",
+  "@messagesStartTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "messagesStarting": "Starting the conversation...",
+  "messagesUnknownParticipant": "Unknown reader",
+  "messagesYou": "You",
+  "messagesInboxCapped": "Showing the {limit} most recent conversations.",
+  "@messagesInboxCapped": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesSendEmpty": "Write something before sending.",
+  "messagesInvalid": "The request was rejected: a message must be non-empty text of at most 20000 characters.",
+  "messagesForbidden": "You are not allowed to read this conversation.",
+  "messagesUnavailable": "This server does not offer messages yet. Try again later or check the server version.",
+  "notificationsOpenConversation": "Open the conversation"
 }
