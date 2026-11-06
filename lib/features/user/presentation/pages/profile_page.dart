@@ -158,6 +158,12 @@ class _ProfileView extends StatelessWidget {
                           onTap: () => context.push('/profile/change-password'),
                         ),
                         NoWaveActionRow(
+                          icon: Icons.alternate_email,
+                          label: l10n.accountEmailTitle,
+                          description: user.email.isEmpty ? null : user.email,
+                          onTap: () => context.push('/profile/change-email'),
+                        ),
+                        NoWaveActionRow(
                           icon: Icons.article_outlined,
                           label: l10n.menuMyArticles,
                           onTap: () => context.push('/profile/my-articles'),

@@ -61,6 +61,8 @@ AccountSecurityRepositoryImpl _repository(
   MockClient httpClient, {
   _Connection? connection,
   Duration timeout = const Duration(seconds: 5),
+  List<String>? remembered,
+  Future<void> Function(String email)? rememberEmail,
 }) => AccountSecurityRepositoryImpl(
   client: NowaveApiClient(
     baseUrl: Uri.parse('https://api.example.invalid'),
@@ -70,6 +72,13 @@ AccountSecurityRepositoryImpl _repository(
   ),
   session: session,
   connectionChecker: connection ?? _Connection(true),
+  rememberEmail:
+      rememberEmail ??
+      (remembered == null
+          ? null
+          : (email) async {
+              remembered.add(email);
+            }),
 );
 
 Future<Either<Failure, void>> _change(
@@ -86,6 +95,22 @@ Future<Either<Failure, void>> _change(
 );
 
 Failure? _failure(Either<Failure, void> result) =>
+    result.fold<Failure?>((failure) => failure, (_) => null);
+
+Future<Either<Failure, String>> _changeEmail(
+  AccountSecurityRepositoryImpl repository, {
+  String userId = 'user-a',
+  int generation = 1,
+  String password = 'current password',
+  String email = 'new@example.invalid',
+}) => repository.changeEmail(
+  expectedUserId: userId,
+  expectedSessionGeneration: generation,
+  currentPassword: password,
+  newEmail: email,
+);
+
+Failure? _emailFailure(Either<Failure, String> result) =>
     result.fold<Failure?>((failure) => failure, (_) => null);
 
 void main() {
@@ -415,4 +440,316 @@ void main() {
       expect(puts, 2);
     },
   );
+
+  group('changeEmail', () {
+    test(
+      'preflights, sends the address once, and returns what was stored',
+      () async {
+        final session = _Session();
+        final requests = <http.Request>[];
+        final remembered = <String>[];
+        final repository = _repository(
+          session,
+          MockClient((request) async {
+            requests.add(request);
+            if (request.method == 'GET') return _ok({'id': 'user-a'});
+            return _ok({'ok': true, 'email': 'new@example.invalid'});
+          }),
+          remembered: remembered,
+        );
+
+        final result = await _changeEmail(repository);
+
+        expect(
+          result.fold((_) => null, (email) => email),
+          'new@example.invalid',
+        );
+        expect(requests.map((request) => request.method), ['GET', 'PUT']);
+        expect(requests[0].url.path, '/api/v1/me');
+        expect(requests[1].url.path, '/api/v1/me/email');
+        expect(requests[1].headers['authorization'], 'Bearer access-a');
+        expect(requests[1].followRedirects, isFalse);
+        expect(jsonDecode(requests[1].body), {
+          'password': 'current password',
+          'email': 'new@example.invalid',
+        });
+        // The rest of the app must show the address, not the request.
+        expect(remembered, ['new@example.invalid']);
+        expect(session.refreshCalls, 0);
+      },
+    );
+
+    test(
+      'the server normalizes the address; the client sends it that way',
+      () async {
+        final requests = <http.Request>[];
+        final remembered = <String>[];
+        final repository = _repository(
+          _Session(),
+          MockClient((request) async {
+            requests.add(request);
+            if (request.method == 'GET') return _ok({'id': 'user-a'});
+            return _ok({'ok': true, 'email': 'new@example.invalid'});
+          }),
+          remembered: remembered,
+        );
+
+        await _changeEmail(repository, email: '  New@Example.INVALID  ');
+
+        expect(jsonDecode(requests[1].body)['email'], 'new@example.invalid');
+        expect(remembered, ['new@example.invalid']);
+      },
+    );
+
+    test('addresses the server would refuse never leave the device', () async {
+      var calls = 0;
+      final repository = _repository(
+        _Session(),
+        MockClient((_) async {
+          calls++;
+          return _ok({'id': 'user-a'});
+        }),
+      );
+
+      for (final email in [
+        '',
+        'no-at-sign',
+        'a@b',
+        'a..b@example.com',
+        'a@b c',
+      ]) {
+        final failure = _emailFailure(
+          await _changeEmail(repository, email: email),
+        );
+        expect(failure?.code, 'account.emailInvalid', reason: email);
+      }
+      expect(
+        _emailFailure(await _changeEmail(repository, password: ''))?.code,
+        'account.emailInvalid',
+      );
+      expect(calls, 0);
+    });
+
+    test('an address another account holds is named, not generic', () async {
+      final repository = _repository(
+        _Session(),
+        MockClient((request) async {
+          if (request.method == 'GET') return _ok({'id': 'user-a'});
+          return _error(409, 'EMAIL_TAKEN', message: 'new@example.invalid');
+        }),
+      );
+
+      final failure = _emailFailure(await _changeEmail(repository));
+
+      expect(failure?.code, 'account.emailTaken');
+      expect(failure?.cause, isNull);
+      expect(failure.toString(), isNot(contains('new@example.invalid')));
+    });
+
+    for (final entry in <int, String>{
+      400: 'account.emailInvalid',
+      401: 'account.emailRejected',
+      403: 'server.permission',
+      404: 'account.emailUnsupported',
+      405: 'account.emailUnsupported',
+      429: 'auth.rateLimited',
+      500: 'account.emailOutcomeUnknown',
+      503: 'account.emailOutcomeUnknown',
+    }.entries) {
+      test('email endpoint status ${entry.key} is safely classified', () async {
+        final session = _Session();
+        var puts = 0;
+        final repository = _repository(
+          session,
+          MockClient((request) async {
+            if (request.method == 'GET') return _ok({'id': 'user-a'});
+            puts++;
+            return _error(entry.key, 'UNTRUSTED');
+          }),
+        );
+        AppLogger.clearDiagnostics();
+
+        final failure = _emailFailure(await _changeEmail(repository));
+
+        expect(failure?.code, entry.value);
+        expect(failure?.cause, isNull);
+        expect(failure.toString(), isNot(contains('current password')));
+        expect(
+          AppLogger.diagnosticsReport(),
+          isNot(contains('current password')),
+        );
+        expect(puts, 1);
+        expect(session.refreshCalls, 0);
+      });
+    }
+
+    test('an unreadable 2xx is an unknown outcome, never a success', () async {
+      for (final response in [
+        http.Response('not json', 200),
+        _ok({'ok': false}),
+        _ok([1, 2, 3]),
+      ]) {
+        final remembered = <String>[];
+        final repository = _repository(
+          _Session(),
+          MockClient((request) async {
+            if (request.method == 'GET') return _ok({'id': 'user-a'});
+            return response;
+          }),
+          remembered: remembered,
+        );
+
+        final failure = _emailFailure(await _changeEmail(repository));
+
+        expect(failure?.code, 'account.emailOutcomeUnknown');
+        expect(remembered, isEmpty);
+      }
+    });
+
+    test('a dropped connection after the PUT is uncertain', () async {
+      final repository = _repository(
+        _Session(),
+        MockClient((request) async {
+          if (request.method == 'GET') return _ok({'id': 'user-a'});
+          throw const SocketException('fixture transport error');
+        }),
+      );
+
+      expect(
+        _emailFailure(await _changeEmail(repository))?.code,
+        'account.emailOutcomeUnknown',
+      );
+    });
+
+    test(
+      'a changed address is still reported when the local note fails',
+      () async {
+        final repository = _repository(
+          _Session(),
+          MockClient((request) async {
+            if (request.method == 'GET') return _ok({'id': 'user-a'});
+            return _ok({'ok': true, 'email': 'new@example.invalid'});
+          }),
+          rememberEmail: (_) async => throw StateError('storage unavailable'),
+        );
+
+        final result = await _changeEmail(repository);
+
+        expect(
+          result.fold((_) => null, (email) => email),
+          'new@example.invalid',
+        );
+      },
+    );
+
+    test(
+      'an address the server stored but did not echo is not a failure',
+      () async {
+        final remembered = <String>[];
+        final repository = _repository(
+          _Session(),
+          MockClient((request) async {
+            if (request.method == 'GET') return _ok({'id': 'user-a'});
+            return _ok({'ok': true});
+          }),
+          remembered: remembered,
+        );
+
+        final result = await _changeEmail(repository);
+
+        expect(
+          result.fold((_) => null, (email) => email),
+          'new@example.invalid',
+        );
+        expect(remembered, ['new@example.invalid']);
+      },
+    );
+
+    test('offline and a changed account never send the password', () async {
+      final connection = _Connection(false);
+      var calls = 0;
+      final repository = _repository(
+        _Session(),
+        MockClient((_) async {
+          calls++;
+          return _ok({'id': 'user-a'});
+        }),
+        connection: connection,
+      );
+
+      expect(
+        _emailFailure(await _changeEmail(repository))?.code,
+        'network.offline',
+      );
+      expect(calls, 0);
+
+      connection.connected = true;
+      expect(
+        _emailFailure(await _changeEmail(repository, generation: 9))?.code,
+        'auth.sessionChanged',
+      );
+      expect(calls, 0);
+    });
+
+    test(
+      'a switch during the PUT drops the result and records nothing',
+      () async {
+        final session = _Session();
+        final started = Completer<void>();
+        final reply = Completer<http.Response>();
+        final remembered = <String>[];
+        final repository = _repository(
+          session,
+          MockClient((request) async {
+            if (request.method == 'GET') return _ok({'id': 'user-a'});
+            started.complete();
+            return reply.future;
+          }),
+          remembered: remembered,
+        );
+
+        final pending = _changeEmail(repository);
+        await started.future;
+        session.switchToB();
+        reply.complete(_ok({'ok': true, 'email': 'new@example.invalid'}));
+
+        expect(_emailFailure(await pending)?.code, 'auth.sessionChanged');
+        expect(remembered, isEmpty);
+      },
+    );
+
+    test('the password guard also covers e-mail changes', () async {
+      final started = Completer<void>();
+      final reply = Completer<http.Response>();
+      var puts = 0;
+      final repository = _repository(
+        _Session(),
+        MockClient((request) async {
+          if (request.method == 'GET') return _ok({'id': 'user-a'});
+          puts++;
+          if (puts == 1) {
+            started.complete();
+            return reply.future;
+          }
+          return _ok({'ok': true, 'email': 'new@example.invalid'});
+        }),
+      );
+
+      final pendingPassword = _change(repository);
+      await started.future;
+
+      expect(
+        _emailFailure(await _changeEmail(repository))?.code,
+        'account.changeInProgress',
+      );
+      expect(puts, 1);
+
+      reply.complete(_ok({'ok': true}));
+      expect((await pendingPassword).isRight(), isTrue);
+      expect(
+        (await _changeEmail(repository)).fold((_) => null, (email) => email),
+        'new@example.invalid',
+      );
+    });
+  });
 }

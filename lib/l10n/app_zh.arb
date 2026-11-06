@@ -220,7 +220,7 @@
   "labelWebsite": "网站",
   "errorWebsiteUrl": "网站地址需以 http:// 或 https:// 开头，或留空",
   "labelEmail": "邮箱",
-  "emailReadOnly": "邮箱暂不支持修改",
+  "emailReadOnly": "邮箱在「个人中心 → 修改邮箱」中修改。",
   "notSet": "未设置",
   "changeAvatarTooltip": "更换头像",
   "authorTitle": "作者",
@@ -479,5 +479,32 @@
   "messagesInvalid": "会话内容不符合要求：消息不能为空，最多 20000 字。",
   "messagesForbidden": "你没有权限查看这个会话。",
   "messagesUnavailable": "此服务器暂不提供私信。请稍后重试或检查服务器版本。",
-  "notificationsOpenConversation": "打开会话"
+  "notificationsOpenConversation": "打开会话",
+  "accountEmailTitle": "修改邮箱",
+  "accountEmailInfo": "修改邮箱需要输入当前密码：能登录的人才能改。新地址在服务端会被标记为「未验证」，应用不会发送验证邮件；其他设备的登录状态不受影响。",
+  "accountEmailCurrent": "当前邮箱",
+  "accountEmailNew": "新邮箱",
+  "accountEmailRequired": "请输入新邮箱",
+  "accountEmailInvalid": "邮箱格式不正确，请检查 @ 前后的内容。",
+  "accountEmailTooLong": "邮箱最多 254 个字符。",
+  "accountEmailAction": "更新邮箱",
+  "accountEmailUpdating": "正在更新邮箱…",
+  "accountEmailSuccess": "邮箱已更新为 {email}。",
+  "accountEmailUnverified": "该地址在服务端尚未验证；本应用不发送验证邮件。",
+  "accountEmailUnchanged": "新邮箱与当前邮箱相同，无需修改。",
+  "accountEmailMissingCurrent": "当前账户没有记录邮箱，请重新登录后再试。",
+  "accountEmailTaken": "该邮箱已被其他账户使用，请换一个地址。",
+  "accountEmailRejected": "当前密码可能不正确，或登录已失效；请核对密码或重新登录。",
+  "accountEmailIdentityUnconfirmed": "无法确认当前账户，本次未提交修改；请重新登录后重试。",
+  "accountEmailOutcomeUnknown": "无法确认修改结果：邮箱可能已变更。请稍后打开「修改邮箱」核对当前地址，勿立即重复提交。",
+  "accountEmailUnsupported": "当前服务器不支持修改邮箱，请联系服务提供方。",
+  "accountEmailInvalidInput": "邮箱或当前密码不符合要求，请检查后重试。",
+  "accountEmailInProgress": "已有账户安全修改正在处理，请等待结果。",
+  "@accountEmailSuccess": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  }
 }

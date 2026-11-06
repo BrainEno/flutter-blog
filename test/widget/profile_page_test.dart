@@ -131,6 +131,7 @@ class _Harness {
             for (final path in [
               'edit',
               'change-password',
+              'change-email',
               'my-articles',
               'history',
               'notifications',
@@ -238,6 +239,7 @@ void main() {
           for (final label in [
             l10n.menuEditProfile,
             l10n.menuChangePassword,
+            l10n.accountEmailTitle,
             l10n.menuMyArticles,
             l10n.menuReadingHistory,
             l10n.notificationsTitle,
@@ -251,7 +253,7 @@ void main() {
             await tester.scrollUntilVisible(find.text(label), 140);
             expect(find.text(label), findsOneWidget);
           }
-          expect(find.byType(NoWaveActionRow), findsNWidgets(11));
+          expect(find.byType(NoWaveActionRow), findsNWidgets(12));
           expect(tester.takeException(), isNull);
         } finally {
           semantics.dispose();
@@ -285,6 +287,7 @@ void main() {
     for (final entry in <String, String>{
       'Edit profile': 'edit',
       'Change password': 'change-password',
+      'Change e-mail': 'change-email',
       'My articles': 'my-articles',
       'Reading history': 'history',
       'Messages': 'messages',
@@ -364,8 +367,16 @@ void main() {
     await harness.pump(tester);
     final l10n = lookupAppLocalizations(const Locale('en'));
 
-    await tester.scrollUntilVisible(find.text(l10n.notificationsTitle), 100);
-    await tester.tap(find.text(l10n.notificationsTitle));
+    // Scroll it fully into view, not merely on screen: a row clipped by the
+    // viewport edge takes the tap with it and nothing navigates.
+    final inboxRow = find.widgetWithText(
+      NoWaveActionRow,
+      l10n.notificationsTitle,
+    );
+    await tester.scrollUntilVisible(inboxRow, 100);
+    await tester.ensureVisible(inboxRow);
+    await tester.pumpAndSettle();
+    await tester.tap(inboxRow);
     await tester.pumpAndSettle();
     expect(find.text('destination: notifications'), findsOneWidget);
 
@@ -399,7 +410,7 @@ void main() {
       await GetIt.instance.reset();
     });
     await harness.pump(tester);
-    // The export row is the second to last of eight menu rows; on the default
+    // The export row is second to last in the menu; on the default
     // test surface it sits below the fold, so it has to be scrolled fully into
     // view before the tap can reach it.
     await tester.ensureVisible(find.text(l10n.exportMyData));

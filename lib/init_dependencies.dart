@@ -308,6 +308,9 @@ void _initAuth(
         client: apiClient,
         session: sessionManager,
         connectionChecker: serviceLocator(),
+        // A changed address has to survive a restart: the offline start path
+        // reads it from the stored session.
+        rememberEmail: sessionManager.updateEmail,
       ),
     )
     // Usecases

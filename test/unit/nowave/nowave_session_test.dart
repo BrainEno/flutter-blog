@@ -120,6 +120,41 @@ void main() {
       expect(store.stored?.email, 'a@b.c');
       expect(store.stored?.refreshToken, 'refresh-2');
     });
+
+    test('a new address is persisted without ending the session', () async {
+      final store = MemorySessionStore();
+      final manager = NowaveSessionManager(client: clientFor(), store: store);
+      await manager.adoptSession(_tokens('2'), email: 'a@b.c');
+      final generation = manager.sessionGeneration;
+      var notified = 0;
+      final subscription = manager.identityChanges.listen((_) => notified++);
+      addTearDown(subscription.cancel);
+
+      await manager.updateEmail('new@b.c');
+
+      // Same account, same token pair: only the address the app shows offline
+      // changes, so screens bound to this session stay usable.
+      expect(manager.currentSession?.email, 'new@b.c');
+      expect(store.stored?.email, 'new@b.c');
+      expect(manager.accessToken, 'access-2');
+      expect(store.stored?.refreshToken, 'refresh-2');
+      expect(manager.sessionGeneration, generation);
+      expect(notified, 0);
+    });
+
+    test('without a session, or with no change, nothing is written', () async {
+      final store = MemorySessionStore();
+      final manager = NowaveSessionManager(client: clientFor(), store: store);
+
+      await manager.updateEmail('new@b.c');
+      expect(manager.currentSession, isNull);
+      expect(store.stored, isNull);
+
+      await manager.adoptSession(_tokens('2'), email: 'a@b.c');
+      await manager.updateEmail('a@b.c');
+      await manager.updateEmail('');
+      expect(store.stored?.email, 'a@b.c');
+    });
   });
 
   test(

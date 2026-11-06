@@ -326,7 +326,7 @@
   "labelWebsite": "Website",
   "errorWebsiteUrl": "Use an http:// or https:// address, or leave this empty",
   "labelEmail": "E-mail",
-  "emailReadOnly": "E-mail cannot be changed yet",
+  "emailReadOnly": "Change your e-mail in Profile → Change e-mail.",
   "notSet": "Not set",
   "changeAvatarTooltip": "Change avatar",
   "authorTitle": "Author",
@@ -633,5 +633,32 @@
   "messagesInvalid": "The request was rejected: a message must be non-empty text of at most 20000 characters.",
   "messagesForbidden": "You are not allowed to read this conversation.",
   "messagesUnavailable": "This server does not offer messages yet. Try again later or check the server version.",
-  "notificationsOpenConversation": "Open the conversation"
+  "notificationsOpenConversation": "Open the conversation",
+  "accountEmailTitle": "Change e-mail",
+  "accountEmailInfo": "Changing your e-mail needs the current password: only someone who can sign in may move the address. The new address is marked unverified on the server and no verification mail is sent; other devices stay signed in.",
+  "accountEmailCurrent": "Current e-mail",
+  "accountEmailNew": "New e-mail",
+  "accountEmailRequired": "Enter the new e-mail",
+  "accountEmailInvalid": "That does not look like an e-mail address; check both sides of the @.",
+  "accountEmailTooLong": "An address can be at most 254 characters.",
+  "accountEmailAction": "Update e-mail",
+  "accountEmailUpdating": "Updating e-mail…",
+  "accountEmailSuccess": "E-mail updated to {email}.",
+  "accountEmailUnverified": "The address is unverified on the server; this app does not send verification mail.",
+  "accountEmailUnchanged": "That is already your e-mail.",
+  "accountEmailMissingCurrent": "This account has no e-mail on file; sign in again and retry.",
+  "accountEmailTaken": "Another account already uses that address; try a different one.",
+  "accountEmailRejected": "The current password is wrong, or the session has expired. Check the password or sign in again.",
+  "accountEmailIdentityUnconfirmed": "Could not confirm the account, so nothing was sent. Sign in again and retry.",
+  "accountEmailOutcomeUnknown": "The result is unknown: the e-mail may already have changed. Open Change e-mail later to check the current address instead of resubmitting.",
+  "accountEmailUnsupported": "This server cannot change e-mail addresses; contact the operator.",
+  "accountEmailInvalidInput": "The address or current password was not acceptable; check and retry.",
+  "accountEmailInProgress": "Another account change is still running; wait for its result.",
+  "@accountEmailSuccess": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  }
 }
