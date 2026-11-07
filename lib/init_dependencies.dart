@@ -114,6 +114,7 @@ import 'package:belog/features/user/domain/repositories/author_repository.dart';
 import 'package:belog/features/user/domain/repositories/author_search_repository.dart';
 import 'package:belog/features/user/domain/repositories/user_repository.dart';
 import 'package:belog/features/user/domain/usecases/author.dart';
+import 'package:belog/features/user/domain/usecases/browse_authors.dart';
 import 'package:belog/features/user/domain/usecases/edit_user_usecase.dart';
 import 'package:belog/features/user/domain/usecases/export_user_data.dart';
 import 'package:belog/features/user/domain/usecases/get_author_relationships.dart';
@@ -567,6 +568,9 @@ void _initAuthors(NowaveApiClient apiClient, Uri apiBaseUrl) {
     )
     ..registerFactory(
       () => SearchAuthors(serviceLocator<AuthorSearchRepository>()),
+    )
+    ..registerFactory(
+      () => BrowseAuthors(serviceLocator<AuthorSearchRepository>()),
     )
     // Usecases. AuthorCubit is page-scoped and built by the author route
     // with the profile's user id, like BlogViewerCubit.

@@ -6,8 +6,11 @@ import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/features/user/domain/entities/author_search_result.dart';
 import 'package:http/http.dart' as http;
 
+/// The public author directory (ADR 0024). `search` narrows it by name; an
+/// empty query browses it, ordered by reach.
 abstract interface class AuthorSearchRemoteDataSource {
   Future<List<AuthorSearchResult>> search(String query);
+  Future<List<AuthorSearchResult>> directory();
 }
 
 /// The endpoint is public. Its dedicated client cannot send a session token
@@ -21,6 +24,9 @@ class AuthorSearchRemoteDataSourceImpl implements AuthorSearchRemoteDataSource {
 
   /// Content language for the requests this data source makes; null keeps the
   /// historical Chinese default for callers that never switch (tests).
+  ///
+  /// The directory only lists authors who have a published work in this
+  /// language, so the language is part of the answer, not a display setting.
   final ContentLocale? contentLocale;
 
   String get _locale => (contentLocale ?? ContentLocale.instance).tag;
@@ -46,15 +52,34 @@ class AuthorSearchRemoteDataSourceImpl implements AuthorSearchRemoteDataSource {
       value != '.' &&
       value != '..';
 
+  /// A counter is a non-negative integer that fits a page header. Anything else
+  /// - a float, a string, a negative - means the row is not what it claims.
+  static int? _asCount(Object? value) {
+    if (value == null) return 0;
+    if (value is! int || value < 0) return null;
+    return value;
+  }
+
   @override
-  Future<List<AuthorSearchResult>> search(String query) async {
+  Future<List<AuthorSearchResult>> search(String query) {
     final trimmed = query.trim();
-    if (!isValidAuthorSearchQuery(trimmed)) throw _invalidQuery;
+    if (!isValidAuthorSearchQuery(trimmed)) {
+      return Future.error(_invalidQuery);
+    }
+    return _fetch(query: trimmed);
+  }
+
+  /// The browse case: no query parameter at all, so the server orders the
+  /// directory by reach instead of by relevance.
+  @override
+  Future<List<AuthorSearchResult>> directory() => _fetch();
+
+  Future<List<AuthorSearchResult>> _fetch({String? query}) async {
     try {
       final data = await _client.getJson(
-        '/users',
+        '/authors',
         query: {
-          'query': trimmed,
+          if (query != null) 'query': query,
           'locale': _locale,
           'limit': '$maxAuthorSearchResults',
         },
@@ -69,23 +94,27 @@ class AuthorSearchRemoteDataSourceImpl implements AuthorSearchRemoteDataSource {
         final id = value['userId'];
         final name = value['displayName'];
         final bio = value['bio'];
-        final avatar = value['avatarUrl'];
+        final followers = _asCount(value['followerCount']);
+        final works = _asCount(value['workCount']);
         if (id is! String ||
             !_isUsableUserId(id) ||
             !seen.add(id) ||
             (name != null && name is! String) ||
             (bio != null && bio is! String) ||
-            (avatar != null && avatar is! String)) {
+            followers == null ||
+            works == null) {
           throw _invalidResponse;
         }
-        // The API may return isFollowing, role and other fields; none are
-        // needed for an anonymous search or stored in this entity.
+        // The directory deliberately carries no avatar, no role and no follow
+        // state: those depend on the reader, and this response does not. Any
+        // extra fields are ignored rather than stored.
         people.add(
           AuthorSearchResult(
             userId: id,
             displayName: name as String? ?? '',
             bio: bio as String? ?? '',
-            avatarUrl: avatar as String? ?? '',
+            followerCount: followers,
+            workCount: works,
           ),
         );
       }

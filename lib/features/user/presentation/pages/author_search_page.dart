@@ -32,6 +32,14 @@ class _AuthorSearchPageState extends State<AuthorSearchPage> {
   Timer? _debounce;
 
   @override
+  void initState() {
+    super.initState();
+    // An empty field is the browsable directory, not an empty screen. The
+    // cubit holds the list, so coming back to this route does not refetch.
+    context.read<AuthorSearchCubit>().loadDirectory();
+  }
+
+  @override
   void dispose() {
     _debounce?.cancel();
     _controller.dispose();
@@ -160,6 +168,31 @@ class _AuthorSearchPageState extends State<AuthorSearchPage> {
                   onAction: () => _submit(_controller.text),
                 ),
               ),
+              AuthorSearchDirectory(:final people) when people.isEmpty =>
+                _state(NoWaveStatus(message: l10n.authorDirectoryEmpty)),
+              AuthorSearchDirectory(:final people) => SliverPadding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: NoWaveSpacing.page,
+                ),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    if (index == 0) {
+                      return _contentWidth(
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: NoWaveSpacing.medium,
+                          ),
+                          child: Text(
+                            l10n.authorDirectoryDescription,
+                            style: NoWaveTypography.meta(context),
+                          ),
+                        ),
+                      );
+                    }
+                    return _contentWidth(_AuthorRow(person: people[index - 1]));
+                  }, childCount: people.length + 1),
+                ),
+              ),
               AuthorSearchSuccess(:final people) when people.isEmpty => _state(
                 NoWaveStatus(message: l10n.authorSearchNoResults),
               ),
@@ -230,11 +263,10 @@ class _AuthorRow extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  NoWaveAvatar(
-                    name: name,
-                    imageUrl: person.avatarUrl,
-                    size: 48,
-                  ),
+                  // The directory returns no avatar: it depends on the reader
+                  // in a way this response deliberately does not, so the
+                  // initial carries the row.
+                  NoWaveAvatar(name: name, size: 48),
                   const SizedBox(width: NoWaveSpacing.small),
                   Expanded(
                     child: Column(
@@ -254,6 +286,16 @@ class _AuthorRow extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
+                        const SizedBox(height: NoWaveSpacing.xs),
+                        // Reach is why the directory is ordered the way it is;
+                        // showing it makes the order explicable.
+                        Text(
+                          context.l10n.authorDirectoryStats(
+                            person.workCount,
+                            person.followerCount,
+                          ),
+                          style: NoWaveTypography.meta(context),
+                        ),
                       ],
                     ),
                   ),

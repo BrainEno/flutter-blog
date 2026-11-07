@@ -45,6 +45,7 @@ import 'package:belog/features/blog/presentation/tag_navigation.dart';
 import 'package:belog/features/blog/presentation/pages/user_blogs_page.dart';
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
 import 'package:belog/features/user/domain/usecases/author.dart';
+import 'package:belog/features/user/domain/usecases/browse_authors.dart';
 import 'package:belog/features/user/domain/entities/author_relationship.dart';
 import 'package:belog/features/user/domain/usecases/get_author_relationships.dart';
 import 'package:belog/features/user/domain/usecases/search_authors.dart';
@@ -229,6 +230,7 @@ GoRouter createAppRouter({
                     builder: (context, state) => BlocProvider(
                       create: (_) => AuthorSearchCubit(
                         searchAuthors: serviceLocator<SearchAuthors>(),
+                        browseAuthors: serviceLocator<BrowseAuthors>(),
                       ),
                       child: const AuthorSearchPage(),
                     ),

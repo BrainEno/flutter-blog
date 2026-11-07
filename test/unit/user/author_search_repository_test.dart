@@ -42,6 +42,39 @@ void main() {
     verifyNever(() => remote.search(any()));
   });
 
+  test('the directory needs no query and stays honest when offline', () async {
+    when(() => connection.isConnected).thenAnswer((_) async => false);
+    final offline = await repository.directory();
+    offline.fold(
+      (failure) => expect(failure.code, 'network.offline'),
+      (_) => fail('offline must not look like an empty directory'),
+    );
+    verifyNever(() => remote.directory());
+
+    when(() => connection.isConnected).thenAnswer((_) async => true);
+    when(() => remote.directory()).thenAnswer(
+      (_) async => const [
+        AuthorSearchResult(userId: 'one', followerCount: 9, workCount: 4),
+      ],
+    );
+    final success = await repository.directory();
+    success.fold(
+      (_) => fail('expected success'),
+      (people) => expect(people.single.followerCount, 9),
+    );
+    verify(() => remote.directory()).called(1);
+    verifyNever(() => remote.search(any()));
+
+    when(
+      () => remote.directory(),
+    ).thenThrow(const SocketException('private detail'));
+    final error = await repository.directory();
+    error.fold(
+      (failure) => expect(failure.code, 'network.unavailable'),
+      (_) => fail('connection error must be a failure'),
+    );
+  });
+
   test(
     'passes the trimmed query, preserves order and maps transport errors',
     () async {
