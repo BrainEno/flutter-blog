@@ -14,6 +14,7 @@ import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/presentation/blocs/blog/blog_bloc.dart';
 import 'package:belog/features/blog/presentation/tag_navigation.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
+import 'package:belog/features/blog/presentation/widgets/blog_feed_skeleton.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -270,8 +271,26 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     final isCached = _visibleSource(state) == BlogFeedSource.cache;
     if (blogs.isEmpty &&
         (state is BlogInitial || state is BlogFirstPageLoading)) {
-      return Center(
-        child: NoWaveLoadingLabel(semanticLabel: l10n.loadingArticles),
+      // The heading is static, so it is drawn while the articles are not: the
+      // list grows into the space it already occupies instead of pushing the
+      // page down after the first frame.
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          NoWaveSpacing.page,
+          NoWaveSpacing.large,
+          NoWaveSpacing.page,
+          NoWaveSpacing.section,
+        ),
+        children: [
+          _contentWidth(
+            Padding(
+              padding: const EdgeInsets.only(bottom: NoWaveSpacing.large),
+              child: _heading(state.kind),
+            ),
+          ),
+          _contentWidth(BlogFeedSkeleton(semanticLabel: l10n.loadingArticles)),
+        ],
       );
     }
     if (state is BlogListFailure && blogs.isEmpty) {

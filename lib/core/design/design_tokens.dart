@@ -92,8 +92,12 @@ abstract final class NoWaveSizes {
   /// Minimum height of a tappable list row.
   static const row = 64.0;
 
-  /// Cover aspect ratio used by every article tile and header.
+  /// Cover aspect ratio of an article tile in a grid.
   static const coverAspect = 4 / 3;
+
+  /// Cover aspect ratio of the feed's featured card and the reader header,
+  /// where the image carries the page rather than a column.
+  static const coverAspectWide = 16 / 10;
 
   /// Widest a paragraph column may get before it is centred on a tablet, so
   /// long lines stay readable.
