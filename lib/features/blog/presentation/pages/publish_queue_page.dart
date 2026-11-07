@@ -114,8 +114,8 @@ class _PublishQueueView extends StatelessWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(NoWaveSpacing.medium),
               itemCount: loaded.entries.length,
-              separatorBuilder:
-                  (_, _) => const SizedBox(height: NoWaveSpacing.medium),
+              separatorBuilder: (_, _) =>
+                  const SizedBox(height: NoWaveSpacing.medium),
               itemBuilder: (context, index) => _QueueEntryCard(
                 entry: loaded.entries[index],
                 sending: loaded.sending,

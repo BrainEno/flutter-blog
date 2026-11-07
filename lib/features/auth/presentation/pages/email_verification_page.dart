@@ -303,7 +303,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                           },
                         ),
                         const SizedBox(height: NoWaveSpacing.medium),
-NoWaveButton(
+                        NoWaveButton(
                           label: _confirming
                               ? l10n.emailVerifyTokenConfirming
                               : l10n.emailVerifyTokenConfirm,
