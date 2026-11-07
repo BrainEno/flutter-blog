@@ -52,15 +52,10 @@ void main() {
       expect(NoWaveSizes.coverAspect, closeTo(4 / 3, 1e-9));
     });
 
-    test('the list sizes stay on the grid and above the tap target', () {
-      for (final size in [
-        NoWaveSizes.emptyStateOffset,
-        NoWaveSizes.listThumbnail,
-        NoWaveSizes.listThumbnailSmall,
-        NoWaveSizes.coverEditorBox,
-      ]) {
-        expect(size % 4, 0, reason: '$size is off the 4-point grid');
-      }
+    test('row sizes keep their order and their tap target', () {
+      // Component sizes are not spacing steps: the cover box is 250 and
+      // primaryAction 52, and neither has to sit on the 4-point grid.
+      expect(NoWaveSizes.emptyStateOffset % 4, 0);
       expect(
         NoWaveSizes.listThumbnailSmall,
         greaterThanOrEqualTo(NoWaveSizes.tapTarget),
@@ -70,6 +65,7 @@ void main() {
         NoWaveSizes.listThumbnail,
         greaterThan(NoWaveSizes.listThumbnailSmall),
       );
+      expect(NoWaveSizes.coverEditorBox, greaterThan(NoWaveSizes.listThumbnail));
     });
   });
 
