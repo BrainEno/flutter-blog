@@ -133,9 +133,9 @@ void main() {
         isNotNull,
         reason: 'the rolled-over timestamp must still be ISO milliseconds',
       );
-      final parsed = DateTime.parse(boundary).add(
-        const Duration(milliseconds: 1),
-      );
+      final parsed = DateTime.parse(
+        boundary,
+      ).add(const Duration(milliseconds: 1));
       expect(decoded!.at, parsed.toIso8601String());
     }
   });
