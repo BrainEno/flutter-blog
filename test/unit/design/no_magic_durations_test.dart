@@ -45,16 +45,16 @@ void main() {
     r'Duration\(\s*(?:microseconds|milliseconds|seconds|minutes|hours)\s*:',
   );
 
-  final files = dartFilesUnder('lib')
-      .map((file) => file.path.replaceAll(Platform.pathSeparator, '/'))
-      .map((path) => path.replaceFirst('lib/', ''))
-      .toList()
-    ..sort();
+  final files =
+      dartFilesUnder('lib')
+          .map((file) => file.path.replaceAll(Platform.pathSeparator, '/'))
+          .map((path) => path.replaceFirst('lib/', ''))
+          .toList()
+        ..sort();
 
   /// How many durations [path] writes itself; 0 when it reads tokens.
-  int literalsIn(String path) => literal
-      .allMatches(File('lib/$path').readAsStringSync())
-      .length;
+  int literalsIn(String path) =>
+      literal.allMatches(File('lib/$path').readAsStringSync()).length;
 
   test('motion reads NoWaveMotion, not its own durations', () {
     final offenders = [
