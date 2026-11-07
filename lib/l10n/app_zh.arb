@@ -556,6 +556,9 @@
   "myArticlesEditionsUnavailable": "这套部署只能列出当前语言的文章，看不到其他语言版本。",
   "languageChineseTraditional": "繁體中文",
   "categoryNotFound": "找不到这个分类，可能已被删除。",
+  "splashLoading": "载入中 · LOADING",
+  "splashSemanticsLoading": "No Wave 正在载入",
+  "splashBrandSubline": "无浪潮 · No Wave",
   "@accountEmailSuccess": {
     "placeholders": {
       "email": {

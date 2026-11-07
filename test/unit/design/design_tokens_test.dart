@@ -98,6 +98,52 @@ void main() {
     });
   });
 
+  group('cold start', () {
+    test('the floor is below the ceiling', () {
+      expect(NoWaveMotion.minimumSplash, lessThan(NoWaveMotion.splashBail));
+    });
+
+    test('the whole opening fits inside the bail', () {
+      // Counter, the last stretch, then every column, including the stagger.
+      final columns =
+          NoWaveMotion.curtain +
+          NoWaveMotion.stagger * (NoWaveSizes.splashColumns - 1);
+      final opening =
+          NoWaveMotion.counter + NoWaveMotion.counterFinish + columns;
+      expect(
+        opening,
+        lessThan(NoWaveMotion.splashBail),
+        reason: 'a boot that hangs must still let the curtain finish lifting',
+      );
+    });
+
+    test('the curtain reads as several columns, not two halves', () {
+      expect(NoWaveSizes.splashColumns, greaterThanOrEqualTo(4));
+      expect(
+        NoWaveMotion.stagger * NoWaveSizes.splashColumns,
+        lessThan(NoWaveMotion.curtain),
+        reason: 'a stagger wider than one column turns the lift into a queue',
+      );
+    });
+
+    test('the counter scales with the phone and caps on a window', () {
+      double sizeFor(double width) {
+        final scaled = width * NoWaveSizes.splashCounterViewport;
+        return scaled < NoWaveSizes.splashCounterMax
+            ? scaled
+            : NoWaveSizes.splashCounterMax;
+      }
+
+      expect(sizeFor(320), closeTo(96, 1e-9));
+      expect(sizeFor(2000), NoWaveSizes.splashCounterMax);
+      expect(
+        sizeFor(2000),
+        greaterThan(sizeFor(360)),
+        reason: 'the cap must not turn a tablet into a small phone',
+      );
+    });
+  });
+
   group('the theme maps the tokens', () {
     for (final entry in {
       'light': AppTheme.lightThemeMode,

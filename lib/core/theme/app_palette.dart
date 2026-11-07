@@ -18,5 +18,12 @@ abstract final class AppPalette {
   static const mutedOnInk = Color(0xFFB5AEA3);
   static const surfaceOnPaper = Color(0xFFE9E3D8);
   static const surfaceOnInk = Color(0xFF211E1B);
+
+  /// The 1dp seam between two curtain columns.
+  ///
+  /// Ink is #0F0D0C; this is the same ink lifted just enough to be drawn, so
+  /// the columns read as separate sheets without a visible line on the app
+  /// itself.
+  static const curtainHairline = Color(0xFF2A2724);
   static const errorOnInk = Color(0xFFFFB4A5);
 }

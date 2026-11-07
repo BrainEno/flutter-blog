@@ -34,6 +34,8 @@
 
 - [界面设计系统](design-system.md)：色板与间距 token、共用组件目录、无障碍契约，
   以及新增组件时要守的规则。
+- [冷启动与墨色幕布](startup.md)：`main` 之后不再 await 的启动顺序、幕布时序与降级
+  路径，以及 OS 静态启动图（原生资产）怎么和首帧对齐、怎么重新生成。
 - [no-wave API 差距](nowave-api-gap-audit.md)：记录审计 SHA、已接入与未接入能力。
 - [Supabase 到 no-wave 的迁移](supabase-to-nowave-migration.md)：历史迁移背景；
   旧快照的接口结论以较新的 API 差距审计和当前源码为准。

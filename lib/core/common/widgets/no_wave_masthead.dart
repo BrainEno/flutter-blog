@@ -1,40 +1,19 @@
+import 'package:belog/core/common/widgets/no_wave_wordmark.dart';
 import 'package:flutter/material.dart';
 
-/// Compact native version of no-wave's two-face wordmark.
+/// Compact native version of no-wave's two-face wordmark, sized for an app bar.
+///
+/// The mark itself lives in [NoWaveWordmark]; this wrapper exists only to add
+/// the header semantics the app bar context needs.
 class NoWaveMasthead extends StatelessWidget {
   const NoWaveMasthead({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.onSurface;
     return Semantics(
       label: 'No Wave',
       header: true,
-      child: ExcludeSemantics(
-        child: Text.rich(
-          TextSpan(
-            style: TextStyle(color: color, fontSize: 22, height: 1),
-            children: const [
-              TextSpan(
-                text: 'No ',
-                style: TextStyle(
-                  fontFamily: 'InterTight',
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              TextSpan(
-                text: 'Wave',
-                style: TextStyle(
-                  fontFamily: 'InstrumentSerif',
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
+      child: const ExcludeSemantics(child: NoWaveWordmark()),
     );
   }
 }

@@ -99,7 +99,7 @@
 - 清法：引入 `ContentSourceId`（`nowave` / `notion`）与一个
   `ActiveContentSource`；`env.json` 增加 `CONTENT_SOURCE`（默认 `nowave`，保持现有
   部署零变化）；DI 按源懒构造栈；`initDependencies` 只在“激活源是 no-wave”时
-  强制要求 `API_BASE_URL`；`core/startup/startup_failure_app.dart` 的报错文案与
+  强制要求 `API_BASE_URL`；`boot/startup_failure_app.dart` 的报错文案与
   `tool/ci/check_env_asset_contract.sh` 的契约一起更新。
 - 风险：中（启动路径 + 脚本契约 + 诊断行 `describeApiOrigin` 都要跟着改）。
 

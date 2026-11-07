@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#000000</color>
+    <!-- Ink curtain. One value for day and night on purpose: the curtain never
+         flips with the system theme, so a dark-mode cold start cannot flash
+         white and a light-mode one cannot flash black. Mirrors
+         `AppPalette.ink` (#0F0D0C) in lib/core/theme/app_palette.dart. -->
+    <color name="launch_background">#0F0D0C</color>
 </resources>

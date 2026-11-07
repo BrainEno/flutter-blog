@@ -713,6 +713,18 @@
   "myArticlesEditionsUnavailable": "This deployment only lists the current language, so other editions stay hidden.",
   "languageChineseTraditional": "Chinese (Traditional)",
   "categoryNotFound": "This category was not found; it may have been removed.",
+  "splashLoading": "LOADING · NO WAVE",
+  "@splashLoading": {
+    "description": "Under the counter on the cold-start curtain. The static OS launch image cannot follow the locale, so that image bakes the Chinese pair; this is the live text."
+  },
+  "splashSemanticsLoading": "Loading No Wave",
+  "@splashSemanticsLoading": {
+    "description": "The only thing a screen reader hears while the cold-start curtain is up; the counter and the columns are excluded on purpose."
+  },
+  "splashBrandSubline": "No Wave · 無浪潮",
+  "@splashBrandSubline": {
+    "description": "The small line under the wordmark on the curtain, matching the static launch image."
+  },
   "@accountEmailSuccess": {
     "placeholders": {
       "email": {

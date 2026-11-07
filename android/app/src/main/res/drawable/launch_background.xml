@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item>
-        <bitmap android:gravity="fill" android:src="@drawable/background"/>
-    </item>
+    <!-- Solid ink, then the same 000 the Flutter curtain opens on, so the OS
+         splash and the first Flutter frame are one image. -->
+    <item android:drawable="@color/launch_background"/>
     <item>
         <bitmap android:gravity="center" android:src="@drawable/splash"/>
     </item>

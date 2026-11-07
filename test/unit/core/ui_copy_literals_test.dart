@@ -73,7 +73,7 @@ void main() {
 /// Keep this list tiny and justify every entry: the point of the guard is that
 /// a new hardcoded string fails the suite.
 const _allowlist = <String, String>{
-  'lib/core/startup/startup_failure_app.dart':
+  'lib/boot/startup_failure_app.dart':
       'Shown when startup fails (missing/invalid env.json, unreadable '
       'storage), which is exactly the state where the locale bloc, the '
       'preference store and the ARB delegates may not have run yet. It '
