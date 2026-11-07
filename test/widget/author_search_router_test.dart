@@ -29,9 +29,7 @@ void main() {
     addTearDown(harness.dispose);
     GetIt.instance.registerFactory(() => SearchAuthors(search));
     GetIt.instance.registerFactory(() => BrowseAuthors(search));
-    when(
-      () => search.directory(offset: 0),
-    ).thenAnswer((_) async => right([]));
+    when(() => search.directory(offset: 0)).thenAnswer((_) async => right([]));
     when(() => search.search('读者', offset: 0)).thenAnswer(
       (_) async => right([
         const AuthorSearchResult(userId: readerId, displayName: '读者乙'),

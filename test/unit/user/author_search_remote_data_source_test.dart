@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/features/user/data/datasources/author_search_remote_data_source.dart';
+import 'package:belog/features/user/domain/entities/author_search_result.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';

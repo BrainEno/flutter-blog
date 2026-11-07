@@ -256,11 +256,7 @@ class AuthorSearchCubit extends Cubit<AuthorSearchState> {
           return;
         }
         emit(
-          AuthorSearchSuccess(
-            merged,
-            nextOffset: consumed,
-            hasMore: hasMore,
-          ),
+          AuthorSearchSuccess(merged, nextOffset: consumed, hasMore: hasMore),
         );
       },
     );
