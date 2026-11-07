@@ -62,7 +62,8 @@
 | `NoWaveSizes.tapTarget` | 48 | 最小点击区域 |
 | `NoWaveSizes.primaryAction` | 52 | 整宽主按钮高度 |
 | `NoWaveSizes.row` | 64 | 可点列表行最小高度 |
-| `NoWaveSizes.coverAspect` | 4/3 | 网格项里的封面比例（feed 卡片与阅读页头是 16:10） |
+| `NoWaveSizes.coverAspect` | 4/3 | 网格项里的封面比例 |
+| `NoWaveSizes.coverAspectWide` | 16/10 | feed 头条卡片与阅读页头的封面比例 |
 | `NoWaveSizes.maxReadingWidth` | 720 | 平板上的正文最大宽度 |
 | `NoWaveSizes.coverEditorBox` | 250 | 编辑器里固定的封面框（三种状态同框，表单不跳） |
 | `NoWaveSizes.emptyStateOffset` | 48 | 空态/加载态在列表里从多高开始 |
@@ -168,7 +169,8 @@
 | `NoWaveMasthead` | `common/widgets/no_wave_masthead.dart` | 双字体字标 |
 | `NoWaveAvatar` | `common/widgets/no_wave_avatar.dart` | 方形头像，失败回退中性图 |
 | `NoWaveLoadingLabel` | `design/components/no_wave_loading_label.dart` | 加载态：一道短横线 + 一句文案，没有转圈 |
-| `NoWaveSkeleton` / `...List` / `...Line` / `...Block` | `design/components/no_wave_skeleton.dart` | 内容形状的占位（列表、行、块） |
+| `NoWaveSkeleton` / `...List` / `...Line` / `...Block` / `...Divider` | `design/components/no_wave_skeleton.dart` | 内容形状的占位（列表、行、块、行间细线） |
+| `BlogFeedSkeleton` | `features/blog/presentation/widgets/blog_feed_skeleton.dart` | feed 首帧：一张头条卡片 + 若干行，与真卡片同节奏 |
 | `NoWaveFadeTransition` | `design/components/no_wave_fade_transition.dart` | 标签切换的淡入；少动时不构建转场 |
 | `NoWaveCoverPlate` | `design/cover/no_wave_cover_plate.dart` | 四张编辑式默认封面，按文章身份稳定选一张 |
 | `ArticleCover` | `features/blog/presentation/widgets/article_cover.dart` | 真封面 / 加载 / 失败三种状态共用同一张版 |
@@ -180,10 +182,14 @@
 - **`NoWaveLoadingLabel`** —— 屏幕级、区块级，以及列表页脚（`compact: true` 去掉短
   横线）。它同时是读屏播报（一个 `liveRegion`、一句话），所以那道横线在
   `ExcludeSemantics` 里。
-- **`NoWaveSkeletonList`** —— 列表型页面（通知、私信、阅读历史）。行高与缩略图尺寸
-  直接借 `NoWaveSizes.row` / `listThumbnail`，数据落地时页面不跳。**不动**：没有
-  shimmer、没有渐变扫光——动效由 `NoWaveMotionPolicy` 统一决定要不要发生，加载态不
-  该先花掉用户的注意力，静态块在截图里也读得懂。
+- **`NoWaveSkeleton*`** —— 有形状可借的页面。列表（通知、私信、阅读历史）借
+  `NoWaveSizes.row` / `listThumbnail`；首页 feed 借 `BlogFeedSkeleton`：一张 16:10 的
+  头条封面 + 两个标题行 + 作者行，再跟若干行「元信息 / 两行标题 / 作者」，行与行之间用
+  `NoWaveSkeletonDivider`。数据落地时页面不跳。**不动**：没有 shimmer、没有渐变扫光——
+  动效由 `NoWaveMotionPolicy` 统一决定要不要发生，加载态不该先花掉用户的注意力，
+  静态块在截图里也读得懂。
+- 首页 feed 的首帧还多一条规矩：标题（`feedHeading` 等）是静态的，所以**加载时就画
+  出来**，占位骨架接在它下面；数据回来时列表往已经占好的位置里长，而不是把页面往下推。
 
 **边界**：控件自己的忙碌态仍由控件表达 —— `NoWaveButton(isLoading: true)` 保持标签
 在布局里不变高、保持不可点；回收站行内的"恢复中"与私信发送图标位保留系统小转圈，
@@ -288,10 +294,9 @@
 
 ## 七、已知缺口
 
-- **首页 feed 用文案而不是骨架。** 编辑式图像层已经定下来（四张版 + 稳定 hash），
-  所以 feed 的卡片骨架（封面块 + 标题行）现在是可做的了，只是还没做：
-  `BlogCard` 是封面卡而不是缩略图行，行形态套不上。列表型页面（通知、私信、阅读历史）
-  已经用 `NoWaveSkeletonList`。
+- **网格页仍是文案加载态**（我的文章、收藏、作者页、标签/分类下的文章列表）。首页
+  feed 已经有 `BlogFeedSkeleton`，网格骨架（封面块 + 两行标题，按
+  `NoWaveBreakpoints.columnsFor` 排）是下一步，还没做。
 - **控件内部的忙碌指示仍是系统小转圈**（`NoWaveButton` 的加载态、回收站行内恢复、
   私信发送图标位）。它们的尺寸由控件自己的槽位决定，放不下一句文案；页面级与区块级
   已经全部换成 `NoWaveLoadingLabel` / 骨架。

@@ -70,6 +70,20 @@ class NoWaveSkeletonLine extends StatelessWidget {
   }
 }
 
+/// The hairline between two placeholder rows, drawn at the weight of a real
+/// divider.
+class NoWaveSkeletonDivider extends StatelessWidget {
+  const NoWaveSkeletonDivider({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: NoWaveStroke.hairline,
+      child: ColoredBox(color: _hairline(context)),
+    );
+  }
+}
+
 /// One block: a cover, a thumbnail, an avatar frame.
 class NoWaveSkeletonBlock extends StatelessWidget {
   const NoWaveSkeletonBlock({super.key, this.width, this.height, this.square});
@@ -132,11 +146,7 @@ class NoWaveSkeletonList extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (index > 0)
-          SizedBox(
-            height: NoWaveStroke.hairline,
-            child: ColoredBox(color: _hairline(context)),
-          ),
+        if (index > 0) const NoWaveSkeletonDivider(),
         Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: NoWaveSpacing.page,

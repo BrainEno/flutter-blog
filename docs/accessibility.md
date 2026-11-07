@@ -83,7 +83,8 @@
   短横线与文案都在 `ExcludeSemantics` 里，读屏读到的是一句可翻译的话而不是「一条线」，
   也不会因为重建重复播报。
 - 骨架屏是纯装饰，并且**不动**：没有 shimmer、没有扫光，开着「减少动效」的用户与截图
-  里看到的一致。
+  里看到的一致。列表页（通知、私信、阅读历史）与首页 feed（`BlogFeedSkeleton`）用的是
+  这个形状，语义仍是一句 `loading` / `loadingArticles`，播报次数不变。
 - 控件内部的忙碌态仍保留系统小转圈（`NoWaveButton` 加载态、回收站行内恢复、私信发送
   图标位）——那些槽位放不下一句文案，三个位置在 `test/unit/design/no_spinner_test.dart`
   里带理由登记。

@@ -48,8 +48,9 @@ void main() {
       expect(NoWaveSizes.row, greaterThanOrEqualTo(NoWaveSizes.tapTarget));
     });
 
-    test('the cover ratio matches the one article tiles use', () {
+    test('the cover ratios match the ones the cards use', () {
       expect(NoWaveSizes.coverAspect, closeTo(4 / 3, 1e-9));
+      expect(NoWaveSizes.coverAspectWide, closeTo(16 / 10, 1e-9));
     });
 
     test('row sizes keep their order and their tap target', () {

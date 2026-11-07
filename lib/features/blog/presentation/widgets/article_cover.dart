@@ -1,4 +1,5 @@
 import 'package:belog/core/design/cover/no_wave_cover_plate.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/article_resource_url.dart';
@@ -18,7 +19,7 @@ class ArticleCover extends StatelessWidget {
     required this.title,
     required this.imageUrl,
     required this.seed,
-    this.aspectRatio = 16 / 10,
+    this.aspectRatio = NoWaveSizes.coverAspectWide,
   });
 
   final String title;
