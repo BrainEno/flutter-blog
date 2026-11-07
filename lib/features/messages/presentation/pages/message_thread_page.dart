@@ -1,4 +1,5 @@
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -214,7 +215,7 @@ class _ThreadBody extends StatelessWidget {
             child: state.isEmpty
                 ? Center(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(NoWaveSpacing.large),
                       child: NoWaveStatus(message: l10n.messagesThreadEmpty),
                     ),
                   )
@@ -280,7 +281,7 @@ class _ThreadBody extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: NoWaveSpacing.small),
                 IconButton(
                   onPressed: state.sending ? null : () => onSend(),
                   tooltip: l10n.actionSend,
@@ -425,7 +426,7 @@ class _ThreadStatus extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(NoWaveSpacing.large),
         child: NoWaveStatus(
           message: message,
           actionLabel: actionLabel,

@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controller.dart';
@@ -63,8 +64,8 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Wrap(
-                spacing: 8,
-                runSpacing: 4,
+                spacing: NoWaveSpacing.small,
+                runSpacing: NoWaveSpacing.xs,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   TextButton.icon(
@@ -85,7 +86,7 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                       icon: const Icon(Icons.stop),
                     ),
                   Wrap(
-                    spacing: 8,
+                    spacing: NoWaveSpacing.small,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(
@@ -128,7 +129,7 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                                   controller.setFollow(value ?? false),
                             ),
                             Text(l10n.readAloudFollow),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: NoWaveSpacing.small),
                           ],
                         ),
                       ),

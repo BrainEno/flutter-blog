@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belog/core/common/widgets/no_wave_masthead.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
@@ -118,7 +119,7 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                       alignment: Alignment.centerRight,
                       child: Wrap(
                         alignment: WrapAlignment.end,
-                        spacing: 8,
+                        spacing: NoWaveSpacing.small,
                         children: [
                           // Both are browsing doors out of search: the editor's
                           // categories, and the public author directory.
@@ -135,7 +136,7 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: NoWaveSpacing.small),
                     TextField(
                       controller: _searchController,
                       maxLength: kMaxSearchQueryLength,
@@ -155,15 +156,21 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                         counterText: '',
                         filled: false,
                         border: UnderlineInputBorder(
-                          borderSide: BorderSide(color: foreground, width: 2),
+                          borderSide: BorderSide(
+                            color: foreground,
+                            width: NoWaveStroke.focus,
+                          ),
                         ),
                         enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: foreground, width: 2),
+                          borderSide: BorderSide(
+                            color: foreground,
+                            width: NoWaveStroke.focus,
+                          ),
                         ),
                         focusedBorder: const UnderlineInputBorder(
                           borderSide: BorderSide(
                             color: AppPalette.orange,
-                            width: 3,
+                            width: NoWaveStroke.focus,
                           ),
                         ),
                       ),
@@ -222,7 +229,7 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                   delegate: SliverChildBuilderDelegate((context, index) {
                     if (index == blogs.length) {
                       return Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(NoWaveSpacing.medium),
                         child: Center(
                           child: Text(
                             blogs.length >= kMaxSearchResults

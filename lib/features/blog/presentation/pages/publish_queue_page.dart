@@ -3,6 +3,7 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/presentation/blocs/publish_queue/publish_queue_cubit.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -75,7 +76,7 @@ class _PublishQueueView extends StatelessWidget {
           if (state is PublishQueueFailure) {
             return Center(
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(NoWaveSpacing.large),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -111,7 +112,7 @@ class _PublishQueueView extends StatelessWidget {
             // this screen wants after reconnecting.
             onRefresh: () => context.read<PublishQueueCubit>().sendNow(),
             child: ListView.separated(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(NoWaveSpacing.medium),
               itemCount: loaded.entries.length,
               separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) => _QueueEntryCard(
@@ -143,15 +144,15 @@ class _QueueEmpty extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(NoWaveSpacing.large),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
+            const SizedBox(height: NoWaveSpacing.small),
             Text(body, textAlign: TextAlign.center),
             if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: NoWaveSpacing.medium),
               NoWaveButton(
                 label: actionLabel!,
                 variant: NoWaveButtonVariant.secondary,
@@ -222,7 +223,7 @@ class _QueueEntryCard extends StatelessWidget {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(NoWaveSpacing.medium),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -237,36 +238,36 @@ class _QueueEntryCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: NoWaveSpacing.small),
                 _StatusChip(label: _statusLabel(context), entry: entry),
               ],
             ),
             if (entry.kind == PublishQueueKind.edit) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: NoWaveSpacing.xs),
               Text(
                 context.l10n.publishQueueEditEntry,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
             if (entry.attempts > 0) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: NoWaveSpacing.small),
               Text(
                 context.l10n.publishQueueAttempts(entry.attempts),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
             if (lastError != null && lastError.isNotEmpty) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: NoWaveSpacing.xs),
               Text(
                 context.l10n.publishQueueLastError(lastError),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
-            const SizedBox(height: 8),
+            const SizedBox(height: NoWaveSpacing.small),
             // A wrap, not a row: three actions must still fit at 320 dp and
             // 2x text without an overflow banner.
             Wrap(
-              spacing: 8,
+              spacing: NoWaveSpacing.small,
               children: [
                 if (canResume)
                   TextButton(

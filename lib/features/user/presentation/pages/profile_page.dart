@@ -75,7 +75,7 @@ class _ProfileView extends StatelessWidget {
         actions: const [
           ThemeToggleButton(),
           LanguageMenuButton(),
-          SizedBox(width: 16),
+          SizedBox(width: NoWaveSpacing.medium),
         ],
       ),
       body: BlocListener<AuthBloc, AuthState>(
@@ -92,7 +92,7 @@ class _ProfileView extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(l10n.notSignedIn),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: NoWaveSpacing.medium),
                     NoWaveButton(
                       label: l10n.signIn,
                       onPressed: () => context.push('/login'),
@@ -118,7 +118,7 @@ class _ProfileView extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             NoWaveAvatar(name: name, imageUrl: user.avatarUrl),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: NoWaveSpacing.medium),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -134,7 +134,7 @@ class _ProfileView extends StatelessWidget {
                                     ),
                                   ),
                                   if (user.website.trim().isNotEmpty) ...[
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: NoWaveSpacing.small),
                                     Text(user.website.trim()),
                                   ],
                                   TextButton(
@@ -148,7 +148,7 @@ class _ProfileView extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: NoWaveSpacing.section),
                         NoWaveActionRow(
                           icon: Icons.edit_outlined,
                           label: l10n.menuEditProfile,

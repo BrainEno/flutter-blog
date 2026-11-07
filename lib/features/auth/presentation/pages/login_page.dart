@@ -3,6 +3,7 @@ import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/common/widgets/language_menu_button.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/common/widgets/loader.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
@@ -71,7 +72,10 @@ class _LoginPageState extends State<LoginPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          actions: const [LanguageMenuButton(), SizedBox(width: 8)],
+          actions: const [
+            LanguageMenuButton(),
+            SizedBox(width: NoWaveSpacing.small),
+          ],
         ),
         body: SingleChildScrollView(
           child: Padding(

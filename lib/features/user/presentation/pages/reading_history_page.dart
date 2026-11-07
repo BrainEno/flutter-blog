@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/router/app_router.dart';
@@ -207,7 +208,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                     context.l10n.historyEmpty,
                     style: TextStyle(fontSize: 16, color: mutedColor),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: NoWaveSpacing.xs),
                   Text(
                     context.l10n.historyEmptyHint,
                     style: Theme.of(context).textTheme.bodySmall,

@@ -6,6 +6,7 @@ import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/notifications/domain/entities/app_notification.dart';
 import 'package:belog/features/notifications/presentation/bloc/notification_inbox_cubit.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -254,7 +255,7 @@ class _NotificationRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(_describe(context)),
-                const SizedBox(height: 4),
+                const SizedBox(height: NoWaveSpacing.xs),
                 Text(
                   formatDate(locale, item.createdAt),
                   style: Theme.of(context).textTheme.bodySmall,
@@ -287,7 +288,7 @@ class _InboxError extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(NoWaveSpacing.large),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -325,15 +326,15 @@ class _EmptyInbox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(NoWaveSpacing.large),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
+            const SizedBox(height: NoWaveSpacing.small),
             Text(body, textAlign: TextAlign.center),
             if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: NoWaveSpacing.medium),
               NoWaveButton(
                 label: actionLabel!,
                 variant: NoWaveButtonVariant.secondary,

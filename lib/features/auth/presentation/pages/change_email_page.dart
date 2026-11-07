@@ -10,6 +10,7 @@ import 'package:belog/features/auth/domain/repository/account_security_repositor
 import 'package:belog/features/auth/presentation/password_validation_l10n.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fpdart/fpdart.dart' show Either, left;
@@ -208,7 +209,7 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(l10n.accountEmailInfo),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: NoWaveSpacing.large),
                           if (_currentEmail.isEmpty)
                             Text(
                               l10n.accountEmailMissingCurrent,
@@ -228,7 +229,7 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
                               _currentEmail,
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: NoWaveSpacing.medium),
                           ],
                           TextFormField(
                             controller: _email,
@@ -243,7 +244,7 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
                               labelText: l10n.accountEmailNew,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: NoWaveSpacing.medium),
                           TextFormField(
                             controller: _password,
                             enabled: enabled,
@@ -278,7 +279,7 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: NoWaveSpacing.large),
                           if (_failure != null) ...[
                             Semantics(
                               liveRegion: true,
@@ -289,7 +290,7 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: NoWaveSpacing.medium),
                           ],
                           if (_storedEmail != null) ...[
                             Semantics(
@@ -298,7 +299,7 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(l10n.accountEmailSuccess(_storedEmail!)),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: NoWaveSpacing.xs),
                                   Text(
                                     l10n.accountEmailUnverified,
                                     style: Theme.of(
@@ -308,7 +309,7 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: NoWaveSpacing.medium),
                           ],
                           NoWaveButton(
                             label: _busy

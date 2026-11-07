@@ -1,5 +1,6 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/format_date.dart';
@@ -95,7 +96,7 @@ class CommentTile extends StatelessWidget {
                         comment.createdAt,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: NoWaveSpacing.xs),
                     // Plain-text rendering (content version 0): no markup
                     // is interpreted, the body renders exactly as stored.
                     Text(
@@ -105,7 +106,7 @@ class CommentTile extends StatelessWidget {
                         height: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: NoWaveSpacing.xs),
                     Row(
                       children: [
                         _ActionText(
@@ -113,7 +114,7 @@ class CommentTile extends StatelessWidget {
                           onPressed: () => onReply(comment),
                         ),
                         if (isOwn) ...[
-                          const SizedBox(width: 16),
+                          const SizedBox(width: NoWaveSpacing.medium),
                           _ActionText(
                             label: deleting
                                 ? context.l10n.commentDeleting

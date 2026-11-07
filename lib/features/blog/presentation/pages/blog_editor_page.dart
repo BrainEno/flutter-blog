@@ -628,7 +628,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
         appBar: AppBar(),
         body: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(NoWaveSpacing.large),
             child: Text(context.l10n.editorSessionChanged),
           ),
         ),

@@ -9,6 +9,7 @@ import 'package:belog/features/messages/domain/entities/conversation.dart';
 import 'package:belog/features/messages/domain/entities/message_participant.dart';
 import 'package:belog/features/messages/presentation/bloc/message_inbox_cubit.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -244,7 +245,7 @@ class _StartConversationCard extends StatelessWidget {
             l10n.messagesStartTitle(name),
             style: Theme.of(context).textTheme.titleSmall,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: NoWaveSpacing.small),
           NoWaveButton(
             label: starting ? l10n.messagesStarting : l10n.messagesStart,
             onPressed: starting ? null : onStart,
@@ -329,7 +330,7 @@ class _ConversationRow extends StatelessWidget {
                         ),
                       ),
                       if (lastEventAt != null) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: NoWaveSpacing.small),
                         // Shares the row with the name instead of owning its
                         // width: at 2x text a localized date alone is wider
                         // than a 320px screen allows.
@@ -349,7 +350,7 @@ class _ConversationRow extends StatelessWidget {
                       ],
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: NoWaveSpacing.xs),
                   Text(
                     preview == null || preview.trim().isEmpty
                         ? l10n.messagesThreadEmpty
@@ -362,7 +363,7 @@ class _ConversationRow extends StatelessWidget {
               ),
             ),
             if (conversation.unreadCount > 0) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: NoWaveSpacing.small),
               _UnreadPill(count: conversation.unreadCount),
             ],
           ],
@@ -418,7 +419,7 @@ class _InboxStatus extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(NoWaveSpacing.large),
         child: NoWaveStatus(
           message: message,
           actionLabel: actionLabel,

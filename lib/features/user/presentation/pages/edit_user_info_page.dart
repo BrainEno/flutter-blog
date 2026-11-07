@@ -9,6 +9,7 @@ import 'package:belog/core/utils/pick_image.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:belog/features/user/bloc/user_edit_bloc.dart';
@@ -163,7 +164,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
         },
         builder: (context, state) {
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(NoWaveSpacing.large),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -202,7 +203,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(NoWaveSpacing.small),
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.primary,
                             shape: BoxShape.circle,
@@ -217,7 +218,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: NoWaveSpacing.section),
                 // Name Field
                 TextFormField(
                   controller: _nameController,
@@ -228,7 +229,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                   ),
                   keyboardType: TextInputType.text,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: NoWaveSpacing.medium),
                 // Public introduction: stored as the profile `bio`
                 // (max 5000 chars) and shown on the author page.
                 TextFormField(
@@ -244,7 +245,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                   ),
                   keyboardType: TextInputType.multiline,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: NoWaveSpacing.medium),
                 // Homepage: a clearable field, so an empty value is valid.
                 TextFormField(
                   controller: _websiteController,
@@ -256,7 +257,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                   keyboardType: TextInputType.url,
                   autocorrect: false,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: NoWaveSpacing.medium),
                 // Read-only e-mail row: the backend offers no e-mail
                 // change endpoint yet (gap G2, see
                 // docs/supabase-to-nowave-migration.md); the shown address
@@ -274,7 +275,7 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: NoWaveSpacing.section),
                 // Save Button or Loading Indicator
                 if (state is UserEditLoading)
                   CircularProgressIndicator(

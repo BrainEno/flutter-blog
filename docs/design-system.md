@@ -194,5 +194,8 @@
   Material 按钮，避免以后有人顺手写回来时又变成胶囊形。剩下直接使用 Material 的是
   纯文字动作（`TextButton`）与图标动作（`IconButton`），它们由主题保证 48pt 触控
   目标与方角。
-- **间距预算仍高**：`no_magic_numbers_test.dart` 的 `ceiling` 是 358，主要集中在
-  尚未逐块迁移的页面里（列表行、卡片内边距），越往下改越低。
+- **间距预算**：`no_magic_numbers_test.dart` 的 `ceiling` 从 358 降到 **215**——凡
+  是与 token 同值（4/8/16/24/32）的 `SizedBox`、`EdgeInsets`、`Wrap/Flex` 间距与
+  线宽已经全部换成 token，值没有变。剩下的 215 处不是尺度上的 token 值（12、6、
+  20、2 等），需要按上下文决定吸附到哪一档（贴紧的组内用 8、块之间用 16），所以
+  还得逐页人工判断，不能机械替换。

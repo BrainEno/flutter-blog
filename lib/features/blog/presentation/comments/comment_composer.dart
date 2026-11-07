@@ -4,6 +4,7 @@ import 'package:belog/features/blog/domain/entities/comment.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_state.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/material.dart';
 
 /// The comment input: an optional "replying to" banner, the text field and the
@@ -79,7 +80,7 @@ class CommentComposer extends StatelessWidget {
             isDense: true,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: NoWaveSpacing.small),
         Align(
           alignment: Alignment.centerRight,
           child: NoWaveButton(
