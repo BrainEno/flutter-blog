@@ -68,6 +68,12 @@
 | `NoWaveSizes.emptyStateOffset` | 48 | 空态/加载态在列表里从多高开始 |
 | `NoWaveSizes.listThumbnail` | 56 | 列表行前导缩略图（阅读历史） |
 | `NoWaveSizes.listThumbnailSmall` | 48 | 行内还要放操作时的小缩略图（回收站、评论头像框） |
+| `NoWaveSizes.splashColumns` | 6 | 冷启动幕布切成的竖列数 |
+| `NoWaveSizes.splashCounterMax` | 220 | 幕布计数器字号上限；实际取 `30vw` 与它的较小值（`splashCounterViewport`） |
+| `NoWaveSizes.splashWordmark` | 40 | 幕布与启动失败页的字标 |
+| `NoWaveSizes.masthead` | 22 | 应用栏里的紧凑字标 |
+| `NoWaveSizes.splashProgress` | 3 | 幕布右下装饰段的厚度（装饰，不是进度条） |
+| `NoWaveSizes.splashProgressLength` | 72 | 该装饰段的长度 |
 
 ### 线与遮罩的不透明度 `NoWaveOpacity`
 
@@ -86,6 +92,14 @@
 | `fast` | 120ms | 按下、开关等直接反馈 |
 | `normal` | 200ms | 内容进出（提示条、列表刷新） |
 | `slow` | 320ms | 页面与面板切换 |
+| `enter` | 1000ms | 内容进入（揭示、遮罩打开） |
+| `page` | 900ms | 路由转场 |
+| `counter` / `counterFinish` | 1800ms / 350ms | 幕布计数爬到 `088` 与最后一跳 `088 → 100` |
+| `curtain` / `stagger` | 900ms / 80ms | 单列上撕与相邻列的错开 |
+| `minimumSplash` / `splashBail` | 1400ms / 4500ms | 最短幕布时长与兜底揭幕 |
+
+幕布那几行只在冷启动用，语义与时序见 [冷启动与墨色幕布](startup.md)；`enter` / `page`
+留给后续阶段的动效系统，目前只有 token、没有使用者。
 
 ### 断点 `NoWaveBreakpoints`
 
