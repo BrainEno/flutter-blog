@@ -93,54 +93,51 @@ Future<void> _pumpPage(
 }
 
 void main() {
-  testWidgets(
-    'the empty field is the directory, and clearing returns to it',
-    (tester) async {
-      final repository = ScriptedRepository();
-      final cubit = _cubit(repository);
-      addTearDown(cubit.close);
-      await _pumpPage(tester, cubit: cubit);
-      expect(repository.directoryRequests, hasLength(1));
-      expect(repository.queries, isEmpty);
+  testWidgets('the empty field is the directory, and clearing returns to it', (
+    tester,
+  ) async {
+    final repository = ScriptedRepository();
+    final cubit = _cubit(repository);
+    addTearDown(cubit.close);
+    await _pumpPage(tester, cubit: cubit);
+    expect(repository.directoryRequests, hasLength(1));
+    expect(repository.queries, isEmpty);
 
-      repository.directoryRequests.single.complete(
-        right([
-          const AuthorSearchResult(
-            userId: 'dir',
-            displayName: 'Directory Writer',
-            bio: 'Writes things',
-            followerCount: 12,
-            workCount: 3,
-          ),
-        ]),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text(_directoryDescription), findsOneWidget);
-      expect(find.text('Directory Writer'), findsOneWidget);
-      expect(find.text('3 works · 12 followers'), findsOneWidget);
+    repository.directoryRequests.single.complete(
+      right([
+        const AuthorSearchResult(
+          userId: 'dir',
+          displayName: 'Directory Writer',
+          bio: 'Writes things',
+          followerCount: 12,
+          workCount: 3,
+        ),
+      ]),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(_directoryDescription), findsOneWidget);
+    expect(find.text('Directory Writer'), findsOneWidget);
+    expect(find.text('3 works · 12 followers'), findsOneWidget);
 
-      await tester.enterText(find.byType(TextField), 'writer');
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(repository.queries, ['writer']);
-      repository.requests.single.complete(
-        right([
-          const AuthorSearchResult(userId: 'found', displayName: 'Found'),
-        ]),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Found'), findsOneWidget);
-      expect(find.text('Directory Writer'), findsNothing);
-      expect(find.text(_directoryDescription), findsNothing);
+    await tester.enterText(find.byType(TextField), 'writer');
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(repository.queries, ['writer']);
+    repository.requests.single.complete(
+      right([const AuthorSearchResult(userId: 'found', displayName: 'Found')]),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Found'), findsOneWidget);
+    expect(find.text('Directory Writer'), findsNothing);
+    expect(find.text(_directoryDescription), findsNothing);
 
-      await tester.tap(find.byTooltip('Clear search'));
-      await tester.pumpAndSettle();
-      expect(find.text('Directory Writer'), findsOneWidget);
-      expect(find.text(_directoryDescription), findsOneWidget);
-      // The directory the reader already saw is shown again, not refetched.
-      expect(repository.directoryRequests, hasLength(1));
-      expect(tester.takeException(), isNull);
-    },
-  );
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pumpAndSettle();
+    expect(find.text('Directory Writer'), findsOneWidget);
+    expect(find.text(_directoryDescription), findsOneWidget);
+    // The directory the reader already saw is shown again, not refetched.
+    expect(repository.directoryRequests, hasLength(1));
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'debounces, invalidates old results immediately, and retries failures',

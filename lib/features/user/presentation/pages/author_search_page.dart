@@ -175,27 +175,22 @@ class _AuthorSearchPageState extends State<AuthorSearchPage> {
                   horizontal: NoWaveSpacing.page,
                 ),
                 sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      if (index == 0) {
-                        return _contentWidth(
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: NoWaveSpacing.medium,
-                            ),
-                            child: Text(
-                              l10n.authorDirectoryDescription,
-                              style: NoWaveTypography.meta(context),
-                            ),
-                          ),
-                        );
-                      }
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    if (index == 0) {
                       return _contentWidth(
-                        _AuthorRow(person: people[index - 1]),
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: NoWaveSpacing.medium,
+                          ),
+                          child: Text(
+                            l10n.authorDirectoryDescription,
+                            style: NoWaveTypography.meta(context),
+                          ),
+                        ),
                       );
-                    },
-                    childCount: people.length + 1,
-                  ),
+                    }
+                    return _contentWidth(_AuthorRow(person: people[index - 1]));
+                  }, childCount: people.length + 1),
                 ),
               ),
               AuthorSearchSuccess(:final people) when people.isEmpty => _state(
