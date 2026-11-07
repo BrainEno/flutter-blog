@@ -39,9 +39,7 @@ void main() {
   testWidgets('the cover keeps the ratio the real cover uses', (tester) async {
     await tester.pumpWidget(_app(const BlogFeedSkeleton()));
 
-    final ratio = tester.widget<AspectRatio>(
-      find.byType(AspectRatio).first,
-    );
+    final ratio = tester.widget<AspectRatio>(find.byType(AspectRatio).first);
     expect(ratio.aspectRatio, NoWaveSizes.coverAspectWide);
   });
 

@@ -289,9 +289,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
               child: _heading(state.kind),
             ),
           ),
-          _contentWidth(
-            BlogFeedSkeleton(semanticLabel: l10n.loadingArticles),
-          ),
+          _contentWidth(BlogFeedSkeleton(semanticLabel: l10n.loadingArticles)),
         ],
       );
     }
