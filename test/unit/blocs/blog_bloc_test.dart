@@ -146,6 +146,113 @@ void main() {
       expect(loaded.hasReachedMax, isFalse);
     });
 
+    test('the most-saved order stops at its depth bound', () async {
+      final pages = <int>[];
+      final bloc = BlogBloc(
+        popularMaxOffset: 20,
+        getAllBlogs: _FakeFeed((params) async {
+          pages.add(params.page);
+          return Right(
+            BlogFeedPage(
+              blogs: List.generate(
+                kBlogPageSize,
+                (i) => _blog('${params.kind.name}${params.page}-$i'),
+              ),
+              source: BlogFeedSource.network,
+            ),
+          );
+        }),
+      );
+      final states = <BlogState>[];
+      final sub = bloc.stream.listen(states.add);
+      bloc.add(const BlogFetchFirstPage(kind: BlogFeedKind.popular));
+      await Future<void>.delayed(Duration.zero);
+      for (var i = 0; i < 3; i++) {
+        bloc.add(const BlogLoadMore());
+        await Future<void>.delayed(Duration.zero);
+      }
+      await bloc.close();
+      sub.cancel();
+
+      // Offset 0, 10 and 20 are readable; 30 is past the bound and is never
+      // asked for, because only a refusal could come back.
+      expect(pages, [1, 2, 3]);
+      final loaded = states.whereType<BlogLoaded>().last;
+      expect(loaded.page, 3);
+      expect(loaded.hasReachedMax, isTrue);
+      expect(loaded.depthLimited, isTrue);
+      expect(loaded.isLoadingMore, isFalse);
+    });
+
+    test(
+      'a refused most-saved page ends the list instead of a retry',
+      () async {
+        final bloc = BlogBloc(
+          getAllBlogs: _FakeFeed((params) async {
+            if (params.page == 1) {
+              return Right(
+                BlogFeedPage(
+                  blogs: List.generate(kBlogPageSize, (i) => _blog('a$i')),
+                  source: BlogFeedSource.network,
+                ),
+              );
+            }
+            return const Left(
+              Failure('Refused', code: 'server.BAD_USER_INPUT'),
+            );
+          }),
+        );
+        final states = <BlogState>[];
+        final sub = bloc.stream.listen(states.add);
+        bloc.add(const BlogFetchFirstPage(kind: BlogFeedKind.popular));
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const BlogLoadMore());
+        await bloc.close();
+        sub.cancel();
+
+        expect(
+          states.whereType<BlogListFailure>(),
+          isEmpty,
+          reason: 'a refused page is the end of the order, not an error',
+        );
+        final loaded = states.whereType<BlogLoaded>().last;
+        expect(loaded.depthLimited, isTrue);
+        expect(loaded.hasReachedMax, isTrue);
+        expect(loaded.blogs, hasLength(kBlogPageSize));
+      },
+    );
+
+    test(
+      'a refused latest page is still an error the reader can see',
+      () async {
+        final bloc = BlogBloc(
+          getAllBlogs: _FakeFeed((params) async {
+            if (params.page == 1) {
+              return Right(
+                BlogFeedPage(
+                  blogs: List.generate(kBlogPageSize, (i) => _blog('a$i')),
+                  source: BlogFeedSource.network,
+                ),
+              );
+            }
+            return const Left(
+              Failure('Refused', code: 'server.BAD_USER_INPUT'),
+            );
+          }),
+        );
+        final states = <BlogState>[];
+        final sub = bloc.stream.listen(states.add);
+        bloc.add(const BlogFetchFirstPage());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const BlogLoadMore());
+        await bloc.close();
+        sub.cancel();
+
+        expect(states.whereType<BlogListFailure>(), hasLength(1));
+        expect(states.whereType<BlogLoaded>().last.depthLimited, isFalse);
+      },
+    );
+
     test('ignores load-more while another one is running', () async {
       var loadMoreCalls = 0;
       final gate = Completer<void>();

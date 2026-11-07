@@ -37,6 +37,12 @@ final class BlogLoaded extends BlogState {
   final bool hasReachedMax;
   final bool isLoadingMore;
 
+  /// The list ended because the order itself has no deeper page, not because
+  /// the reader ran out of works. The most-saved order is bounded
+  /// ([kPopularFeedMaxOffset]) and has no cursor, so the footer explains where
+  /// the reader can continue instead of claiming there is nothing more.
+  final bool depthLimited;
+
   /// Local continuation for this latest/network session, or null for offset.
   final String? nextCursor;
 
@@ -48,6 +54,7 @@ final class BlogLoaded extends BlogState {
     required this.page,
     required this.hasReachedMax,
     this.isLoadingMore = false,
+    this.depthLimited = false,
     this.nextCursor,
   });
 
@@ -57,6 +64,7 @@ final class BlogLoaded extends BlogState {
     int? page,
     bool? hasReachedMax,
     bool? isLoadingMore,
+    bool? depthLimited,
   }) {
     return BlogLoaded(
       kind: kind,
@@ -66,6 +74,7 @@ final class BlogLoaded extends BlogState {
       page: page ?? this.page,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      depthLimited: depthLimited ?? this.depthLimited,
       nextCursor: nextCursor,
     );
   }
