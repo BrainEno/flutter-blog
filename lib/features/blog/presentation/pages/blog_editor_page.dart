@@ -10,7 +10,6 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/common/widgets/loader.dart';
-import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/pick_image.dart';
 import 'package:belog/core/utils/show_snackbar.dart';

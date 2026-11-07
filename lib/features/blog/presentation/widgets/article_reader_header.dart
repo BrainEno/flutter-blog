@@ -1,5 +1,4 @@
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
-import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
