@@ -10,6 +10,6 @@ class BrowseAuthors {
 
   final AuthorSearchRepository repository;
 
-  Future<Either<Failure, List<AuthorSearchResult>>> call() =>
-      repository.directory();
+  Future<Either<Failure, List<AuthorSearchResult>>> call({int offset = 0}) =>
+      repository.directory(offset: offset);
 }

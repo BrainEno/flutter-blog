@@ -87,6 +87,81 @@ class _AuthorSearchPageState extends State<AuthorSearchPage> {
     ),
   );
 
+  /// The directory and a query result are the same endpoint and page the same
+  /// way; the directory additionally carries a line explaining its order.
+  Widget _peopleList(BuildContext context, AuthorSearchList list) {
+    final l10n = context.l10n;
+    final header = list is AuthorSearchDirectory ? 1 : 0;
+    final footer = _hasFooter(list) ? 1 : 0;
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: NoWaveSpacing.page),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate((context, index) {
+          if (header == 1 && index == 0) {
+            return _contentWidth(
+              Padding(
+                padding: const EdgeInsets.only(bottom: NoWaveSpacing.medium),
+                child: Text(
+                  l10n.authorDirectoryDescription,
+                  style: NoWaveTypography.meta(context),
+                ),
+              ),
+            );
+          }
+          final row = index - header;
+          if (row == list.people.length) {
+            return _contentWidth(_peopleFooter(context, list));
+          }
+          return _contentWidth(_AuthorRow(person: list.people[row]));
+        }, childCount: header + list.people.length + footer),
+      ),
+    );
+  }
+
+  bool _hasFooter(AuthorSearchList list) =>
+      list.isLoadingMore || list.loadMoreFailure != null || list.hasMore;
+
+  Widget _peopleFooter(BuildContext context, AuthorSearchList list) {
+    final l10n = context.l10n;
+    if (list.isLoadingMore) {
+      return Padding(
+        padding: const EdgeInsets.all(NoWaveSpacing.medium),
+        child: Center(
+          child: NoWaveLoadingLabel(
+            semanticLabel: l10n.loadingMoreAuthors,
+            compact: true,
+          ),
+        ),
+      );
+    }
+    final failure = list.loadMoreFailure;
+    if (failure != null) {
+      return Column(
+        children: [
+          const SizedBox(height: NoWaveSpacing.small),
+          Text(
+            localizedFailure(l10n, failure),
+            textAlign: TextAlign.center,
+            style: NoWaveTypography.meta(context),
+          ),
+          TextButton(
+            onPressed: () => context.read<AuthorSearchCubit>().loadMore(),
+            child: Text(l10n.actionRetry),
+          ),
+        ],
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.small),
+      child: Center(
+        child: TextButton(
+          onPressed: () => context.read<AuthorSearchCubit>().loadMore(),
+          child: Text(l10n.authorDirectoryLoadMore),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -170,65 +245,10 @@ class _AuthorSearchPageState extends State<AuthorSearchPage> {
               ),
               AuthorSearchDirectory(:final people) when people.isEmpty =>
                 _state(NoWaveStatus(message: l10n.authorDirectoryEmpty)),
-              AuthorSearchDirectory(:final people) => SliverPadding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: NoWaveSpacing.page,
-                ),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    if (index == 0) {
-                      return _contentWidth(
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            bottom: NoWaveSpacing.medium,
-                          ),
-                          child: Text(
-                            l10n.authorDirectoryDescription,
-                            style: NoWaveTypography.meta(context),
-                          ),
-                        ),
-                      );
-                    }
-                    return _contentWidth(_AuthorRow(person: people[index - 1]));
-                  }, childCount: people.length + 1),
-                ),
-              ),
               AuthorSearchSuccess(:final people) when people.isEmpty => _state(
                 NoWaveStatus(message: l10n.authorSearchNoResults),
               ),
-              AuthorSearchSuccess(:final people) => SliverPadding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: NoWaveSpacing.page,
-                ),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final capped = people.length == maxAuthorSearchResults;
-                      if (capped && index == 0) {
-                        return _contentWidth(
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: NoWaveSpacing.medium,
-                            ),
-                            child: Semantics(
-                              liveRegion: true,
-                              child: Text(
-                                l10n.authorSearchLimitNotice,
-                                style: NoWaveTypography.meta(context),
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                      final person = people[index - (capped ? 1 : 0)];
-                      return _contentWidth(_AuthorRow(person: person));
-                    },
-                    childCount:
-                        people.length +
-                        (people.length == maxAuthorSearchResults ? 1 : 0),
-                  ),
-                ),
-              ),
+              AuthorSearchList list => _peopleList(context, list),
             },
           ),
         ],

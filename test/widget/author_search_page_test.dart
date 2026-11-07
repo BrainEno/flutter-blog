@@ -21,9 +21,10 @@ class ScriptedRepository implements AuthorSearchRepository {
   final queries = <String>[];
   final requests = <Completer<Result>>[];
   final directoryRequests = <Completer<Result>>[];
+  final directoryOffsets = <int>[];
 
   @override
-  Future<Result> search(String query) {
+  Future<Result> search(String query, {int offset = 0}) {
     queries.add(query);
     final request = Completer<Result>();
     requests.add(request);
@@ -31,7 +32,8 @@ class ScriptedRepository implements AuthorSearchRepository {
   }
 
   @override
-  Future<Result> directory() {
+  Future<Result> directory({int offset = 0}) {
+    directoryOffsets.add(offset);
     final request = Completer<Result>();
     directoryRequests.add(request);
     return request.future;
@@ -42,6 +44,9 @@ AuthorSearchCubit _cubit(ScriptedRepository repository) => AuthorSearchCubit(
   searchAuthors: SearchAuthors(repository),
   browseAuthors: BrowseAuthors(repository),
 );
+
+/// The page's own list; the search field contains a second scrollable.
+final Finder _list = find.byType(Scrollable).first;
 
 const _directoryDescription =
     'Only authors with a published work here are listed, ordered by followers.';
@@ -302,7 +307,7 @@ void main() {
 
   for (final locale in [const Locale('zh'), const Locale('en')]) {
     for (final mode in [ThemeMode.light, ThemeMode.dark]) {
-      testWidgets('capped results, semantics and 2x text: $locale $mode', (
+      testWidgets('a full page, semantics and 2x text: $locale $mode', (
         tester,
       ) async {
         tester.view.physicalSize = const Size(320, 640);
@@ -339,7 +344,11 @@ void main() {
           );
           await tester.pumpAndSettle();
           final l10n = lookupAppLocalizations(locale);
-          expect(find.text(l10n.authorSearchLimitNotice), findsOneWidget);
+          // 100 rows is a full page, so the footer offers another one; at 2x
+          // text it sits below the first screen and is reached by scrolling.
+          final loaded = cubit.state as AuthorSearchSuccess;
+          expect(loaded.people, hasLength(100));
+          expect(loaded.hasMore, isTrue);
           expect(find.text(l10n.anonymousAuthor), findsOneWidget);
           expect(
             find.bySemanticsLabel(l10n.avatarOf(l10n.anonymousAuthor)),
@@ -352,6 +361,48 @@ void main() {
       });
     }
   }
+
+  testWidgets('the directory loads its next page from the footer', (
+    tester,
+  ) async {
+    final repository = ScriptedRepository();
+    final cubit = _cubit(repository);
+    addTearDown(cubit.close);
+    await _pumpPage(tester, cubit: cubit);
+    repository.directoryRequests.single.complete(
+      right([
+        for (var i = 0; i < 100; i++)
+          AuthorSearchResult(userId: 'dir-$i', displayName: 'Directory $i'),
+      ]),
+    );
+    await tester.pumpAndSettle();
+    expect(repository.directoryOffsets, [0]);
+    expect((cubit.state as AuthorSearchDirectory).hasMore, isTrue);
+
+    final more = find.widgetWithText(TextButton, 'Load more authors');
+    // The search field is its own scrollable, so name the list explicitly.
+    await tester.scrollUntilVisible(more, 400, scrollable: _list);
+    await tester.tap(more);
+    await tester.pump();
+    expect(repository.directoryOffsets, [0, 100]);
+    expect(
+      (cubit.state as AuthorSearchDirectory).isLoadingMore,
+      isTrue,
+      reason: 'the footer says a page is on its way',
+    );
+
+    repository.directoryRequests.last.complete(
+      right([const AuthorSearchResult(userId: 'last', displayName: 'Last')]),
+    );
+    await tester.pumpAndSettle();
+    final loaded = cubit.state as AuthorSearchDirectory;
+    expect(loaded.people, hasLength(101));
+    expect(loaded.hasMore, isFalse);
+    expect(find.text('Load more authors'), findsNothing);
+    await tester.scrollUntilVisible(find.text('Last'), 400, scrollable: _list);
+    expect(find.text('Last'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'empty results and encoded author navigation retain the search on back',

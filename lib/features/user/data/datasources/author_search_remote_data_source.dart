@@ -7,10 +7,11 @@ import 'package:belog/features/user/domain/entities/author_search_result.dart';
 import 'package:http/http.dart' as http;
 
 /// The public author directory (ADR 0024). `search` narrows it by name; an
-/// empty query browses it, ordered by reach.
+/// empty query browses it, ordered by reach. The directory has no cursor, so a
+/// deeper page is named by the number of rows already read.
 abstract interface class AuthorSearchRemoteDataSource {
-  Future<List<AuthorSearchResult>> search(String query);
-  Future<List<AuthorSearchResult>> directory();
+  Future<List<AuthorSearchResult>> search(String query, {int offset = 0});
+  Future<List<AuthorSearchResult>> directory({int offset = 0});
 }
 
 /// The endpoint is public. Its dedicated client cannot send a session token
@@ -61,20 +62,31 @@ class AuthorSearchRemoteDataSourceImpl implements AuthorSearchRemoteDataSource {
   }
 
   @override
-  Future<List<AuthorSearchResult>> search(String query) {
+  Future<List<AuthorSearchResult>> search(String query, {int offset = 0}) {
     final trimmed = query.trim();
-    if (!isValidAuthorSearchQuery(trimmed)) {
+    if (!isValidAuthorSearchQuery(trimmed) || !_isUsableOffset(offset)) {
       return Future.error(_invalidQuery);
     }
-    return _fetch(query: trimmed);
+    return _fetch(query: trimmed, offset: offset);
   }
 
   /// The browse case: no query parameter at all, so the server orders the
   /// directory by reach instead of by relevance.
   @override
-  Future<List<AuthorSearchResult>> directory() => _fetch();
+  Future<List<AuthorSearchResult>> directory({int offset = 0}) {
+    if (!_isUsableOffset(offset)) return Future.error(_invalidQuery);
+    return _fetch(offset: offset);
+  }
 
-  Future<List<AuthorSearchResult>> _fetch({String? query}) async {
+  /// The first page sends no `offset` at all, so an older deployment that
+  /// ignores the parameter still answers with the list it always did.
+  static bool _isUsableOffset(int offset) =>
+      offset >= 0 && offset <= maxAuthorSearchOffset;
+
+  Future<List<AuthorSearchResult>> _fetch({
+    String? query,
+    int offset = 0,
+  }) async {
     try {
       final data = await _client.getJson(
         '/authors',
@@ -82,6 +94,7 @@ class AuthorSearchRemoteDataSourceImpl implements AuthorSearchRemoteDataSource {
           if (query != null) 'query': query,
           'locale': _locale,
           'limit': '$maxAuthorSearchResults',
+          if (offset > 0) 'offset': '$offset',
         },
       );
       if (data is! List || data.length > maxAuthorSearchResults) {
