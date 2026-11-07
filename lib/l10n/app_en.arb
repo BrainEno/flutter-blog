@@ -35,6 +35,8 @@
   "feedFeaturedEmpty": "The editors have not added any featured works yet.",
   "feedPopularDescription": "Ordered by saves as returned by the server.",
   "feedPopularEmpty": "No works in this list yet. Check back later.",
+  "feedPopularDepthLimit": "The most-saved list stops here: it is re-ranked as saves arrive, so it has no stable place to resume from. To read further back, switch to Latest, which pages by publication date.",
+  "feedPopularDepthAction": "Continue in Latest",
   "feedFollowingEmpty": "No published works from the authors you follow yet. Follow an author to see updates here.",
 
   "newPostTooltip": "Write a post",

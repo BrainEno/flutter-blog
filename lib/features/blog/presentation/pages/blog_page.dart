@@ -325,6 +325,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     final loadingMore =
         state is BlogLoaded && state.isLoadingMore && !state.hasReachedMax;
     final reachedMax = state is BlogLoaded && state.hasReachedMax;
+    final depthLimited = state is BlogLoaded && state.depthLimited;
     final failed = state is BlogListFailure;
     final hasFooter = loadingMore || reachedMax || failed;
     return ListView.builder(
@@ -378,6 +379,29 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
                 child: NoWaveLoadingLabel(
                   semanticLabel: l10n.loadingMoreArticles,
                   compact: true,
+                ),
+              ),
+            );
+          }
+          if (depthLimited) {
+            // The order ended, not the library: say where reading can continue
+            // instead of claiming there is nothing more.
+            return _contentWidth(
+              Padding(
+                padding: const EdgeInsets.all(NoWaveSpacing.medium),
+                child: Column(
+                  children: [
+                    Text(
+                      l10n.feedPopularDepthLimit,
+                      textAlign: TextAlign.center,
+                      style: NoWaveTypography.meta(context),
+                    ),
+                    const SizedBox(height: NoWaveSpacing.small),
+                    TextButton(
+                      onPressed: () => _selectFeed(BlogFeedKind.latest, state),
+                      child: Text(l10n.feedPopularDepthAction),
+                    ),
+                  ],
                 ),
               ),
             );

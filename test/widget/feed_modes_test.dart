@@ -202,6 +202,64 @@ void main() {
     });
   }
 
+  testWidgets('the depth-limited most-saved list names where to continue', (
+    tester,
+  ) async {
+    const locale = Locale('en');
+    final l10n = lookupAppLocalizations(locale);
+    final requests = <GetAllBlogsParams>[];
+    final user = AppUserCubit();
+    final feed = BlogBloc(
+      popularMaxOffset: 20,
+      getAllBlogs: _GetFeed((params) async {
+        requests.add(params);
+        return Right(
+          BlogFeedPage(
+            blogs: List.generate(
+              kBlogPageSize,
+              (i) => _blog('${params.kind.name}-${params.page}-$i'),
+            ),
+            source: BlogFeedSource.network,
+          ),
+        );
+      }),
+    );
+    addTearDown(feed.close);
+    addTearDown(user.close);
+    await _pumpPage(tester, feed: feed, user: user, locale: locale);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ChoiceChip, l10n.feedTabPopular));
+    await tester.pumpAndSettle();
+    // Three full pages reach the bound; the fourth load-more stops locally.
+    for (var i = 0; i < 3; i++) {
+      feed.add(const BlogLoadMore());
+      await tester.pumpAndSettle();
+    }
+    final loaded = feed.state as BlogLoaded;
+    expect(loaded.kind, BlogFeedKind.popular);
+    expect(loaded.depthLimited, isTrue);
+    expect(
+      requests.map((request) => request.page),
+      [1, 1, 2, 3],
+      reason: 'the refused page is never requested',
+    );
+    expect(find.text(l10n.feedNoMore), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.widgetWithText(TextButton, l10n.feedPopularDepthAction),
+      400,
+    );
+    expect(find.text(l10n.feedPopularDepthLimit), findsOneWidget);
+    await tester.tap(
+      find.widgetWithText(TextButton, l10n.feedPopularDepthAction),
+    );
+    await tester.pumpAndSettle();
+    expect(feed.state.kind, BlogFeedKind.latest);
+    expect(requests.last.kind, BlogFeedKind.latest);
+    expect(find.text(l10n.feedPopularDepthLimit), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('reattaching with a different viewer clears the old feed', (
     tester,
   ) async {
