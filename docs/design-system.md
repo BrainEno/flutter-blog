@@ -164,6 +164,9 @@
 | `NoWaveAvatar` | `common/widgets/no_wave_avatar.dart` | 方形头像，失败回退中性图 |
 | `NoWaveLoadingLabel` | `design/components/no_wave_loading_label.dart` | 加载态：一道短横线 + 一句文案，没有转圈 |
 | `NoWaveSkeleton` / `...List` / `...Line` / `...Block` | `design/components/no_wave_skeleton.dart` | 内容形状的占位（列表、行、块） |
+| `NoWaveFadeTransition` | `design/components/no_wave_fade_transition.dart` | 标签切换的淡入；少动时不构建转场 |
+| `NoWaveCoverPlate` | `design/cover/no_wave_cover_plate.dart` | 四张编辑式默认封面，按文章身份稳定选一张 |
+| `ArticleCover` | `features/blog/presentation/widgets/article_cover.dart` | 真封面 / 加载 / 失败三种状态共用同一张版 |
 
 ### 加载态：一句文案或一个形状
 
@@ -183,6 +186,31 @@
 
 `_row` 里那三道横线的宽度比例写在组件内部（`_lineWidths`），不是全局尺度：它们是
 "一段话"的形状，不是间距。
+
+### 封面：四张编辑式默认版
+
+没有封面的文章以前共用一张图，于是八张卡片看起来像同一篇。现在有四张同族的版
+（墨、网点、一处橘色），够读者把两张卡分开，又不假装图片有什么含义：
+
+| 版 | 资产 | 构成 |
+| --- | --- | --- |
+| `arc` | `assets/images/no_wave_cover_arc.jpg` | 一道墨笔横扫 + 橘色渗边 |
+| `halftone` | `assets/images/no_wave_cover_halftone.jpg` | 网点场 + 一条橘色横规 |
+| `block` | `assets/images/no_wave_cover_block.jpg` | 牛血色与墨色方块叠在撕口纸上 |
+| `column` | `assets/images/no_wave_cover_column.jpg` | 竖列墨条 + 一道橘色斜切 |
+
+**选版规则**：`NoWaveCoverPlate.forSeed(seed)`，`seed` 是文章的**身份**（slug 或 id），
+不是标题。哈希是 FNV-1a 32 位、输入 UTF-8 字节（`lib/core/utils/stable_hash.dart`）：
+同样的文章在任何设备、任何版本、任何系统语言下都落在同一张版上。**禁止** `hashCode`
+（可能按进程重新播种，Dart 版本间也变过）与 `Random`（每次重建都换图）；标题也不能当
+种子，改标题不该换封面。
+
+`ArticleCover` 先算出版、再去请求网络，所以占位、失败与最终帧是同一张图：请求失败时
+图片不会变，读者看到的是「缺一张图」，不是「换了一篇」。
+
+守这两条的是 `test/unit/core/stable_hash_test.dart`（对上 FNV-1a 公开向量）与
+`test/unit/design/cover_plate_test.dart`（选版映射被钉住、四张都会被用到、资产确实存在
+且是 JPEG、选版代码里没有 `hashCode` / `Random` / `DateTime.now`）。
 
 ### NoWaveButton
 
@@ -255,9 +283,10 @@
 
 ## 七、已知缺口
 
-- **首页 feed 用文案而不是骨架。** `BlogCard` 是封面卡而不是缩略图行，骨架的行形态
-  套不上；等阶段四把编辑式图像层（默认封面 + 稳定 hash）定下来，再给 feed 一个卡片
-  骨架。列表型页面（通知、私信、阅读历史）已经用 `NoWaveSkeletonList`。
+- **首页 feed 用文案而不是骨架。** 编辑式图像层已经定下来（四张版 + 稳定 hash），
+  所以 feed 的卡片骨架（封面块 + 标题行）现在是可做的了，只是还没做：
+  `BlogCard` 是封面卡而不是缩略图行，行形态套不上。列表型页面（通知、私信、阅读历史）
+  已经用 `NoWaveSkeletonList`。
 - **控件内部的忙碌指示仍是系统小转圈**（`NoWaveButton` 的加载态、回收站行内恢复、
   私信发送图标位）。它们的尺寸由控件自己的槽位决定，放不下一句文案；页面级与区块级
   已经全部换成 `NoWaveLoadingLabel` / 骨架。

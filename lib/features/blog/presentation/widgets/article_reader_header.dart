@@ -144,7 +144,11 @@ class ArticleReaderHeader extends StatelessWidget {
         if (blog.document?.supported != true ||
             blog.document?.hasImages != true) ...[
           const SizedBox(height: NoWaveSpacing.small),
-          ArticleCover(title: blog.title, imageUrl: blog.imageUrl),
+          ArticleCover(
+            title: blog.title,
+            imageUrl: blog.imageUrl,
+            seed: blog.id,
+          ),
         ],
       ],
     );

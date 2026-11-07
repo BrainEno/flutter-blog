@@ -1,3 +1,4 @@
+import 'package:belog/core/design/cover/no_wave_cover_plate.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -24,6 +25,7 @@ class InspectableArticleCover extends ArticleCover {
     super.key,
     required super.title,
     required super.imageUrl,
+    required super.seed,
   });
 
   Widget inspect(BuildContext context) => super.build(context);
@@ -137,12 +139,15 @@ void main() {
       final semantics = tester.ensureSemantics();
       try {
         const title = 'My article';
+        const seed = 'my-article';
+        final plate = NoWaveCoverPlate.forSeed(seed);
         await tester.pumpWidget(
           testApp(
             const Scaffold(
               body: ArticleCover(
                 title: title,
                 imageUrl: 'file:///not-a-network-cover.jpg',
+                seed: seed,
               ),
             ),
           ),
@@ -151,10 +156,7 @@ void main() {
         expect(find.byType(CachedNetworkImage), findsNothing);
         expect(find.bySemanticsLabel('Cover of $title'), findsOneWidget);
         final fallback = tester.widget<Image>(find.byType(Image));
-        expect(
-          (fallback.image as AssetImage).assetName,
-          'assets/images/no_wave_cover_fallback.jpg',
-        );
+        expect((fallback.image as AssetImage).assetName, plate.asset);
 
         // Inspect the network builder without mounting it: no external request is
         // needed to exercise the exact error/placeholder fallback builders.
@@ -171,6 +173,7 @@ void main() {
                       const InspectableArticleCover(
                             title: title,
                             imageUrl: url,
+                            seed: seed,
                           ).inspect(context)
                           as Semantics;
                   final excluded = cover.child! as ExcludeSemantics;
@@ -188,19 +191,60 @@ void main() {
             networkImage.errorWidget!(coverContext, url, StateError('offline'))
                 as Image;
         final loading = networkImage.placeholder!(coverContext, url) as Image;
-        expect(
-          (error.image as AssetImage).assetName,
-          'assets/images/no_wave_cover_fallback.jpg',
-        );
-        expect(
-          (loading.image as AssetImage).assetName,
-          'assets/images/no_wave_cover_fallback.jpg',
-        );
+        // The placeholder, the failure and the finished frame are the same
+        // image: a cover that changes when the request fails reads as a
+        // different article, not as a missing picture.
+        expect((error.image as AssetImage).assetName, plate.asset);
+        expect((loading.image as AssetImage).assetName, plate.asset);
       } finally {
         semantics.dispose();
       }
     },
   );
+
+  testWidgets('a cover-less grid gives each article its own plate', (
+    tester,
+  ) async {
+    final plates = [
+      for (final id in ['an-article', 'another-article', 'a-third-article'])
+        NoWaveCoverPlate.forSeed(id),
+    ];
+    expect(plates.toSet().length, greaterThan(1));
+
+    for (final id in ['an-article', 'another-article', 'a-third-article']) {
+      await tester.pumpWidget(
+        testApp(
+          Scaffold(
+            body: ArticleCover(title: 'Same title', imageUrl: '', seed: id),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final image = tester.widget<Image>(find.byType(Image));
+      expect(
+        (image.image as AssetImage).assetName,
+        NoWaveCoverPlate.forSeed(id).asset,
+      );
+    }
+  });
+
+  testWidgets('the title does not choose the plate', (tester) async {
+    for (final title in ['First title', 'A completely different later title']) {
+      await tester.pumpWidget(
+        testApp(
+          Scaffold(
+            body: ArticleCover(title: title, imageUrl: '', seed: 'an-article'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final image = tester.widget<Image>(find.byType(Image));
+      expect(
+        (image.image as AssetImage).assetName,
+        NoWaveCoverPlate.forSeed('an-article').asset,
+      );
+    }
+  });
 
   testWidgets(
     'grid and reader header fit large text in both themes and preserve actions',
