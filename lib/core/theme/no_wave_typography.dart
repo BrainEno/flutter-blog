@@ -1,5 +1,3 @@
-import 'dart:ui' show FontFeature;
-
 import 'package:flutter/material.dart';
 
 /// Editorial type roles. Latin display faces are bundled; CJK falls back to
@@ -51,10 +49,7 @@ abstract final class NoWaveTypography {
   /// Instrument Serif ships Regular and Italic only, so this never asks for a
   /// weight: a 600 here would be synthesized, and faux bold on a serif reads
   /// as a printing error rather than emphasis.
-  static TextStyle serifItalic({
-    double size = 40,
-    Color? color,
-  }) {
+  static TextStyle serifItalic({double size = 40, Color? color}) {
     return TextStyle(
       fontFamily: 'InstrumentSerif',
       fontFamilyFallback: serifFallback,

@@ -34,7 +34,11 @@ class NoWaveWordmark extends StatelessWidget {
         children: [
           TextSpan(
             text: 'No ',
-            style: NoWaveTypography.tight(context, size: size, color: effective),
+            style: NoWaveTypography.tight(
+              context,
+              size: size,
+              color: effective,
+            ),
           ),
           TextSpan(
             text: 'Wave',

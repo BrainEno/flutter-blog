@@ -7,7 +7,6 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart' show TickerCanceled;
 import 'package:flutter/services.dart';
 
 /// The cold-start curtain: six ink columns, a counter and a wordmark.
@@ -207,7 +206,8 @@ class _NoWaveSplashScreenState extends State<NoWaveSplashScreen>
     final value = _wrapUp.isDismissed
         ? (_countUntilBoot * Curves.easeOut.transform(_count.value)).floor()
         : (_countUntilBoot +
-                  (100 - _countUntilBoot) * Curves.easeOut.transform(_wrapUp.value))
+                  (100 - _countUntilBoot) *
+                      Curves.easeOut.transform(_wrapUp.value))
               .floor();
     return value.toString().padLeft(3, '0');
   }

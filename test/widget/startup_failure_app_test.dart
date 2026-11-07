@@ -23,7 +23,9 @@ void main() {
     expect(find.textContaining('scripts/run_android.cmd'), findsOneWidget);
   });
 
-  testWidgets('the screen is paper on ink, not a Material seed', (tester) async {
+  testWidgets('the screen is paper on ink, not a Material seed', (
+    tester,
+  ) async {
     await pumpFailure(tester, 'API base URL not configured');
 
     expect(

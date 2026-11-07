@@ -189,11 +189,7 @@ void main() {
     final handle = tester.ensureSemantics();
     final ready = Completer<void>();
 
-    await _pumpCurtain(
-      tester,
-      ready: ready.future,
-      onFinished: () {},
-    );
+    await _pumpCurtain(tester, ready: ready.future, onFinished: () {});
 
     expect(find.bySemanticsLabel('No Wave 正在载入'), findsOneWidget);
     expect(
@@ -207,7 +203,9 @@ void main() {
     handle.dispose();
   });
 
-  testWidgets('320dp at a doubled text scale does not overflow', (tester) async {
+  testWidgets('320dp at a doubled text scale does not overflow', (
+    tester,
+  ) async {
     final ready = Completer<void>();
 
     await _pumpCurtain(

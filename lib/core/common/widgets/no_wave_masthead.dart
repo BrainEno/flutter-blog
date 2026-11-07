@@ -10,10 +10,10 @@ class NoWaveMasthead extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Semantics(
+    return Semantics(
       label: 'No Wave',
       header: true,
-      child: ExcludeSemantics(child: NoWaveWordmark()),
+      child: const ExcludeSemantics(child: NoWaveWordmark()),
     );
   }
 }

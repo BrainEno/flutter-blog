@@ -33,7 +33,11 @@ typedef BootRunner = Future<void> Function();
 /// [StartupFailureApp] as soon as it is known, because "your configuration is
 /// broken" is the one message that must not wait three seconds.
 class NoWaveBootApp extends StatefulWidget {
-  const NoWaveBootApp({super.key, this.boot = runBootSequence, this.appBuilder});
+  const NoWaveBootApp({
+    super.key,
+    this.boot = runBootSequence,
+    this.appBuilder,
+  });
 
   /// What has to succeed before the app can be built. Injectable so a test can
   /// drive the boot screen without the service locator.
@@ -114,10 +118,7 @@ class _NoWaveBootAppState extends State<NoWaveBootApp> {
         if (_ready)
           ExcludeSemantics(
             excluding: !_curtainGone,
-            child: IgnorePointer(
-              ignoring: !_curtainGone,
-              child: _buildApp(),
-            ),
+            child: IgnorePointer(ignoring: !_curtainGone, child: _buildApp()),
           )
         else
           const ColoredBox(color: AppPalette.ink),
