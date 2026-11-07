@@ -152,6 +152,7 @@ void main() {
       await tester.pumpWidget(
         _app(const NoWaveSkeletonLine(), themeMode: ThemeMode.light),
       );
+      await tester.pumpAndSettle();
       expect(
         _skeletonFill(tester),
         AppTheme.lightThemeMode.colorScheme.onSurface.withAlpha(
@@ -162,6 +163,8 @@ void main() {
       await tester.pumpWidget(
         _app(const NoWaveSkeletonLine(), themeMode: ThemeMode.dark),
       );
+      // MaterialApp cross-fades between themes; sample after it settles.
+      await tester.pumpAndSettle();
       expect(
         _skeletonFill(tester),
         AppTheme.darkThemeMode.colorScheme.onSurface.withAlpha(
