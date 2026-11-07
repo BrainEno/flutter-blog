@@ -35,6 +35,15 @@ class GetAllBlogs implements UseCase<BlogFeedPage, GetAllBlogsParams> {
 /// A page returning fewer items than this means the end of the list.
 const int kBlogPageSize = 10;
 
+/// How deep the most-saved order can be read.
+///
+/// no-wave bounds `sort=popular` at an offset of 10 000 (`MAX_ARTICLE_OFFSET_POPULAR`
+/// in the API's `domain/article.ts`): that order is re-ranked while it is read, so
+/// it has no cursor to resume from, and past the bound the server answers `400`
+/// instead of a page. The client uses the same number to stop before asking for
+/// something that can only be refused.
+const int kPopularFeedMaxOffset = 10000;
+
 class GetAllBlogsParams {
   final int page;
   final BlogFeedSource? source;

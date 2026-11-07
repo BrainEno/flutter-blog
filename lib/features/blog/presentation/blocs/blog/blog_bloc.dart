@@ -17,9 +17,16 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
   BlogFeedKind _kind = BlogFeedKind.latest;
   String? _viewerId;
 
-  BlogBloc({required GetAllBlogs getAllBlogs})
-    : _getAllBlogs = getAllBlogs,
-      super(const BlogInitial()) {
+  /// The bound the API puts on a `sort=popular` offset. It is a constructor
+  /// argument only so a test can reach the bound in a few pages; callers take
+  /// the API's own number.
+  final int popularMaxOffset;
+
+  BlogBloc({
+    required GetAllBlogs getAllBlogs,
+    this.popularMaxOffset = kPopularFeedMaxOffset,
+  }) : _getAllBlogs = getAllBlogs,
+       super(const BlogInitial()) {
     on<BlogFetchFirstPage>(_onFetchFirstPage);
     on<BlogLoadMore>(_onLoadMore);
     on<BlogViewerChanged>(_onViewerChanged);
@@ -142,10 +149,25 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
         current.hasReachedMax) {
       return;
     }
-    // Synchronous guard before the first await.
-    emit(current.copyWith(isLoadingMore: true));
     final generation = _generation;
     final nextPage = current.page + 1;
+    // The most-saved order is re-ranked while it is read, so it has no cursor
+    // and the server refuses an offset past its bound. Asking would only be
+    // refused, and a retry could never succeed: stop here and let the list say
+    // where the reader can keep reading instead.
+    if (current.kind == BlogFeedKind.popular &&
+        (nextPage - 1) * kBlogPageSize > popularMaxOffset) {
+      emit(
+        current.copyWith(
+          hasReachedMax: true,
+          isLoadingMore: false,
+          depthLimited: true,
+        ),
+      );
+      return;
+    }
+    // Synchronous guard before the first await.
+    emit(current.copyWith(isLoadingMore: true));
     final res = await _getAllBlogs(
       GetAllBlogsParams(
         page: nextPage,
@@ -162,14 +184,31 @@ class BlogBloc extends Bloc<BlogEvent, BlogState> {
     if (generation != _generation) return;
     final latest = state is BlogLoaded ? state as BlogLoaded : current;
     res.fold(
-      (failure) => emit(
-        BlogListFailure(
-          kind: latest.kind,
-          viewerId: latest.viewerId,
-          failure: failure.forPresentation(),
-          previousState: latest.copyWith(isLoadingMore: false),
-        ),
-      ),
+      (failure) {
+        // A refused page is the server saying what the local bound says: this
+        // order cannot go deeper. A retry would be refused again, so the list
+        // stops with the explanation instead of an error the reader can only
+        // repeat.
+        if (latest.kind == BlogFeedKind.popular &&
+            failure.code == 'server.BAD_USER_INPUT') {
+          emit(
+            latest.copyWith(
+              hasReachedMax: true,
+              isLoadingMore: false,
+              depthLimited: true,
+            ),
+          );
+          return;
+        }
+        emit(
+          BlogListFailure(
+            kind: latest.kind,
+            viewerId: latest.viewerId,
+            failure: failure.forPresentation(),
+            previousState: latest.copyWith(isLoadingMore: false),
+          ),
+        );
+      },
       (result) {
         // Never combine offsets from two different data sources.
         if (result.source != latest.source) {

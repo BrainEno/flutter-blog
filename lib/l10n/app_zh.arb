@@ -35,6 +35,8 @@
   "feedFeaturedEmpty": "编辑尚未添加精选作品。",
   "feedPopularDescription": "按服务端提供的收藏数排序。",
   "feedPopularEmpty": "此列表暂无作品，稍后再来看看。",
+  "feedPopularDepthLimit": "「最多收藏」只能翻到这里：它按累计收藏数排序，会在你阅读时重排，没有可以稳稳续上的位置。想看更早的作品，请切到「最新」，那里按发布时间往前读。",
+  "feedPopularDepthAction": "去「最新」继续",
   "feedFollowingEmpty": "关注的作者暂无已发布作品。关注作者后，可在这里查看更新。",
 
 
