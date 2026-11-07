@@ -16,3 +16,13 @@ PostgreSQL 的 `published_at` 可能具有微秒精度，而当前 REST 响应�
 为覆盖重叠，请求行数为 `min(10 + 边界毫秒内已读数量, 100)`；正常为 11 条，但高密度场景可能读取更多完整文章数据。服务端最多返回 100 条。当窗口已满、却不能安全得到下一整页时，客户端保留已有列表并提示刷新，**不会假装没有更多文章**。在恰好达到上限且无法判定是否还有内容时也可能保守停止；重复刷新不一定能解决，需服务端修复精度及分页契约。它不是对所有极端场景的完整分页保证。
 
 本地续页 token 只保存在当前 Feed 状态中，不持久化，也不作为服务端 cursor 发送；仅包含公开的时间和 UUID。缓存 schema、现有文章和草稿均未改变。
+## 服务端契约
+
+以下规则取自 no-wave `apps/api/src/domain/cursor.ts`、`apps/api/src/domain/article.ts`（`resolveArticleCursor`）与 `apps/api/src/transport/rest/http.ts`（`parseArticlePagination`）。`test/unit/blog/latest_feed_cursor_contract_test.dart` 把它们**镜像成可执行断言**：契约任一侧漂移时先失败的是单元测试，而不是等首页悄悄退回 offset 之后才发现。
+
+- **编码**：`encodeCursor(at, id)` 就是 `base64url(`${at}|${id}`)`，Node 的 `base64url` 不写 `=` 填充。`at` 是 ISO 毫秒时间戳（`YYYY-MM-DDTHH:MM:SS.sssZ`），`id` 是文章 UUID。客户端发出的 token 恒为 `base64url("<边界下一毫秒>|00000000-0000-0000-0000-000000000000")`，82 个字符，只会出现 `[A-Za-z0-9_-]`，放进查询串不需要再转义。
+- **传输层闸门（解码之前）**：`limit` 默认 20、允许 1..100；`cursor` 长度必须在 1..512 之间，首尾不能有空白（服务端不做 trim，带空格的 token 直接拒）；同一次请求里 `cursor` 与 `offset` 互斥；`sort` 不是 `latest` 时带 `cursor` 一律拒绝。任何一条不满足都是 `400`，请求不会到达存储层。这也是客户端只用游标推进「最新」而热门继续走 offset 的原因。
+- **解码**：先按 UTF-8 与 base64url 解码，在**第一个** `|` 处切分——id 里若再出现 `|` 会被整段当成 id，从而判为非法；时间戳必须匹配 `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$`，先验形状再解析，所以 `2026-11-01T12:34:56Z`（缺毫秒）和 `...+00:00`（带偏移）都不合法；id 必须是 8-4-4-4-12 的十六进制 UUID，写成不透明字符串会被拒。解码失败一律返回空值，`resolveArticleCursor` 抛 `ArticleInputError("Invalid cursor.")`，最终是 `400 BAD_USER_INPUT`。
+- **语义**：游标是严格上界，只返回 `publishedAt` 小于 `at`、或同一毫秒内 UUID 小于 `id` 的条目。客户端取「下一毫秒 + 全零 UUID」正是为了让整段边界毫秒重新读一遍，再按已见 id 去重。
+- **深翻页上限随排序变化**：`sort=latest` 的 `offset` 上限 100000，`sort=popular` 只有 10000。`popular` 超限同样是 `400`，但带一句说明，客户端按「到头」处理，不当成网络错误重试。
+- **客户端如何回应拒绝**：续页第一次被拒（旧部署不支持，或收到 `400 BAD_USER_INPUT`）→ 本次滚动改用 offset 并核验整页；已经成功收到过游标页之后再被拒 → 停止并提示刷新，不把 offset 页悄悄拼进来。
