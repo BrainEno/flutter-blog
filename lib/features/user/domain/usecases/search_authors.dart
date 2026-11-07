@@ -8,6 +8,8 @@ class SearchAuthors {
 
   final AuthorSearchRepository repository;
 
-  Future<Either<Failure, List<AuthorSearchResult>>> call(String query) =>
-      repository.search(query);
+  Future<Either<Failure, List<AuthorSearchResult>>> call(
+    String query, {
+    int offset = 0,
+  }) => repository.search(query, offset: offset);
 }

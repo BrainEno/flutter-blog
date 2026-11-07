@@ -16,30 +16,43 @@ class AuthorSearchRepositoryImpl implements AuthorSearchRepository {
   final ConnectionChecker connectionChecker;
 
   @override
-  Future<Either<Failure, List<AuthorSearchResult>>> search(String query) async {
+  Future<Either<Failure, List<AuthorSearchResult>>> search(
+    String query, {
+    int offset = 0,
+  }) async {
     final trimmed = query.trim();
-    if (!isValidAuthorSearchQuery(trimmed)) {
+    if (!isValidAuthorSearchQuery(trimmed) || !_isReadableOffset(offset)) {
       return left(Failure.validation('搜索关键词不符合要求'));
     }
     try {
       if (!await connectionChecker.isConnected) {
         return left(Failure.networkOffline());
       }
-      return right(await remote.search(trimmed));
+      return right(await remote.search(trimmed, offset: offset));
     } catch (error) {
       return left(mapErrorToFailure(error));
     }
   }
 
   @override
-  Future<Either<Failure, List<AuthorSearchResult>>> directory() async {
+  Future<Either<Failure, List<AuthorSearchResult>>> directory({
+    int offset = 0,
+  }) async {
+    if (!_isReadableOffset(offset)) {
+      return left(Failure.validation('搜索关键词不符合要求'));
+    }
     try {
       if (!await connectionChecker.isConnected) {
         return left(Failure.networkOffline());
       }
-      return right(await remote.directory());
+      return right(await remote.directory(offset: offset));
     } catch (error) {
       return left(mapErrorToFailure(error));
     }
   }
+
+  /// The API bounds the directory's offset; a deeper page would only be
+  /// refused, so it is not sent.
+  static bool _isReadableOffset(int offset) =>
+      offset >= 0 && offset <= maxAuthorSearchOffset;
 }

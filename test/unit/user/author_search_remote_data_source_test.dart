@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/features/user/data/datasources/author_search_remote_data_source.dart';
+import 'package:belog/features/user/domain/entities/author_search_result.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -76,6 +77,52 @@ void main() {
       'limit': '100',
     });
     expect(people.map((person) => person.userId), ['one', 'two']);
+  });
+
+  test('a deeper page names its offset; the first page sends none', () async {
+    final seen = <http.Request>[];
+    var calls = 0;
+    final remote = AuthorSearchRemoteDataSourceImpl(
+      baseUrl: Uri.parse('https://api.example.invalid'),
+      httpClient: MockClient((request) async {
+        seen.add(request);
+        calls++;
+        return _ok([]);
+      }),
+    );
+    await remote.directory(offset: 100);
+    await remote.search('writer', offset: 200);
+    await remote.directory();
+    expect(seen[0].url.queryParameters['offset'], '100');
+    expect(seen[1].url.queryParameters['offset'], '200');
+    expect(seen[1].url.queryParameters['query'], 'writer');
+    expect(seen[2].url.queryParameters.containsKey('offset'), isFalse);
+
+    // The API bounds the offset; a deeper page is refused locally instead of
+    // being sent and answered with a 400.
+    for (final offset in [-1, maxAuthorSearchOffset + 1]) {
+      await expectLater(
+        remote.directory(offset: offset),
+        throwsA(
+          isA<ServerException>().having(
+            (error) => error.code,
+            'code',
+            'client.validation',
+          ),
+        ),
+      );
+      await expectLater(
+        remote.search('writer', offset: offset),
+        throwsA(
+          isA<ServerException>().having(
+            (error) => error.code,
+            'code',
+            'client.validation',
+          ),
+        ),
+      );
+    }
+    expect(calls, 3);
   });
 
   test('empty or oversized UTF-16 queries never make a request', () async {

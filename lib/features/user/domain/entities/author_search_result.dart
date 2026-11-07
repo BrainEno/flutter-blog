@@ -24,9 +24,15 @@ class AuthorSearchResult {
 }
 
 /// One directory page holds at most 100 authors - the server's own limit for
-/// `GET /api/v1/authors`. The directory has no cursor, so this is also the most
-/// rows a single request can return.
+/// `GET /api/v1/authors`. The directory has no cursor, so pages are counted
+/// with `offset`.
 const int maxAuthorSearchResults = 100;
+
+/// How far the directory can be read. The API bounds `offset` at 100 000
+/// (`AUTHOR_OFFSET_MAX` in its `domain/profile.ts`): deeper than any reader
+/// scrolls, and a bound the database still has to count. The client stops
+/// there instead of sending a request that can only be refused.
+const int maxAuthorSearchOffset = 100000;
 
 /// The directory accepts up to 200 characters, but the client stops at 100: no
 /// pen name is longer, and a longer query is a paste accident rather than a
