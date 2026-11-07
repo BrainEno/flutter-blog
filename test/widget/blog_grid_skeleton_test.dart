@@ -100,7 +100,9 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(_app(const BlogGridSkeleton(tiles: 4), textScale: 2));
+    await tester.pumpWidget(
+      _app(const BlogGridSkeleton(tiles: 4), textScale: 2),
+    );
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
