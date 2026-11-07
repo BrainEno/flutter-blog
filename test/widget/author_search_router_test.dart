@@ -3,6 +3,7 @@ import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
 import 'package:belog/features/user/data/models/author_profile_model.dart';
 import 'package:belog/features/user/domain/entities/author_search_result.dart';
 import 'package:belog/features/user/domain/repositories/author_search_repository.dart';
+import 'package:belog/features/user/domain/usecases/browse_authors.dart';
 import 'package:belog/features/user/domain/usecases/search_authors.dart';
 import 'package:belog/features/user/presentation/pages/author_page.dart';
 import 'package:belog/features/user/presentation/pages/author_search_page.dart';
@@ -27,6 +28,8 @@ void main() {
     final harness = Harness()..buildRouter(initialLocation: '/search');
     addTearDown(harness.dispose);
     GetIt.instance.registerFactory(() => SearchAuthors(search));
+    GetIt.instance.registerFactory(() => BrowseAuthors(search));
+    when(() => search.directory()).thenAnswer((_) async => right([]));
     when(() => search.search('读者')).thenAnswer(
       (_) async => right([
         const AuthorSearchResult(userId: readerId, displayName: '读者乙'),

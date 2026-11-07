@@ -30,4 +30,16 @@ class AuthorSearchRepositoryImpl implements AuthorSearchRepository {
       return left(mapErrorToFailure(error));
     }
   }
+
+  @override
+  Future<Either<Failure, List<AuthorSearchResult>>> directory() async {
+    try {
+      if (!await connectionChecker.isConnected) {
+        return left(Failure.networkOffline());
+      }
+      return right(await remote.directory());
+    } catch (error) {
+      return left(mapErrorToFailure(error));
+    }
+  }
 }
