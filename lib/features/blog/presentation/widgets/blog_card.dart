@@ -74,7 +74,11 @@ class BlogCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ArticleCover(title: blog.title, imageUrl: blog.imageUrl),
+          ArticleCover(
+            title: blog.title,
+            imageUrl: blog.imageUrl,
+            seed: blog.id,
+          ),
           const SizedBox(height: NoWaveSpacing.medium),
           _metadata(context),
           const SizedBox(height: NoWaveSpacing.small),

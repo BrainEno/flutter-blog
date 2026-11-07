@@ -71,6 +71,7 @@ class BlogGridItem extends StatelessWidget {
                 ArticleCover(
                   title: blog.title,
                   imageUrl: blog.imageUrl,
+                  seed: blog.id,
                   aspectRatio: NoWaveSizes.coverAspect,
                 ),
                 if (blog.isDraft || editionLabel != null)
