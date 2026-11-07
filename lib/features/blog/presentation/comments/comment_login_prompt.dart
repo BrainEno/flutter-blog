@@ -16,7 +16,7 @@ class CommentLoginPrompt extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
         horizontal: NoWaveSpacing.medium,
-        vertical: 20,
+        vertical: NoWaveSpacing.large,
       ),
       decoration: BoxDecoration(
         // A theme role instead of a fixed 10 % grey (issue #24): the tint

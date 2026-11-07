@@ -51,6 +51,25 @@ void main() {
     test('the cover ratio matches the one article tiles use', () {
       expect(NoWaveSizes.coverAspect, closeTo(4 / 3, 1e-9));
     });
+
+    test('row sizes keep their order and their tap target', () {
+      // Component sizes are not spacing steps: the cover box is 250 and
+      // primaryAction 52, and neither has to sit on the 4-point grid.
+      expect(NoWaveSizes.emptyStateOffset % 4, 0);
+      expect(
+        NoWaveSizes.listThumbnailSmall,
+        greaterThanOrEqualTo(NoWaveSizes.tapTarget),
+        reason: 'a row thumbnail is also a touch target',
+      );
+      expect(
+        NoWaveSizes.listThumbnail,
+        greaterThan(NoWaveSizes.listThumbnailSmall),
+      );
+      expect(
+        NoWaveSizes.coverEditorBox,
+        greaterThan(NoWaveSizes.listThumbnail),
+      );
+    });
   });
 
   group('breakpoints', () {

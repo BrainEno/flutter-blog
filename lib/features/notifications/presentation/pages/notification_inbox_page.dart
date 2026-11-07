@@ -115,7 +115,7 @@ class _NotificationInboxView extends StatelessWidget {
             child: loaded.isEmpty
                 ? ListView(
                     children: [
-                      const SizedBox(height: 96),
+                      const SizedBox(height: NoWaveSizes.emptyStateOffset),
                       _EmptyInbox(
                         title: context.l10n.notificationsEmptyTitle,
                         body: context.l10n.notificationsEmptyBody,

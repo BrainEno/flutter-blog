@@ -296,7 +296,7 @@ class _UnreadBadge extends StatelessWidget {
         constraints: const BoxConstraints(minWidth: 26),
         padding: const EdgeInsets.symmetric(
           horizontal: NoWaveSpacing.small,
-          vertical: 3,
+          vertical: 3, // design-token-ok: optical centring of the badge digit
         ),
         decoration: BoxDecoration(
           color: scheme.primary,

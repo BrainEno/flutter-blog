@@ -77,7 +77,7 @@ class BlogCard extends StatelessWidget {
           ArticleCover(title: blog.title, imageUrl: blog.imageUrl),
           const SizedBox(height: NoWaveSpacing.medium),
           _metadata(context),
-          const SizedBox(height: 10),
+          const SizedBox(height: NoWaveSpacing.small),
           Text(
             blog.title,
             maxLines: 3,
@@ -108,13 +108,13 @@ class BlogCard extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: foreground.withAlpha(130))),
       ),
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.medium),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (index != null) ...[
             SizedBox(
-              width: 36,
+              width: 36, // design-token-ok: index column, two digits wide
               child: Text(
                 formatNumber(
                   Localizations.localeOf(context),
@@ -137,7 +137,7 @@ class BlogCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: NoWaveTypography.title(context, size: 24),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: NoWaveSpacing.xs),
                 Text(author, style: NoWaveTypography.meta(context)),
               ],
             ),

@@ -129,7 +129,7 @@ class _CommentsSectionState extends State<CommentsSection> {
           children: [
             const Divider(height: 32),
             Wrap(
-              spacing: 6,
+              spacing: NoWaveSpacing.xs,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(

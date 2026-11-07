@@ -64,6 +64,10 @@
 | `NoWaveSizes.row` | 64 | 可点列表行最小高度 |
 | `NoWaveSizes.coverAspect` | 4/3 | 所有文章封面 |
 | `NoWaveSizes.maxReadingWidth` | 720 | 平板上的正文最大宽度 |
+| `NoWaveSizes.coverEditorBox` | 250 | 编辑器里固定的封面框（三种状态同框，表单不跳） |
+| `NoWaveSizes.emptyStateOffset` | 48 | 空态/加载态在列表里从多高开始 |
+| `NoWaveSizes.listThumbnail` | 56 | 列表行前导缩略图（阅读历史） |
+| `NoWaveSizes.listThumbnailSmall` | 48 | 行内还要放操作时的小缩略图（回收站、评论头像框） |
 
 ### 线与遮罩的不透明度 `NoWaveOpacity`
 
@@ -203,11 +207,25 @@
   Material 按钮，避免以后有人顺手写回来时又变成胶囊形。剩下直接使用 Material 的是
   纯文字动作（`TextButton`）与图标动作（`IconButton`），它们由主题保证 48pt 触控
   目标与方角。
-- **间距预算**：`no_magic_numbers_test.dart` 的 `ceiling` 从 358 降到 215 → 142 →
-  **75**。前两步是纯改名（值与 token 相同，画面不变），第三步把 12 逐处判成 8 或
-  16，那是本页唯一会动像素的一步。剩下的 75 处已经不是「忘了用 token」：
-  - 大半是**尺寸不是间距**：`SizedBox(height: 250)` 的骨架屏占位、96 的加载槽、
-    登录页 60/40/30 的首屏节奏、插画与字形盒子。这些要的是布局常量，不是间距档位。
-  - 其余是**光学微调**：2、3、7 这类贴着文字基线的补正，写 token 反而把意图藏起来。
-  下一步若要继续降，正确做法是给它们起名字（`NoWaveSizes.*` 或一个带注释的常量），
-  而不是硬塞进 4/8/16。
+- **间距预算已归零**：`no_magic_numbers_test.dart` 的 `ceiling` 358 → 215 → 142 → 75
+  → **0**，`budget` 表现在是空的。路径是：先改与 token 同值但没写 token 的（画面不
+  变），再把 12 逐处判成 8 或 16（唯一会动像素的一步），最后把「尺寸」那批要么变成
+  `NoWaveSizes.*`、要么在行尾写明理由。
+
+  现在 `lib/` 里没有裸间距字面量，剩下的都是行尾 `design-token-ok` 的例外，共 14 行：
+
+  | 理由 | 例子 |
+  | --- | --- |
+  | 贴基线的光学补正 | 消息气泡下的 `SizedBox(height: 2)` |
+  | 角标/芯片贴合自己的字形 | 未读角标 `horizontal: 7`、行内 code chip `5` |
+  | 固定在某一列上的宽度 | 卡片序号列 `36`、有序列表标记列 `26`、回复缩进随 48pt 头像列 |
+  | 失败占位不塌陷 | 正文图片加载失败的 `height: 40` |
+
+  **规矩**：标记必须写在带数字的那一行，扫描会把那一行整行丢掉；写在多行
+  `EdgeInsets` 上方不起作用。加标记的唯一理由是「这不是尺度上的一档」，不是为了让
+  数字过关。
+
+- **登录/注册页的比例不进军全局尺度**：这两屏的 `60 / 40 / 30` 放在
+  `lib/features/auth/presentation/auth_rhythm.dart` 的 `AuthRhythm` 里。它们是一屏
+  的构图（标题—字段堆—按钮），不是别处可复用的间距；写进 `NoWaveSpacing` 会让每个
+  页面都以为自己也该喘这么宽。字段之间仍用 `medium`、链接行之间仍用 `small`。

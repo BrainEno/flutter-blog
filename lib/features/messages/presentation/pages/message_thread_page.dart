@@ -296,9 +296,8 @@ class _ThreadBody extends StatelessWidget {
                   onPressed: state.sending ? null : () => onSend(),
                   tooltip: l10n.actionSend,
                   icon: state.sending
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
+                      ? const SizedBox.square(
+                          dimension: NoWaveIconSize.inline,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.send_outlined),
@@ -397,7 +396,7 @@ class _MessageBubble extends StatelessWidget {
         : scheme.surfaceContainerHighest;
     final foreground = mine ? scheme.onPrimaryContainer : scheme.onSurface;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.xs),
       child: Column(
         crossAxisAlignment: mine
             ? CrossAxisAlignment.end
@@ -422,7 +421,7 @@ class _MessageBubble extends StatelessWidget {
               ).textTheme.bodyMedium?.copyWith(color: foreground),
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 2), // design-token-ok: baseline nudge
           Text(
             formatDate(Localizations.localeOf(context), message.createdAt),
             style: NoWaveTypography.meta(context),

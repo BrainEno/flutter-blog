@@ -3,6 +3,7 @@ import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/auth/domain/password_rules.dart';
+import 'package:belog/features/auth/presentation/auth_rhythm.dart';
 import 'package:belog/features/auth/presentation/password_validation_l10n.dart';
 import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
@@ -83,7 +84,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const SizedBox(height: 60),
+                      const SizedBox(height: AuthRhythm.hero),
                       Text(
                         context.l10n.signUpTitle,
                         textAlign: TextAlign.center,
@@ -92,19 +93,19 @@ class _SignUpPageState extends State<SignUpPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: AuthRhythm.title),
                       AuthField(
                         hintText: context.l10n.fieldName,
                         controller: nameController,
                         prefixIcon: Icons.person_outline,
                       ),
-                      const SizedBox(height: 15),
+                      const SizedBox(height: NoWaveSpacing.medium),
                       AuthField(
                         hintText: context.l10n.fieldEmail,
                         controller: emailController,
                         prefixIcon: Icons.email_outlined,
                       ),
-                      const SizedBox(height: 15),
+                      const SizedBox(height: NoWaveSpacing.medium),
                       AuthField(
                         hintText: context.l10n.fieldPasswordWithMin,
                         controller: passwordController,
@@ -115,7 +116,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           validateNewPassword(value),
                         ),
                       ),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: AuthRhythm.action),
                       AuthPrimaryButton(
                         buttonText: context.l10n.submit,
                         onPressed: () {
@@ -132,7 +133,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           }
                         },
                       ),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: AuthRhythm.action),
                       Center(
                         child: TextButton(
                           onPressed: _openLogin,
@@ -147,7 +148,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         onPressed: () => context.go('/'),
                         child: Text(context.l10n.browseWithoutSignUp),
                       ),
-                      const SizedBox(height: 60),
+                      const SizedBox(height: AuthRhythm.hero),
                     ],
                   ),
                 );

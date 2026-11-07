@@ -109,7 +109,10 @@ class _AboutPageState extends State<AboutPage> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.aboutTitle)),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 25),
+        padding: const EdgeInsets.symmetric(
+          horizontal: NoWaveSpacing.section,
+          vertical: NoWaveSpacing.large,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -119,7 +122,7 @@ class _AboutPageState extends State<AboutPage> {
             ),
             const SizedBox(height: NoWaveSpacing.medium),
             Text(l10n.aboutBody),
-            const SizedBox(height: 20),
+            const SizedBox(height: NoWaveSpacing.large),
             Text(
               l10n.contactHeading,
               style: Theme.of(context).textTheme.headlineSmall,
@@ -131,14 +134,14 @@ class _AboutPageState extends State<AboutPage> {
                   _openLink(context, Uri.parse('mailto:nodeman24@outlook.com')),
               child: const Text('nodeman24@outlook.com'),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: NoWaveSpacing.xs),
             Text(l10n.githubLabel),
             TextButton(
               onPressed: () =>
                   _openLink(context, Uri.parse('https://github.com/BrainEno')),
               child: const Text('https://github.com/BrainEno'),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: NoWaveSpacing.large),
             Text(
               l10n.versionHeading,
               style: Theme.of(context).textTheme.headlineSmall,

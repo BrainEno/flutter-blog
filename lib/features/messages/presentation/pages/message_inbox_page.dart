@@ -162,7 +162,7 @@ class _MessageInboxViewState extends State<_MessageInboxView> {
             child: loaded.isEmpty && !showStartCard
                 ? ListView(
                     children: [
-                      const SizedBox(height: 96),
+                      const SizedBox(height: NoWaveSizes.emptyStateOffset),
                       NoWaveStatus(message: l10n.messagesEmptyBody),
                     ],
                   )
@@ -403,7 +403,10 @@ class _UnreadPill extends StatelessWidget {
       excludeSemantics: true,
       child: Container(
         constraints: const BoxConstraints(minWidth: 22),
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 7, // design-token-ok: badge hugs its digit
+          vertical: 2, // design-token-ok: badge hugs its digit
+        ),
         decoration: BoxDecoration(
           color: scheme.primary,
           borderRadius: BorderRadius.circular(11),

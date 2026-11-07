@@ -233,22 +233,21 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                   background: Container(
                     color: scheme.error,
                     alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
+                    padding: const EdgeInsets.only(right: NoWaveSpacing.medium),
                     child: Icon(Icons.delete, color: scheme.onError),
                   ),
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: NoWaveSpacing.medium,
-                      vertical: 6,
+                      vertical: NoWaveSpacing.xs,
                     ),
                     leading: ClipRRect(
                       borderRadius: BorderRadius.circular(6),
                       child: Semantics(
                         image: true,
                         label: context.l10n.coverOf(entry.title),
-                        child: SizedBox(
-                          width: 56,
-                          height: 56,
+                        child: SizedBox.square(
+                          dimension: NoWaveSizes.listThumbnail,
                           child: entry.imageUrl.isEmpty
                               ? Icon(Icons.article, size: 32, color: mutedColor)
                               : CachedNetworkImage(

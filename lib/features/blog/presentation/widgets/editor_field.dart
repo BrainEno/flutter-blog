@@ -48,7 +48,7 @@ class EditorField extends StatelessWidget {
         maxHeight: 300 * heightScale,
       ),
       padding: const EdgeInsets.symmetric(
-        vertical: 2.0,
+        vertical: 2.0, // design-token-ok: the field hugs the text it holds
         horizontal: NoWaveSpacing.small,
       ),
       child: TextFormField(
@@ -108,7 +108,7 @@ class EditorField extends StatelessWidget {
     switch (contentType) {
       case BlogEditorContentType.title:
         return const EdgeInsets.symmetric(
-          vertical: 20.0,
+          vertical: NoWaveSpacing.large,
           horizontal: NoWaveSpacing.small,
         ); // More vertical padding for title
       case BlogEditorContentType.body:

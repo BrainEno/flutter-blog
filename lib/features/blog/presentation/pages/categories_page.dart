@@ -1,7 +1,7 @@
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
-import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
 import 'package:belog/features/blog/presentation/blocs/categories/categories_cubit.dart';
@@ -88,7 +88,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
     physics: const AlwaysScrollableScrollPhysics(),
     padding: const EdgeInsets.all(NoWaveSpacing.page),
     children: [
-      const SizedBox(height: 48),
+      const SizedBox(height: NoWaveSizes.emptyStateOffset),
       Center(child: status),
     ],
   );

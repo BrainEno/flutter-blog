@@ -307,7 +307,7 @@ class _ProfileHeader extends StatelessWidget {
                       style: NoWaveTypography.title(context, size: 32),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: NoWaveSpacing.xs),
                   Text(
                     l10n.followerStats(
                       profile.followerCount,

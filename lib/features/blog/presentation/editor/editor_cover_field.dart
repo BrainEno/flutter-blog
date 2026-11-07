@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -52,7 +53,7 @@ class EditorCoverField extends StatelessWidget {
     final picked = image;
     if (picked != null && isNewImageSelected) {
       return SizedBox(
-        height: 250,
+        height: NoWaveSizes.coverEditorBox,
         width: double.infinity,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
@@ -63,7 +64,7 @@ class EditorCoverField extends StatelessWidget {
     final bytes = imageBytes;
     if (bytes != null && isNewImageSelected) {
       return SizedBox(
-        height: 250,
+        height: NoWaveSizes.coverEditorBox,
         width: double.infinity,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
@@ -74,7 +75,7 @@ class EditorCoverField extends StatelessWidget {
     final published = blog;
     if (published != null && published.imageUrl.isNotEmpty) {
       return SizedBox(
-        height: 250,
+        height: NoWaveSizes.coverEditorBox,
         width: double.infinity,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
