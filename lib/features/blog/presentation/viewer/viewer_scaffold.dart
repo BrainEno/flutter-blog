@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:belog/core/design/design_tokens.dart';
+import 'package:belog/core/design/motion/no_wave_motion_policy.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
@@ -189,14 +191,16 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
         position.minScrollExtent,
         position.maxScrollExtent,
       );
-      if (MediaQuery.disableAnimationsOf(context)) {
+      // A jump, not a scroll shortened to nothing: with less motion asked for,
+      // the caret is placed where the voice already is.
+      if (NoWaveMotionPolicy.reducesMotion(context)) {
         _scrollController.jumpTo(destination);
       } else {
         unawaited(
           _scrollController.animateTo(
             destination,
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOut,
+            duration: NoWaveMotion.normal,
+            curve: NoWaveMotionPolicy.travel,
           ),
         );
       }

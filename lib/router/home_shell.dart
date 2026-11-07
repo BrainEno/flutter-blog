@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_fade_transition.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/router/read_aloud_route_observers.dart';
@@ -90,7 +92,7 @@ class _HomeShellState extends State<HomeShell> with RouteAware {
     return Scaffold(
       body: SafeArea(
         top: false,
-        child: _TabFadeTransition(
+        child: NoWaveFadeTransition(
           index: widget.shell.currentIndex,
           child: widget.shell,
         ),
@@ -99,7 +101,9 @@ class _HomeShellState extends State<HomeShell> with RouteAware {
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(
-              color: Theme.of(context).colorScheme.onSurface.withAlpha(100),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withAlpha(NoWaveOpacity.dividerAlpha),
             ),
           ),
         ),
@@ -122,48 +126,6 @@ class _HomeShellState extends State<HomeShell> with RouteAware {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _TabFadeTransition extends StatefulWidget {
-  const _TabFadeTransition({required this.index, required this.child});
-  final int index;
-  final Widget child;
-
-  @override
-  State<_TabFadeTransition> createState() => _TabFadeTransitionState();
-}
-
-class _TabFadeTransitionState extends State<_TabFadeTransition>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 300),
-    value: 1,
-  );
-
-  @override
-  void didUpdateWidget(covariant _TabFadeTransition oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.index != oldWidget.index) _controller.forward(from: 0);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (MediaQuery.disableAnimationsOf(context)) return widget.child;
-    return FadeTransition(
-      opacity: CurvedAnimation(
-        parent: _controller,
-        curve: Curves.fastOutSlowIn,
-      ),
-      child: widget.child,
     );
   }
 }

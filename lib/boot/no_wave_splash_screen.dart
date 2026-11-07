@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:belog/core/common/widgets/no_wave_wordmark.dart';
 import 'package:belog/core/design/design_tokens.dart';
+import 'package:belog/core/design/motion/no_wave_motion_policy.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
@@ -107,7 +108,7 @@ class _NoWaveSplashScreenState extends State<NoWaveSplashScreen>
 
   void _start() {
     _startedAt = DateTime.now();
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final reduceMotion = NoWaveMotionPolicy.reducesMotion(context);
     _still = reduceMotion || NoWaveSplashScreen._hasPlayed;
 
     // The bail is set in both modes: a boot that never reports must not leave
