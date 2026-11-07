@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -294,7 +295,7 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
           }
           if (_loading) {
             return Center(
-              child: CircularProgressIndicator(semanticsLabel: l10n.loading),
+              child: NoWaveLoadingLabel(semanticLabel: l10n.loading),
             );
           }
           final failure = _failure;

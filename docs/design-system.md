@@ -74,6 +74,8 @@
 | `NoWaveSizes.masthead` | 22 | 应用栏里的紧凑字标 |
 | `NoWaveSizes.splashProgress` | 3 | 幕布右下装饰段的厚度（装饰，不是进度条） |
 | `NoWaveSizes.splashProgressLength` | 72 | 该装饰段的长度 |
+| `NoWaveSizes.loadingRule` | 40 | 加载标签上方那道短横线 |
+| `NoWaveSizes.skeletonLine` | 12 | 骨架屏一行的高度（≈正文 x-height） |
 
 ### 线与遮罩的不透明度 `NoWaveOpacity`
 
@@ -82,6 +84,7 @@
 | `dividerAlpha` | 100（≈39%） | 分隔线、细线 |
 | `focusAlpha` | 55（≈22%） | 焦点/悬停的强调色洗色 |
 | `disabledAlpha` | 97（≈38%） | 禁用控件的前景色 |
+| `skeletonAlpha` | 28（≈11%） | 骨架屏填充：纸色和墨色两侧都用前景色的 11% |
 
 用 alpha 而不是写死的灰，是因为同一条线要画在纸色和墨色两种底色上。
 
@@ -139,7 +142,27 @@
 | `NoWaveActionRow` | `common/widgets/no_wave_action_row.dart` | 个人中心式的可点行动行 |
 | `NoWaveMasthead` | `common/widgets/no_wave_masthead.dart` | 双字体字标 |
 | `NoWaveAvatar` | `common/widgets/no_wave_avatar.dart` | 方形头像，失败回退中性图 |
-| `Loader` | `common/widgets/loader.dart` | 带本地化读屏文案的加载指示 |
+| `NoWaveLoadingLabel` | `design/components/no_wave_loading_label.dart` | 加载态：一道短横线 + 一句文案，没有转圈 |
+| `NoWaveSkeleton` / `...List` / `...Line` / `...Block` | `design/components/no_wave_skeleton.dart` | 内容形状的占位（列表、行、块） |
+
+### 加载态：一句文案或一个形状
+
+`lib/` 里已经没有页面级或区块级的转圈指示器，`Loader` 也随之删除。两种替代品：
+
+- **`NoWaveLoadingLabel`** —— 屏幕级、区块级，以及列表页脚（`compact: true` 去掉短
+  横线）。它同时是读屏播报（一个 `liveRegion`、一句话），所以那道横线在
+  `ExcludeSemantics` 里。
+- **`NoWaveSkeletonList`** —— 列表型页面（通知、私信、阅读历史）。行高与缩略图尺寸
+  直接借 `NoWaveSizes.row` / `listThumbnail`，数据落地时页面不跳。**不动**：没有
+  shimmer、没有渐变扫光——动效是阶段三的事，加载态不该先花掉用户的注意力，静态块在
+  截图里也读得懂。
+
+**边界**：控件自己的忙碌态仍由控件表达 —— `NoWaveButton(isLoading: true)` 保持标签
+在布局里不变高、保持不可点；回收站行内的"恢复中"与私信发送图标位保留系统小转圈，
+因为那是控件槽位里的图标，一句文案放不进去。
+
+`_row` 里那三道横线的宽度比例写在组件内部（`_lineWidths`），不是全局尺度：它们是
+"一段话"的形状，不是间距。
 
 ### NoWaveButton
 
@@ -212,7 +235,12 @@
 
 ## 七、已知缺口
 
-- **骨架屏/占位组件缺失。** 加载态仍用 `Loader` 或进度条。
+- **首页 feed 用文案而不是骨架。** `BlogCard` 是封面卡而不是缩略图行，骨架的行形态
+  套不上；等阶段四把编辑式图像层（默认封面 + 稳定 hash）定下来，再给 feed 一个卡片
+  骨架。列表型页面（通知、私信、阅读历史）已经用 `NoWaveSkeletonList`。
+- **控件内部的忙碌指示仍是系统小转圈**（`NoWaveButton` 的加载态、回收站行内恢复、
+  私信发送图标位）。它们的尺寸由控件自己的槽位决定，放不下一句文案；页面级与区块级
+  已经全部换成 `NoWaveLoadingLabel` / 骨架。
 - **暗色模式没有独立插画或位图**，只有色板翻转。
 - **没有 golden 测试。** 一致性的回归靠 `design_tokens_test.dart` 的约束断言与页面
   级 widget 测试，而不是像素比对。

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belog/core/common/widgets/no_wave_masthead.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -203,7 +204,7 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
               }
               if (state is BlogSearchLoading) {
                 return _state(
-                  CircularProgressIndicator(semanticsLabel: l10n.searching),
+                  NoWaveLoadingLabel(semanticLabel: l10n.searching),
                 );
               }
               if (state is BlogSearchFailure) {

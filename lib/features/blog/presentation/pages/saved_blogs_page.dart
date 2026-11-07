@@ -2,7 +2,7 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
-import 'package:belog/core/common/widgets/loader.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
@@ -92,7 +92,7 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
           }
 
           if (state is UserLikedBlogsLoading) {
-            return const Loader();
+            return const Center(child: NoWaveLoadingLabel());
           } else if (state is UserLikedBlogsSuccess || _lastBlogs.isNotEmpty) {
             final blogsToShow = state is UserLikedBlogsSuccess
                 ? state.blogs
@@ -147,7 +147,7 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
             );
           }
           return _lastBlogs.isEmpty
-              ? const Loader()
+              ? const Center(child: NoWaveLoadingLabel())
               : RefreshIndicator(
                   onRefresh: () async {
                     _fetchSavedBlogs();

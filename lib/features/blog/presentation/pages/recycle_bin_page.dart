@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -69,9 +70,7 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
         builder: (context, state) {
           if (state is RecycleBinLoading || state is RecycleBinInitial) {
             return Center(
-              child: CircularProgressIndicator(
-                semanticsLabel: context.l10n.loading,
-              ),
+              child: NoWaveLoadingLabel(semanticLabel: context.l10n.loading),
             );
           }
           if (state is RecycleBinFailure) {

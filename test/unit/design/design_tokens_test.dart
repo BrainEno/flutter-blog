@@ -98,6 +98,18 @@ void main() {
     });
   });
 
+  group('loading state', () {
+    test('the placeholder parts sit on the same grid as the rows', () {
+      expect(NoWaveSizes.skeletonLine % 4, 0);
+      expect(NoWaveSizes.loadingRule % 4, 0);
+    });
+
+    test('a placeholder is quieter than a divider', () {
+      expect(NoWaveOpacity.skeletonAlpha, lessThan(NoWaveOpacity.dividerAlpha));
+      expect(NoWaveOpacity.skeletonAlpha, greaterThan(0));
+    });
+  });
+
   group('cold start', () {
     test('the floor is below the ceiling', () {
       expect(NoWaveMotion.minimumSplash, lessThan(NoWaveMotion.splashBail));

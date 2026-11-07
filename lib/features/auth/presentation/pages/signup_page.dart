@@ -5,7 +5,7 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/auth/domain/password_rules.dart';
 import 'package:belog/features/auth/presentation/auth_rhythm.dart';
 import 'package:belog/features/auth/presentation/password_validation_l10n.dart';
-import 'package:belog/core/common/widgets/loader.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/auth/presentation/widgets/auth_field.dart';
@@ -75,7 +75,7 @@ class _SignUpPageState extends State<SignUpPage> {
               },
               builder: (context, state) {
                 if (state is AuthLoading) {
-                  return const Loader();
+                  return const Center(child: NoWaveLoadingLabel());
                 }
 
                 return Form(

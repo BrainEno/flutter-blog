@@ -1,4 +1,5 @@
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
@@ -145,7 +146,7 @@ class _MessageThreadViewState extends State<_MessageThreadView> {
           appBar: AppBar(title: Text(_title(state)), centerTitle: true),
           body: switch (state) {
             MessageThreadLoading() => Center(
-              child: CircularProgressIndicator(semanticsLabel: l10n.loading),
+              child: NoWaveLoadingLabel(semanticLabel: l10n.loading),
             ),
             MessageThreadSignedOut() => _ThreadStatus(
               message: l10n.messagesEmptyTitle,

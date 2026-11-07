@@ -1,5 +1,5 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
-import 'package:belog/core/common/widgets/loader.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/common/widgets/no_wave_masthead.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
@@ -270,7 +270,9 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     final isCached = _visibleSource(state) == BlogFeedSource.cache;
     if (blogs.isEmpty &&
         (state is BlogInitial || state is BlogFirstPageLoading)) {
-      return Loader(semanticLabel: l10n.loadingArticles);
+      return Center(
+        child: NoWaveLoadingLabel(semanticLabel: l10n.loadingArticles),
+      );
     }
     if (state is BlogListFailure && blogs.isEmpty) {
       return _statusList(
@@ -354,8 +356,9 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
             return Padding(
               padding: const EdgeInsets.all(NoWaveSpacing.medium),
               child: Center(
-                child: CircularProgressIndicator(
-                  semanticsLabel: l10n.loadingMoreArticles,
+                child: NoWaveLoadingLabel(
+                  semanticLabel: l10n.loadingMoreArticles,
+                  compact: true,
                 ),
               ),
             );

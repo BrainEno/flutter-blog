@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:belog/features/user/domain/entities/author_relationship.dart';
@@ -93,7 +94,7 @@ void main() {
       cubit: cubit,
       kind: AuthorRelationshipKind.followers,
     );
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(NoWaveLoadingLabel), findsOneWidget);
 
     repository.requests[0].complete(left(Failure.networkOffline()));
     await tester.pumpAndSettle();
@@ -106,13 +107,13 @@ void main() {
 
     await tester.tap(find.text('Retry'));
     await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(NoWaveLoadingLabel), findsOneWidget);
     repository.requests[1].complete(right([]));
     await tester.pumpAndSettle();
     expect(find.text('No followers to show'), findsOneWidget);
     await tester.tap(find.byTooltip('Refresh list'));
     await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(NoWaveLoadingLabel), findsOneWidget);
     repository.requests[2].complete(
       right([
         const AuthorRelationship(userId: 'reader', displayName: 'Reader'),

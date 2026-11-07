@@ -6,6 +6,7 @@ import 'package:belog/core/common/widgets/no_wave_action_row.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/theme_toggle_button.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
@@ -250,7 +251,13 @@ class _ProfileView extends StatelessWidget {
       builder: (dialogContext) => PopScope(
         canPop: false,
         child: Center(
-          child: CircularProgressIndicator(semanticsLabel: l10n.loading),
+          child: ColoredBox(
+            color: Theme.of(dialogContext).colorScheme.surface,
+            child: Padding(
+              padding: const EdgeInsets.all(NoWaveSpacing.large),
+              child: NoWaveLoadingLabel(semanticLabel: l10n.loading),
+            ),
+          ),
         ),
       ),
     );

@@ -4,6 +4,7 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/common/widgets/no_wave_action_row.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
@@ -420,10 +421,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text(l10n.exportMyData));
     await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(NoWaveLoadingLabel), findsOneWidget);
     await tester.binding.handlePopRoute();
     await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(NoWaveLoadingLabel), findsOneWidget);
     verify(
       () => exporter.exportAndShare(
         user: user,
@@ -434,7 +435,7 @@ void main() {
     pending.complete(left(Failure.networkOffline()));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byType(NoWaveLoadingLabel), findsNothing);
     expect(
       find.text('No network connection — check your settings'),
       findsOneWidget,

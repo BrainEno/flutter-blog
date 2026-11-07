@@ -280,6 +280,7 @@
   "coverOf": "《{title}》的封面",
   "imageLabel": "图片",
   "loading": "正在加载…",
+  "loadingLabel": "载入中 · LOADING",
   "loadingArticles": "正在加载文章…",
   "loadingMoreArticles": "正在加载更多文章…",
   "searching": "正在搜索…",

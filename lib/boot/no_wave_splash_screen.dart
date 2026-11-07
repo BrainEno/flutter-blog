@@ -314,7 +314,7 @@ class _NoWaveSplashScreenState extends State<NoWaveSplashScreen>
                       Text(
                         context.l10n.splashLoading,
                         textAlign: TextAlign.center,
-                        style: NoWaveTypography.splashMeta(
+                        style: NoWaveTypography.metaLabel(
                           context,
                           color: AppPalette.mutedOnInk,
                         ),
@@ -348,7 +348,7 @@ class _NoWaveSplashScreenState extends State<NoWaveSplashScreen>
               const SizedBox(height: NoWaveSpacing.xs),
               Text(
                 subline,
-                style: NoWaveTypography.splashMeta(
+                style: NoWaveTypography.metaLabel(
                   context,
                   color: AppPalette.mutedOnInk,
                 ),

@@ -276,17 +276,15 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
                   ),
                 ),
                 const SizedBox(height: NoWaveSpacing.section),
-                // Save Button or Loading Indicator
-                if (state is UserEditLoading)
-                  CircularProgressIndicator(
-                    semanticsLabel: context.l10n.loading,
-                  )
-                else
-                  NoWaveButton(
-                    label: context.l10n.actionSaveChanges,
-                    onPressed: _submit,
-                    expand: true,
-                  ),
+                // The button stays where it is and shows its own busy state:
+                // swapping it for an indicator made the form jump and lost the
+                // only label that said what the wait was for.
+                NoWaveButton(
+                  label: context.l10n.actionSaveChanges,
+                  onPressed: _submit,
+                  isLoading: state is UserEditLoading,
+                  expand: true,
+                ),
               ],
             ),
           );

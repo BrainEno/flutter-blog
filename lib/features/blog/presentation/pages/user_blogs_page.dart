@@ -1,6 +1,7 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/components/no_wave_notice.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/edition_l10n.dart';
@@ -159,8 +160,8 @@ class _UserBlogsPageState extends State<UserBlogsPage>
           builder: (context, state) {
             if (state is GetBlogsByUserLoading) {
               return Center(
-                child: CircularProgressIndicator(
-                  semanticsLabel: context.l10n.loadingArticles,
+                child: NoWaveLoadingLabel(
+                  semanticLabel: context.l10n.loadingArticles,
                 ),
               );
             } else if (state is GetMyArticleEditionsSuccess) {
