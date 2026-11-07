@@ -44,13 +44,17 @@ void main() {
       findsOneWidget,
       reason: 'it is built behind the curtain, so lifting it reveals content',
     );
-    final overApp = find.ancestor(
+    // The route has an IgnorePointer of its own, so the assertion looks for
+    // the guard that actually ignores instead of for the first ancestor.
+    final guard = find.ancestor(
       of: find.text('app'),
-      matching: find.byType(IgnorePointer),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is IgnorePointer && widget.ignoring,
+      ),
     );
     expect(
-      tester.widget<IgnorePointer>(overApp.first).ignoring,
-      isTrue,
+      guard,
+      findsOneWidget,
       reason: 'a tap during the curtain must not reach the app',
     );
 
@@ -58,6 +62,11 @@ void main() {
 
     expect(find.byType(NoWaveSplashScreen), findsNothing);
     expect(find.text('app'), findsOneWidget);
+    expect(
+      guard,
+      findsNothing,
+      reason: 'once the curtain is gone the app takes its own taps',
+    );
   });
 
   testWidgets('a boot failure replaces the curtain at once', (tester) async {

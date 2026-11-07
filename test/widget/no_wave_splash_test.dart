@@ -177,6 +177,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(firstFinished, isTrue);
 
+    // Unmount first: pumping the same tree again would reuse the element and
+    // its state, which would prove nothing about a second cold start.
+    await tester.pumpWidget(const SizedBox.shrink());
+
     // A rebuild inside the same process (hot restart of the widget tree) must
     // not replay a three-second opening.
     final secondReady = Completer<void>();
