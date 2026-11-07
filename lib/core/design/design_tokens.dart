@@ -170,7 +170,6 @@ abstract final class NoWaveOpacity {
 
   /// A disabled control.
   static const disabledAlpha = 97;
-}
 
   /// A skeleton block: a shape that says "content is coming" without
   /// competing with the content it will be replaced by.

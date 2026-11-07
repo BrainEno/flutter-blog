@@ -38,7 +38,7 @@ Color _skeletonFill(WidgetTester tester) => tester
         matching: find.byType(ColoredBox),
       ),
     )
-    .color!;
+    .color;
 
 void main() {
   group('NoWaveLoadingLabel', () {

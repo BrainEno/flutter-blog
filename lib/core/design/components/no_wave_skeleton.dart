@@ -39,17 +39,15 @@ class NoWaveSkeleton extends StatelessWidget {
 
 /// The fill of every placeholder part. Drawn from the surface's own foreground
 /// so it works on paper and on ink without a second palette.
-Color _fill(BuildContext context) =>
-    Theme.of(context).colorScheme.onSurface.withAlpha(
-      NoWaveOpacity.skeletonAlpha,
-    );
+Color _fill(BuildContext context) => Theme.of(
+  context,
+).colorScheme.onSurface.withAlpha(NoWaveOpacity.skeletonAlpha);
 
 /// The hairline between two placeholder rows, the same weight as a real
 /// divider.
-Color _hairline(BuildContext context) =>
-    Theme.of(context).colorScheme.onSurface.withAlpha(
-      NoWaveOpacity.dividerAlpha,
-    );
+Color _hairline(BuildContext context) => Theme.of(
+  context,
+).colorScheme.onSurface.withAlpha(NoWaveOpacity.dividerAlpha);
 
 /// One line of placeholder text.
 class NoWaveSkeletonLine extends StatelessWidget {
@@ -124,9 +122,7 @@ class NoWaveSkeletonList extends StatelessWidget {
         alignment: Alignment.topCenter,
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var row = 0; row < rows; row++) _row(context, row),
-          ],
+          children: [for (var row = 0; row < rows; row++) _row(context, row)],
         ),
       ),
     );

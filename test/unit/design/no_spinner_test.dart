@@ -77,10 +77,8 @@ const _spinners = [
 ];
 
 /// `path:line: <source>` for every spinner call under [file].
-List<String> _spinnerLines(File file) => _spinnerLinesOf(
-  file.readAsStringSync(),
-  path: file.path,
-);
+List<String> _spinnerLines(File file) =>
+    _spinnerLinesOf(file.readAsStringSync(), path: file.path);
 
 List<String> _spinnerLinesOf(String source, {String? path}) {
   final hits = <String>[];
