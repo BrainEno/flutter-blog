@@ -189,7 +189,7 @@ class _MessageInboxViewState extends State<_MessageInboxView> {
                         return Padding(
                           padding: const EdgeInsets.fromLTRB(
                             NoWaveSpacing.medium,
-                            12,
+                            NoWaveSpacing.small,
                             NoWaveSpacing.medium,
                             NoWaveSpacing.medium,
                           ),
@@ -248,7 +248,7 @@ class _StartConversationCard extends StatelessWidget {
         NoWaveSpacing.medium,
         NoWaveSpacing.small,
         NoWaveSpacing.medium,
-        12,
+        NoWaveSpacing.small,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -319,9 +319,9 @@ class _ConversationRow extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
           NoWaveSpacing.medium,
-          12,
+          NoWaveSpacing.small,
           NoWaveSpacing.medium,
-          12,
+          NoWaveSpacing.small,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,7 +331,7 @@ class _ConversationRow extends StatelessWidget {
               imageUrl: participant?.avatarUrl ?? '',
               size: 44,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: NoWaveSpacing.small),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

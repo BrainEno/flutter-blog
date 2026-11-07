@@ -157,7 +157,9 @@ class _CategoryRow extends StatelessWidget {
           child: InkWell(
             onTap: () => openCategoryArticles(context, category),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                vertical: NoWaveSpacing.small,
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -183,7 +185,7 @@ class _CategoryRow extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: NoWaveSpacing.small),
                   Icon(
                     Icons.chevron_right,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,

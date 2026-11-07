@@ -118,7 +118,7 @@ class EditorCoverField extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.image_outlined, size: 55, color: muted),
-              const SizedBox(height: 12),
+              const SizedBox(height: NoWaveSpacing.small),
               Text(
                 context.l10n.uploadCoverHint,
                 textAlign: TextAlign.center,

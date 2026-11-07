@@ -329,7 +329,7 @@ class _ProfileHeader extends StatelessWidget {
         ),
         const SizedBox(height: NoWaveSpacing.xs),
         Wrap(
-          spacing: 12,
+          spacing: NoWaveSpacing.small,
           children: [
             TextButton(
               onPressed: onOpenFollowers,

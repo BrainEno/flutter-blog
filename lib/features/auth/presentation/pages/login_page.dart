@@ -79,7 +79,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
         body: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(NoWaveSpacing.page),
             child: BlocConsumer<AuthBloc, AuthState>(
               listener: (context, state) {
                 if (state is AuthFailure) {
@@ -152,7 +152,7 @@ class _LoginPageState extends State<LoginPage> {
                           }
                         },
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: NoWaveSpacing.medium),
                       // No "forgot password" entry: the backend has no
                       // password-reset flow yet (gap G2, see
                       // docs/supabase-to-nowave-migration.md).
@@ -166,7 +166,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: NoWaveSpacing.medium),
                       TextButton(
                         onPressed: () => context.go('/'),
                         child: Text(context.l10n.browseWithoutSignIn),

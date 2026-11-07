@@ -198,7 +198,7 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
           appBar: AppBar(title: Text(l10n.accountEmailTitle)),
           body: SafeArea(
             child: ListView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(NoWaveSpacing.page),
               children: [
                 Center(
                   child: ConstrainedBox(

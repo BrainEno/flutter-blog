@@ -155,7 +155,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           appBar: AppBar(title: Text(l10n.passwordChangeTitle)),
           body: SafeArea(
             child: ListView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(NoWaveSpacing.page),
               children: [
                 Center(
                   child: ConstrainedBox(
@@ -166,7 +166,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(l10n.passwordChangeInfo),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: NoWaveSpacing.small),
                           Text(l10n.passwordChangeRules),
                           const SizedBox(height: NoWaveSpacing.large),
                           _passwordField(

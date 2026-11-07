@@ -109,7 +109,7 @@ class MarkdownRenderer {
           ),
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(NoWaveSpacing.small),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8),
@@ -142,7 +142,7 @@ class MarkdownRenderer {
         );
       case 'hr':
         return const Padding(
-          padding: EdgeInsets.only(top: 12, bottom: 12),
+          padding: EdgeInsets.symmetric(vertical: NoWaveSpacing.medium),
           child: Divider(),
         );
       default:

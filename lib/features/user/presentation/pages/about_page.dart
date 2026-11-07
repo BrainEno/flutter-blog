@@ -149,7 +149,9 @@ class _AboutPageState extends State<AboutPage> {
             InkWell(
               onLongPress: () => _showDiagnostics(context),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  vertical: NoWaveSpacing.small,
+                ),
                 child: FutureBuilder<PackageInfo?>(
                   future: _packageInfo,
                   builder: (context, snapshot) {

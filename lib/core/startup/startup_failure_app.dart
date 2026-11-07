@@ -49,7 +49,7 @@ class StartupFailureApp extends StatelessWidget {
                       '无法启动 · Unable to start',
                       style: theme.textTheme.headlineSmall,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: NoWaveSpacing.small),
                     SelectableText(message, style: theme.textTheme.bodyMedium),
                     const SizedBox(height: NoWaveSpacing.large),
                     Text(
@@ -58,7 +58,7 @@ class StartupFailureApp extends StatelessWidget {
                       'scripts/run_android.cmd 或 scripts/run_ios.sh。',
                       style: theme.textTheme.bodyMedium,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: NoWaveSpacing.small),
                     const SelectableText(
                       'flutter run --debug --dart-define-from-file=env.json',
                       style: TextStyle(fontFamily: 'monospace'),

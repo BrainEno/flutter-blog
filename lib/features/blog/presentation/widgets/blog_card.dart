@@ -91,7 +91,7 @@ class BlogCard extends StatelessWidget {
               Expanded(
                 child: Text(author, style: NoWaveTypography.meta(context)),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: NoWaveSpacing.small),
               const ExcludeSemantics(
                 child: Icon(Icons.arrow_forward, size: 20),
               ),
@@ -142,7 +142,7 @@ class BlogCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: NoWaveSpacing.small),
           const ExcludeSemantics(child: Icon(Icons.arrow_forward, size: 20)),
         ],
       ),

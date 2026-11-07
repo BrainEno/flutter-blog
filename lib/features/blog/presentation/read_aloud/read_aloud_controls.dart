@@ -54,7 +54,7 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
         return Container(
           key: const ValueKey('read-aloud-controls'),
           margin: const EdgeInsets.only(bottom: NoWaveSpacing.section),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.small),
           decoration: BoxDecoration(
             border: Border.symmetric(
               horizontal: BorderSide(color: scheme.onSurface.withAlpha(70)),

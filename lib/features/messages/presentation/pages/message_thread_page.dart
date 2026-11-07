@@ -228,7 +228,7 @@ class _ThreadBody extends StatelessWidget {
                     controller: scroll,
                     padding: const EdgeInsets.symmetric(
                       horizontal: NoWaveSpacing.medium,
-                      vertical: 12,
+                      vertical: NoWaveSpacing.small,
                     ),
                     itemCount: state.messages.length + (state.hasMore ? 1 : 0),
                     itemBuilder: (context, index) {
@@ -273,7 +273,7 @@ class _ThreadBody extends StatelessWidget {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, NoWaveSpacing.small, 12, 12),
+            padding: const EdgeInsets.all(NoWaveSpacing.small),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -408,7 +408,7 @@ class _MessageBubble extends StatelessWidget {
               maxWidth: MediaQuery.sizeOf(context).width * 0.78,
             ),
             padding: const EdgeInsets.symmetric(
-              horizontal: 12,
+              horizontal: NoWaveSpacing.small,
               vertical: NoWaveSpacing.small,
             ),
             decoration: BoxDecoration(

@@ -81,7 +81,7 @@ class _PublishQueueView extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(localizedFailure(context.l10n, state.failure)),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: NoWaveSpacing.medium),
                     NoWaveButton(
                       label: context.l10n.publishQueueRetry,
                       variant: NoWaveButtonVariant.secondary,
@@ -114,7 +114,8 @@ class _PublishQueueView extends StatelessWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(NoWaveSpacing.medium),
               itemCount: loaded.entries.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              separatorBuilder:
+                  (_, _) => const SizedBox(height: NoWaveSpacing.medium),
               itemBuilder: (context, index) => _QueueEntryCard(
                 entry: loaded.entries[index],
                 sending: loaded.sending,

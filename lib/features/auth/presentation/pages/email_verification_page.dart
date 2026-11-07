@@ -237,7 +237,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
           appBar: AppBar(title: Text(l10n.emailVerifyTitle)),
           body: SafeArea(
             child: ListView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(NoWaveSpacing.page),
               children: [
                 Center(
                   child: ConstrainedBox(
@@ -261,7 +261,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                           onPressed: enabled && _canSend ? _send : null,
                         ),
                         if (_request != null) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: NoWaveSpacing.small),
                           _Notice(
                             text:
                                 _request ==
@@ -271,7 +271,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                           ),
                         ],
                         if (_sendFailure != null) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: NoWaveSpacing.small),
                           _Notice(
                             text: localizedFailure(l10n, _sendFailure!),
                             isError: true,
@@ -284,7 +284,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                         ),
                         const SizedBox(height: NoWaveSpacing.xs),
                         Text(l10n.emailVerifyPasteHint),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: NoWaveSpacing.small),
                         TextFormField(
                           controller: _token,
                           enabled: enabled && _status?.isVerified != true,
@@ -302,8 +302,8 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                             }
                           },
                         ),
-                        const SizedBox(height: 12),
-                        NoWaveButton(
+                        const SizedBox(height: NoWaveSpacing.medium),
+NoWaveButton(
                           label: _confirming
                               ? l10n.emailVerifyTokenConfirming
                               : l10n.emailVerifyTokenConfirm,
@@ -313,11 +313,11 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                               : null,
                         ),
                         if (_confirmed) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: NoWaveSpacing.small),
                           _Notice(text: l10n.emailVerifyTokenDone),
                         ],
                         if (_confirmFailure != null) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: NoWaveSpacing.small),
                           _Notice(
                             text: localizedFailure(l10n, _confirmFailure!),
                             isError: true,

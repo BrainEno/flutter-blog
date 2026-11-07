@@ -54,7 +54,7 @@ class EditorTagSelector extends StatelessWidget {
             showCheckmark: false,
             padding: const EdgeInsets.symmetric(
               vertical: NoWaveSpacing.small,
-              horizontal: 12.0,
+              horizontal: NoWaveSpacing.small,
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.zero,

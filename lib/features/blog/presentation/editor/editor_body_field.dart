@@ -48,7 +48,7 @@ class _EditorBodyFieldState extends State<EditorBodyField> {
             );
           },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: NoWaveSpacing.medium),
         if (_previewMode) _buildPreview(context) else _buildEditor(context),
       ],
     );
@@ -62,7 +62,7 @@ class _EditorBodyFieldState extends State<EditorBodyField> {
     final text = widget.controller.text;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(NoWaveSpacing.small),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: borderColor),
