@@ -18,7 +18,7 @@
    - **已存储的分类值**：`editorTagOptions` 里的 `诗歌 / 小说 / 原创 / 其他` 是
      内容值，显示时经 `core/l10n/tag_l10n.dart` 翻译，值本身不能改。
    - **诊断与日志**：`AppLogger` 和诊断头面向维护者，跟随界面语言没有意义。
-4. 启动失败页（`lib/core/startup/startup_failure_app.dart`）是唯一允许保留自有
+4. 启动失败页（`lib/boot/startup_failure_app.dart`）是唯一允许保留自有
    文案的文件，并在守卫测试里登记了原因：它出现的前提正是 locale、偏好存储和
    ARB delegate 都可能还没跑起来，所以中英双语同时显示。
 

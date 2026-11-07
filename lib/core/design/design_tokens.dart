@@ -116,6 +116,38 @@ abstract final class NoWaveSizes {
 
   /// The smaller leading thumbnail used where the row also carries actions.
   static const listThumbnailSmall = 48.0;
+
+  /// How many columns the cold-start curtain is cut into.
+  ///
+  /// Six is the web loader's count; it is also the widest that still reads as
+  /// separate columns on a 320dp screen.
+  static const splashColumns = 6;
+
+  /// The largest the counter may get. It is scaled down from here to fit the
+  /// width, never clamped by a fixed height.
+  static const splashCounterMax = 220.0;
+
+  /// Share of the viewport width the counter's font size takes, before
+  /// [splashCounterMax] caps it - the app's reading of the web's
+  /// `min(30vw, 220px)`. It is a ratio, not a length, so a small phone gets
+  /// smaller digits instead of overflowing ones.
+  static const splashCounterViewport = 0.3;
+
+  /// The wordmark on the curtain, and on the startup failure screen.
+  static const splashWordmark = 40.0;
+
+  /// The compact wordmark in an app bar.
+  static const masthead = 22.0;
+
+  /// Thickness of the decorative progress segment on the curtain.
+  ///
+  /// Decorative on purpose: it shows that something is happening, and it is
+  /// not wired to any real progress figure.
+  static const splashProgress = 3.0;
+
+  /// How long the decorative segment is: wide enough to read as a rule, short
+  /// enough not to look like a progress bar that is 18% done.
+  static const splashProgressLength = 72.0;
 }
 
 /// Opacity of lines and overlays that are not semantic colours.
@@ -143,6 +175,41 @@ abstract final class NoWaveMotion {
 
   /// A page or sheet transition.
   static const slow = Duration(milliseconds: 320);
+
+  /// Content entering: a reveal, a mask opening, a heading settling.
+  ///
+  /// Deliberately slower than [slow]: this is narrative, not feedback, and it
+  /// must not read as a delay before the app is usable - it plays while the
+  /// app behind it is already built.
+  static const enter = Duration(milliseconds: 1000);
+
+  /// A route transition.
+  static const page = Duration(milliseconds: 900);
+
+  /// One curtain column lifting in the cold-start sequence.
+  static const curtain = Duration(milliseconds: 900);
+
+  /// The counter's run from 000 to 088, before boot has reported.
+  ///
+  /// The number is choreography, not bytes: nothing measures it against a
+  /// request, and the UI must never claim it is a real load percentage.
+  static const counter = Duration(milliseconds: 1800);
+
+  /// The last stretch, 088 to 100, once boot is finished.
+  static const counterFinish = Duration(milliseconds: 350);
+
+  /// How far apart two curtain columns start.
+  static const stagger = Duration(milliseconds: 80);
+
+  /// A splash shorter than this reads as a flicker, even when boot is instant.
+  static const minimumSplash = Duration(milliseconds: 1400);
+
+  /// Boot may hold the curtain no longer than this.
+  ///
+  /// A hung dependency must not leave the user on a loading screen: at this
+  /// point the curtain lifts regardless and the app's own error states take
+  /// over.
+  static const splashBail = Duration(milliseconds: 4500);
 }
 
 /// Layout breakpoints and the grid they imply.
