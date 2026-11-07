@@ -142,7 +142,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: NoWaveSpacing.medium),
+                      const SizedBox(height: NoWaveSpacing.small),
                       TextButton(
                         onPressed: () => context.go('/'),
                         child: Text(context.l10n.browseWithoutSignUp),

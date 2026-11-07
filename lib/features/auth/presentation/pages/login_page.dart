@@ -152,7 +152,7 @@ class _LoginPageState extends State<LoginPage> {
                           }
                         },
                       ),
-                      const SizedBox(height: NoWaveSpacing.medium),
+                      const SizedBox(height: NoWaveSpacing.small),
                       // No "forgot password" entry: the backend has no
                       // password-reset flow yet (gap G2, see
                       // docs/supabase-to-nowave-migration.md).
@@ -166,7 +166,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: NoWaveSpacing.medium),
+                      const SizedBox(height: NoWaveSpacing.small),
                       TextButton(
                         onPressed: () => context.go('/'),
                         child: Text(context.l10n.browseWithoutSignIn),
