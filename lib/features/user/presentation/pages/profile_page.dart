@@ -5,6 +5,8 @@ import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/common/widgets/no_wave_action_row.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/theme_toggle_button.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
@@ -91,9 +93,9 @@ class _ProfileView extends StatelessWidget {
                   children: [
                     Text(l10n.notSignedIn),
                     const SizedBox(height: 16),
-                    ElevatedButton(
+                    NoWaveButton(
+                      label: l10n.signIn,
                       onPressed: () => context.push('/login'),
-                      child: Text(l10n.signIn),
                     ),
                   ],
                 ),
@@ -104,7 +106,7 @@ class _ProfileView extends StatelessWidget {
             // A single scrollable keeps the header and every action available
             // at large system text sizes.
             return ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(NoWaveSpacing.page),
               children: [
                 Center(
                   child: ConstrainedBox(
