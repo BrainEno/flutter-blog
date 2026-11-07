@@ -2,6 +2,7 @@ import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/components/no_wave_skeleton.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/theme/theme.dart';
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -13,6 +14,8 @@ Widget _app(
 }) {
   return MaterialApp(
     locale: locale,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     theme: AppTheme.lightThemeMode,
     darkTheme: AppTheme.darkThemeMode,
     themeMode: themeMode,
