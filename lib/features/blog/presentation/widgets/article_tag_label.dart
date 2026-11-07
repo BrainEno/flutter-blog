@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/l10n/tag_l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
@@ -24,7 +25,10 @@ class ArticleTagLabel extends StatelessWidget {
     final display = localizedTag(l10n, tag);
     final foreground = Theme.of(context).colorScheme.onSurface;
     final chip = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: NoWaveSpacing.small,
+        vertical: 2,
+      ),
       decoration: BoxDecoration(border: Border.all(color: foreground)),
       child: Text(
         display,

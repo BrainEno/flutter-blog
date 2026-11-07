@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +14,10 @@ class CommentLoginPrompt extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      padding: const EdgeInsets.symmetric(
+        horizontal: NoWaveSpacing.medium,
+        vertical: 20,
+      ),
       decoration: BoxDecoration(
         // A theme role instead of a fixed 10 % grey (issue #24): the tint
         // keeps its contrast against both the light and the dark paper.

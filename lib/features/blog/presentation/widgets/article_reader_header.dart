@@ -88,7 +88,9 @@ class ArticleReaderHeader extends StatelessWidget {
               onTap: onAuthorTap,
               focusColor: AppPalette.orange.withAlpha(55),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: NoWaveSpacing.medium,
+                ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

@@ -205,7 +205,12 @@ class _ThreadBody extends StatelessWidget {
             ),
           if (state.markedRead)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              padding: const EdgeInsets.fromLTRB(
+                NoWaveSpacing.medium,
+                NoWaveSpacing.small,
+                NoWaveSpacing.medium,
+                0,
+              ),
               child: Text(
                 l10n.messagesMarkedRead,
                 style: Theme.of(context).textTheme.bodySmall,
@@ -222,7 +227,7 @@ class _ThreadBody extends StatelessWidget {
                 : ListView.builder(
                     controller: scroll,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
+                      horizontal: NoWaveSpacing.medium,
                       vertical: 12,
                     ),
                     itemCount: state.messages.length + (state.hasMore ? 1 : 0),
@@ -245,7 +250,12 @@ class _ThreadBody extends StatelessWidget {
           ),
           if (failure != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              padding: const EdgeInsets.fromLTRB(
+                NoWaveSpacing.medium,
+                NoWaveSpacing.small,
+                NoWaveSpacing.medium,
+                0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -263,7 +273,7 @@ class _ThreadBody extends StatelessWidget {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            padding: const EdgeInsets.fromLTRB(12, NoWaveSpacing.small, 12, 12),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -318,7 +328,12 @@ class _MarkReadBanner extends StatelessWidget {
     return Container(
       width: double.infinity,
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+      padding: const EdgeInsets.fromLTRB(
+        NoWaveSpacing.medium,
+        NoWaveSpacing.small,
+        NoWaveSpacing.small,
+        NoWaveSpacing.small,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -349,7 +364,7 @@ class _LoadOlder extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.small),
       child: Column(
         children: [
           TextButton(
@@ -392,7 +407,10 @@ class _MessageBubble extends StatelessWidget {
             constraints: BoxConstraints(
               maxWidth: MediaQuery.sizeOf(context).width * 0.78,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: NoWaveSpacing.small,
+            ),
             decoration: BoxDecoration(
               color: background,
               borderRadius: BorderRadius.circular(12),

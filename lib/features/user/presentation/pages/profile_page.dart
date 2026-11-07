@@ -294,7 +294,10 @@ class _UnreadBadge extends StatelessWidget {
       excludeSemantics: true,
       child: Container(
         constraints: const BoxConstraints(minWidth: 26),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: const EdgeInsets.symmetric(
+          horizontal: NoWaveSpacing.small,
+          vertical: 3,
+        ),
         decoration: BoxDecoration(
           color: scheme.primary,
           borderRadius: BorderRadius.circular(13),

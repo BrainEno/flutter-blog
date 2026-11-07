@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/article_resource_url.dart';
@@ -66,14 +67,17 @@ class MarkdownRenderer {
       case 'h5':
       case 'h6':
         return Padding(
-          padding: const EdgeInsets.only(top: 20, bottom: 8),
+          padding: const EdgeInsets.only(top: 20, bottom: NoWaveSpacing.small),
           child: _heading(context, node),
         );
       case 'p':
         return _paragraph(context, node.children ?? const [], owner: node);
       case 'blockquote':
         return Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 8),
+          padding: const EdgeInsets.only(
+            top: NoWaveSpacing.small,
+            bottom: NoWaveSpacing.small,
+          ),
           child: Container(
             decoration: BoxDecoration(
               border: Border(
@@ -99,7 +103,10 @@ class MarkdownRenderer {
       case 'pre':
         final language = node.attributes['data-language'];
         return Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 8),
+          padding: const EdgeInsets.only(
+            top: NoWaveSpacing.small,
+            bottom: NoWaveSpacing.small,
+          ),
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -220,7 +227,8 @@ class MarkdownRenderer {
         .whereType<md.Element>()
         .where((element) => element.tag == 'li')
         .toList();
-    final nextIndent = indent + const EdgeInsets.only(left: 16);
+    final nextIndent =
+        indent + const EdgeInsets.only(left: NoWaveSpacing.medium);
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Column(

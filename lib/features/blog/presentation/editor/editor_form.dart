@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/editor/auto_save_banner.dart';
@@ -54,7 +55,10 @@ class EditorForm extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+        padding: const EdgeInsets.symmetric(
+          horizontal: NoWaveSpacing.large,
+          vertical: 20.0,
+        ),
         child: Form(
           key: formKey,
           child: Column(
@@ -62,7 +66,7 @@ class EditorForm extends StatelessWidget {
             children: [
               if (resumedFromQueue)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.only(bottom: NoWaveSpacing.medium),
                   child: Text(
                     context.l10n.publishQueueResumedNotice,
                     style: Theme.of(context).textTheme.bodySmall,
@@ -70,7 +74,7 @@ class EditorForm extends StatelessWidget {
                 ),
               if (hasUnclaimedDrafts)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.only(bottom: NoWaveSpacing.medium),
                   child: Semantics(
                     liveRegion: true,
                     child: Text(context.l10n.legacyDraftsNotice),

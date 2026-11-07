@@ -44,7 +44,7 @@ class CommentComposer extends StatelessWidget {
       children: [
         if (replyTo != null)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(bottom: NoWaveSpacing.small),
             child: InputDecorator(
               decoration: InputDecoration(
                 isDense: true,

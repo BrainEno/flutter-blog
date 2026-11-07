@@ -80,12 +80,15 @@ class _PeopleList extends StatelessWidget {
   Widget build(BuildContext context) {
     final capped = people.length == maxAuthorRelationshipResults;
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: NoWaveSpacing.medium,
+        vertical: 12,
+      ),
       itemCount: people.length + (capped ? 1 : 0),
       itemBuilder: (context, index) {
         if (capped && index == 0) {
           return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.only(bottom: NoWaveSpacing.medium),
             child: Semantics(
               liveRegion: true,
               child: Text(
