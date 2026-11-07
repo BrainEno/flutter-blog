@@ -174,7 +174,7 @@ class _CommentsSectionState extends State<CommentsSection> {
       case CommentListStatus.loading:
         return Center(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
+            padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.large),
             child: CircularProgressIndicator(
               semanticsLabel: context.l10n.loading,
             ),
@@ -182,7 +182,7 @@ class _CommentsSectionState extends State<CommentsSection> {
         );
       case CommentListStatus.failure:
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24),
+          padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.large),
           child: Column(
             children: [
               Text(
@@ -207,7 +207,7 @@ class _CommentsSectionState extends State<CommentsSection> {
       case CommentListStatus.loaded:
         if (state.comments.isEmpty) {
           return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
+            padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.large),
             child: Center(
               child: Text(
                 context.l10n.commentsEmpty,

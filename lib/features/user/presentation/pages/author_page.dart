@@ -207,7 +207,9 @@ class _AuthorPageState extends State<AuthorPage> {
                           }
                           if (articleState is GetBlogsByUserFailure) {
                             return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 24),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: NoWaveSpacing.large,
+                              ),
                               child: NoWaveStatus(
                                 message: articleState.error.isNotEmpty
                                     ? localizedFailure(
@@ -227,7 +229,9 @@ class _AuthorPageState extends State<AuthorPage> {
                               : const [];
                           if (blogs.isEmpty) {
                             return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 24),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: NoWaveSpacing.large,
+                              ),
                               child: Center(
                                 child: NoWaveStatus(
                                   message: context.l10n.authorNoArticles,

@@ -167,7 +167,9 @@ class _MessageInboxViewState extends State<_MessageInboxView> {
                     ],
                   )
                 : ListView.separated(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: NoWaveSpacing.small,
+                    ),
                     itemCount:
                         loaded.conversations.length +
                         (showStartCard ? 1 : 0) +
@@ -185,7 +187,12 @@ class _MessageInboxViewState extends State<_MessageInboxView> {
                       final row = index - (showStartCard ? 1 : 0);
                       if (row >= loaded.conversations.length) {
                         return Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                          padding: const EdgeInsets.fromLTRB(
+                            NoWaveSpacing.medium,
+                            12,
+                            NoWaveSpacing.medium,
+                            NoWaveSpacing.medium,
+                          ),
                           child: Text(
                             l10n.messagesInboxCapped(
                               MessageInboxCubit.pageLimit,
@@ -237,7 +244,12 @@ class _StartConversationCard extends StatelessWidget {
         ? recipient!.displayName
         : l10n.messagesUnknownParticipant;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: const EdgeInsets.fromLTRB(
+        NoWaveSpacing.medium,
+        NoWaveSpacing.small,
+        NoWaveSpacing.medium,
+        12,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -305,7 +317,12 @@ class _ConversationRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        padding: const EdgeInsets.fromLTRB(
+          NoWaveSpacing.medium,
+          12,
+          NoWaveSpacing.medium,
+          12,
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

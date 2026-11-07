@@ -90,9 +90,9 @@ class _AuthorSearchPageState extends State<AuthorSearchPage> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(
                 NoWaveSpacing.page,
-                24,
+                NoWaveSpacing.large,
                 NoWaveSpacing.page,
-                16,
+                NoWaveSpacing.medium,
               ),
               child: _contentWidth(
                 TextField(
@@ -173,7 +173,9 @@ class _AuthorSearchPageState extends State<AuthorSearchPage> {
                       if (capped && index == 0) {
                         return _contentWidth(
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.only(
+                              bottom: NoWaveSpacing.medium,
+                            ),
                             child: Semantics(
                               liveRegion: true,
                               child: Text(

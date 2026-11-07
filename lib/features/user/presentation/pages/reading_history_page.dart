@@ -238,7 +238,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                   ),
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
+                      horizontal: NoWaveSpacing.medium,
                       vertical: 6,
                     ),
                     leading: ClipRRect(

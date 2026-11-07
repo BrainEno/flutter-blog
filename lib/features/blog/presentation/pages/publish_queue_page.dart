@@ -310,7 +310,10 @@ class _StatusChip extends StatelessWidget {
       foreground = scheme.onErrorContainer;
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: NoWaveSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(12),

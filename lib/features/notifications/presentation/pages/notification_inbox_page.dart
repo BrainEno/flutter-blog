@@ -123,7 +123,9 @@ class _NotificationInboxView extends StatelessWidget {
                     ],
                   )
                 : ListView.separated(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: NoWaveSpacing.small,
+                    ),
                     itemCount: loaded.items.length + extra,
                     separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, index) {
@@ -166,7 +168,12 @@ class _UnreadSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.fromLTRB(
+        NoWaveSpacing.medium,
+        NoWaveSpacing.small,
+        NoWaveSpacing.medium,
+        NoWaveSpacing.small,
+      ),
       child: Text(
         context.l10n.notificationsUnreadCount(count),
         style: Theme.of(context).textTheme.bodySmall,
@@ -185,7 +192,12 @@ class _OlderHidden extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      padding: const EdgeInsets.fromLTRB(
+        NoWaveSpacing.medium,
+        12,
+        NoWaveSpacing.medium,
+        NoWaveSpacing.medium,
+      ),
       child: Text(
         context.l10n.notificationsOlderHidden(limit),
         style: Theme.of(context).textTheme.bodySmall,
@@ -238,7 +250,12 @@ class _NotificationRow extends StatelessWidget {
       color: item.isRead
           ? null
           : Theme.of(context).colorScheme.surfaceContainerHighest,
-      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      padding: const EdgeInsets.fromLTRB(
+        NoWaveSpacing.medium,
+        12,
+        NoWaveSpacing.small,
+        12,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -103,9 +103,9 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(
                 NoWaveSpacing.page,
-                24,
+                NoWaveSpacing.large,
                 NoWaveSpacing.page,
-                16,
+                NoWaveSpacing.medium,
               ),
               child: _contentWidth(
                 Column(

@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart'; // Shorthand for AppLocalizations
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:flutter/material.dart';
@@ -46,7 +47,10 @@ class EditorField extends StatelessWidget {
         minHeight: 80 * heightScale,
         maxHeight: 300 * heightScale,
       ),
-      padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 8.0),
+      padding: const EdgeInsets.symmetric(
+        vertical: 2.0,
+        horizontal: NoWaveSpacing.small,
+      ),
       child: TextFormField(
         controller: controller,
         autofocus: false,
@@ -110,7 +114,7 @@ class EditorField extends StatelessWidget {
       case BlogEditorContentType.body:
       default:
         return const EdgeInsets.symmetric(
-          vertical: 16.0,
+          vertical: NoWaveSpacing.medium,
           horizontal: 12.0,
         ); // Standard vertical padding for body
       // Adjust padding for other content types as needed

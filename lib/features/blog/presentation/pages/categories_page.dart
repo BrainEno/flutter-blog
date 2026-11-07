@@ -1,5 +1,4 @@
 import 'package:belog/core/common/widgets/no_wave_status.dart';
-import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
@@ -109,7 +108,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
         if (index == 0) {
           return _contentWidth(
             Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.only(bottom: NoWaveSpacing.medium),
               child: Text(
                 l10n.categoriesDescription,
                 style: NoWaveTypography.meta(context),
@@ -125,7 +124,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
           }
           return _contentWidth(
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: NoWaveSpacing.small),
               child: Semantics(
                 liveRegion: true,
                 child: Text(

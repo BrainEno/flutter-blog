@@ -3,7 +3,6 @@ import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/common/widgets/no_wave_masthead.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
-import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/l10n/locale_bloc.dart';
@@ -245,7 +244,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     physics: const AlwaysScrollableScrollPhysics(),
     padding: const EdgeInsets.fromLTRB(
       NoWaveSpacing.page,
-      24,
+      NoWaveSpacing.large,
       NoWaveSpacing.page,
       NoWaveSpacing.section,
     ),
@@ -312,7 +311,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(
         NoWaveSpacing.page,
-        24,
+        NoWaveSpacing.large,
         NoWaveSpacing.page,
         NoWaveSpacing.section,
       ),
@@ -321,7 +320,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
         if (index == 0) {
           return _contentWidth(
             Padding(
-              padding: const EdgeInsets.only(bottom: 24),
+              padding: const EdgeInsets.only(bottom: NoWaveSpacing.large),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
