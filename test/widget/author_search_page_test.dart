@@ -45,6 +45,9 @@ AuthorSearchCubit _cubit(ScriptedRepository repository) => AuthorSearchCubit(
   browseAuthors: BrowseAuthors(repository),
 );
 
+/// The page's own list; the search field contains a second scrollable.
+final Finder _list = find.byType(Scrollable).first;
+
 const _directoryDescription =
     'Only authors with a published work here are listed, ordered by followers.';
 
@@ -377,7 +380,8 @@ void main() {
     expect((cubit.state as AuthorSearchDirectory).hasMore, isTrue);
 
     final more = find.widgetWithText(TextButton, 'Load more authors');
-    await tester.scrollUntilVisible(more, 400);
+    // The search field is its own scrollable, so name the list explicitly.
+    await tester.scrollUntilVisible(more, 400, scrollable: _list);
     await tester.tap(more);
     await tester.pump();
     expect(repository.directoryOffsets, [0, 100]);
@@ -395,7 +399,7 @@ void main() {
     expect(loaded.people, hasLength(101));
     expect(loaded.hasMore, isFalse);
     expect(find.text('Load more authors'), findsNothing);
-    await tester.scrollUntilVisible(find.text('Last'), 400);
+    await tester.scrollUntilVisible(find.text('Last'), 400, scrollable: _list);
     expect(find.text('Last'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
