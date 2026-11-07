@@ -56,7 +56,10 @@ void main() {
     expect(find.text('000'), findsOneWidget);
     expect(find.text('载入中 · LOADING'), findsOneWidget);
     expect(
-      find.byType(FractionalTranslation),
+      find.descendant(
+        of: find.byType(NoWaveSplashScreen),
+        matching: find.byType(FractionalTranslation),
+      ),
       findsNWidgets(NoWaveSizes.splashColumns),
       reason: 'six columns, the same count the web loader cuts',
     );
@@ -94,10 +97,15 @@ void main() {
     );
     expect(finished, isFalse);
 
-    // 088 → 100 is the last stretch, after boot reported.
-    await tester.pump(NoWaveMotion.counter);
-    await tester.pump(NoWaveMotion.counterFinish);
-    expect(find.text('100'), findsOneWidget);
+    // 088 → 100 is the last stretch, after boot reported. It is a fixed
+    // number of frames away, not a guess: stepping keeps the assertion about
+    // the destination instead of about the scheduler's arithmetic.
+    var sawHundred = false;
+    for (var frame = 0; frame < 60 && !sawHundred; frame++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      sawHundred = tester.any(find.text('100'));
+    }
+    expect(sawHundred, isTrue, reason: 'the counter ends on 100, not on 088');
 
     await tester.pumpAndSettle();
     expect(finished, isTrue);

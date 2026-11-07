@@ -112,18 +112,25 @@ class _NoWaveBootAppState extends State<NoWaveBootApp> {
     // where the ink placeholder was, and the curtain is only removed once it
     // has already left the screen. Inserting the app *behind* the curtain is
     // what makes the lift a reveal instead of a swap.
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (_ready)
-          ExcludeSemantics(
-            excluding: !_curtainGone,
-            child: IgnorePointer(ignoring: !_curtainGone, child: _buildApp()),
-          )
-        else
-          const ColoredBox(color: AppPalette.ink),
-        if (!_curtainGone) _curtain(),
-      ],
+    //
+    // The Directionality is for the placeholder, not for the app: each child
+    // brings its own `MaterialApp`, but the `Stack` itself sits above both and
+    // has no ancestor to read a text direction from at the root of `runApp`.
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (_ready)
+            ExcludeSemantics(
+              excluding: !_curtainGone,
+              child: IgnorePointer(ignoring: !_curtainGone, child: _buildApp()),
+            )
+          else
+            const ColoredBox(color: AppPalette.ink),
+          if (!_curtainGone) _curtain(),
+        ],
+      ),
     );
   }
 
