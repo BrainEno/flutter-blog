@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
+import 'package:belog/core/design/components/no_wave_skeleton.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/format_date.dart';
@@ -192,11 +193,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
         ],
       ),
       body: loading
-          ? Center(
-              child: CircularProgressIndicator(
-                semanticsLabel: context.l10n.loading,
-              ),
-            )
+          ? NoWaveSkeletonList(semanticLabel: context.l10n.loading)
           : entries.isEmpty
           ? Center(
               child: Column(

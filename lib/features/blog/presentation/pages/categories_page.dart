@@ -1,4 +1,5 @@
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -51,7 +52,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
         builder: (context, state) {
           if (state is CategoriesInitial || state is CategoriesLoading) {
             return Center(
-              child: CircularProgressIndicator(semanticsLabel: l10n.loading),
+              child: NoWaveLoadingLabel(semanticLabel: l10n.loading),
             );
           }
           if (state is CategoriesFailure) {

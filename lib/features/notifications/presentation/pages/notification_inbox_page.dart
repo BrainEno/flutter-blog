@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_skeleton.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -87,10 +88,9 @@ class _NotificationInboxView extends StatelessWidget {
       body: BlocBuilder<NotificationInboxCubit, NotificationInboxState>(
         builder: (context, state) {
           if (state is NotificationInboxLoading) {
-            return Center(
-              child: CircularProgressIndicator(
-                semanticsLabel: context.l10n.loading,
-              ),
+            return NoWaveSkeletonList(
+              thumbnails: false,
+              semanticLabel: context.l10n.loading,
             );
           }
           if (state is NotificationInboxSignedOut) {

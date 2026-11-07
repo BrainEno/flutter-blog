@@ -1,5 +1,6 @@
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/components/no_wave_skeleton.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
@@ -136,8 +137,9 @@ class _MessageInboxViewState extends State<_MessageInboxView> {
           // then never see it.
           if (state is MessageInboxLoaded) _handlePendingStart(state);
           if (state is MessageInboxLoading) {
-            return Center(
-              child: CircularProgressIndicator(semanticsLabel: l10n.loading),
+            return NoWaveSkeletonList(
+              thumbnails: false,
+              semanticLabel: l10n.loading,
             );
           }
           if (state is MessageInboxSignedOut) {

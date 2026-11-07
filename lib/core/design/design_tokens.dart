@@ -148,6 +148,13 @@ abstract final class NoWaveSizes {
   /// How long the decorative segment is: wide enough to read as a rule, short
   /// enough not to look like a progress bar that is 18% done.
   static const splashProgressLength = 72.0;
+
+  /// The short rule above a loading label: a printed mark, not a spinner.
+  static const loadingRule = 40.0;
+
+  /// Thickness of one skeleton line. Roughly the x-height of body copy, so a
+  /// placeholder row is the height of the row it stands in for.
+  static const skeletonLine = 12.0;
 }
 
 /// Opacity of lines and overlays that are not semantic colours.
@@ -163,6 +170,10 @@ abstract final class NoWaveOpacity {
 
   /// A disabled control.
   static const disabledAlpha = 97;
+
+  /// A skeleton block: a shape that says "content is coming" without
+  /// competing with the content it will be replaced by.
+  static const skeletonAlpha = 28;
 }
 
 /// Motion. Short enough to feel like a native tap, long enough to be visible.

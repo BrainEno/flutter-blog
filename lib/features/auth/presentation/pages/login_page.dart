@@ -2,7 +2,7 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/common/widgets/language_menu_button.dart';
 import 'package:belog/core/l10n/l10n.dart';
-import 'package:belog/core/common/widgets/loader.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
@@ -107,7 +107,7 @@ class _LoginPageState extends State<LoginPage> {
               },
               builder: (context, state) {
                 if (state is AuthLoading) {
-                  return const Loader();
+                  return const Center(child: NoWaveLoadingLabel());
                 }
                 return Form(
                   key: formKey,

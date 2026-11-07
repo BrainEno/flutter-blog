@@ -2,6 +2,7 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -124,9 +125,7 @@ class _AuthorPageState extends State<AuthorPage> {
         builder: (context, state) {
           if (state is AuthorLoading) {
             return Center(
-              child: CircularProgressIndicator(
-                semanticsLabel: context.l10n.loading,
-              ),
+              child: NoWaveLoadingLabel(semanticLabel: context.l10n.loading),
             );
           }
           if (state is AuthorFailure) {
@@ -200,8 +199,8 @@ class _AuthorPageState extends State<AuthorPage> {
                           if (articleState is GetBlogsByUserLoading ||
                               articleState is BlogByInitial) {
                             return Center(
-                              child: CircularProgressIndicator(
-                                semanticsLabel: context.l10n.loadingArticles,
+                              child: NoWaveLoadingLabel(
+                                semanticLabel: context.l10n.loadingArticles,
                               ),
                             );
                           }

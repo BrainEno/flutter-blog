@@ -1,4 +1,5 @@
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -109,9 +110,7 @@ class _CategoryArticlesPageState extends State<CategoryArticlesPage> {
             if (state is CategoryArticlesLoading ||
                 state is CategoryArticlesInitial) {
               return Center(
-                child: CircularProgressIndicator(
-                  semanticsLabel: l10n.loadingArticles,
-                ),
+                child: NoWaveLoadingLabel(semanticLabel: l10n.loadingArticles),
               );
             }
             if (state is CategoryArticlesNotFound) {
@@ -200,8 +199,9 @@ class _CategoryArticlesPageState extends State<CategoryArticlesPage> {
             return Padding(
               padding: const EdgeInsets.all(NoWaveSpacing.medium),
               child: Center(
-                child: CircularProgressIndicator(
-                  semanticsLabel: l10n.loadingMoreArticles,
+                child: NoWaveLoadingLabel(
+                  semanticLabel: l10n.loadingMoreArticles,
+                  compact: true,
                 ),
               ),
             );

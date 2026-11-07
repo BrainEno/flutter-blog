@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_skeleton.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
@@ -161,7 +162,7 @@ void main() {
     addTearDown(harness.dispose);
     await harness.pump(tester);
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(NoWaveSkeletonList), findsOneWidget);
     expect(harness.repository.calls, ['list']);
 
     harness.repository.rows = [

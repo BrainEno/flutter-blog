@@ -1,5 +1,5 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
-import 'package:belog/core/common/widgets/loader.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -166,7 +166,7 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
             ),
           );
         }
-        return const Scaffold(body: Loader());
+        return const Scaffold(body: Center(child: NoWaveLoadingLabel()));
       },
     );
   }

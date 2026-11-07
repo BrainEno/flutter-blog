@@ -421,6 +421,7 @@
   },
   "imageLabel": "Image",
   "loading": "Loading…",
+  "loadingLabel": "LOADING",
   "loadingArticles": "Loading articles…",
   "loadingMoreArticles": "Loading more articles…",
   "searching": "Searching…",

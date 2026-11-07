@@ -78,11 +78,12 @@ abstract final class NoWaveTypography {
         );
   }
 
-  /// The line under the wordmark, and the label under the counter.
+  /// The printed meta line: under the wordmark, under the cold-start counter,
+  /// and in a loading state's sentence.
   ///
   /// CJK serif first: a Chinese line set in Inter Tight falls back to a sans
-  /// face that fights the wordmark above it.
-  static TextStyle splashMeta(
+  /// face that fights the serif it sits next to.
+  static TextStyle metaLabel(
     BuildContext context, {
     double size = 13,
     Color? color,

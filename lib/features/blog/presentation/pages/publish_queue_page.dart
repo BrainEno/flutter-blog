@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
@@ -68,9 +69,7 @@ class _PublishQueueView extends StatelessWidget {
         builder: (context, state) {
           if (state is PublishQueueLoading) {
             return Center(
-              child: CircularProgressIndicator(
-                semanticsLabel: context.l10n.loading,
-              ),
+              child: NoWaveLoadingLabel(semanticLabel: context.l10n.loading),
             );
           }
           if (state is PublishQueueFailure) {

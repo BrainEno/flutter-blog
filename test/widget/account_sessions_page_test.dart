@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
@@ -142,7 +143,7 @@ void main() {
       final harness = _Harness();
       addTearDown(harness.dispose);
       await harness.pump(tester);
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(NoWaveLoadingLabel), findsOneWidget);
       expect(harness.repository.fences.single.userId, 'user-a');
       expect(harness.repository.fences.single.generation, 1);
       harness.repository.pending.single.complete(
@@ -183,7 +184,7 @@ void main() {
     await tester.pump();
     expect(harness.repository.pending, hasLength(2));
     expect(find.text('This session'), findsNothing);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(NoWaveLoadingLabel), findsOneWidget);
     harness.repository.pending.last.complete(left(Failure.networkOffline()));
     await tester.pumpAndSettle();
     expect(find.text('This session'), findsNothing);

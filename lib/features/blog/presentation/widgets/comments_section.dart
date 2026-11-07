@@ -1,5 +1,6 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -175,9 +176,7 @@ class _CommentsSectionState extends State<CommentsSection> {
         return Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.large),
-            child: CircularProgressIndicator(
-              semanticsLabel: context.l10n.loading,
-            ),
+            child: NoWaveLoadingLabel(semanticLabel: context.l10n.loading),
           ),
         );
       case CommentListStatus.failure:
