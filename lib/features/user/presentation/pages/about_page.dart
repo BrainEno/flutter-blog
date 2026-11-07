@@ -110,9 +110,9 @@ class _AboutPageState extends State<AboutPage> {
       appBar: AppBar(title: Text(l10n.aboutTitle)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(
-            horizontal: NoWaveSpacing.section,
-            vertical: NoWaveSpacing.large,
-          ),
+          horizontal: NoWaveSpacing.section,
+          vertical: NoWaveSpacing.large,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
