@@ -5,6 +5,7 @@ import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/notifications/domain/entities/app_notification.dart';
 import 'package:belog/features/notifications/presentation/bloc/notification_inbox_cubit.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -295,9 +296,10 @@ class _InboxError extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
-            OutlinedButton(
+            NoWaveButton(
+              label: context.l10n.notificationsRetry,
+              variant: NoWaveButtonVariant.secondary,
               onPressed: () => context.read<NotificationInboxCubit>().load(),
-              child: Text(context.l10n.notificationsRetry),
             ),
           ],
         ),
@@ -332,7 +334,11 @@ class _EmptyInbox extends StatelessWidget {
             Text(body, textAlign: TextAlign.center),
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: 16),
-              OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
+              NoWaveButton(
+                label: actionLabel!,
+                variant: NoWaveButtonVariant.secondary,
+                onPressed: onAction,
+              ),
             ],
           ],
         ),

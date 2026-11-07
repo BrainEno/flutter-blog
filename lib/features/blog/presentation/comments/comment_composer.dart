@@ -3,6 +3,7 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_state.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 
 /// The comment input: an optional "replying to" banner, the text field and the
@@ -81,19 +82,11 @@ class CommentComposer extends StatelessWidget {
         const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerRight,
-          child: FilledButton.icon(
+          child: NoWaveButton(
+            label: context.l10n.actionSend,
+            icon: Icons.send,
+            isLoading: state.submitting,
             onPressed: state.submitting ? null : onSubmit,
-            icon: state.submitting
-                ? SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      semanticsLabel: context.l10n.loading,
-                    ),
-                  )
-                : const Icon(Icons.send, size: 16),
-            label: Text(context.l10n.actionSend),
           ),
         ),
       ],

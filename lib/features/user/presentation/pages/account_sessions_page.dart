@@ -11,6 +11,7 @@ import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/user/domain/entities/account_session.dart';
 import 'package:belog/features/user/domain/entities/session_revoke_outcome.dart';
 import 'package:belog/features/user/domain/repositories/account_session_repository.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -332,13 +333,12 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
                         // The lost-phone answer: everything else goes, this
                         // device stays. Offered before the rows because it is
                         // the reason most people open this page.
-                        OutlinedButton(
+                        NoWaveButton(
+                          label: _revokingOthers
+                              ? l10n.accountSessionsEnding
+                              : l10n.accountSessionsEndOthers,
+                          variant: NoWaveButtonVariant.secondary,
                           onPressed: _busy ? null : _confirmEndOthers,
-                          child: Text(
-                            _revokingOthers
-                                ? l10n.accountSessionsEnding
-                                : l10n.accountSessionsEndOthers,
-                          ),
                         ),
                         const SizedBox(height: 16),
                         for (final session in sessions)

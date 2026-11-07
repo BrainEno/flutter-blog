@@ -10,6 +10,7 @@ import 'package:belog/features/user/domain/entities/session_revoke_outcome.dart'
 import 'package:belog/features/user/domain/repositories/account_session_repository.dart';
 import 'package:belog/features/user/presentation/pages/account_sessions_page.dart';
 import 'package:belog/l10n/app_localizations.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -420,8 +421,8 @@ void main() {
     expect(harness.repository.revoked.single.fence.userId, 'user-a');
     // In flight: the row says so and the bulk action is disabled.
     expect(find.text('Ending…'), findsOneWidget);
-    final others = tester.widget<OutlinedButton>(
-      find.widgetWithText(OutlinedButton, 'End other sessions'),
+    final others = tester.widget<NoWaveButton>(
+      find.widgetWithText(NoWaveButton, 'End other sessions'),
     );
     expect(others.onPressed, isNull);
 

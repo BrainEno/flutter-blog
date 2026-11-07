@@ -17,6 +17,7 @@ import 'package:belog/features/user/presentation/pages/author_page.dart';
 import 'package:belog/features/user/domain/entities/author_profile.dart';
 import 'package:belog/features/user/domain/usecases/author.dart';
 import 'package:belog/features/user/presentation/bloc/author/author_cubit.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -476,10 +477,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('关注'));
       await tester.pump();
-      expect(
-        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-        isNull,
+      final follow = tester.widget<NoWaveButton>(
+        find.widgetWithText(NoWaveButton, '关注'),
       );
+      expect(follow.onPressed, isNull);
       await tester.tap(find.text('关注'), warnIfMissed: false);
       await tester.pump();
       verify(() => followAuthor('author-1')).called(1);
