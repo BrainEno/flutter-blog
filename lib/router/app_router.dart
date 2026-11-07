@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/utils/article_deep_link.dart';
@@ -61,6 +62,7 @@ import 'package:belog/features/user/presentation/pages/reading_history_page.dart
 import 'package:belog/init_dependencies.dart';
 import 'package:belog/router/home_shell.dart';
 import 'package:belog/router/read_aloud_route_observers.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -118,15 +120,15 @@ GoRouter createAppRouter({
     errorBuilder: (context, state) => Scaffold(
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(NoWaveSpacing.large),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(context.l10n.pageNotFound),
               const SizedBox(height: 16),
-              FilledButton(
+              NoWaveButton(
+                label: context.l10n.backToHome,
                 onPressed: () => context.go('/'),
-                child: Text(context.l10n.backToHome),
               ),
             ],
           ),

@@ -8,6 +8,7 @@ import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/messages/domain/entities/conversation.dart';
 import 'package:belog/features/messages/domain/entities/message_participant.dart';
 import 'package:belog/features/messages/presentation/bloc/message_inbox_cubit.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -244,9 +245,9 @@ class _StartConversationCard extends StatelessWidget {
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 8),
-          FilledButton(
+          NoWaveButton(
+            label: starting ? l10n.messagesStarting : l10n.messagesStart,
             onPressed: starting ? null : onStart,
-            child: Text(starting ? l10n.messagesStarting : l10n.messagesStart),
           ),
         ],
       ),

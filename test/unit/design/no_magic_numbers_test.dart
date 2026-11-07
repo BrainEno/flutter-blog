@@ -36,7 +36,7 @@ void main() {
     'features/auth/presentation/pages/email_verification_page.dart': 14,
     'features/auth/presentation/pages/login_page.dart': 10,
     'features/auth/presentation/pages/signup_page.dart': 9,
-    'features/blog/presentation/comments/comment_composer.dart': 3,
+    'features/blog/presentation/comments/comment_composer.dart': 2,
     'features/blog/presentation/comments/comment_login_prompt.dart': 3,
     'features/blog/presentation/comments/comment_tile.dart': 8,
     'features/blog/presentation/editor/editor_app_bar.dart': 2,
@@ -70,13 +70,13 @@ void main() {
         21,
     'features/user/presentation/pages/about_page.dart': 9,
     'features/user/presentation/pages/account_sessions_page.dart': 11,
-    'features/user/presentation/pages/author_page.dart': 17,
+    'features/user/presentation/pages/author_page.dart': 16,
     'features/user/presentation/pages/author_relationships_page.dart': 9,
     'features/user/presentation/pages/author_search_page.dart': 10,
     'features/user/presentation/pages/edit_user_info_page.dart': 7,
     'features/user/presentation/pages/profile_page.dart': 7,
     'features/user/presentation/pages/reading_history_page.dart': 6,
-    'router/app_router.dart': 2,
+    'router/app_router.dart': 1,
   };
 
   // Paths are relative to `lib/`, which keeps the budget readable.
@@ -131,7 +131,7 @@ void main() {
       total += _spacingLiterals(File('lib/$path').readAsStringSync());
     }
     // Lower this when a page is migrated; never raise it.
-    const ceiling = 361;
+    const ceiling = 358;
     expect(
       total,
       lessThanOrEqualTo(ceiling),

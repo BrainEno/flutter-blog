@@ -15,6 +15,7 @@ import 'package:belog/features/user/domain/entities/author_profile.dart';
 import 'package:belog/features/user/domain/entities/author_relationship.dart';
 import 'package:belog/features/user/presentation/bloc/author/author_cubit.dart';
 import 'package:belog/router/shell_branch_location.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -372,33 +373,22 @@ class _FollowButton extends StatelessWidget {
 
     final following = loaded.profile.isFollowing;
     final inFlight = loaded.followInFlight;
-    const shape = RoundedRectangleBorder(borderRadius: BorderRadius.zero);
-    final progress = SizedBox(
-      width: 14,
-      height: 14,
-      child: CircularProgressIndicator(
-        strokeWidth: 2,
-        semanticsLabel: context.l10n.loading,
-      ),
-    );
 
     return Semantics(
       toggled: following,
-      child: following
-          ? OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(shape: shape),
-              onPressed: inFlight ? null : onTap,
-              icon: inFlight ? progress : const Icon(Icons.check, size: 16),
-              label: Text(context.l10n.followingButton),
-            )
-          : FilledButton.icon(
-              style: FilledButton.styleFrom(shape: shape),
-              onPressed: inFlight ? null : onTap,
-              icon: inFlight
-                  ? progress
-                  : const Icon(Icons.person_add_alt_1, size: 16),
-              label: Text(context.l10n.followButton),
-            ),
+      child: NoWaveButton(
+        label: following
+            ? context.l10n.followingButton
+            : context.l10n.followButton,
+        icon: following ? Icons.check : Icons.person_add_alt_1,
+        // Following is the resting state, so unfollow reads as secondary;
+        // the action the page is asking for - follow - is the primary one.
+        variant: following
+            ? NoWaveButtonVariant.secondary
+            : NoWaveButtonVariant.primary,
+        isLoading: inFlight,
+        onPressed: inFlight ? null : onTap,
+      ),
     );
   }
 }

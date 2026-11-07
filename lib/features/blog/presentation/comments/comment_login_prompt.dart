@@ -1,4 +1,5 @@
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 
 /// Shown instead of [CommentComposer] to signed-out readers.
@@ -26,9 +27,10 @@ class CommentLoginPrompt extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 12),
-          FilledButton.tonal(
+          NoWaveButton(
+            label: context.l10n.goSignIn,
+            variant: NoWaveButtonVariant.secondary,
             onPressed: onRequestLogin,
-            child: Text(context.l10n.goSignIn),
           ),
         ],
       ),

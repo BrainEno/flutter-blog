@@ -5,6 +5,7 @@ import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -79,11 +80,12 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                 children: [
                   Text(localizedFailure(context.l10n, state.failure)),
                   const SizedBox(height: 12),
-                  FilledButton.tonal(
+                  NoWaveButton(
+                    label: context.l10n.actionRetry,
+                    variant: NoWaveButtonVariant.secondary,
                     onPressed: () => context.read<RecycleBinBloc>().add(
                       RecycleBinRequested(),
                     ),
-                    child: Text(context.l10n.actionRetry),
                   ),
                 ],
               ),

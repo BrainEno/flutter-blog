@@ -2,6 +2,7 @@ import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/presentation/blocs/publish_queue/publish_queue_cubit.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -80,9 +81,10 @@ class _PublishQueueView extends StatelessWidget {
                   children: [
                     Text(localizedFailure(context.l10n, state.failure)),
                     const SizedBox(height: 12),
-                    OutlinedButton(
+                    NoWaveButton(
+                      label: context.l10n.publishQueueRetry,
+                      variant: NoWaveButtonVariant.secondary,
                       onPressed: () => context.read<PublishQueueCubit>().load(),
-                      child: Text(context.l10n.publishQueueRetry),
                     ),
                   ],
                 ),
@@ -150,7 +152,11 @@ class _QueueEmpty extends StatelessWidget {
             Text(body, textAlign: TextAlign.center),
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: 16),
-              OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
+              NoWaveButton(
+                label: actionLabel!,
+                variant: NoWaveButtonVariant.secondary,
+                onPressed: onAction,
+              ),
             ],
           ],
         ),
