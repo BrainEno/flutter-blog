@@ -49,8 +49,9 @@ boot 抛异常（`initDependencies` 校验 `API_BASE_URL`、打开本地存储�
 
 ## 三、三条降级路径
 
-- **系统「减少动态效果」**（`MediaQuery.disableAnimationsOf`）：不计数、不撕幕布，静止
-  首帧 + boot 一完成就交棒。
+- **减少动效**（`NoWaveMotionPolicy.reducesMotion`：系统的「减少动态效果」开关，**或**
+  读屏——读屏一次只读一个元素，幕布在它下面撕开没有意义）：不计数、不撕幕布，静止首帧
+  + boot 一完成就交棒。
 - **同一进程里已经播过**（`NoWaveSplashScreen._hasPlayed`）：热重载或重建不重播开屏，
   同样走静止首帧。测试里用 `resetForTest()` 复位。
 - **boot 超时**（`splashBail`）：到点无条件揭幕，剩下的加载/错误交给 app 自己的状态。

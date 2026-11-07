@@ -62,7 +62,7 @@
 | `NoWaveSizes.tapTarget` | 48 | 最小点击区域 |
 | `NoWaveSizes.primaryAction` | 52 | 整宽主按钮高度 |
 | `NoWaveSizes.row` | 64 | 可点列表行最小高度 |
-| `NoWaveSizes.coverAspect` | 4/3 | 所有文章封面 |
+| `NoWaveSizes.coverAspect` | 4/3 | 网格项里的封面比例（feed 卡片与阅读页头是 16:10） |
 | `NoWaveSizes.maxReadingWidth` | 720 | 平板上的正文最大宽度 |
 | `NoWaveSizes.coverEditorBox` | 250 | 编辑器里固定的封面框（三种状态同框，表单不跳） |
 | `NoWaveSizes.emptyStateOffset` | 48 | 空态/加载态在列表里从多高开始 |
@@ -126,8 +126,13 @@
 
 ### 断点 `NoWaveBreakpoints`
 
-`columnsFor(width)`：< 600 → 2 列，600–899 → 3 列，≥ 900 → 4 列。列表、骨架屏和
-未来的平板侧栏都读这一个函数，避免各算一套。
+| token | 值 | 说明 |
+| --- | --- | --- |
+| `medium` | 600 | 两列的上限；从这里起三列 |
+| `expanded` | 900 | 从这里起四列 |
+
+`columnsFor(width)`：< `medium` → 2 列，`medium`–`expanded` → 3 列，≥ `expanded` → 4 列。
+列表、骨架屏和未来的平板侧栏都读这一个函数与它的 token，避免各算一套。
 
 ### 主题映射
 
