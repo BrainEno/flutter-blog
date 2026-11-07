@@ -125,7 +125,7 @@ GoRouter createAppRouter({
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(context.l10n.pageNotFound),
-              const SizedBox(height: 16),
+              const SizedBox(height: NoWaveSpacing.medium),
               NoWaveButton(
                 label: context.l10n.backToHome,
                 onPressed: () => context.go('/'),

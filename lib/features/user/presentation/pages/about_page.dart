@@ -117,14 +117,14 @@ class _AboutPageState extends State<AboutPage> {
               l10n.aboutHeading,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: NoWaveSpacing.medium),
             Text(l10n.aboutBody),
             const SizedBox(height: 20),
             Text(
               l10n.contactHeading,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: NoWaveSpacing.medium),
             Text(l10n.emailLabel),
             TextButton(
               onPressed: () =>
@@ -143,7 +143,7 @@ class _AboutPageState extends State<AboutPage> {
               l10n.versionHeading,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: NoWaveSpacing.medium),
             // Long-press remains a shortcut; the report is still never sent
             // automatically (issue #49).
             InkWell(

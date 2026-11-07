@@ -3,6 +3,7 @@ import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/common/widgets/no_wave_masthead.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/l10n/locale_bloc.dart';
@@ -183,8 +184,8 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
           0,
         ),
         child: Wrap(
-          spacing: 8,
-          runSpacing: 4,
+          spacing: NoWaveSpacing.small,
+          runSpacing: NoWaveSpacing.xs,
           children: [
             for (final (kind, label) in [
               (BlogFeedKind.latest, l10n.feedTabLatest),
@@ -222,7 +223,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
           eyebrow: l10n.feedEyebrow,
         ),
         if (kind == BlogFeedKind.popular) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: NoWaveSpacing.small),
           Text(
             l10n.feedPopularDescription,
             style: NoWaveTypography.meta(context),
@@ -352,7 +353,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
           }
           if (loadingMore) {
             return Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(NoWaveSpacing.medium),
               child: Center(
                 child: CircularProgressIndicator(
                   semanticsLabel: l10n.loadingMoreArticles,
@@ -361,7 +362,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
             );
           }
           return Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(NoWaveSpacing.medium),
             child: Center(
               child: Text(
                 isCached ? l10n.feedCachedNoMore : l10n.feedNoMore,

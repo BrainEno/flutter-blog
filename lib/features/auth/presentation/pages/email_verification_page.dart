@@ -10,6 +10,7 @@ import 'package:belog/features/auth/domain/email_verification.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -249,10 +250,10 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                             text: localizedFailure(l10n, _sessionChanged),
                             isError: true,
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: NoWaveSpacing.medium),
                         ],
                         ..._statusSection(context, l10n),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: NoWaveSpacing.large),
                         NoWaveButton(
                           label: _sending
                               ? l10n.emailVerifySending
@@ -276,12 +277,12 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                             isError: true,
                           ),
                         ],
-                        const SizedBox(height: 24),
+                        const SizedBox(height: NoWaveSpacing.large),
                         Text(
                           l10n.emailVerifyPasteTitle,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: NoWaveSpacing.xs),
                         Text(l10n.emailVerifyPasteHint),
                         const SizedBox(height: 12),
                         TextFormField(
@@ -350,7 +351,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     if (_statusFailure != null) {
       return [
         _Notice(text: localizedFailure(l10n, _statusFailure!), isError: true),
-        const SizedBox(height: 8),
+        const SizedBox(height: NoWaveSpacing.small),
         Align(
           alignment: AlignmentDirectional.centerStart,
           child: TextButton(
@@ -364,7 +365,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     return [
       if (status.email.isNotEmpty) ...[
         Text(status.email, style: theme.textTheme.bodyMedium),
-        const SizedBox(height: 8),
+        const SizedBox(height: NoWaveSpacing.small),
       ],
       if (status.verifiedAt != null)
         Semantics(
@@ -377,7 +378,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
         )
       else
         Semantics(liveRegion: true, child: Text(l10n.emailVerifyUnverified)),
-      const SizedBox(height: 8),
+      const SizedBox(height: NoWaveSpacing.small),
       Align(
         alignment: AlignmentDirectional.centerStart,
         child: TextButton(

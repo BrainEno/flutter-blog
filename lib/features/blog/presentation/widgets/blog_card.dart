@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
@@ -51,8 +52,8 @@ class BlogCard extends StatelessWidget {
 
   Widget _metadata(BuildContext context) {
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: NoWaveSpacing.small,
+      runSpacing: NoWaveSpacing.small,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         for (final tag in blog.tags)
@@ -84,7 +85,7 @@ class BlogCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: NoWaveTypography.title(context, size: 30),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: NoWaveSpacing.small),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -123,14 +124,14 @@ class BlogCard extends StatelessWidget {
                 style: NoWaveTypography.meta(context),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: NoWaveSpacing.small),
           ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _metadata(context),
-                const SizedBox(height: 8),
+                const SizedBox(height: NoWaveSpacing.small),
                 Text(
                   blog.title,
                   maxLines: 2,

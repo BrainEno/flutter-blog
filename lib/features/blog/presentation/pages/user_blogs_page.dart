@@ -171,7 +171,7 @@ class _UserBlogsPageState extends State<UserBlogsPage>
             if (state is GetBlogsByUserFailure) {
               return Center(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(NoWaveSpacing.medium),
                   child: NoWaveStatus(
                     message: localizedFailure(context.l10n, state.failure),
                     actionLabel: context.l10n.actionRetry,

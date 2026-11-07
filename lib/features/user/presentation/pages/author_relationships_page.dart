@@ -1,5 +1,6 @@
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -42,7 +43,7 @@ class AuthorRelationshipsPage extends StatelessWidget {
           ),
           AuthorRelationshipsFailed(:final failure) => Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(NoWaveSpacing.large),
               child: NoWaveStatus(
                 message: localizedFailure(l10n, failure),
                 actionLabel: l10n.actionRetry,
@@ -53,7 +54,7 @@ class AuthorRelationshipsPage extends StatelessWidget {
           AuthorRelationshipsLoaded(:final people) when people.isEmpty =>
             Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(NoWaveSpacing.large),
                 child: NoWaveStatus(
                   message: followers
                       ? l10n.followersEmpty
@@ -129,7 +130,7 @@ class _PeopleList extends StatelessWidget {
                               style: NoWaveTypography.title(context, size: 20),
                             ),
                             if (person.bio.trim().isNotEmpty) ...[
-                              const SizedBox(height: 4),
+                              const SizedBox(height: NoWaveSpacing.xs),
                               Text(
                                 person.bio,
                                 maxLines: 3,
@@ -139,7 +140,7 @@ class _PeopleList extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: NoWaveSpacing.small),
                       const ExcludeSemantics(child: Icon(Icons.chevron_right)),
                     ],
                   ),

@@ -1,5 +1,6 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/format_date.dart';
@@ -159,7 +160,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                 onCancelReply: _cancelReply,
                 onSubmit: _submit,
               ),
-            const SizedBox(height: 16),
+            const SizedBox(height: NoWaveSpacing.medium),
             _buildList(state),
           ],
         );

@@ -1,4 +1,5 @@
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
@@ -43,8 +44,8 @@ class ArticleReaderHeader extends StatelessWidget {
       children: [
         if (blog.tags.isNotEmpty) ...[
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: NoWaveSpacing.small,
+            runSpacing: NoWaveSpacing.small,
             children: [
               for (final tag in blog.tags)
                 ArticleTagLabel(
@@ -53,7 +54,7 @@ class ArticleReaderHeader extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: NoWaveSpacing.medium),
         ],
         KeyedSubtree(
           key: titleKey,
@@ -77,7 +78,7 @@ class ArticleReaderHeader extends StatelessWidget {
                   ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: NoWaveSpacing.large),
         Divider(height: 1, color: scheme.onSurface.withAlpha(130)),
         Semantics(
           button: true,
@@ -106,10 +107,10 @@ class ArticleReaderHeader extends StatelessWidget {
                             name,
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: NoWaveSpacing.xs),
                           Wrap(
-                            spacing: 8,
-                            runSpacing: 4,
+                            spacing: NoWaveSpacing.small,
+                            runSpacing: NoWaveSpacing.xs,
                             children: [
                               Text(
                                 formatDate(
@@ -127,7 +128,7 @@ class ArticleReaderHeader extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: NoWaveSpacing.small),
                     const ExcludeSemantics(
                       child: Icon(Icons.arrow_forward, size: 20),
                     ),
@@ -141,7 +142,7 @@ class ArticleReaderHeader extends StatelessWidget {
         // Avoid repeating the first one as an invented cover.
         if (blog.document?.supported != true ||
             blog.document?.hasImages != true) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: NoWaveSpacing.small),
           ArticleCover(title: blog.title, imageUrl: blog.imageUrl),
         ],
       ],

@@ -1,4 +1,5 @@
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
@@ -177,7 +178,7 @@ class _CategoryArticlesPageState extends State<CategoryArticlesPage> {
           final failed = state.loadMoreFailure;
           if (failed != null) {
             return Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(NoWaveSpacing.medium),
               child: Center(
                 child: Column(
                   children: [
@@ -186,7 +187,7 @@ class _CategoryArticlesPageState extends State<CategoryArticlesPage> {
                       textAlign: TextAlign.center,
                       style: NoWaveTypography.meta(context),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: NoWaveSpacing.small),
                     TextButton(
                       onPressed: _loadMore,
                       child: Text(l10n.actionRetry),
@@ -198,7 +199,7 @@ class _CategoryArticlesPageState extends State<CategoryArticlesPage> {
           }
           if (state.loadingMore) {
             return Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(NoWaveSpacing.medium),
               child: Center(
                 child: CircularProgressIndicator(
                   semanticsLabel: l10n.loadingMoreArticles,
@@ -210,7 +211,7 @@ class _CategoryArticlesPageState extends State<CategoryArticlesPage> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) _loadMore();
           });
-          return const SizedBox(height: 32);
+          return const SizedBox(height: NoWaveSpacing.section);
         }
         final Blog blog = state.articles[index];
         return _contentWidth(

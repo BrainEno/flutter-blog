@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
@@ -83,7 +84,7 @@ class ViewerArticleBody extends StatelessWidget {
                       titleHighlight: reader?.highlights.first,
                       titleKey: blockKeys.isEmpty ? null : blockKeys.first,
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: NoWaveSpacing.section),
                     if (blog.document?.supported == false) ...[
                       Semantics(
                         liveRegion: true,

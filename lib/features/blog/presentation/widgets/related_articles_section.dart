@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
@@ -47,7 +48,7 @@ class RelatedArticlesSection extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: NoWaveSpacing.xs),
               for (var index = 0; index < state.blogs.length; index++)
                 BlogCard(
                   blog: state.blogs[index],

@@ -1,4 +1,5 @@
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
@@ -119,7 +120,9 @@ class _CategoriesPageState extends State<CategoriesPage> {
         if (index == state.categories.length + 1) {
           // The endpoint caps `limit` and offers no total: a full page is the
           // only sign the catalog may continue.
-          if (!state.mayBeIncomplete) return const SizedBox(height: 24);
+          if (!state.mayBeIncomplete) {
+            return const SizedBox(height: NoWaveSpacing.large);
+          }
           return _contentWidth(
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -170,7 +173,7 @@ class _CategoryRow extends StatelessWidget {
                           style: NoWaveTypography.title(context, size: 20),
                         ),
                         if (category.description.isNotEmpty) ...[
-                          const SizedBox(height: 4),
+                          const SizedBox(height: NoWaveSpacing.xs),
                           Text(
                             category.description,
                             maxLines: 3,

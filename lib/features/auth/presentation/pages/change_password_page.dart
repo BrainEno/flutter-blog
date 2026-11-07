@@ -7,6 +7,7 @@ import 'package:belog/features/auth/domain/password_rules.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:belog/features/auth/presentation/password_validation_l10n.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fpdart/fpdart.dart' show Either, left;
@@ -167,7 +168,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                           Text(l10n.passwordChangeInfo),
                           const SizedBox(height: 12),
                           Text(l10n.passwordChangeRules),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: NoWaveSpacing.large),
                           _passwordField(
                             label: l10n.passwordCurrent,
                             controller: _current,
@@ -180,7 +181,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                               validateCurrentPassword(value),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: NoWaveSpacing.medium),
                           _passwordField(
                             label: l10n.passwordNew,
                             controller: _next,
@@ -193,7 +194,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                               validateNewPassword(value),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: NoWaveSpacing.medium),
                           _passwordField(
                             label: l10n.passwordConfirm,
                             controller: _confirm,
@@ -211,7 +212,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                               return null;
                             },
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: NoWaveSpacing.large),
                           if (_failure != null) ...[
                             Semantics(
                               liveRegion: true,
@@ -222,14 +223,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: NoWaveSpacing.medium),
                           ],
                           if (_success) ...[
                             Semantics(
                               liveRegion: true,
                               child: Text(l10n.passwordChangeSuccess),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: NoWaveSpacing.medium),
                           ],
                           NoWaveButton(
                             label: _busy

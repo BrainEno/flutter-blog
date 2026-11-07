@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/material.dart';
 
 /// The app's first frame when startup configuration is unusable.
@@ -31,7 +32,7 @@ class StartupFailureApp extends StatelessWidget {
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(NoWaveSpacing.large),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 560),
                 child: Column(
@@ -43,14 +44,14 @@ class StartupFailureApp extends StatelessWidget {
                       size: 48,
                       color: theme.colorScheme.primary,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: NoWaveSpacing.medium),
                     Text(
                       '无法启动 · Unable to start',
                       style: theme.textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 12),
                     SelectableText(message, style: theme.textTheme.bodyMedium),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: NoWaveSpacing.large),
                     Text(
                       '复制 env.example.json 为 env.json，填入模拟器或真机可访问的 '
                       'API_BASE_URL 后重新运行；也可以直接使用 '

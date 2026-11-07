@@ -16,6 +16,7 @@ import 'package:belog/features/user/domain/entities/author_relationship.dart';
 import 'package:belog/features/user/presentation/bloc/author/author_cubit.dart';
 import 'package:belog/router/shell_branch_location.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -131,7 +132,7 @@ class _AuthorPageState extends State<AuthorPage> {
           if (state is AuthorFailure) {
             return Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(NoWaveSpacing.medium),
                 child: NoWaveStatus(
                   message: state.error.isNotEmpty
                       ? localizedFailure(context.l10n, state.failure)
@@ -147,7 +148,7 @@ class _AuthorPageState extends State<AuthorPage> {
           final isSelf = viewerId != null && viewerId == profile.userId;
 
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(NoWaveSpacing.medium),
             children: [
               Center(
                 child: ConstrainedBox(
@@ -165,13 +166,13 @@ class _AuthorPageState extends State<AuthorPage> {
                           AuthorRelationshipKind.following,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: NoWaveSpacing.medium),
                       // Side by side rather than stacked: the follow button
                       // already sets this row's height, and growing the header
                       // pushes the article list out of reach on small screens.
                       Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                        spacing: NoWaveSpacing.small,
+                        runSpacing: NoWaveSpacing.small,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           _FollowButton(
@@ -187,13 +188,13 @@ class _AuthorPageState extends State<AuthorPage> {
                             ),
                         ],
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: NoWaveSpacing.section),
                       const Divider(height: 1),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: NoWaveSpacing.medium),
                       NoWaveSectionHeading(
                         title: context.l10n.authorArticlesTitle,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: NoWaveSpacing.medium),
                       BlocBuilder<BlogByBloc, BlogByState>(
                         builder: (context, articleState) {
                           if (articleState is GetBlogsByUserLoading ||
@@ -290,7 +291,7 @@ class _ProfileHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             NoWaveAvatar(name: name, imageUrl: profile.avatarUrl),
-            const SizedBox(width: 16),
+            const SizedBox(width: NoWaveSpacing.medium),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,7 +323,7 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: NoWaveSpacing.xs),
         Wrap(
           spacing: 12,
           children: [
@@ -337,11 +338,11 @@ class _ProfileHeader extends StatelessWidget {
           ],
         ),
         if (profile.bio.trim().isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: NoWaveSpacing.medium),
           Text(profile.bio, style: const TextStyle(height: 1.5)),
         ],
         if (profile.websiteUrl.trim().isNotEmpty) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: NoWaveSpacing.small),
           TextButton(
             onPressed: () => onOpenWebsite(profile.websiteUrl),
             child: Text(profile.websiteUrl),

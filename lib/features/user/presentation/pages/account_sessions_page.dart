@@ -12,6 +12,7 @@ import 'package:belog/features/user/domain/entities/account_session.dart';
 import 'package:belog/features/user/domain/entities/session_revoke_outcome.dart';
 import 'package:belog/features/user/domain/repositories/account_session_repository.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -309,7 +310,7 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
               sessions.isNotEmpty &&
               !sessions.any((session) => session.current);
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(NoWaveSpacing.medium),
             children: [
               Center(
                 child: ConstrainedBox(
@@ -326,7 +327,7 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
                         const SizedBox(height: 12),
                         _NoticeMessage(text: _notice!, isError: _noticeIsError),
                       ],
-                      const SizedBox(height: 16),
+                      const SizedBox(height: NoWaveSpacing.medium),
                       if (sessions.isEmpty)
                         NoWaveStatus(message: l10n.accountSessionsEmpty)
                       else ...[
@@ -340,7 +341,7 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
                           variant: NoWaveButtonVariant.secondary,
                           onPressed: _busy ? null : _confirmEndOthers,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: NoWaveSpacing.medium),
                         for (final session in sessions)
                           _SessionCard(
                             session: session,
@@ -365,7 +366,7 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
     final notice = _notice;
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(NoWaveSpacing.medium),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -374,7 +375,7 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
             // failed one.
             if (notice != null) ...[
               _NoticeMessage(text: notice, isError: _noticeIsError),
-              const SizedBox(height: 16),
+              const SizedBox(height: NoWaveSpacing.medium),
             ],
             NoWaveStatus(
               message: message,
@@ -433,7 +434,7 @@ class _SessionCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(NoWaveSpacing.medium),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -446,7 +447,7 @@ class _SessionCard extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: NoWaveSpacing.small),
             Text(l10n.accountSessionsCreated(time(session.createdAt))),
             Text(
               lastRefreshed == null
@@ -457,7 +458,7 @@ class _SessionCard extends StatelessWidget {
             // The session in use has no button: ending it is what the sign-out
             // button does, and that needs a different confirmation.
             if (!session.current) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: NoWaveSpacing.small),
               Align(
                 alignment: AlignmentDirectional.centerEnd,
                 child: TextButton(
