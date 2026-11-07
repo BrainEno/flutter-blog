@@ -32,10 +32,7 @@ void main() {
   test('is a pure function of the string', () {
     expect(stableHash32('an-article'), stableHash32('an-article'));
     expect(stableHash32('hello'), 1335831723);
-    expect(
-      stableHash32('an-article'),
-      isNot(stableHash32('another-article')),
-    );
+    expect(stableHash32('an-article'), isNot(stableHash32('another-article')));
   });
 
   test('stays inside 32 bits whatever the length', () {

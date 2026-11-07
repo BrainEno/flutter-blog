@@ -34,11 +34,8 @@ class ArticleCover extends StatelessWidget {
   Widget build(BuildContext context) {
     final uri = resolveArticleResourceUrl(imageUrl);
     final plate = NoWaveCoverPlate.forSeed(seed);
-    Widget fallback() => Image.asset(
-      plate.asset,
-      fit: BoxFit.cover,
-      excludeFromSemantics: true,
-    );
+    Widget fallback() =>
+        Image.asset(plate.asset, fit: BoxFit.cover, excludeFromSemantics: true);
 
     return Semantics(
       image: true,
