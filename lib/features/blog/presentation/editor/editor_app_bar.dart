@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:flutter/material.dart';
@@ -45,24 +46,11 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       centerTitle: true,
       actions: [
-        ElevatedButton(
-          onPressed: onPublish,
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size(60, 48),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Theme.of(context).colorScheme.onPrimary,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            textStyle: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            elevation: 0,
-          ),
-          child: Text(context.l10n.actionPublish),
-        ),
+        // A square, full-weight primary action - the previous pill was the
+        // last rounded button in the app. Its min size and padding now come
+        // from the design tokens, so it sits in the 56pt toolbar like every
+        // other NoWaveButton.
+        NoWaveButton(label: context.l10n.actionPublish, onPressed: onPublish),
         PopupMenuButton<EditorMenuAction>(
           icon: const Icon(Icons.more_vert),
           onSelected: _onSelected,
