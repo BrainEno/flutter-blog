@@ -65,7 +65,10 @@ void main() {
         NoWaveSizes.listThumbnail,
         greaterThan(NoWaveSizes.listThumbnailSmall),
       );
-      expect(NoWaveSizes.coverEditorBox, greaterThan(NoWaveSizes.listThumbnail));
+      expect(
+        NoWaveSizes.coverEditorBox,
+        greaterThan(NoWaveSizes.listThumbnail),
+      );
     });
   });
 
