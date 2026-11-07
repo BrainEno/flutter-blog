@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/l10n/app_localizations.dart';
@@ -79,7 +80,7 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(localizedFailure(context.l10n, state.failure)),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: NoWaveSpacing.medium),
                   NoWaveButton(
                     label: context.l10n.actionRetry,
                     variant: NoWaveButtonVariant.secondary,

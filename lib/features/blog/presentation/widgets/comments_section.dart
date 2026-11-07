@@ -148,7 +148,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: NoWaveSpacing.medium),
             if (!signedIn)
               CommentLoginPrompt(onRequestLogin: widget.onRequestLogin)
             else

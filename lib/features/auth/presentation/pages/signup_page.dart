@@ -1,4 +1,5 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/auth/domain/password_rules.dart';
@@ -57,7 +58,7 @@ class _SignUpPageState extends State<SignUpPage> {
         appBar: AppBar(),
         body: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(NoWaveSpacing.page),
             child: BlocConsumer<AuthBloc, AuthState>(
               listener: (context, state) {
                 if (state is AuthFailure) {
@@ -141,7 +142,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: NoWaveSpacing.small),
                       TextButton(
                         onPressed: () => context.go('/'),
                         child: Text(context.l10n.browseWithoutSignUp),

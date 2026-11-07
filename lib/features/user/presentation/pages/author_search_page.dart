@@ -223,7 +223,9 @@ class _AuthorRow extends StatelessWidget {
               ),
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                vertical: NoWaveSpacing.small,
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -232,7 +234,7 @@ class _AuthorRow extends StatelessWidget {
                     imageUrl: person.avatarUrl,
                     size: 48,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: NoWaveSpacing.small),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

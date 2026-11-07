@@ -99,7 +99,7 @@ class ArticleReaderHeader extends StatelessWidget {
                       imageUrl: blog.posterAvatar ?? '',
                       size: 48,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: NoWaveSpacing.small),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

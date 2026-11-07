@@ -320,11 +320,11 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
                     children: [
                       Text(l10n.accountSessionsDescription),
                       if (currentUnknown) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: NoWaveSpacing.small),
                         Text(l10n.accountSessionsCurrentUnknown),
                       ],
                       if (_notice != null) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: NoWaveSpacing.small),
                         _NoticeMessage(text: _notice!, isError: _noticeIsError),
                       ],
                       const SizedBox(height: NoWaveSpacing.medium),
@@ -432,7 +432,7 @@ class _SessionCard extends StatelessWidget {
         DateFormat.yMMMd(locale.toString()).add_jms().format(value.toLocal());
     final lastRefreshed = session.lastRefreshedAt;
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: NoWaveSpacing.medium),
       child: Padding(
         padding: const EdgeInsets.all(NoWaveSpacing.medium),
         child: Column(

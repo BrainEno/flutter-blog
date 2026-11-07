@@ -203,7 +203,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.history, size: 64, color: mutedColor),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: NoWaveSpacing.small),
                   Text(
                     context.l10n.historyEmpty,
                     style: TextStyle(fontSize: 16, color: mutedColor),

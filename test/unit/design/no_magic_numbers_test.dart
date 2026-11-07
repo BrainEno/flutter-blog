@@ -30,44 +30,33 @@ void main() {
 
   /// The frozen state of everything else.
   const budget = <String, int>{
-    'core/startup/startup_failure_app.dart': 2,
-    'features/auth/presentation/pages/change_email_page.dart': 2,
-    'features/auth/presentation/pages/change_password_page.dart': 2,
-    'features/auth/presentation/pages/email_verification_page.dart': 7,
-    'features/auth/presentation/pages/login_page.dart': 9,
-    'features/auth/presentation/pages/signup_page.dart': 9,
-    'features/blog/presentation/comments/comment_login_prompt.dart': 2,
+    'features/auth/presentation/pages/change_email_page.dart': 1,
+    'features/auth/presentation/pages/login_page.dart': 6,
+    'features/auth/presentation/pages/signup_page.dart': 7,
+    'features/blog/presentation/comments/comment_login_prompt.dart': 1,
     'features/blog/presentation/comments/comment_tile.dart': 4,
-    'features/blog/presentation/editor/editor_body_field.dart': 2,
-    'features/blog/presentation/editor/editor_cover_field.dart': 4,
+    'features/blog/presentation/editor/editor_cover_field.dart': 3,
     'features/blog/presentation/editor/editor_form.dart': 5,
-    'features/blog/presentation/editor/editor_tag_selector.dart': 3,
-    'features/blog/presentation/markdown/markdown_renderer.dart': 15,
-    'features/blog/presentation/pages/blog_page.dart': 3,
-    'features/blog/presentation/pages/blog_viewer_page.dart': 1,
-    'features/blog/presentation/pages/categories_page.dart': 3,
+    'features/blog/presentation/editor/editor_tag_selector.dart': 2,
+    'features/blog/presentation/markdown/markdown_renderer.dart': 12,
+    'features/blog/presentation/pages/blog_page.dart': 1,
+    'features/blog/presentation/pages/categories_page.dart': 1,
     'features/blog/presentation/pages/category_articles_page.dart': 1,
-    'features/blog/presentation/pages/publish_queue_page.dart': 3,
-    'features/blog/presentation/pages/recycle_bin_page.dart': 3,
-    'features/blog/presentation/pages/saved_blogs_page.dart': 1,
+    'features/blog/presentation/pages/publish_queue_page.dart': 1,
+    'features/blog/presentation/pages/recycle_bin_page.dart': 2,
     'features/blog/presentation/pages/tag_articles_page.dart': 1,
-    'features/blog/presentation/read_aloud/read_aloud_controls.dart': 1,
     'features/blog/presentation/viewer/viewer_article_body.dart': 2,
-    'features/blog/presentation/widgets/article_reader_header.dart': 1,
     'features/blog/presentation/widgets/article_tag_label.dart': 1,
-    'features/blog/presentation/widgets/blog_card.dart': 6,
-    'features/blog/presentation/widgets/comments_section.dart': 2,
-    'features/blog/presentation/widgets/editor_field.dart': 4,
-    'features/messages/presentation/pages/message_inbox_page.dart': 8,
-    'features/messages/presentation/pages/message_thread_page.dart': 8,
-    'features/notifications/presentation/pages/notification_inbox_page.dart': 6,
-    'features/user/presentation/pages/about_page.dart': 6,
-    'features/user/presentation/pages/account_sessions_page.dart': 3,
-    'features/user/presentation/pages/author_page.dart': 2,
-    'features/user/presentation/pages/author_relationships_page.dart': 3,
-    'features/user/presentation/pages/author_search_page.dart': 2,
+    'features/blog/presentation/widgets/blog_card.dart': 4,
+    'features/blog/presentation/widgets/comments_section.dart': 1,
+    'features/blog/presentation/widgets/editor_field.dart': 2,
+    'features/messages/presentation/pages/message_inbox_page.dart': 3,
+    'features/messages/presentation/pages/message_thread_page.dart': 3,
+    'features/notifications/presentation/pages/notification_inbox_page.dart': 1,
+    'features/user/presentation/pages/about_page.dart': 5,
+    'features/user/presentation/pages/author_page.dart': 1,
     'features/user/presentation/pages/profile_page.dart': 1,
-    'features/user/presentation/pages/reading_history_page.dart': 4,
+    'features/user/presentation/pages/reading_history_page.dart': 3,
   };
 
   // Paths are relative to `lib/`, which keeps the budget readable.
@@ -122,7 +111,7 @@ void main() {
       total += _spacingLiterals(File('lib/$path').readAsStringSync());
     }
     // Lower this when a page is migrated; never raise it.
-    const ceiling = 142;
+    const ceiling = 75;
     expect(
       total,
       lessThanOrEqualTo(ceiling),

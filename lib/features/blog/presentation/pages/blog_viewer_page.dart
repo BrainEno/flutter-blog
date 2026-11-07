@@ -1,5 +1,6 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/loader.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/app_logger.dart';
@@ -154,7 +155,7 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(localizedFailure(context.l10n, state.failure)),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: NoWaveSpacing.medium),
                   TextButton(
                     onPressed: () =>
                         context.read<BlogViewerCubit>().load(widget.blogId),

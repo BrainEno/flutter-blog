@@ -30,7 +30,7 @@ class CommentLoginPrompt extends StatelessWidget {
             context.l10n.loginToComment,
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: NoWaveSpacing.medium),
           NoWaveButton(
             label: context.l10n.goSignIn,
             variant: NoWaveButtonVariant.secondary,

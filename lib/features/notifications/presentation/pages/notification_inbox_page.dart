@@ -194,7 +194,7 @@ class _OlderHidden extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         NoWaveSpacing.medium,
-        12,
+        NoWaveSpacing.small,
         NoWaveSpacing.medium,
         NoWaveSpacing.medium,
       ),
@@ -252,9 +252,9 @@ class _NotificationRow extends StatelessWidget {
           : Theme.of(context).colorScheme.surfaceContainerHighest,
       padding: const EdgeInsets.fromLTRB(
         NoWaveSpacing.medium,
-        12,
         NoWaveSpacing.small,
-        12,
+        NoWaveSpacing.small,
+        NoWaveSpacing.small,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,7 +266,7 @@ class _NotificationRow extends StatelessWidget {
               label: context.l10n.notificationsUnreadBadge,
               child: Icon(_icon, size: 20),
             ),
-          const SizedBox(width: 12),
+          const SizedBox(width: NoWaveSpacing.small),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,7 +313,7 @@ class _InboxError extends StatelessWidget {
               localizedFailure(context.l10n, failure),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: NoWaveSpacing.medium),
             NoWaveButton(
               label: context.l10n.notificationsRetry,
               variant: NoWaveButtonVariant.secondary,

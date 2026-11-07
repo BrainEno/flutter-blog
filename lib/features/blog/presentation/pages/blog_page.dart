@@ -178,7 +178,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
       Padding(
         padding: const EdgeInsets.fromLTRB(
           NoWaveSpacing.page,
-          12,
+          NoWaveSpacing.small,
           NoWaveSpacing.page,
           0,
         ),
@@ -326,7 +326,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
                 children: [
                   _heading(state.kind),
                   if (isCached) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: NoWaveSpacing.small),
                     Semantics(
                       liveRegion: true,
                       child: Text(

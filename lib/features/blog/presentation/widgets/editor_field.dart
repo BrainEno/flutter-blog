@@ -109,13 +109,13 @@ class EditorField extends StatelessWidget {
       case BlogEditorContentType.title:
         return const EdgeInsets.symmetric(
           vertical: 20.0,
-          horizontal: 12.0,
+          horizontal: NoWaveSpacing.small,
         ); // More vertical padding for title
       case BlogEditorContentType.body:
       default:
         return const EdgeInsets.symmetric(
           vertical: NoWaveSpacing.medium,
-          horizontal: 12.0,
+          horizontal: NoWaveSpacing.small,
         ); // Standard vertical padding for body
       // Adjust padding for other content types as needed
     }
