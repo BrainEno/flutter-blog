@@ -45,12 +45,59 @@
 | 2× 字体、320 dp 窄屏 | `test/widget/a11y_text_scale_test.dart`、`test/widget/localized_feed_search_test.dart` |
 | 点击区域 ≥48 dp | `test/widget/article_tag_label_test.dart` |
 | 系统字体缩放不被夹取 | `test/widget/a11y_text_scale_test.dart`（源码扫描） |
+| 加载态没有转圈 | `test/unit/design/no_spinner_test.dart`、`test/widget/no_wave_loading_test.dart` |
+| 减少动效 | `test/widget/no_wave_fade_transition_test.dart`、`test/unit/design/no_magic_durations_test.dart`、`test/widget/no_wave_splash_test.dart` |
+| 无封面文章的可区分与稳定性 | `test/unit/design/cover_plate_test.dart`、`test/unit/core/stable_hash_test.dart`、`test/widget/no_wave_design_test.dart` |
+| 文档不指向不存在的组件或测试 | `test/unit/core/docs_contract_test.dart` |
 
 `test/widget/a11y_text_scale_test.dart` 在中文与英文下各跑一遍 2.0 字体缩放，
 并断言 `takeException()` 为空：溢出条（`BOTTOM OVERFLOWED BY …`）在 widget
 测试里就是一次异常，所以这条断言等价于「大字体下不破版」。
 
-## 三、只能靠真机/模拟器确认的部分
+## 三、动效、加载态与图片
+
+这三件事在近两个阶段里从「各处自定」收成了规则，所以在这里写清楚它们的无障碍含义。
+
+### 减少动效
+
+`NoWaveMotionPolicy.reducesMotion(context)` 是唯一的判断口，它把两个开关当成同一件事：
+
+1. 系统的「减少动态效果 / 移除动画」；
+2. 读屏（TalkBack / VoiceOver）。读屏是一次读一个元素的，页面在它下面淡入、滑动，
+   会把读者刚定位到的位置带走。
+
+需要少动时，`NoWaveMotionPolicy.resolve` 把时长变成零；但真正的做法是**根本不构建**
+那个转场：`NoWaveFadeTransition` 少动时直接返回 child，开屏走静止首帧，朗读跟随滚动
+改成一次 `jumpTo`——不是「把 200ms 压成 20ms」。
+
+`test/unit/design/no_magic_durations_test.dart` 守另一半：`lib/` 里的 `Duration` 要么
+来自 `NoWaveMotion`，要么是「在等」（请求超时、重试退避、自动保存、输入防抖）并登记了
+理由。页面不许自己发明一个动效时长。
+
+### 加载态
+
+页面级与区块级的加载不再是转圈，而是一句话（`NoWaveLoadingLabel`）或一个形状
+（`NoWaveSkeleton*`）：
+
+- 播报**只发生一次**：`NoWaveLoadingLabel` 根部是一个 `liveRegion` 的 `Semantics`，
+  短横线与文案都在 `ExcludeSemantics` 里，读屏读到的是一句可翻译的话而不是「一条线」，
+  也不会因为重建重复播报。
+- 骨架屏是纯装饰，并且**不动**：没有 shimmer、没有扫光，开着「减少动效」的用户与截图
+  里看到的一致。
+- 控件内部的忙碌态仍保留系统小转圈（`NoWaveButton` 加载态、回收站行内恢复、私信发送
+  图标位）——那些槽位放不下一句文案，三个位置在 `test/unit/design/no_spinner_test.dart`
+  里带理由登记。
+
+### 封面与图片
+
+- 没有封面的文章按身份（slug）稳定落在四张编辑式版之一（`NoWaveCoverPlate`）：同一篇
+  文章在任何设备、任何版本上都是同一张图，读者可以靠它定位。
+- 封面对读屏是装饰：`excludeFromSemantics`，语义只有一句「《标题》的封面」；标题就在
+  旁边，图片内容不进播报。
+- 占位、失败与最终帧是同一张版——请求失败时图片不会变成另一张，对读屏与对眼睛都是
+  同一件事。
+
+## 四、只能靠真机/模拟器确认的部分
 
 自动化测试跑的是 Flutter 自己的语义树，不能替代读屏软件。以下项目仍需人工检查，
 在这之前不要在文档或 issue 里声称「无障碍已验收」：
@@ -66,8 +113,13 @@
 4. **键盘**：Windows/macOS 构建用 Tab 走完登录、列表、文章、评论；焦点环可见，
    顺序与视觉顺序一致，Esc 能关闭对话框。
 5. **对比度**：亮/暗两种主题下检查次级文字（日期、阅读时长）与禁用态按钮。
+6. **减少动效**：打开系统「移除动画 / 减少动态效果」，再走一遍开屏、四个标签切换、
+   朗读跟随滚动，确认没有淡入与滑动、内容仍然都在；打开读屏后同样检查一次（读屏在本
+   项目里被当成同一个开关）。
+7. **加载态与读屏**：慢网络下打开列表页与阅读页，确认只播报一次「载入中 · LOADING」
+   （不是反复播报、也不是播报「一条线」），且屏幕上没有转圈动画；骨架屏静止不动。
 
-## 四、已知边界
+## 五、已知边界
 
 - 文章、评论、作者资料等内容不翻译，也不做机器翻译；界面语言切换不影响内容
   请求的语言（仍是 `zh-CN`）。
