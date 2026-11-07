@@ -34,8 +34,8 @@ class EditorTagSelector extends StatelessWidget {
         : AppPalette.surfaceOnPaper.withAlpha((0.4 * 255).toInt());
     final unselectedLabel = isDarkMode ? AppPalette.paper : AppPalette.ink;
     return Wrap(
-      spacing: 10.0,
-      runSpacing: 10.0,
+      spacing: NoWaveSpacing.small,
+      runSpacing: NoWaveSpacing.small,
       children: [
         for (final tag in editorTagOptions)
           InputChip(

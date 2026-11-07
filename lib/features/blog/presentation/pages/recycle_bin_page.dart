@@ -122,9 +122,8 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                 return ListTile(
                   leading: blog.imageUrl.isEmpty
                       ? null
-                      : SizedBox(
-                          width: 48,
-                          height: 48,
+                      : SizedBox.square(
+                          dimension: NoWaveSizes.listThumbnailSmall,
                           child: Image.network(
                             blog.imageUrl,
                             fit: BoxFit.cover,
@@ -143,9 +142,8 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                     ' · ${_purgeDeadlineText(context.l10n, blog)}',
                   ),
                   trailing: restoring
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
+                      ? SizedBox.square(
+                          dimension: NoWaveIconSize.row,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             semanticsLabel: context.l10n.loading,

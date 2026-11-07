@@ -71,7 +71,7 @@ class ViewerArticleBody extends StatelessWidget {
                   NoWaveSpacing.page,
                   NoWaveSpacing.medium,
                   NoWaveSpacing.page,
-                  40,
+                  NoWaveSpacing.section,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,7 +113,7 @@ class ViewerArticleBody extends StatelessWidget {
                       ).copyWith(fontWeight: FontWeight.w400, height: 1.9),
                       headingStyle: NoWaveTypography.title(context),
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: NoWaveSpacing.section),
                     if (getRelatedArticles case final related?)
                       RelatedArticlesSection(
                         getRelatedArticles: related,

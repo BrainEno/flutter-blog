@@ -57,7 +57,7 @@ class EditorForm extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: NoWaveSpacing.large,
-          vertical: 20.0,
+          vertical: NoWaveSpacing.large,
         ),
         child: Form(
           key: formKey,
@@ -81,7 +81,8 @@ class EditorForm extends StatelessWidget {
                   ),
                 ),
               AutoSaveBanner(status: autoSaveStatus),
-              const SizedBox(height: 20), // Space between buttons and image
+              // Space between the buttons and the cover image.
+              const SizedBox(height: NoWaveSpacing.large),
               EditorCoverField(
                 blog: blog,
                 image: image,
@@ -89,18 +90,18 @@ class EditorForm extends StatelessWidget {
                 isNewImageSelected: isNewImageSelected,
                 onTap: onPickCover,
               ),
-              const SizedBox(height: 36),
+              const SizedBox(height: NoWaveSpacing.large),
               EditorTagSelector(
                 selectedTags: selectedTags,
                 onChanged: onTagsChanged,
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: NoWaveSpacing.large),
               EditorField(
                 controller: titleController,
                 hintText: context.l10n.fieldTitleHint,
                 contentType: BlogEditorContentType.title,
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: NoWaveSpacing.large),
               EditorBodyField(controller: contentController),
             ],
           ),

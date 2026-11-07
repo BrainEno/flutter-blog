@@ -59,9 +59,8 @@ class CommentTile extends StatelessWidget {
                 button: true,
                 child: InkWell(
                   onTap: () => onOpenAuthor(comment.authorId),
-                  child: SizedBox(
-                    width: 48,
-                    height: 48,
+                  child: SizedBox.square(
+                    dimension: NoWaveSizes.listThumbnailSmall,
                     child: Center(
                       child: NoWaveAvatar(
                         name: authorName,
@@ -72,7 +71,7 @@ class CommentTile extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: NoWaveSpacing.small),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,7 +139,10 @@ class CommentTile extends StatelessWidget {
           ),
           if (comment.replies.isNotEmpty)
             Padding(
-              padding: EdgeInsets.only(left: depth == 0 ? 42 : 36),
+              padding: EdgeInsets.only(
+                // Lines the reply up under the 48pt avatar column.
+                left: depth == 0 ? 42 : 36, // design-token-ok: avatar column
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: comment.replies

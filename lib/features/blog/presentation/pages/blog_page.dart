@@ -250,7 +250,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     ),
     children: [
       _contentWidth(_heading(kind)),
-      const SizedBox(height: 56),
+      const SizedBox(height: NoWaveSpacing.section),
       _contentWidth(status),
     ],
   );

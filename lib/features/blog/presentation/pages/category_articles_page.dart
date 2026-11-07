@@ -154,7 +154,7 @@ class _CategoryArticlesPageState extends State<CategoryArticlesPage> {
     physics: const AlwaysScrollableScrollPhysics(),
     padding: const EdgeInsets.all(NoWaveSpacing.page),
     children: [
-      const SizedBox(height: 48),
+      const SizedBox(height: NoWaveSizes.emptyStateOffset),
       Center(child: status),
     ],
   );

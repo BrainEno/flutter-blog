@@ -51,6 +51,26 @@ void main() {
     test('the cover ratio matches the one article tiles use', () {
       expect(NoWaveSizes.coverAspect, closeTo(4 / 3, 1e-9));
     });
+
+    test('the list sizes stay on the grid and above the tap target', () {
+      for (final size in [
+        NoWaveSizes.emptyStateOffset,
+        NoWaveSizes.listThumbnail,
+        NoWaveSizes.listThumbnailSmall,
+        NoWaveSizes.coverEditorBox,
+      ]) {
+        expect(size % 4, 0, reason: '$size is off the 4-point grid');
+      }
+      expect(
+        NoWaveSizes.listThumbnailSmall,
+        greaterThanOrEqualTo(NoWaveSizes.tapTarget),
+        reason: 'a row thumbnail is also a touch target',
+      );
+      expect(
+        NoWaveSizes.listThumbnail,
+        greaterThan(NoWaveSizes.listThumbnailSmall),
+      );
+    });
   });
 
   group('breakpoints', () {

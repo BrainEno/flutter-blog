@@ -27,7 +27,7 @@ class ArticleTagLabel extends StatelessWidget {
     final chip = Container(
       padding: const EdgeInsets.symmetric(
         horizontal: NoWaveSpacing.small,
-        vertical: 2,
+        vertical: 2, // design-token-ok: badge padding, optical not a step
       ),
       decoration: BoxDecoration(border: Border.all(color: foreground)),
       child: Text(

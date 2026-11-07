@@ -67,7 +67,10 @@ class MarkdownRenderer {
       case 'h5':
       case 'h6':
         return Padding(
-          padding: const EdgeInsets.only(top: 20, bottom: NoWaveSpacing.small),
+          padding: const EdgeInsets.only(
+            top: NoWaveSpacing.large,
+            bottom: NoWaveSpacing.small,
+          ),
           child: _heading(context, node),
         );
       case 'p':
@@ -87,7 +90,7 @@ class MarkdownRenderer {
                 ),
               ),
             ),
-            padding: const EdgeInsets.only(left: 14),
+            padding: const EdgeInsets.only(left: NoWaveSpacing.medium),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -119,7 +122,7 @@ class MarkdownRenderer {
               children: [
                 if (language != null && language.isNotEmpty) ...[
                   Text(language, style: Theme.of(context).textTheme.labelSmall),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: NoWaveSpacing.xs),
                 ],
                 _followBlock(
                   node,
@@ -189,7 +192,7 @@ class MarkdownRenderer {
     required md.Node owner,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: NoWaveSpacing.xs),
       child: _followBlock(
         owner,
         (highlight, block) => Text.rich(
@@ -230,18 +233,21 @@ class MarkdownRenderer {
     final nextIndent =
         indent + const EdgeInsets.only(left: NoWaveSpacing.medium);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: NoWaveSpacing.xs),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (var i = 0; i < items.length; i++)
             Padding(
-              padding: const EdgeInsets.only(bottom: 2),
+              padding: const EdgeInsets.only(
+                // Rows of one list are tighter than any step.
+                bottom: 2, // design-token-ok: rows of one list
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
-                    width: 26,
+                    width: 26, // design-token-ok: marker column
                     child: Text(
                       ordered ? '${i + 1}.' : '•',
                       style:
@@ -365,7 +371,11 @@ class MarkdownRenderer {
           child: _linkWidget(
             link,
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              padding: const EdgeInsets.symmetric(
+                // A chip hugs the glyphs it wraps.
+                horizontal: 5, // design-token-ok: chip hugs its glyphs
+                vertical: 1, // design-token-ok: chip hugs its glyphs
+              ),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(4),
@@ -442,7 +452,7 @@ class MarkdownRenderer {
         return WidgetSpan(
           alignment: PlaceholderAlignment.middle,
           child: Padding(
-            padding: const EdgeInsets.only(top: 6, bottom: 6),
+            padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.xs),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: ConstrainedBox(
@@ -456,7 +466,8 @@ class MarkdownRenderer {
                     imageUrl: uri.toString(),
                     fit: BoxFit.contain,
                     errorWidget: (context, error, stackTrace) => SizedBox(
-                      height: 40,
+                      // A failed image keeps its slot instead of collapsing.
+                      height: 40, // design-token-ok: failed image slot
                       child: Center(child: Text(l10n.markdownImageFailed)),
                     ),
                   ),

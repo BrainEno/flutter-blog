@@ -6,6 +6,7 @@ import 'package:belog/core/common/widgets/loader.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
+import 'package:belog/features/auth/presentation/auth_rhythm.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/auth/presentation/widgets/auth_field.dart';
 import 'package:belog/features/auth/presentation/widgets/auth_primary_button.dart';
@@ -114,7 +115,7 @@ class _LoginPageState extends State<LoginPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const SizedBox(height: 60),
+                      const SizedBox(height: AuthRhythm.hero),
                       Text(
                         context.l10n.loginTitle,
                         textAlign: TextAlign.center,
@@ -123,20 +124,20 @@ class _LoginPageState extends State<LoginPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: AuthRhythm.title),
                       AuthField(
                         hintText: context.l10n.fieldEmail,
                         controller: emailController,
                         prefixIcon: Icons.email_outlined,
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: NoWaveSpacing.medium),
                       AuthField(
                         hintText: context.l10n.fieldPassword,
                         controller: passwordController,
                         isObscureText: true,
                         prefixIcon: Icons.lock_outline,
                       ),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: AuthRhythm.action),
                       AuthPrimaryButton(
                         buttonText: context.l10n.loginTitle,
                         onPressed: () {
@@ -152,11 +153,10 @@ class _LoginPageState extends State<LoginPage> {
                           }
                         },
                       ),
-                      const SizedBox(height: NoWaveSpacing.small),
+                      const SizedBox(height: AuthRhythm.action),
                       // No "forgot password" entry: the backend has no
                       // password-reset flow yet (gap G2, see
                       // docs/supabase-to-nowave-migration.md).
-                      const SizedBox(height: 18),
                       Center(
                         child: TextButton(
                           onPressed: _openSignUp,
@@ -177,7 +177,7 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: () => context.push('/about'),
                         child: Text(context.l10n.diagnosticsEntry),
                       ),
-                      const SizedBox(height: 60),
+                      const SizedBox(height: AuthRhythm.hero),
                     ],
                   ),
                 );

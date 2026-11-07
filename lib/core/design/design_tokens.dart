@@ -98,6 +98,24 @@ abstract final class NoWaveSizes {
   /// Widest a paragraph column may get before it is centred on a tablet, so
   /// long lines stay readable.
   static const maxReadingWidth = 720.0;
+
+  /// Fixed cover box in the editor.
+  ///
+  /// The three states (picked file, pending bytes, published URL) draw the
+  /// same frame, so the form does not jump when the cover changes.
+  static const coverEditorBox = 250.0;
+
+  /// How far an empty or loading state starts below the top of its list.
+  ///
+  /// Not a spacing step: it says where the state begins, not how two things
+  /// relate, and every list that shows one starts in the same place.
+  static const emptyStateOffset = 48.0;
+
+  /// Leading thumbnail of a list row (reading history, recycling bin).
+  static const listThumbnail = 56.0;
+
+  /// The smaller leading thumbnail used where the row also carries actions.
+  static const listThumbnailSmall = 48.0;
 }
 
 /// Opacity of lines and overlays that are not semantic colours.

@@ -11,53 +11,26 @@ import 'package:flutter_test/flutter_test.dart';
 /// `EdgeInsets.all(16)`, `Wrap(spacing: 12)`, a hard-coded `BorderSide` width -
 /// and ignores `0`, which is a reset rather than a measurement.
 ///
-/// The budget below is the state of the tree when the gate landed. Removing
-/// literals is welcome and needs no bookkeeping; adding one in a file that is
-/// already at its budget fails, and the fix is to use a token, not to raise the
-/// number. A genuine exception (an optical offset, a one-off glyph size) is
-/// allowed on the line itself:
+/// The budget used to be the frozen state of the tree when the gate landed
+/// (358 literals). It is empty now: every screen reads a token, so the gate is
+/// absolute - one literal anywhere fails, and the fix is to use a token, not to
+/// raise the number. A genuine exception (an optical offset, a one-off glyph
+/// size) is allowed on the line itself, where a reviewer cannot miss it:
 ///
 /// ```dart
-/// const SizedBox(height: 2) // design-token-ok: optical baseline nudge
+/// const SizedBox(height: 2), // design-token-ok: baseline nudge
 /// ```
 ///
-/// Regenerate the budget with the counts this test prints when it fails; do
-/// not hand-edit a number upwards without the `design-token-ok` marker on the
-/// line that needs it.
+/// The marker has to sit on the line that carries the number: the scan drops
+/// that line, so a marker above a multi-line `EdgeInsets` excuses nothing.
+/// Never add one to make a number pass - it is the place to write down why the
+/// number is not a step of the scale.
 void main() {
   /// Files whose whole job is the design system must not contain any.
   const strict = ['core/design/', 'core/common/widgets/', 'core/theme/'];
 
-  /// The frozen state of everything else.
-  const budget = <String, int>{
-    'features/auth/presentation/pages/change_email_page.dart': 1,
-    'features/auth/presentation/pages/login_page.dart': 6,
-    'features/auth/presentation/pages/signup_page.dart': 7,
-    'features/blog/presentation/comments/comment_login_prompt.dart': 1,
-    'features/blog/presentation/comments/comment_tile.dart': 4,
-    'features/blog/presentation/editor/editor_cover_field.dart': 3,
-    'features/blog/presentation/editor/editor_form.dart': 5,
-    'features/blog/presentation/editor/editor_tag_selector.dart': 2,
-    'features/blog/presentation/markdown/markdown_renderer.dart': 12,
-    'features/blog/presentation/pages/blog_page.dart': 1,
-    'features/blog/presentation/pages/categories_page.dart': 1,
-    'features/blog/presentation/pages/category_articles_page.dart': 1,
-    'features/blog/presentation/pages/publish_queue_page.dart': 1,
-    'features/blog/presentation/pages/recycle_bin_page.dart': 2,
-    'features/blog/presentation/pages/tag_articles_page.dart': 1,
-    'features/blog/presentation/viewer/viewer_article_body.dart': 2,
-    'features/blog/presentation/widgets/article_tag_label.dart': 1,
-    'features/blog/presentation/widgets/blog_card.dart': 4,
-    'features/blog/presentation/widgets/comments_section.dart': 1,
-    'features/blog/presentation/widgets/editor_field.dart': 2,
-    'features/messages/presentation/pages/message_inbox_page.dart': 3,
-    'features/messages/presentation/pages/message_thread_page.dart': 3,
-    'features/notifications/presentation/pages/notification_inbox_page.dart': 1,
-    'features/user/presentation/pages/about_page.dart': 5,
-    'features/user/presentation/pages/author_page.dart': 1,
-    'features/user/presentation/pages/profile_page.dart': 1,
-    'features/user/presentation/pages/reading_history_page.dart': 3,
-  };
+  /// Empty on purpose: see the note at the top of this file.
+  const budget = <String, int>{};
 
   // Paths are relative to `lib/`, which keeps the budget readable.
   final files =
@@ -111,7 +84,7 @@ void main() {
       total += _spacingLiterals(File('lib/$path').readAsStringSync());
     }
     // Lower this when a page is migrated; never raise it.
-    const ceiling = 75;
+    const ceiling = 0;
     expect(
       total,
       lessThanOrEqualTo(ceiling),
@@ -132,8 +105,9 @@ void main() {
 
 /// Counts non-zero numbers used as spacing, insets, gaps or border widths.
 ///
-/// Deliberately textual: it reads the source the way a reviewer does, so a
-/// widget that hides its padding behind a private constant still counts.
+/// Deliberately textual: it reads the source the way a reviewer does. A number
+/// is therefore one of three things - a token, a named constant with its own
+/// doc comment, or a `design-token-ok` line saying why it is neither.
 int _spacingLiterals(String source) {
   final lines = source
       .split('\n')

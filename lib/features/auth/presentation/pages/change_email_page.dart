@@ -220,7 +220,7 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
                               l10n.accountEmailCurrent,
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 2), // design-token-ok: nudge
                             // A separate line rather than a glued label, so the
                             // address is what assistive tech reads out in any
                             // language and scripts stay free of punctuation

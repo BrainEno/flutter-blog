@@ -312,7 +312,7 @@ class _StatusChip extends StatelessWidget {
     }
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: 10,
+        horizontal: NoWaveSpacing.small,
         vertical: NoWaveSpacing.xs,
       ),
       decoration: BoxDecoration(
