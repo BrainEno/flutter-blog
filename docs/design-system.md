@@ -101,8 +101,28 @@
 | `curtain` / `stagger` | 900ms / 80ms | 单列上撕与相邻列的错开 |
 | `minimumSplash` / `splashBail` | 1400ms / 4500ms | 最短幕布时长与兜底揭幕 |
 
-幕布那几行只在冷启动用，语义与时序见 [冷启动与墨色幕布](startup.md)；`enter` / `page`
-留给后续阶段的动效系统，目前只有 token、没有使用者。
+幕布那几行只在冷启动用，语义与时序见 [冷启动与墨色幕布](startup.md)。
+
+### 减少动效 `NoWaveMotionPolicy`
+
+`NoWaveMotionPolicy.reducesMotion(context)` 用一个谓词回答「这个上下文要不要少动一点」：
+系统的「移除动画」开关，或者读屏（TalkBack / VoiceOver 一次只读一个元素，页面在它下面
+滑动会把读者的位置带走）。全仓只有这一处读这两个 flag，调用点不必各自记得。
+
+| 成员 | 用途 |
+| --- | --- |
+| `reducesMotion(context)` | 需要少动时返回 `true` |
+| `resolve(context, duration)` | 原样返回 token；少动时返回 `Duration.zero` |
+| `curve` | 内容进出：`fastOutSlowIn`，起步快、落定软、不弹 |
+| `travel` | 移动到某处（朗读跟随滚动）：`easeOut`，只减速落点 |
+
+减少动效不是把 200ms 压成 20ms，而是根本不构建那个转场。`NoWaveFadeTransition`
+（四个标签之间的淡入）就是这么做：少动时直接返回 child，连 `FadeTransition` 都不出现。
+
+动效时长只从 `NoWaveMotion` 取。`test/unit/design/no_magic_durations_test.dart` 扫描
+`lib/`，只放行「在等」的文件（请求超时、重试退避、自动保存、输入防抖），并在表里写明
+理由；界面文件自己写 `Duration` 会失败。`fast` / `slow` / `enter` / `page` 目前没有
+使用者，留给真的需要那一步的地方，不要为了用而用。
 
 ### 断点 `NoWaveBreakpoints`
 
@@ -154,8 +174,8 @@
   `ExcludeSemantics` 里。
 - **`NoWaveSkeletonList`** —— 列表型页面（通知、私信、阅读历史）。行高与缩略图尺寸
   直接借 `NoWaveSizes.row` / `listThumbnail`，数据落地时页面不跳。**不动**：没有
-  shimmer、没有渐变扫光——动效是阶段三的事，加载态不该先花掉用户的注意力，静态块在
-  截图里也读得懂。
+  shimmer、没有渐变扫光——动效由 `NoWaveMotionPolicy` 统一决定要不要发生，加载态不
+  该先花掉用户的注意力，静态块在截图里也读得懂。
 
 **边界**：控件自己的忙碌态仍由控件表达 —— `NoWaveButton(isLoading: true)` 保持标签
 在布局里不变高、保持不可点；回收站行内的"恢复中"与私信发送图标位保留系统小转圈，
