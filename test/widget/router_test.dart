@@ -198,6 +198,11 @@ class Harness {
   GoRouter? router;
 
   Harness() {
+    // Every author page stubs the article read with `any(named: 'kind')`, and
+    // mocktail needs a fallback for that enum. Registering it here rather than
+    // in each `setUpAll` keeps every file that reuses this harness working:
+    // only the file that declares the stub would otherwise register it.
+    registerFallbackValue(BlogFeedKind.latest);
     when(() => connection.isConnected).thenAnswer((_) async => true);
     when(
       () => remote.getAllBlogs(page: 1),
@@ -392,10 +397,6 @@ class Harness {
 }
 
 void main() {
-  setUpAll(() {
-    registerFallbackValue(BlogFeedKind.latest);
-  });
-
   setUp(() => GetIt.instance.reset());
 
   testWidgets('each tab keeps its own stack across tab switches', (

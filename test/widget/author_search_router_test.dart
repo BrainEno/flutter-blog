@@ -1,5 +1,4 @@
 import 'package:belog/features/blog/data/models/blog_model.dart';
-import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
 import 'package:belog/features/user/data/models/author_profile_model.dart';
 import 'package:belog/features/user/domain/entities/author_search_result.dart';
@@ -19,10 +18,6 @@ import 'router_test.dart' show Harness;
 class MockAuthorSearch extends Mock implements AuthorSearchRepository {}
 
 void main() {
-  setUpAll(() {
-    registerFallbackValue(BlogFeedKind.latest);
-  });
-
   setUp(() => GetIt.instance.reset());
 
   testWidgets('search entry, author route and back stay in the search tab', (
