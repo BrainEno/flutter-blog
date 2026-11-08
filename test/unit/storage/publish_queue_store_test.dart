@@ -61,6 +61,45 @@ void main() {
     expect(cover?.bytes, [1, 2, 3, 4]);
   });
 
+  test(
+    'the queued category survives an untouched and a cleared picker',
+    () async {
+      await store.enqueue(
+        userId: 'alice',
+        title: 'No pick',
+        content: 'body',
+        tags: const [],
+        idempotencyKey: 'key-untouched',
+      );
+      await store.enqueue(
+        userId: 'alice',
+        title: 'Picked',
+        content: 'body',
+        tags: const [],
+        idempotencyKey: 'key-picked',
+        categoryIds: const ['cat-1'],
+      );
+      await store.enqueue(
+        userId: 'alice',
+        title: 'Cleared',
+        content: 'body',
+        tags: const [],
+        idempotencyKey: 'key-cleared',
+        categoryIds: const [],
+      );
+
+      final byTitle = {
+        for (final entry in await store.entries(userId: 'alice'))
+          entry.title: entry.categoryIds,
+      };
+      // Null is "never touched", which the retry must be able to tell apart from
+      // "the author removed the category" - the two write differently.
+      expect(byTitle['No pick'], isNull);
+      expect(byTitle['Picked'], ['cat-1']);
+      expect(byTitle['Cleared'], isEmpty);
+    },
+  );
+
   test('a cover is optional', () async {
     final entry = await store.enqueue(
       userId: 'alice',
@@ -457,7 +496,7 @@ void main() {
     final version = await upgraded
         .customSelect('PRAGMA user_version')
         .getSingle();
-    expect(version.read<int>('user_version'), 11);
+    expect(version.read<int>('user_version'), 12);
   });
 
   test('a pre-v8 database gains the queue with cover_url', () async {

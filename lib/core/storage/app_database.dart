@@ -15,7 +15,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -158,6 +158,29 @@ class AppDatabase extends GeneratedDatabase {
           );
         }
       }
+      if (from < 12) {
+        // v12 records the category an author picked in the editor. Categories
+        // are editorial structure (ADR 0016), so the app can only choose among
+        // existing ones - and it has to remember the choice across a draft, an
+        // offline queue entry and a relaunch, or a queued publish arrives
+        // without it. NULL means "the author never touched the picker", which
+        // is not the same as "no category": the write omits the field and the
+        // server keeps whatever the article already had.
+        if (!await _tableExists('account_drafts')) {
+          await _createAccountDrafts();
+        } else if (!await _columnExists('account_drafts', 'category_ids')) {
+          await customStatement(
+            'ALTER TABLE account_drafts ADD COLUMN category_ids TEXT',
+          );
+        }
+        if (!await _tableExists('publish_queue')) {
+          await _createPublishQueue();
+        } else if (!await _columnExists('publish_queue', 'category_ids')) {
+          await customStatement(
+            'ALTER TABLE publish_queue ADD COLUMN category_ids TEXT',
+          );
+        }
+      }
     },
   );
 
@@ -181,7 +204,8 @@ class AppDatabase extends GeneratedDatabase {
       'CREATE TABLE account_drafts ('
       'id INTEGER PRIMARY KEY AUTOINCREMENT, backend TEXT NOT NULL, '
       'user_id TEXT NOT NULL, blog_id TEXT, title TEXT NOT NULL, '
-      'content TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL)',
+      'content TEXT NOT NULL, tags TEXT NOT NULL, category_ids TEXT, '
+      'updated_at INTEGER NOT NULL)',
     );
     await customStatement(
       'CREATE UNIQUE INDEX account_drafts_new '
@@ -212,7 +236,7 @@ class AppDatabase extends GeneratedDatabase {
       'content TEXT NOT NULL, tags TEXT NOT NULL, cover_file TEXT, '
       'cover_mime TEXT, cover_url TEXT, '
       "kind TEXT NOT NULL DEFAULT 'create', target_id TEXT, locale TEXT, "
-      'state TEXT NOT NULL, '
+      'category_ids TEXT, state TEXT NOT NULL, '
       'attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at INTEGER, '
       'last_error_code TEXT, '
       'created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',

@@ -25,6 +25,7 @@ class BlogModel extends Blog {
     this.serverSummary,
     this.plainEditorCompatible = false,
     super.locale,
+    super.categoryIds,
   });
 
   /// The no-wave server article id (UUID). [Blog.id] is the public slug;
@@ -59,6 +60,7 @@ class BlogModel extends Blog {
     String? posterName,
     String? posterAvatar,
     String? locale,
+    List<String>? categoryIds,
   }) {
     return BlogModel(
       id: id ?? this.id,
@@ -80,6 +82,7 @@ class BlogModel extends Blog {
       posterAvatar: posterAvatar ?? this.posterAvatar,
       isDraft: isDraft,
       locale: locale ?? this.locale,
+      categoryIds: categoryIds ?? this.categoryIds,
     );
   }
 
@@ -91,6 +94,13 @@ class BlogModel extends Blog {
     final tags = (map['tags'] as List? ?? [])
         .map((tag) => (tag as Map<String, dynamic>)['name'] as String? ?? '')
         .where((name) => name.isNotEmpty)
+        .toList();
+    // Categories travel as ids: the names are per language, and the catalog
+    // that explains them is a separate public read.
+    final categoryIds = (map['categories'] as List? ?? [])
+        .map((category) => (category as Map<String, dynamic>)['id'] as String?)
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
         .toList();
     final rawBlocks = map['contentBlocks'];
     final blocks = rawBlocks is List
@@ -127,6 +137,7 @@ class BlogModel extends Blog {
       posterId: map['authorId'] as String? ?? '',
       imageUrl: extracted.coverUrl,
       tags: tags,
+      categoryIds: categoryIds,
       updatedAt:
           DateTime.tryParse(map['updatedAt'] as String? ?? '') ??
           DateTime.now(),

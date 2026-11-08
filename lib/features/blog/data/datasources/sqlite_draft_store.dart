@@ -60,6 +60,12 @@ class SqliteBlogDraftStore implements BlogDraftStore {
       title: row.read<String>('title'),
       content: row.read<String>('content'),
       tags: (jsonDecode(row.read<String>('tags')) as List).cast<String>(),
+      // NULL is "the picker was never touched", which is not the same as an
+      // empty list: the first leaves the article's categories alone.
+      categoryIds: switch (row.readNullable<String>('category_ids')) {
+        final String encoded => (jsonDecode(encoded) as List).cast<String>(),
+        null => null,
+      },
       updatedAt: DateTime.fromMicrosecondsSinceEpoch(
         row.read<int>('updated_at'),
       ),
@@ -71,18 +77,24 @@ class SqliteBlogDraftStore implements BlogDraftStore {
     _requireUserId(draft.userId);
     // Capture the mutable tag list before this write waits for its turn.
     final tags = jsonEncode(draft.tags);
+    final categoryIds = switch (draft.categoryIds) {
+      final List<String> ids => jsonEncode(ids),
+      null => null,
+    };
     return _serializeWrite(() async {
       await database.transaction(() async {
         final existing = await _load(draft.blogId, draft.userId);
         if (existing != null) {
           draft.id = existing.id;
           await database.customStatement(
-            'UPDATE account_drafts SET title = ?, content = ?, tags = ?, updated_at = ? '
+            'UPDATE account_drafts SET title = ?, content = ?, tags = ?, '
+            'category_ids = ?, updated_at = ? '
             'WHERE id = ? AND backend = ? AND user_id = ? AND blog_id IS ?',
             [
               draft.title,
               draft.content,
               tags,
+              categoryIds,
               draft.updatedAt.microsecondsSinceEpoch,
               draft.id,
               _backend,
@@ -92,8 +104,9 @@ class SqliteBlogDraftStore implements BlogDraftStore {
           );
         } else {
           final id = await database.customInsert(
-            'INSERT INTO account_drafts(backend, user_id, blog_id, title, content, tags, updated_at) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO account_drafts(backend, user_id, blog_id, title, '
+            'content, tags, category_ids, updated_at) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             variables: [
               Variable<String>(_backend),
               Variable<String>(draft.userId),
@@ -101,6 +114,7 @@ class SqliteBlogDraftStore implements BlogDraftStore {
               Variable(draft.title),
               Variable(draft.content),
               Variable(tags),
+              Variable<String>(categoryIds),
               Variable(draft.updatedAt.microsecondsSinceEpoch),
             ],
           );
@@ -118,7 +132,8 @@ class SqliteBlogDraftStore implements BlogDraftStore {
       final deleted = await database.customUpdate(
         'DELETE FROM account_drafts '
         'WHERE id = ? AND backend = ? AND user_id = ? AND blog_id IS ? '
-        'AND updated_at = ? AND title = ? AND content = ? AND tags = ?',
+        'AND updated_at = ? AND title = ? AND content = ? AND tags = ? '
+        'AND category_ids IS ?',
         variables: [
           Variable(id),
           Variable<String>(_backend),
@@ -128,6 +143,9 @@ class SqliteBlogDraftStore implements BlogDraftStore {
           Variable<String>(draft.title),
           Variable<String>(draft.content),
           Variable<String>(jsonEncode(draft.tags)),
+          Variable<String>(
+            draft.categoryIds == null ? null : jsonEncode(draft.categoryIds),
+          ),
         ],
       );
       return deleted == 1;

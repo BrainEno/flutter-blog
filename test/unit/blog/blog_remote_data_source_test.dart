@@ -316,6 +316,100 @@ void main() {
     });
   });
 
+  group('categories and tags on the write path', () {
+    setUp(() {
+      when(
+        () => client.postJson(
+          '/articles',
+          any(),
+          extraHeaders: any(named: 'extraHeaders'),
+        ),
+      ).thenAnswer((_) async => _articleMap());
+      when(() => client.postJson('/tags', any())).thenAnswer(
+        (_) async => <String, dynamic>{'id': 't1', 'name': '诗歌', 'slug': 's'},
+      );
+    });
+
+    Map<String, dynamic> capturedCreate() =>
+        verify(
+              () => client.postJson(
+                '/articles',
+                captureAny(),
+                extraHeaders: any(named: 'extraHeaders'),
+              ),
+            ).captured.single
+            as Map<String, dynamic>;
+
+    test('an untouched picker leaves categoryIds out entirely', () async {
+      await dataSource.uploadBlog(_blog());
+
+      // Omitted, not empty: the server keeps whatever categories the article
+      // already has, because the app is not allowed to invent or drop them.
+      expect(capturedCreate().containsKey('categoryIds'), isFalse);
+    });
+
+    test('a chosen category is sent as one id', () async {
+      await dataSource.uploadBlog(_blog(), categoryIds: const ['cat-1']);
+
+      expect(capturedCreate()['categoryIds'], ['cat-1']);
+    });
+
+    test('clearing the picker sends an empty list', () async {
+      await dataSource.uploadBlog(_blog(), categoryIds: const []);
+
+      expect(capturedCreate()['categoryIds'], isEmpty);
+    });
+
+    test('tags are always sent, so removing the last one sticks', () async {
+      await dataSource.uploadBlog(
+        BlogModel(
+          id: '',
+          title: '标题',
+          content: '正文',
+          posterId: 'u1',
+          imageUrl: '',
+          tags: const [],
+          updatedAt: DateTime.utc(2025),
+        ),
+      );
+
+      expect(capturedCreate()['tagIds'], isEmpty);
+    });
+
+    test('an edit follows the same three rules', () async {
+      final original = BlogModel.fromNowaveArticle(_articleMap());
+      when(
+        () => client.putJson('/articles/server-uuid-1', any()),
+      ).thenAnswer((_) async => _articleMap());
+
+      await dataSource.editBlog(original, categoryIds: const ['cat-2']);
+
+      final body =
+          verify(
+                () => client.putJson('/articles/server-uuid-1', captureAny()),
+              ).captured.single
+              as Map<String, dynamic>;
+      expect(body['categoryIds'], ['cat-2']);
+      expect(body['tagIds'], ['t1']);
+    });
+
+    test('an untouched edit keeps the article categories', () async {
+      final original = BlogModel.fromNowaveArticle(_articleMap());
+      when(
+        () => client.putJson('/articles/server-uuid-1', any()),
+      ).thenAnswer((_) async => _articleMap());
+
+      await dataSource.editBlog(original);
+
+      final body =
+          verify(
+                () => client.putJson('/articles/server-uuid-1', captureAny()),
+              ).captured.single
+              as Map<String, dynamic>;
+      expect(body.containsKey('categoryIds'), isFalse);
+    });
+  });
+
   group('tag resolution', () {
     test('concurrent publishes resolve the same tag once', () async {
       var tagPosts = 0;

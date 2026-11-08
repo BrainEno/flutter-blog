@@ -138,6 +138,7 @@ class PublishQueueRunner implements PublishQueueDrainer {
                 content: entry.content,
                 tags: entry.tags,
                 uploadedCoverUrl: coverUrl,
+                categoryIds: entry.categoryIds,
                 sessionFence: fence,
               )
             : await repository.editBlog(
@@ -147,6 +148,7 @@ class PublishQueueRunner implements PublishQueueDrainer {
                 tags: entry.tags,
                 uploadedCoverUrl: coverUrl,
                 locale: locale,
+                categoryIds: entry.categoryIds,
                 sessionFence: fence,
               );
       } else {
@@ -157,6 +159,7 @@ class PublishQueueRunner implements PublishQueueDrainer {
           posterId: entry.userId,
           tags: entry.tags,
           idempotencyKey: entry.idempotencyKey,
+          categoryIds: entry.categoryIds,
           sessionFence: fence,
         );
       }

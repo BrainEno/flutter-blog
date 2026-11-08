@@ -17,6 +17,9 @@ import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/category_ref.dart';
+import 'package:belog/features/blog/domain/usecase/get_categories.dart';
+import 'package:belog/core/usecase/usecase.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
@@ -47,6 +50,10 @@ class BlogEditorPage extends StatefulWidget {
   final NowaveSessionIdentity? sessionIdentity;
   final PublishQueueStore? publishQueueStore;
   final PublishQueueDrainer? publishQueueDrainer;
+
+  /// The category catalog read. Injectable so a test can answer without a
+  /// server; production resolves the shared, credential-free use case.
+  final GetCategories? getCategories;
   const BlogEditorPage({
     super.key,
     this.blog,
@@ -55,6 +62,7 @@ class BlogEditorPage extends StatefulWidget {
     this.sessionIdentity,
     this.publishQueueStore,
     this.publishQueueDrainer,
+    this.getCategories,
   });
 
   @override
@@ -68,6 +76,21 @@ class _BlogEditorState extends State<BlogEditorPage> {
   final contentController = TextEditingController();
   final formKey = GlobalKey<FormState>();
   List<String> selectedTags = [];
+
+  /// The category catalog this editor was able to read, and how that read went.
+  List<CategoryRef> _categories = const [];
+  bool _categoriesLoading = false;
+  bool _categoriesFailed = false;
+
+  /// The one category the author has picked (single-select), or null.
+  ///
+  /// Categories are editorial structure the desk cannot create, so the write
+  /// only names this when the author actually touched the row: [_categoryTouched]
+  /// is what separates "chose none" from "never looked", and only the first of
+  /// those clears the article's category on the server.
+  String? _selectedCategoryId;
+  bool _categoryTouched = false;
+
   File? image;
   bool isNewImageSelected = false;
 
@@ -136,6 +159,11 @@ class _BlogEditorState extends State<BlogEditorPage> {
       titleController.text = _target.title;
       contentController.text = _target.content;
       selectedTags = List.from(_target.tags);
+      // Show what the server says it is. Until the author touches the row this
+      // is display only - the write omits `categoryIds` entirely.
+      if (_target.categoryIds.isNotEmpty) {
+        _selectedCategoryId = _target.categoryIds.first;
+      }
     }
     final resumed = widget.queueEntry;
     if (resumed != null && !_invalidated) {
@@ -146,6 +174,14 @@ class _BlogEditorState extends State<BlogEditorPage> {
         contentController.text = resumed.content;
         selectedTags = List.from(resumed.tags);
       }
+      // The entry carries whether the picker had been touched at queue time.
+      final queuedCategoryIds = resumed.categoryIds;
+      if (queuedCategoryIds != null) {
+        _categoryTouched = true;
+        _selectedCategoryId = queuedCategoryIds.isEmpty
+            ? null
+            : queuedCategoryIds.first;
+      }
       unawaited(_loadQueuedCover(resumed));
     }
     // Attached after the initial text is in place, so pre-filling the
@@ -155,6 +191,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     if (!_invalidated) {
       loadDraft();
       _loadUnclaimedDraftNotice();
+      unawaited(_loadCategories());
     }
   }
 
@@ -249,6 +286,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
     title: titleController.text,
     content: contentController.text,
     tags: List.of(selectedTags),
+    categoryIds: _categoryTouched
+        ? [if (_selectedCategoryId != null) _selectedCategoryId!]
+        : null,
     updatedAt: DateTime.now(),
   );
 
@@ -312,6 +352,13 @@ class _BlogEditorState extends State<BlogEditorPage> {
             titleController.text = draft.title;
             contentController.text = draft.content;
             selectedTags = List.from(draft.tags);
+            final draftCategoryIds = draft.categoryIds;
+            if (draftCategoryIds != null) {
+              _categoryTouched = true;
+              _selectedCategoryId = draftCategoryIds.isEmpty
+                  ? null
+                  : draftCategoryIds.first;
+            }
           });
         } finally {
           _restoringDraft = false;
@@ -479,6 +526,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
         cover: _publishImageSnapshot,
         kind: target == null ? PublishQueueKind.create : PublishQueueKind.edit,
         targetId: target?.id,
+        categoryIds: snapshot.categoryIds,
         // Persist the edition with the edit: a retry days later must not guess
         // the language from whatever the app displays then.
         locale: target?.locale,
@@ -549,6 +597,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
           tags: List.of(draft.tags),
           sessionFence: sessionFence,
           idempotencyKey: idempotencyKey,
+          categoryIds: draft.categoryIds,
         ),
       );
     } else {
@@ -563,6 +612,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
           // Save the edition this editor was opened on, not the language the
           // interface happens to be showing now.
           locale: _target.locale,
+          categoryIds: draft.categoryIds,
         ),
       );
     }
@@ -686,6 +736,12 @@ class _BlogEditorState extends State<BlogEditorPage> {
             resumedFromQueue: widget.queueEntry != null,
             autoSaveStatus: _autoSaveStatus,
             onPickCover: selectImage,
+            categories: _categories,
+            selectedCategoryId: _selectedCategoryId,
+            categoriesLoading: _categoriesLoading,
+            categoriesFailed: _categoriesFailed,
+            onCategorySelected: _onCategorySelected,
+            onRetryCategories: () => unawaited(_loadCategories()),
           );
         },
       ),
@@ -694,6 +750,45 @@ class _BlogEditorState extends State<BlogEditorPage> {
 
   void _onTagsChanged(List<String> tags) {
     setState(() => selectedTags = tags);
+    _onEditorContentChanged();
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() {
+      _categoriesLoading = true;
+      _categoriesFailed = false;
+    });
+    try {
+      // Read through the domain use case: the presentation layer must not
+      // reach into the data layer, and the catalog is a public read either way.
+      final useCase = widget.getCategories ?? GetIt.instance<GetCategories>();
+      final result = await useCase(NoParams());
+      if (!mounted || !_isCurrentEditor) return;
+      setState(() {
+        // A refused read is the same dead end as a thrown one: the row offers
+        // a retry, and publishing stays possible.
+        result.fold(
+          (_) => _categoriesFailed = true,
+          (categories) => _categories = categories,
+        );
+        _categoriesLoading = false;
+      });
+    } catch (_) {
+      if (!mounted || !_isCurrentEditor) return;
+      // A missing catalog never blocks publishing: the author can still send
+      // the article, and the picker simply stays unavailable.
+      setState(() {
+        _categoriesLoading = false;
+        _categoriesFailed = true;
+      });
+    }
+  }
+
+  void _onCategorySelected(String? categoryId) {
+    setState(() {
+      _selectedCategoryId = categoryId;
+      _categoryTouched = true;
+    });
     _onEditorContentChanged();
   }
 }

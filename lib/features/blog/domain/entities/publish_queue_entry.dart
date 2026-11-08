@@ -54,6 +54,7 @@ class PublishQueueEntry {
     this.kind = PublishQueueKind.create,
     this.targetId,
     this.locale,
+    this.categoryIds,
     this.coverFileName,
     this.coverMimeType,
     this.coverUrl,
@@ -71,6 +72,15 @@ class PublishQueueEntry {
   final String title;
   final String content;
   final List<String> tags;
+
+  /// The category the author picked when the entry was queued, or null when
+  /// the picker was never touched.
+  ///
+  /// Kept here rather than in the text because a retry days later must publish
+  /// what the author asked for, not what the app happens to show then. Null
+  /// omits `categoryIds` from the write, which leaves the article's own
+  /// categories untouched; an empty list clears them.
+  final List<String>? categoryIds;
 
   /// Stable per queued intent; see the class doc.
   ///
@@ -144,6 +154,7 @@ class PublishQueueEntry {
       kind: kind,
       targetId: targetId,
       locale: locale,
+      categoryIds: categoryIds,
       status: status ?? this.status,
       attempts: attempts ?? this.attempts,
       createdAt: createdAt,

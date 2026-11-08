@@ -38,10 +38,17 @@ abstract interface class BlogRemoteDataSource {
   /// Creates the article (`POST /articles`). [blog.imageUrl] must already
   /// be an immutable media URL from [uploadBlogImage] (or empty: articles
   /// without covers are published as text-only content blocks).
+  ///
+  /// [categoryIds] is the author's choice from the editor. Null (the default)
+  /// means the picker was never touched and the field is left out of the
+  /// request entirely - categories are editorial structure (ADR 0016), so an
+  /// app that guessed would either invent one or drop the real one. An empty
+  /// list is the author explicitly choosing none.
   Future<BlogModel> uploadBlog(
     BlogModel blog, {
     NowaveSessionFence? sessionFence,
     String? idempotencyKey,
+    List<String>? categoryIds,
   });
 
   /// Uploads a cover image (`POST /me/media`, raw bytes + MIME type) and
@@ -113,9 +120,13 @@ abstract interface class BlogRemoteDataSource {
   /// is distinct from a tag that exists with nothing filed under it.
   Future<List<BlogModel>> getArticlesByTag(String slug, {required int offset});
   Future<List<BlogModel>> searchBlogs(String query);
+
+  /// Same `categoryIds` rule as [uploadBlog]: null leaves the article's
+  /// categories alone, an empty list clears them, one id replaces them.
   Future<BlogModel> editBlog(
     BlogModel blog, {
     NowaveSessionFence? sessionFence,
+    List<String>? categoryIds,
   });
 
   /// Soft-deletes an article (`DELETE /articles/:articleId`): the row
@@ -229,6 +240,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     BlogModel blog, {
     NowaveSessionFence? sessionFence,
     String? idempotencyKey,
+    List<String>? categoryIds,
   }) {
     return _guard(() async {
       final tagIds = await _tags.resolveIds(blog.tags, sessionFence);
@@ -241,7 +253,10 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         'contentBlocksVersion': 0,
         'publish': true,
         'locale': _locale,
-        if (tagIds.isNotEmpty) 'tagIds': tagIds,
+        // Sent even when empty: an omitted `tagIds` means "leave the tags
+        // alone", so a cleared list would silently come back on the next read.
+        'tagIds': tagIds,
+        if (categoryIds != null) 'categoryIds': categoryIds,
       };
       // The server replays a repeated `Idempotency-Key` instead of creating a
       // second article, which is what makes a queued publish safe to retry
@@ -592,6 +607,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   Future<BlogModel> editBlog(
     BlogModel blog, {
     NowaveSessionFence? sessionFence,
+    List<String>? categoryIds,
   }) {
     return _guard(() async {
       if (blog.articleId.isEmpty) {
@@ -625,7 +641,10 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         // to display right now: `PUT` inserts or replaces exactly the named
         // translation.
         'locale': _editionLocale(blog.locale),
-        if (tagIds.isNotEmpty) 'tagIds': tagIds,
+        // See the create path: an omitted `tagIds` keeps the stored tags, so
+        // removing the last tag would otherwise never reach the server.
+        'tagIds': tagIds,
+        if (categoryIds != null) 'categoryIds': categoryIds,
       };
       final data = sessionFence == null
           ? await client.putJson('/articles/${blog.articleId}', body)
