@@ -81,12 +81,29 @@ BlogByBloc _bloc(_Pages pages) => BlogByBloc(
   getMyArticleEditions: _NoEditions(),
 );
 
-Future<GetBlogsByUserSuccess> _firstPage(BlogByBloc bloc, String userId) async {
-  bloc.add(GetBlogByPosterEvent(userId: userId));
+Future<GetBlogsByUserSuccess> _firstPage(
+  BlogByBloc bloc,
+  String userId, {
+  BlogFeedKind kind = BlogFeedKind.latest,
+}) async {
+  bloc.add(GetBlogByPosterEvent(userId: userId, kind: kind));
   final state = await bloc.stream.firstWhere(
-    (state) => state is GetBlogsByUserSuccess,
+    (state) => state is GetBlogsByUserSuccess && state.kind == kind,
   );
   return state as GetBlogsByUserSuccess;
+}
+
+/// Subscribes before the event is added: the bound is decided locally, so the
+/// state can land in the same turn as the request.
+Future<GetBlogsByUserSuccess> _depthLimitedBy(
+  BlogByBloc bloc,
+  BlogByEvent event,
+) {
+  final found = bloc.stream.firstWhere(
+    (state) => state is GetBlogsByUserSuccess && state.depthLimited,
+  );
+  bloc.add(event);
+  return found.then((state) => state as GetBlogsByUserSuccess);
 }
 
 void main() {
@@ -135,16 +152,13 @@ void main() {
     addTearDown(bloc.close);
 
     // One page already past the bound: the next request could only be refused.
-    final state = await _firstPage(bloc, 'author');
+    final state = await _firstPage(bloc, 'author', kind: BlogFeedKind.popular);
     expect(state.blogs.length, greaterThan(kAuthorPopularMaxOffset));
-    bloc.add(BlogByMoreRequested());
-    final stopped = await bloc.stream.firstWhere(
-      (state) => state is GetBlogsByUserSuccess && state.depthLimited,
-    );
+    final stopped = await _depthLimitedBy(bloc, BlogByMoreRequested());
 
     // Nothing was sent: the client knows the bound the server enforces.
     expect(pages.calls, hasLength(1));
-    expect((stopped as GetBlogsByUserSuccess).hasMore, isFalse);
+    expect(stopped.hasMore, isFalse);
   });
 
   test('a refused deep page is the bound, not a retryable error', () async {
@@ -158,13 +172,10 @@ void main() {
     final bloc = _bloc(pages);
     addTearDown(bloc.close);
 
-    await _firstPage(bloc, 'author');
-    bloc.add(BlogByMoreRequested());
-    final stopped = await bloc.stream.firstWhere(
-      (state) => state is GetBlogsByUserSuccess && state.depthLimited,
-    );
+    await _firstPage(bloc, 'author', kind: BlogFeedKind.popular);
+    final stopped = await _depthLimitedBy(bloc, BlogByMoreRequested());
 
-    expect((stopped as GetBlogsByUserSuccess).blogs, hasLength(20));
+    expect(stopped.blogs, hasLength(20));
     expect(stopped.loadMoreFailure, isNull);
   });
 
