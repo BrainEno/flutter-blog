@@ -661,6 +661,9 @@ void main() {
 
     await tester.tap(find.text('去「最新」继续'));
     await tester.pumpAndSettle();
-    expect((blogByBloc.state as GetBlogsByUserSuccess).kind, BlogFeedKind.latest);
+    expect(
+      (blogByBloc.state as GetBlogsByUserSuccess).kind,
+      BlogFeedKind.latest,
+    );
   });
 }

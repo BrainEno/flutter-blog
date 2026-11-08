@@ -111,9 +111,8 @@ class _AuthorPageState extends State<AuthorPage> {
               textAlign: TextAlign.center,
             ),
             TextButton(
-              onPressed: () => context.read<BlogByBloc>().add(
-                BlogByMoreRequested(),
-              ),
+              onPressed: () =>
+                  context.read<BlogByBloc>().add(BlogByMoreRequested()),
               child: Text(l10n.actionRetry),
             ),
           ],
@@ -124,8 +123,7 @@ class _AuthorPageState extends State<AuthorPage> {
     return Padding(
       padding: const EdgeInsets.all(NoWaveSpacing.medium),
       child: TextButton(
-        onPressed: () =>
-            context.read<BlogByBloc>().add(BlogByMoreRequested()),
+        onPressed: () => context.read<BlogByBloc>().add(BlogByMoreRequested()),
         child: Text(l10n.authorArticlesLoadMore),
       ),
     );
@@ -344,8 +342,7 @@ class _AuthorPageState extends State<AuthorPage> {
                               ),
                             );
                           }
-                          final success =
-                              articleState as GetBlogsByUserSuccess;
+                          final success = articleState as GetBlogsByUserSuccess;
                           return Column(
                             children: [
                               for (var index = 0; index < blogs.length; index++)

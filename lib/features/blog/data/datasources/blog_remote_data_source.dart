@@ -86,6 +86,7 @@ abstract interface class BlogRemoteDataSource {
   /// Same-topic articles the server recommends next to [slug]
   /// (`GET /articles/:slug/related`).
   Future<List<BlogModel>> getRelatedArticles(String slug);
+
   /// One page of an author's published work (`GET /authors/:id/articles`).
   ///
   /// The route accepts `sort` and `offset`: `latest` pages by publication date,

@@ -197,8 +197,7 @@ void main() {
     );
     final popular = await bloc.stream.firstWhere(
       (state) =>
-          state is GetBlogsByUserSuccess &&
-          state.kind == BlogFeedKind.popular,
+          state is GetBlogsByUserSuccess && state.kind == BlogFeedKind.popular,
     );
 
     expect(pages.calls.last.kind, BlogFeedKind.popular);

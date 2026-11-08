@@ -371,10 +371,7 @@ void main() {
 
     test('the poster id is encoded, not pasted into the path', () async {
       when(
-        () => client.getJson(
-          any(),
-          query: any(named: 'query'),
-        ),
+        () => client.getJson(any(), query: any(named: 'query')),
       ).thenAnswer((_) async => <Map<String, dynamic>>[]);
 
       await dataSource.getAuthorArticles('author/with?reserved%');

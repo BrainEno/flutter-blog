@@ -401,9 +401,7 @@ Future<void> _initBlog(
     ..registerFactory(() => UpdateBlog(serviceLocator<BlogRepository>()))
     ..registerFactory(() => DeleteBlog(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetBlogsByPoster(serviceLocator<BlogRepository>()))
-    ..registerFactory(
-      () => GetAuthorArticles(serviceLocator<BlogRepository>()),
-    )
+    ..registerFactory(() => GetAuthorArticles(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetMyArticles(serviceLocator<BlogRepository>()))
     ..registerFactory(
       () => GetMyArticleEditions(serviceLocator<BlogRepository>()),
