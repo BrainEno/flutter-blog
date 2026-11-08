@@ -3,18 +3,20 @@ import 'dart:async';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
-import 'package:belog/features/blog/data/datasources/category_remote_data_source.dart';
-import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
+import 'package:belog/features/blog/domain/repositories/category_repository.dart';
+import 'package:belog/features/blog/domain/usecase/get_categories.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/blog_editor_page.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:mocktail/mocktail.dart';
 
 /// Records the events the editor dispatches instead of publishing anything.
@@ -49,27 +51,27 @@ class _FakeDraftStore implements BlogDraftStore {
   }) async => 0;
 }
 
-class _FakeCategorySource implements CategoryRemoteDataSource {
-  _FakeCategorySource(this.categories, {this.failure});
+class _FakeCategoryRepository implements CategoryRepository {
+  _FakeCategoryRepository(this.categories, {this.failure});
 
   final List<CategoryRef> categories;
-  final Object? failure;
+  final Failure? failure;
 
   @override
-  Future<List<CategoryRef>> listCategories() async {
+  Future<Either<Failure, List<CategoryRef>>> listCategories() async {
     final failure = this.failure;
-    if (failure != null) throw failure;
-    return categories;
+    return failure == null ? right(categories) : left(failure);
   }
 
   @override
-  Future<CategoryRef?> getCategory(String slug) async => null;
+  Future<Either<Failure, CategoryRef?>> getCategory(String slug) async =>
+      right(null);
 
   @override
-  Future<List<BlogModel>> getArticlesByCategory(
+  Future<Either<Failure, List<Blog>>> getArticlesByCategory(
     String slug, {
     required int offset,
-  }) async => const [];
+  }) async => right(const []);
 }
 
 class _FakeSession implements NowaveSessionIdentity {
@@ -117,7 +119,7 @@ const _categories = [
 Future<_RecordingUploadBloc> _openEditor(
   WidgetTester tester, {
   required Blog blog,
-  required CategoryRemoteDataSource source,
+  required GetCategories source,
   required _FakeDraftStore store,
 }) async {
   final bloc = _RecordingUploadBloc();
@@ -143,7 +145,7 @@ Future<_RecordingUploadBloc> _openEditor(
           blog: blog,
           draftStore: store,
           sessionIdentity: session,
-          categorySource: source,
+          getCategories: source,
         ),
       ),
     ),
@@ -165,7 +167,7 @@ void main() {
     final bloc = await _openEditor(
       tester,
       blog: _blog(const []),
-      source: _FakeCategorySource(_categories),
+      source: GetCategories(_FakeCategoryRepository(_categories)),
       store: store,
     );
 
@@ -189,7 +191,7 @@ void main() {
     final bloc = await _openEditor(
       tester,
       blog: _blog(const ['cat-1']),
-      source: _FakeCategorySource(_categories),
+      source: GetCategories(_FakeCategoryRepository(_categories)),
       store: store,
     );
 
@@ -214,7 +216,7 @@ void main() {
     final bloc = await _openEditor(
       tester,
       blog: _blog(const ['cat-1']),
-      source: _FakeCategorySource(_categories),
+      source: GetCategories(_FakeCategoryRepository(_categories)),
       store: store,
     );
 
@@ -231,7 +233,12 @@ void main() {
     final bloc = await _openEditor(
       tester,
       blog: _blog(const []),
-      source: _FakeCategorySource(_categories, failure: StateError('offline')),
+      source: GetCategories(
+        _FakeCategoryRepository(
+          _categories,
+          failure: const Failure('offline', kind: FailureKind.network),
+        ),
+      ),
       store: store,
     );
 
@@ -250,7 +257,7 @@ void main() {
     final bloc = await _openEditor(
       tester,
       blog: _blog(const []),
-      source: _FakeCategorySource(_categories),
+      source: GetCategories(_FakeCategoryRepository(_categories)),
       store: store,
     );
 

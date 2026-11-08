@@ -32,6 +32,7 @@ abstract interface class BlogRepository {
     required List<String> tags,
     NowaveSessionFence? sessionFence,
     String? idempotencyKey,
+
     /// The author's category choice; null leaves the field out of the request.
     List<String>? categoryIds,
   });
@@ -121,6 +122,7 @@ abstract interface class BlogRepository {
     String? uploadedCoverUrl,
     String? locale,
     NowaveSessionFence? sessionFence,
+
     /// The author's category choice; null leaves the article's categories as
     /// they are, an empty list clears them.
     List<String>? categoryIds,

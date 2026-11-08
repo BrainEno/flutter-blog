@@ -63,8 +63,7 @@ class SqliteBlogDraftStore implements BlogDraftStore {
       // NULL is "the picker was never touched", which is not the same as an
       // empty list: the first leaves the article's categories alone.
       categoryIds: switch (row.readNullable<String>('category_ids')) {
-        final String encoded =>
-          (jsonDecode(encoded) as List).cast<String>(),
+        final String encoded => (jsonDecode(encoded) as List).cast<String>(),
         null => null,
       },
       updatedAt: DateTime.fromMicrosecondsSinceEpoch(

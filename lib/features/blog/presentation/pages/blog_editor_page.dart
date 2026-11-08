@@ -16,9 +16,10 @@ import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
-import 'package:belog/features/blog/data/datasources/category_remote_data_source.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
+import 'package:belog/features/blog/domain/usecase/get_categories.dart';
+import 'package:belog/core/usecase/usecase.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
@@ -50,9 +51,9 @@ class BlogEditorPage extends StatefulWidget {
   final PublishQueueStore? publishQueueStore;
   final PublishQueueDrainer? publishQueueDrainer;
 
-  /// The category catalog. Injectable so a test can answer without a server;
-  /// production resolves the shared, credential-free reader.
-  final CategoryRemoteDataSource? categorySource;
+  /// The category catalog read. Injectable so a test can answer without a
+  /// server; production resolves the shared, credential-free use case.
+  final GetCategories? getCategories;
   const BlogEditorPage({
     super.key,
     this.blog,
@@ -61,7 +62,7 @@ class BlogEditorPage extends StatefulWidget {
     this.sessionIdentity,
     this.publishQueueStore,
     this.publishQueueDrainer,
-    this.categorySource,
+    this.getCategories,
   });
 
   @override
@@ -758,13 +759,18 @@ class _BlogEditorState extends State<BlogEditorPage> {
       _categoriesFailed = false;
     });
     try {
-      final source =
-          widget.categorySource ??
-          GetIt.instance<CategoryRemoteDataSource>();
-      final categories = await source.listCategories();
+      // Read through the domain use case: the presentation layer must not
+      // reach into the data layer, and the catalog is a public read either way.
+      final useCase = widget.getCategories ?? GetIt.instance<GetCategories>();
+      final result = await useCase(NoParams());
       if (!mounted || !_isCurrentEditor) return;
       setState(() {
-        _categories = categories;
+        // A refused read is the same dead end as a thrown one: the row offers
+        // a retry, and publishing stays possible.
+        result.fold(
+          (_) => _categoriesFailed = true,
+          (categories) => _categories = categories,
+        );
         _categoriesLoading = false;
       });
     } catch (_) {

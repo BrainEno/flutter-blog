@@ -34,5 +34,7 @@ class BlogDraft {
     required this.updatedAt,
     List<String>? categoryIds,
   }) : tags = List.unmodifiable(tags),
-       categoryIds = categoryIds == null ? null : List.unmodifiable(categoryIds);
+       categoryIds = categoryIds == null
+           ? null
+           : List.unmodifiable(categoryIds);
 }

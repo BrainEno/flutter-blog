@@ -120,6 +120,7 @@ abstract interface class BlogRemoteDataSource {
   /// is distinct from a tag that exists with nothing filed under it.
   Future<List<BlogModel>> getArticlesByTag(String slug, {required int offset});
   Future<List<BlogModel>> searchBlogs(String query);
+
   /// Same `categoryIds` rule as [uploadBlog]: null leaves the article's
   /// categories alone, an empty list clears them, one id replaces them.
   Future<BlogModel> editBlog(

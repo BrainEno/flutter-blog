@@ -386,10 +386,7 @@ void main() {
 
       final body =
           verify(
-                () => client.putJson(
-                  '/articles/server-uuid-1',
-                  captureAny(),
-                ),
+                () => client.putJson('/articles/server-uuid-1', captureAny()),
               ).captured.single
               as Map<String, dynamic>;
       expect(body['categoryIds'], ['cat-2']);
@@ -406,10 +403,7 @@ void main() {
 
       final body =
           verify(
-                () => client.putJson(
-                  '/articles/server-uuid-1',
-                  captureAny(),
-                ),
+                () => client.putJson('/articles/server-uuid-1', captureAny()),
               ).captured.single
               as Map<String, dynamic>;
       expect(body.containsKey('categoryIds'), isFalse);
