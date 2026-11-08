@@ -160,8 +160,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
       selectedTags = List.from(_target.tags);
       // Show what the server says it is. Until the author touches the row this
       // is display only - the write omits `categoryIds` entirely.
-      if (_target!.categoryIds.isNotEmpty) {
-        _selectedCategoryId = _target!.categoryIds.first;
+      if (_target.categoryIds.isNotEmpty) {
+        _selectedCategoryId = _target.categoryIds.first;
       }
     }
     final resumed = widget.queueEntry;

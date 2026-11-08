@@ -1,4 +1,3 @@
-import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
