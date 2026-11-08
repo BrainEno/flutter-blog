@@ -456,6 +456,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('作者的文章'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('作者的文章'));
     await tester.pumpAndSettle();
     expect(find.text('article: post-1'), findsOneWidget);
@@ -594,11 +595,13 @@ void main() {
 
     // The first full page is not the end of the list.
     await tester.ensureVisible(find.text('加载更多作品'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('加载更多作品'));
     await tester.pumpAndSettle();
     expect(calls.last, (BlogFeedKind.latest, kAuthorPageSize));
 
     await tester.ensureVisible(find.text('最多收藏'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('最多收藏'));
     await tester.pumpAndSettle();
     expect(calls.last, (BlogFeedKind.popular, 0));
@@ -646,9 +649,11 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('最多收藏'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('最多收藏'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('加载更多作品'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('加载更多作品'));
     await tester.pumpAndSettle();
 

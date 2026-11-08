@@ -794,6 +794,9 @@ void main() {
       1,
     );
     await tester.ensureVisible(find.text('作者的另一篇文章'));
+    // A scroll only becomes real layout after a frame; tapping without pumping
+    // would use the widget's pre-scroll position and miss it.
+    await tester.pumpAndSettle();
     await tester.tap(find.text('作者的另一篇文章'));
     await tester.pumpAndSettle();
     expect(find.byType(BlogViewerPage), findsOneWidget);
