@@ -4,7 +4,6 @@ import 'package:belog/features/blog/domain/entities/article_editions.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/usecase/get_author_articles.dart';
-import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_article_editions.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,7 +15,6 @@ part 'blog_by_state.dart';
 /// Lists an author's work. Both sources share the same loading/success/failure
 /// states because the UI contract is identical; only the scope differs.
 class BlogByBloc extends Bloc<BlogByEvent, BlogByState> {
-  final GetBlogsByPoster _getBlogsByPoster;
   final GetAuthorArticles _getAuthorArticles;
   final GetMyArticles _getMyArticles;
   final GetMyArticleEditions _getMyArticleEditions;
@@ -24,15 +22,12 @@ class BlogByBloc extends Bloc<BlogByEvent, BlogByState> {
   /// Which order the author list is in, and which author it belongs to. Held
   /// here so a pending "load more" cannot land on another author's list.
   String? _authorId;
-  BlogFeedKind _authorKind = BlogFeedKind.latest;
 
   BlogByBloc({
-    required GetBlogsByPoster getBlogsByPoster,
     required GetAuthorArticles getAuthorArticles,
     required GetMyArticles getMyArticles,
     required GetMyArticleEditions getMyArticleEditions,
-  }) : _getBlogsByPoster = getBlogsByPoster,
-       _getAuthorArticles = getAuthorArticles,
+  }) : _getAuthorArticles = getAuthorArticles,
        _getMyArticles = getMyArticles,
        _getMyArticleEditions = getMyArticleEditions,
        super(BlogByInitial()) {
@@ -47,7 +42,6 @@ class BlogByBloc extends Bloc<BlogByEvent, BlogByState> {
     Emitter<BlogByState> emit,
   ) async {
     _authorId = event.userId;
-    _authorKind = event.kind;
     emit(GetBlogsByUserLoading());
     final res = await _getAuthorArticles(
       GetAuthorArticlesParams(userId: event.userId, kind: event.kind),

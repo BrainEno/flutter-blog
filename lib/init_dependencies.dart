@@ -442,7 +442,6 @@ Future<void> _initBlog(
     )
     ..registerFactory(
       () => BlogByBloc(
-        getBlogsByPoster: serviceLocator<GetBlogsByPoster>(),
         getAuthorArticles: serviceLocator<GetAuthorArticles>(),
         getMyArticles: serviceLocator<GetMyArticles>(),
         getMyArticleEditions: serviceLocator<GetMyArticleEditions>(),

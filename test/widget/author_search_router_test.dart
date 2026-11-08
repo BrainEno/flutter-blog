@@ -1,4 +1,5 @@
 import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
 import 'package:belog/features/user/data/models/author_profile_model.dart';
 import 'package:belog/features/user/domain/entities/author_search_result.dart';

@@ -12,7 +12,6 @@ import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/usecase/get_author_articles.dart';
-import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_article_editions.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
@@ -47,7 +46,7 @@ AuthorProfile _profile({bool isFollowing = false}) => AuthorProfile(
   updatedAt: DateTime.utc(2025),
 );
 
-Blog _blog() => BlogModel(
+BlogModel _blog() => BlogModel(
   id: 'post-1',
   title: '作者的文章',
   content: '正文',
@@ -171,7 +170,6 @@ void main() {
   );
 
   BlogByBloc buildBlogByBloc() => BlogByBloc(
-    getBlogsByPoster: GetBlogsByPoster(blogRepository),
     getAuthorArticles: GetAuthorArticles(blogRepository),
     getMyArticles: GetMyArticles(blogRepository),
     getMyArticleEditions: GetMyArticleEditions(blogRepository),

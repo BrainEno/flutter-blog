@@ -297,7 +297,6 @@ class Harness {
       )
       ..registerFactory(
         () => BlogByBloc(
-          getBlogsByPoster: sl<GetBlogsByPoster>(),
           getAuthorArticles: sl<GetAuthorArticles>(),
           getMyArticles: sl<GetMyArticles>(),
           getMyArticleEditions: sl<GetMyArticleEditions>(),

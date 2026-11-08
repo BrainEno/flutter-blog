@@ -5,7 +5,6 @@ import 'package:belog/features/blog/domain/author_articles_paging.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/usecase/get_author_articles.dart';
-import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_article_editions.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
@@ -62,11 +61,6 @@ class _Pages implements GetAuthorArticles {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _Unused implements GetBlogsByPoster {
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
 class _NoArticles implements GetMyArticles {
   @override
   Future<Either<Failure, List<Blog>>> call(GetMyArticlesParams params) async =>
@@ -82,7 +76,6 @@ class _NoEditions implements GetMyArticleEditions {
 }
 
 BlogByBloc _bloc(_Pages pages) => BlogByBloc(
-  getBlogsByPoster: _Unused(),
   getAuthorArticles: pages,
   getMyArticles: _NoArticles(),
   getMyArticleEditions: _NoEditions(),
