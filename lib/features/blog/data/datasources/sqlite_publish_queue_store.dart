@@ -81,7 +81,7 @@ class SqlitePublishQueueStore implements PublishQueueStore {
         'title, content, tags, cover_file, cover_mime, cover_url, kind, '
         'target_id, locale, category_ids, state, attempts, next_attempt_at, '
         'last_error_code, created_at, updated_at) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, 0, NULL, '
         'NULL, ?, ?)',
         variables: [
           Variable<String>(id),
