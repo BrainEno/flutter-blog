@@ -1,7 +1,6 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
-import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/components/no_wave_notice.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/edition_l10n.dart';
@@ -13,6 +12,7 @@ import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_grid_item.dart';
+import 'package:belog/features/blog/presentation/widgets/blog_grid_skeleton.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -159,10 +159,11 @@ class _UserBlogsPageState extends State<UserBlogsPage>
         child: BlocBuilder<BlogByBloc, BlogByState>(
           builder: (context, state) {
             if (state is GetBlogsByUserLoading) {
-              return Center(
-                child: NoWaveLoadingLabel(
-                  semanticLabel: context.l10n.loadingArticles,
-                ),
+              // The real archive is a sliver grid inside a page-padded
+              // viewport; the skeleton borrows the same delegate and padding.
+              return BlogGridSkeleton(
+                padding: const EdgeInsets.all(NoWaveSpacing.page),
+                semanticLabel: context.l10n.loadingArticles,
               );
             } else if (state is GetMyArticleEditionsSuccess) {
               return _buildList(state.blogs, editions: state.editions);
