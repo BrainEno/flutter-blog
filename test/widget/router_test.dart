@@ -33,6 +33,7 @@ import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart'
 import 'package:belog/features/blog/data/repositories/comment_repository_impl.dart';
 import 'package:belog/features/blog/domain/entities/article_editions.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_deleted_blogs.dart';
@@ -41,6 +42,7 @@ import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
+import 'package:belog/features/blog/domain/usecase/get_author_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_article_editions.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
@@ -220,8 +222,15 @@ class Harness {
         updatedAt: DateTime.utc(2025),
       ),
     );
+    // Every author page browses one page at a time; a test that needs rows
+    // registers its own stub afterwards, which wins.
     when(
-      () => remote.getBlogsByPosterId('author'),
+      () => remote.getAuthorArticles(
+        any(),
+        kind: any(named: 'kind'),
+        offset: any(named: 'offset'),
+        limit: any(named: 'limit'),
+      ),
     ).thenAnswer((_) async => <BlogModel>[]);
     // "My articles" reads the account-scoped list, so every signed-in test
     // needs it stubbed even when it only walks past the page.
@@ -266,6 +275,7 @@ class Harness {
       ..registerFactory(() => UpdateBlog(repository))
       ..registerFactory(() => DeleteBlog(repository))
       ..registerFactory(() => GetBlogsByPoster(repository))
+      ..registerFactory(() => GetAuthorArticles(repository))
       ..registerFactory(() => GetMyArticles(repository))
       ..registerFactory(() => GetMyArticleEditions(repository))
       ..registerFactory(() => GetRelatedArticles(repository))
@@ -288,6 +298,7 @@ class Harness {
       ..registerFactory(
         () => BlogByBloc(
           getBlogsByPoster: sl<GetBlogsByPoster>(),
+          getAuthorArticles: sl<GetAuthorArticles>(),
           getMyArticles: sl<GetMyArticles>(),
           getMyArticleEditions: sl<GetMyArticleEditions>(),
         ),
@@ -382,6 +393,10 @@ class Harness {
 }
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(BlogFeedKind.latest);
+  });
+
   setUp(() => GetIt.instance.reset());
 
   testWidgets('each tab keeps its own stack across tab switches', (
@@ -681,9 +696,7 @@ void main() {
           updatedAt: DateTime.utc(2025),
         ),
       );
-      when(
-        () => harness.remote.getBlogsByPosterId(readerId),
-      ).thenAnswer((_) async => <BlogModel>[]);
+
       await harness.pump(tester);
       await tester.pumpAndSettle();
       expect(find.text('查看粉丝'), findsOneWidget);
@@ -731,9 +744,7 @@ void main() {
         updatedAt: DateTime.utc(2025),
       ),
     );
-    when(
-      () => harness.remote.getBlogsByPosterId('user'),
-    ).thenAnswer((_) async => <BlogModel>[]);
+
     when(
       () => harness.relationships.getRelationships(
         userId: 'user',
@@ -760,7 +771,12 @@ void main() {
     final harness = Harness()..buildRouter(initialLocation: '/search/view/abc');
     addTearDown(harness.dispose);
     when(
-      () => harness.remote.getBlogsByPosterId('author'),
+      () => harness.remote.getAuthorArticles(
+        'author',
+        kind: any(named: 'kind'),
+        offset: any(named: 'offset'),
+        limit: any(named: 'limit'),
+      ),
     ).thenAnswer((_) async => [sampleBlog('another', '作者的另一篇文章')]);
     await harness.pump(tester);
     await tester.pumpAndSettle();

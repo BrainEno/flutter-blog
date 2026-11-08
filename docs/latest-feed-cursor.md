@@ -1,6 +1,6 @@
 # 首页最新文章分页
 
-本次只修改首页在线「最新」列表，依据 no-wave [`58dc3419`](https://github.com/BrainEno/no-wave/tree/58dc34192fbc6efd90edf519d508f5e7ab0907c3) 的 [cursor 接口](https://github.com/BrainEno/no-wave/pull/131)。客户端与部署的实际版本、数据和真机体验仍需验证。热门、精选、关注和离线缓存继续使用 offset；作者页当前仍只请求最多 100 篇。搜索结果仍有单独的上限：已升级的服务端也搜索正文块文本，旧版只搜标题和摘要；离线只搜已缓存的标题。
+本次只修改首页在线「最新」列表，依据 no-wave [`58dc3419`](https://github.com/BrainEno/no-wave/tree/58dc34192fbc6efd90edf519d508f5e7ab0907c3) 的 [cursor 接口](https://github.com/BrainEno/no-wave/pull/131)。客户端与部署的实际版本、数据和真机体验仍需验证。热门、精选、关注和离线缓存继续使用 offset；作者页的分类列表按 offset 翻页（每页 20 条），`sort=popular` 到服务端上限时给出「去「最新」继续」的出口。搜索结果仍有单独的上限：已升级的服务端也搜索正文块文本，旧版只搜标题和摘要；离线只搜已缓存的标题。
 
 ## 策略与兼容性
 

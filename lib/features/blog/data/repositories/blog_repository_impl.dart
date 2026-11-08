@@ -44,6 +44,27 @@ class BlogRepositoryImpl implements BlogRepository {
   }
 
   @override
+  Future<Either<Failure, List<Blog>>> getAuthorArticlePage(
+    String userId, {
+    required BlogFeedKind kind,
+    required int offset,
+  }) async {
+    try {
+      if (!await (connectionChecker.isConnected)) {
+        return left(Failure.networkOffline());
+      }
+      final blogs = await blogRemoteDataSource.getAuthorArticles(
+        userId,
+        kind: kind,
+        offset: offset,
+      );
+      return right(blogs);
+    } catch (error) {
+      return left(mapErrorToFailure(error));
+    }
+  }
+
+  @override
   Future<Either<Failure, Blog>> uploadBlog({
     ImageUpload? image,
     String? uploadedCoverUrl,

@@ -267,6 +267,7 @@
   "relationshipLimitNotice": "最多显示 100 位用户；可能还有更多。",
   "authorArticlesTitle": "TA 的文章",
   "authorArticlesLoadFailed": "文章加载失败",
+  "authorArticlesLoadMore": "加载更多作品",
   "authorNoArticles": "还没有发布文章",
   "thisIsYou": "这是你",
   "followingButton": "已关注",

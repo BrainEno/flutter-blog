@@ -15,6 +15,7 @@ import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/data/models/deleted_blog_model.dart';
 import 'package:belog/features/blog/domain/entities/article_editions.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
+import 'package:belog/features/blog/domain/author_articles_paging.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/domain/entities/tag_ref.dart';
 import 'package:belog/features/blog/domain/tag_paging.dart';
@@ -85,6 +86,19 @@ abstract interface class BlogRemoteDataSource {
   /// Same-topic articles the server recommends next to [slug]
   /// (`GET /articles/:slug/related`).
   Future<List<BlogModel>> getRelatedArticles(String slug);
+  /// One page of an author's published work (`GET /authors/:id/articles`).
+  ///
+  /// The route accepts `sort` and `offset`: `latest` pages by publication date,
+  /// `popular` by saves and stops at [kAuthorPopularMaxOffset]. The older
+  /// one-shot read stays as [getBlogsByPosterId] for callers that want the
+  /// author's most recent 100 rows in one request (the account list fallback).
+  Future<List<BlogModel>> getAuthorArticles(
+    String posterId, {
+    BlogFeedKind kind = BlogFeedKind.latest,
+    int offset = 0,
+    int limit = kAuthorPageSize,
+  });
+
   Future<List<BlogModel>> getBlogsByPosterId(String posterId);
 
   /// The viewer's own articles, including server-side drafts
@@ -421,6 +435,30 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
       final data = await client.getJson(
         '/articles/$slug/related',
         query: {'limit': '$_kRelatedLimit', 'locale': _locale},
+      );
+      return articlePayloadList(data);
+    });
+  }
+
+  @override
+  Future<List<BlogModel>> getAuthorArticles(
+    String posterId, {
+    BlogFeedKind kind = BlogFeedKind.latest,
+    int offset = 0,
+    int limit = kAuthorPageSize,
+  }) {
+    return _guard(() async {
+      final data = await client.getJson(
+        '/authors/${Uri.encodeComponent(posterId)}/articles',
+        query: {
+          'limit': '$limit',
+          'locale': _locale,
+          if (kind == BlogFeedKind.popular) 'sort': 'popular',
+          // The first page sends no offset: an older deployment ignores the
+          // parameter and answers the first page anyway, which is the right
+          // answer for it.
+          if (offset > 0) 'offset': '$offset',
+        },
       );
       return articlePayloadList(data);
     });

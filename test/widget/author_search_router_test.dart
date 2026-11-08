@@ -18,6 +18,10 @@ import 'router_test.dart' show Harness;
 class MockAuthorSearch extends Mock implements AuthorSearchRepository {}
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(BlogFeedKind.latest);
+  });
+
   setUp(() => GetIt.instance.reset());
 
   testWidgets('search entry, author route and back stay in the search tab', (
@@ -43,7 +47,12 @@ void main() {
       ),
     );
     when(
-      () => harness.remote.getBlogsByPosterId(readerId),
+      () => harness.remote.getAuthorArticles(
+        readerId,
+        kind: any(named: 'kind'),
+        offset: any(named: 'offset'),
+        limit: any(named: 'limit'),
+      ),
     ).thenAnswer((_) async => <BlogModel>[]);
     await harness.pump(tester);
     await tester.pumpAndSettle();
