@@ -163,6 +163,9 @@ class CategoryRemoteDataSourceImpl implements CategoryRemoteDataSource {
     final slug = value['slug'];
     final name = value['name'];
     final description = value['description'];
+    // `GET /categories` also answers with the UUID, which is what an article
+    // write names. A response without it still browses fine.
+    final id = value['id'];
     if (slug is! String ||
         !_isUsableSlug(slug) ||
         name is! String ||
@@ -171,6 +174,7 @@ class CategoryRemoteDataSourceImpl implements CategoryRemoteDataSource {
       throw _invalidResponse;
     }
     return CategoryRef(
+      id: id is String ? id.trim() : '',
       slug: slug,
       name: name.trim(),
       description: (description as String? ?? '').trim(),

@@ -51,6 +51,7 @@ class SqlitePublishQueueStore implements PublishQueueStore {
     PublishQueueKind kind = PublishQueueKind.create,
     String? targetId,
     String? locale,
+    List<String>? categoryIds,
   }) {
     if (userId.isEmpty) {
       throw ArgumentError('A queued publish needs the account that asked.');
@@ -78,9 +79,9 @@ class SqlitePublishQueueStore implements PublishQueueStore {
       await database.customInsert(
         'INSERT INTO publish_queue(id, backend, user_id, idempotency_key, '
         'title, content, tags, cover_file, cover_mime, cover_url, kind, '
-        'target_id, locale, state, attempts, next_attempt_at, '
+        'target_id, locale, category_ids, state, attempts, next_attempt_at, '
         'last_error_code, created_at, updated_at) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, 0, NULL, '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, '
         'NULL, ?, ?)',
         variables: [
           Variable<String>(id),
@@ -97,6 +98,9 @@ class SqlitePublishQueueStore implements PublishQueueStore {
           Variable<String>(
             kind == PublishQueueKind.edit ? _normalizedLocale(locale) : null,
           ),
+          Variable<String>(
+            categoryIds == null ? null : jsonEncode(categoryIds),
+          ),
           Variable<String>(PublishQueueStatus.queued.name),
           Variable<int>(now.microsecondsSinceEpoch),
           Variable<int>(now.microsecondsSinceEpoch),
@@ -108,6 +112,9 @@ class SqlitePublishQueueStore implements PublishQueueStore {
         title: title,
         content: content,
         tags: List<String>.unmodifiable(tags),
+        categoryIds: categoryIds == null
+            ? null
+            : List<String>.unmodifiable(categoryIds),
         idempotencyKey: idempotencyKey,
         kind: kind,
         targetId: kind == PublishQueueKind.edit ? targetId : null,
@@ -319,6 +326,11 @@ class SqlitePublishQueueStore implements PublishQueueStore {
       title: row.read<String>('title'),
       content: row.read<String>('content'),
       tags: (jsonDecode(row.read<String>('tags')) as List).cast<String>(),
+      // NULL is "the picker was never touched", not "no category".
+      categoryIds: switch (row.readNullable<String>('category_ids')) {
+        final String encoded => (jsonDecode(encoded) as List).cast<String>(),
+        null => null,
+      },
       idempotencyKey: row.read<String>('idempotency_key'),
       status: PublishQueueStatus.values.firstWhere(
         (value) => value.name == row.read<String>('state'),

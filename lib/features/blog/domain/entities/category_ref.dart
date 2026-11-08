@@ -9,7 +9,16 @@ class CategoryRef {
     required this.slug,
     required this.name,
     this.description = '',
+    this.id = '',
   });
+
+  /// The server's UUID for this category, when the response carried one.
+  ///
+  /// Writing an article's category needs the id, not the slug (`categoryIds`),
+  /// while every read addresses the slug. Empty means the value is unknown -
+  /// an older response, or a hand-built ref - and a caller that must write
+  /// treats it as "cannot pick this one".
+  final String id;
 
   final String slug;
 
@@ -22,12 +31,13 @@ class CategoryRef {
   @override
   bool operator ==(Object other) =>
       other is CategoryRef &&
+      other.id == id &&
       other.slug == slug &&
       other.name == name &&
       other.description == description;
 
   @override
-  int get hashCode => Object.hash(slug, name, description);
+  int get hashCode => Object.hash(id, slug, name, description);
 
   @override
   String toString() => 'CategoryRef($slug, $name)';

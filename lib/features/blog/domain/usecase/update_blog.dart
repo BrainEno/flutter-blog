@@ -20,6 +20,7 @@ class UpdateBlog implements UseCase<Blog, UpdateBlogParams> {
       tags: params.tags,
       locale: params.locale,
       sessionFence: params.sessionFence,
+      categoryIds: params.categoryIds,
     );
   }
 }
@@ -37,6 +38,10 @@ class UpdateBlogParams {
   /// translation, because the server replaces exactly that edition.
   final String? locale;
 
+  /// The author's category choice; null leaves the article's categories as
+  /// they are, an empty list clears them.
+  final List<String>? categoryIds;
+
   UpdateBlogParams({
     required this.blogId,
     this.image,
@@ -45,5 +50,6 @@ class UpdateBlogParams {
     required this.tags,
     required this.sessionFence,
     this.locale,
+    this.categoryIds,
   });
 }

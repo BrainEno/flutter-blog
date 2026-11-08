@@ -20,6 +20,7 @@ class UploadBlog implements UseCase<Blog, UploadBlogParams> {
       tags: params.tags,
       sessionFence: params.sessionFence,
       idempotencyKey: params.idempotencyKey,
+      categoryIds: params.categoryIds,
     );
   }
 }
@@ -40,6 +41,10 @@ class UploadBlogParams {
   /// must use a fresh key, or it would silently return the earlier article.
   final String? idempotencyKey;
 
+  /// The author's category choice; null omits the field from the request, so
+  /// the server keeps whatever the article already had.
+  final List<String>? categoryIds;
+
   UploadBlogParams({
     required this.image,
     required this.title,
@@ -48,5 +53,6 @@ class UploadBlogParams {
     required this.tags,
     required this.sessionFence,
     this.idempotencyKey,
+    this.categoryIds,
   });
 }

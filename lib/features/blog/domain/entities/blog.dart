@@ -40,6 +40,15 @@ class Blog {
   /// that must not guess fall back to the content language and say so.
   final String locale;
 
+  /// The categories the server last said this article belongs to, as ids.
+  ///
+  /// Names are translated per content language and live in the catalog
+  /// (`GET /categories`), so the article carries the ids and the editor
+  /// resolves them there. Categories are editorial structure (ADR 0016): the
+  /// desk may only choose among existing ones, never invent one. An empty list
+  /// means "the server said it has none", not "unknown".
+  final List<String> categoryIds;
+
   /// True only for the viewer's own server-side draft. Drafts never appear on
   /// public pages or in the shared cache; they are visible through the
   /// account-scoped "my articles" list, and saving one from the editor
@@ -59,5 +68,6 @@ class Blog {
     this.posterAvatar,
     this.isDraft = false,
     this.locale = '',
-  });
+    List<String>? categoryIds,
+  }) : categoryIds = List.unmodifiable(categoryIds ?? const []);
 }

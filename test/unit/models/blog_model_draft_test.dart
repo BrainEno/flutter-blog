@@ -35,6 +35,35 @@ void main() {
     expect(BlogModel.fromNowaveArticle(_row()).isDraft, isFalse);
   });
 
+  test('the categories the server joined become ids, not names', () {
+    final model = BlogModel.fromNowaveArticle({
+      ..._row(),
+      'categories': const [
+        {'id': 'cat-1', 'slug': 'essay', 'name': '随笔'},
+        {'id': 'cat-2', 'slug': 'poem', 'name': '诗'},
+      ],
+    });
+
+    // The write names ids; names are per language and come from the catalog.
+    expect(model.categoryIds, ['cat-1', 'cat-2']);
+  });
+
+  test('a row without categories is empty, not unknown', () {
+    expect(BlogModel.fromNowaveArticle(_row()).categoryIds, isEmpty);
+  });
+
+  test('copyWith keeps the categories unless it is told otherwise', () {
+    final model = BlogModel.fromNowaveArticle({
+      ..._row(),
+      'categories': const [
+        {'id': 'cat-1', 'slug': 'essay', 'name': '随笔'},
+      ],
+    });
+
+    expect(model.copyWith(title: '新标题').categoryIds, ['cat-1']);
+    expect(model.copyWith(categoryIds: const []).categoryIds, isEmpty);
+  });
+
   test('copyWith preserves the draft flag', () {
     final draft = BlogModel.fromNowaveArticle(_row(status: 'draft'));
 

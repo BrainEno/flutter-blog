@@ -53,6 +53,7 @@ class BlogRepositoryImpl implements BlogRepository {
     required List<String> tags,
     NowaveSessionFence? sessionFence,
     String? idempotencyKey,
+    List<String>? categoryIds,
   }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
@@ -80,11 +81,13 @@ class BlogRepositoryImpl implements BlogRepository {
           ? await blogRemoteDataSource.uploadBlog(
               blogModel,
               idempotencyKey: idempotencyKey,
+              categoryIds: categoryIds,
             )
           : await blogRemoteDataSource.uploadBlog(
               blogModel,
               sessionFence: sessionFence,
               idempotencyKey: idempotencyKey,
+              categoryIds: categoryIds,
             );
       return right(blog);
     } catch (error) {
@@ -348,6 +351,7 @@ class BlogRepositoryImpl implements BlogRepository {
     String? uploadedCoverUrl,
     String? locale,
     NowaveSessionFence? sessionFence,
+    List<String>? categoryIds,
   }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
@@ -404,10 +408,14 @@ class BlogRepositoryImpl implements BlogRepository {
       );
 
       final blogUpdated = sessionFence == null
-          ? await blogRemoteDataSource.editBlog(blogToUpdate)
+          ? await blogRemoteDataSource.editBlog(
+              blogToUpdate,
+              categoryIds: categoryIds,
+            )
           : await blogRemoteDataSource.editBlog(
               blogToUpdate,
               sessionFence: sessionFence,
+              categoryIds: categoryIds,
             );
       return right(blogUpdated);
     } catch (error) {

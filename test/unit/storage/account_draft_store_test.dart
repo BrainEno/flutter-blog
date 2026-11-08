@@ -188,6 +188,32 @@ void main() {
     expect((await store.load(null, userId: 'alice'))?.title, 'second');
   });
 
+  test('the draft remembers the category choice, or that there was none',
+      () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final store = SqliteBlogDraftStore(db, apiBaseUrl: _firstBackend);
+
+    await store.save(_draft('alice', null, 'untouched'));
+    await store.save(
+      BlogDraft(
+        userId: 'alice',
+        blogId: 'picked-slug',
+        title: 'picked',
+        content: 'body',
+        tags: const [],
+        categoryIds: const ['cat-1'],
+        updatedAt: DateTime.utc(2025),
+      ),
+    );
+
+    expect((await store.load(null, userId: 'alice'))?.categoryIds, isNull);
+    expect(
+      (await store.load('picked-slug', userId: 'alice'))?.categoryIds,
+      ['cat-1'],
+    );
+  });
+
   test(
     'v5 ownerless drafts remain intact and hidden after upgrade and restart',
     () async {
@@ -239,7 +265,7 @@ void main() {
         final version = await db
             .customSelect('PRAGMA user_version')
             .getSingle();
-        expect(version.read<int>('user_version'), 11);
+        expect(version.read<int>('user_version'), 12);
       } finally {
         await db.close();
       }

@@ -32,6 +32,9 @@ abstract interface class PublishQueueStore {
     PublishQueueKind kind = PublishQueueKind.create,
     String? targetId,
     String? locale,
+    /// The author's category choice at queue time; null leaves the article's
+    /// categories alone when the entry is eventually sent.
+    List<String>? categoryIds,
   });
 
   /// Every entry this account queued, oldest first, including failed ones.

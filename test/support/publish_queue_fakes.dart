@@ -21,6 +21,7 @@ PublishQueueEntry queueEntry({
   PublishQueueKind kind = PublishQueueKind.create,
   String? targetId,
   String? locale,
+  List<String>? categoryIds,
 }) => PublishQueueEntry(
   id: id,
   userId: userId,
@@ -39,6 +40,7 @@ PublishQueueEntry queueEntry({
   kind: kind,
   targetId: targetId,
   locale: locale,
+  categoryIds: categoryIds,
 );
 
 /// A queue store that records calls instead of touching disk.
@@ -75,6 +77,7 @@ class FakePublishQueueStore implements PublishQueueStore {
     PublishQueueKind kind = PublishQueueKind.create,
     String? targetId,
     String? locale,
+    List<String>? categoryIds,
   }) async {
     final entry = queueEntry(
       id: 'queued-${enqueued.length + 1}',

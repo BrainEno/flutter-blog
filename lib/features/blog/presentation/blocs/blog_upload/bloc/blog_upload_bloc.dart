@@ -42,6 +42,7 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
         tags: event.tags,
         sessionFence: event.sessionFence,
         idempotencyKey: event.idempotencyKey,
+        categoryIds: event.categoryIds,
       ),
     );
 
@@ -65,6 +66,7 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
         tags: event.tags,
         sessionFence: event.sessionFence,
         locale: event.locale,
+        categoryIds: event.categoryIds,
       ),
     );
     res.fold(

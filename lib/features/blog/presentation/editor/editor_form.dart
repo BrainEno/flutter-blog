@@ -4,8 +4,10 @@ import 'dart:typed_data';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/category_ref.dart';
 import 'package:belog/features/blog/presentation/editor/auto_save_banner.dart';
 import 'package:belog/features/blog/presentation/editor/editor_body_field.dart';
+import 'package:belog/features/blog/presentation/editor/editor_category_selector.dart';
 import 'package:belog/features/blog/presentation/editor/editor_cover_field.dart';
 import 'package:belog/features/blog/presentation/editor/editor_tag_selector.dart';
 import 'package:belog/features/blog/presentation/widgets/editor_field.dart';
@@ -32,6 +34,12 @@ class EditorForm extends StatelessWidget {
     this.resumedFromQueue = false,
     required this.autoSaveStatus,
     required this.onPickCover,
+    required this.categories,
+    required this.selectedCategoryId,
+    required this.categoriesLoading,
+    required this.categoriesFailed,
+    required this.onCategorySelected,
+    required this.onRetryCategories,
   });
 
   final GlobalKey<FormState> formKey;
@@ -50,6 +58,12 @@ class EditorForm extends StatelessWidget {
   final bool resumedFromQueue;
   final AutoSaveStatus autoSaveStatus;
   final VoidCallback onPickCover;
+  final List<CategoryRef> categories;
+  final String? selectedCategoryId;
+  final bool categoriesLoading;
+  final bool categoriesFailed;
+  final ValueChanged<String?> onCategorySelected;
+  final VoidCallback onRetryCategories;
 
   @override
   Widget build(BuildContext context) {
@@ -94,6 +108,15 @@ class EditorForm extends StatelessWidget {
               EditorTagSelector(
                 selectedTags: selectedTags,
                 onChanged: onTagsChanged,
+              ),
+              const SizedBox(height: NoWaveSpacing.large),
+              EditorCategorySelector(
+                categories: categories,
+                selectedId: selectedCategoryId,
+                isLoading: categoriesLoading,
+                hasFailed: categoriesFailed,
+                onSelected: onCategorySelected,
+                onRetry: onRetryCategories,
               ),
               const SizedBox(height: NoWaveSpacing.large),
               EditorField(

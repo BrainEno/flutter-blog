@@ -17,6 +17,9 @@ class UploadBlogEvent extends BlogUploadEvent {
   /// can be queued and retried without creating a second article.
   final String? idempotencyKey;
 
+  /// The author's category choice; null leaves the field out of the request.
+  final List<String>? categoryIds;
+
   const UploadBlogEvent({
     required this.image,
     required this.title,
@@ -25,6 +28,7 @@ class UploadBlogEvent extends BlogUploadEvent {
     required this.tags,
     required this.sessionFence,
     this.idempotencyKey,
+    this.categoryIds,
   });
 
   @override
@@ -37,6 +41,7 @@ class UploadBlogEvent extends BlogUploadEvent {
     sessionFence.userId,
     sessionFence.generation,
     idempotencyKey,
+    categoryIds,
   ];
 }
 
@@ -53,6 +58,10 @@ class UpdateBlogEvent extends BlogUploadEvent {
   /// interface language.
   final String? locale;
 
+  /// The author's category choice; null leaves the article's categories as
+  /// they are.
+  final List<String>? categoryIds;
+
   const UpdateBlogEvent({
     required this.blogId,
     this.image,
@@ -61,6 +70,7 @@ class UpdateBlogEvent extends BlogUploadEvent {
     required this.tags,
     required this.sessionFence,
     this.locale,
+    this.categoryIds,
   });
 
   @override
@@ -73,6 +83,7 @@ class UpdateBlogEvent extends BlogUploadEvent {
     sessionFence.userId,
     sessionFence.generation,
     locale,
+    categoryIds,
   ];
 }
 
