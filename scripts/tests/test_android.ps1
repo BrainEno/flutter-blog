@@ -9,6 +9,7 @@ $config = Join-Path $temp 'config with spaces.json'
 $marker = Join-Path $temp 'started.txt'
 $pidFile = Join-Path $temp 'emulator.pid'
 $reverseFailureMarker = "$log.fail"
+$hashMismatchMarker = "$log.hash"
 $oldPath = $env:PATH
 $pubHostedUrlWasSet = Test-Path Env:PUB_HOSTED_URL
 $oldPubHostedUrl = $env:PUB_HOSTED_URL
@@ -36,15 +37,16 @@ if "%~1"=="--version" (
 )
 echo flutter %*>>"%BELOG_TEST_LOG%"
 echo PUB_HOSTED_URL=%PUB_HOSTED_URL%>>"%BELOG_TEST_LOG%"
-echo MOCK_HASH_MISMATCH_PUB=%MOCK_HASH_MISMATCH_PUB%>>"%BELOG_TEST_LOG%"
 if "%~1"=="pub" (
-  if "%MOCK_HASH_MISMATCH_PUB%"=="1" if "%PUB_HOSTED_URL%"=="https://pub.flutter-io.cn" (
-    echo Downloaded archive for sample-1.0.0 had wrong content-hash. 1>&2
-    exit /b 75
-  )
-  if "%MOCK_FAIL_PUB%"=="1" exit /b 2
+  if exist "%BELOG_TEST_LOG%.hash" if "%PUB_HOSTED_URL%"=="https://pub.flutter-io.cn" goto pub_hash_mismatch
+  if "%MOCK_FAIL_PUB%"=="1" goto pub_failure
 )
 exit /b 0
+:pub_hash_mismatch
+echo Downloaded archive for sample-1.0.0 had wrong content-hash. 1>&2
+exit /b 75
+:pub_failure
+exit /b 2
 '@ | Set-Content -LiteralPath (Join-Path $bin 'flutter.cmd') -Encoding Ascii
     @'
 @echo off
@@ -103,11 +105,11 @@ public static class FakeEmulator {
     $env:MOCK_NO_EMULATOR = ''
     $env:MOCK_NEVER_BOOT = ''
     $env:MOCK_FAIL_PUB = ''
-    $env:MOCK_HASH_MISMATCH_PUB = ''
     $env:MOCK_FLUTTER_VERSION = '3.47.8'
     $env:MOCK_DART_VERSION = '3.10.4'
     # Never leave a first-run prompt waiting in a non-interactive test process.
     $env:BELOG_NO_PROMPT = '1'
+    $env:PUB_HOSTED_URL = 'https://pub.flutter-io.cn'
     '{"API_BASE_URL":"http://10.0.2.2:8787","WEB_BASE_URL":""}' | Set-Content -LiteralPath $config -Encoding Ascii
 
     $reuse = Run-Subject @('-Avd', 'Demo')
@@ -141,20 +143,19 @@ public static class FakeEmulator {
     # A mirror checksum failure retries once against pub.dev, then Flutter uses
     # --no-pub so it cannot contact the broken mirror a second time.
     '{"API_BASE_URL":"https://api.real-site.dev","WEB_BASE_URL":""}' | Set-Content -LiteralPath $config -Encoding Ascii
-    $env:PUB_HOSTED_URL = 'https://pub.flutter-io.cn'
-    $env:MOCK_HASH_MISMATCH_PUB = '1'
+    New-Item -ItemType File -Path $hashMismatchMarker | Out-Null
     Remove-Item -LiteralPath $log -Force
     $hashFallback = Run-Subject @()
     $hashLog = Get-Content -LiteralPath $log -Raw
-    Assert-True ($hashFallback.ExitCode -eq 0) "Pub mirror hash retry failed: $($hashFallback.Output)"
-    Assert-True ($hashFallback.Output -match 'Retrying dependency resolution once against canonical https://pub.dev') "The official Pub retry was not explained (parent host '$env:PUB_HOSTED_URL', mismatch flag '$env:MOCK_HASH_MISMATCH_PUB'). Output: $($hashFallback.Output) Mock log: $hashLog"
+    Assert-True ($hashFallback.ExitCode -eq 0) "Pub mirror hash retry failed: $($hashFallback.Output) Mock log: $hashLog"
+    Assert-True ($hashFallback.Output -match 'Retrying dependency resolution once against canonical https://pub.dev') "The official Pub retry was not explained (parent host '$env:PUB_HOSTED_URL'). Output: $($hashFallback.Output) Mock log: $hashLog"
     $hostLines = @(Get-Content -LiteralPath $log | Where-Object { $_ -like 'PUB_HOSTED_URL=*' })
     Assert-True ($hostLines.Count -eq 3) "Expected mirror, official retry and run invocations; got $($hostLines.Count)."
     Assert-True ($hostLines[0] -eq 'PUB_HOSTED_URL=https://pub.flutter-io.cn') 'The first attempt did not preserve the configured mirror.'
     Assert-True ($hostLines[1] -eq 'PUB_HOSTED_URL=https://pub.dev') 'A checksum mismatch did not retry through canonical pub.dev.'
     Assert-True ($hostLines[2] -eq 'PUB_HOSTED_URL=https://pub.flutter-io.cn') 'The mirror environment was not restored after dependency resolution.'
     Assert-True ((Get-Content -LiteralPath $log -Raw) -match 'flutter run --debug --no-pub -d emulator-5554') 'Flutter might re-fetch packages from the failing mirror.'
-    $env:MOCK_HASH_MISMATCH_PUB = ''
+    Remove-Item -LiteralPath $hashMismatchMarker -Force
 
     Remove-Item -LiteralPath $log -Force
     $env:MOCK_NO_EMULATOR = '1'
@@ -270,7 +271,7 @@ public static class FakeEmulator {
         $proc = Get-Process -Id $id -ErrorAction SilentlyContinue
         if ($proc -and $proc.Path -eq $emulator) { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue }
     }
-    foreach ($name in @('BELOG_TEST_LOG', 'BELOG_TEST_STARTED', 'BELOG_TEST_PID', 'MOCK_NO_EMULATOR', 'MOCK_NEVER_BOOT', 'MOCK_FAIL_PUB', 'MOCK_HASH_MISMATCH_PUB', 'MOCK_NATIVE_STDERR', 'MOCK_FAIL_ADB', 'MOCK_FAIL_AVD_LIST', 'MOCK_FLUTTER_VERSION', 'MOCK_DART_VERSION', 'BELOG_STRICT_FLUTTER_VERSION', 'BELOG_NO_PROMPT')) {
+    foreach ($name in @('BELOG_TEST_LOG', 'BELOG_TEST_STARTED', 'BELOG_TEST_PID', 'MOCK_NO_EMULATOR', 'MOCK_NEVER_BOOT', 'MOCK_FAIL_PUB', 'MOCK_NATIVE_STDERR', 'MOCK_FAIL_ADB', 'MOCK_FAIL_AVD_LIST', 'MOCK_FLUTTER_VERSION', 'MOCK_DART_VERSION', 'BELOG_STRICT_FLUTTER_VERSION', 'BELOG_NO_PROMPT')) {
         Remove-Item -LiteralPath ('Env:' + $name) -ErrorAction SilentlyContinue
     }
     if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Recurse -Force }
