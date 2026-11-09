@@ -47,6 +47,7 @@ exit /b 0
     @'
 @echo off
 echo adb %*>>"%BELOG_TEST_LOG%"
+echo MOCK_FAIL_REVERSE=%MOCK_FAIL_REVERSE%>>"%BELOG_TEST_LOG%"
 if "%MOCK_NATIVE_STDERR%"=="1" echo adb daemon notice 1>&2
 if "%MOCK_FAIL_ADB%"=="1" exit /b 9
 if "%~1"=="devices" (
@@ -128,8 +129,9 @@ public static class FakeEmulator {
     $env:MOCK_FAIL_REVERSE = '1'
     Remove-Item -LiteralPath $log -Force
     $reverseFailure = Run-Subject @()
-    Assert-True ($reverseFailure.ExitCode -ne 0 -and $reverseFailure.Output -match 'Could not forward emulator localhost:4000') "An adb reverse failure was ignored (exit $($reverseFailure.ExitCode)): $($reverseFailure.Output)"
-    Assert-True ((Get-Content -LiteralPath $log -Raw) -notmatch 'flutter run') 'Flutter started without the required loopback tunnel.'
+    $reverseLog = Get-Content -LiteralPath $log -Raw
+    Assert-True ($reverseFailure.ExitCode -ne 0 -and $reverseFailure.Output -match 'Could not forward emulator localhost:4000') "An adb reverse failure was ignored (exit $($reverseFailure.ExitCode)): $($reverseFailure.Output) Mock log: $reverseLog"
+    Assert-True ($reverseLog -notmatch 'flutter run') 'Flutter started without the required loopback tunnel.'
     $env:MOCK_FAIL_REVERSE = ''
 
     # A mirror checksum failure retries once against pub.dev, then Flutter uses
