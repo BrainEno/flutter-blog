@@ -3,6 +3,8 @@ import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/comment_model.dart';
 import 'package:belog/features/blog/data/repositories/comment_repository_impl.dart';
+import 'package:belog/features/blog/domain/entities/comment.dart';
+import 'package:belog/features/blog/domain/entities/comment_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -17,6 +19,9 @@ CommentModel _comment(String id) => CommentModel(
   content: '评论$id',
   createdAt: DateTime.utc(2025),
 );
+
+CommentPage _page(List<Comment> comments, {String? nextCursor}) =>
+    CommentPage(items: comments, nextCursor: nextCursor);
 
 void main() {
   late MockCommentRemote remote;
@@ -35,19 +40,38 @@ void main() {
 
   group('getComments', () {
     test('returns the thread on success', () async {
-      when(
-        () => remote.getComments('my-slug'),
-      ).thenAnswer((_) async => [_comment('c1'), _comment('c2')]);
+      when(() => remote.getComments('my-slug')).thenAnswer(
+        (_) async =>
+            _page([_comment('c1'), _comment('c2')], nextCursor: 'next'),
+      );
 
       final result = await repository.getComments('my-slug');
 
       expect(
         result.fold(
           (failure) => fail('expected success'),
-          (comments) => comments.map((c) => c.id).toList(),
+          (page) => page.items.map((comment) => comment.id).toList(),
         ),
         ['c1', 'c2'],
       );
+    });
+
+    test('forwards a continuation cursor to the remote source', () async {
+      when(
+        () => remote.getComments('my-slug', cursor: 'cursor-next'),
+      ).thenAnswer(
+        (_) async => _page([_comment('c3')], nextCursor: 'cursor-end'),
+      );
+
+      final result = await repository.getComments(
+        'my-slug',
+        cursor: 'cursor-next',
+      );
+
+      expect(result.isRight(), isTrue);
+      verify(
+        () => remote.getComments('my-slug', cursor: 'cursor-next'),
+      ).called(1);
     });
 
     test(

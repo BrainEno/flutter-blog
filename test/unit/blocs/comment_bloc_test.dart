@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
+import 'package:belog/features/blog/domain/entities/comment_page.dart';
+import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_event.dart';
@@ -25,6 +29,9 @@ Comment _comment(String id, {String? parentId}) => Comment(
   content: '评论$id',
   createdAt: DateTime.utc(2025, 6, 1),
 );
+
+CommentPage _page(List<Comment> items, {String? cursor}) =>
+    CommentPage(items: items, nextCursor: cursor);
 
 void main() {
   late MockGetComments getComments;
@@ -60,7 +67,9 @@ void main() {
   group('CommentsRequested', () {
     test('loads the thread into the loaded state', () async {
       when(() => getComments('my-slug')).thenAnswer(
-        (_) async => right<Failure, List<Comment>>([_comment('c1')]),
+        (_) async => right<Failure, CommentPage>(
+          _page([_comment('c1')], cursor: 'cursor-1'),
+        ),
       );
 
       bloc.add(const CommentsRequested());
@@ -69,12 +78,13 @@ void main() {
       expect(bloc.state.status, CommentListStatus.loaded);
       expect(bloc.state.comments.map((c) => c.id), ['c1']);
       expect(bloc.state.totalCount, 1);
+      expect(bloc.state.hasMore, isTrue);
     });
 
     test('a failed load reports a failure state with the message', () async {
-      when(() => getComments('my-slug')).thenAnswer(
-        (_) async => left<Failure, List<Comment>>(Failure('评论加载失败')),
-      );
+      when(
+        () => getComments('my-slug'),
+      ).thenAnswer((_) async => left<Failure, CommentPage>(Failure('评论加载失败')));
 
       bloc.add(const CommentsRequested());
       await bloc.close();
@@ -84,10 +94,263 @@ void main() {
     });
   });
 
+  group('MoreCommentsRequested', () {
+    test('appends older pages until a short page ends the thread', () async {
+      when(() => getComments('my-slug')).thenAnswer(
+        (_) async => right<Failure, CommentPage>(
+          _page([_comment('c1')], cursor: 'cursor-1'),
+        ),
+      );
+      when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer(
+        (_) async => right<Failure, CommentPage>(
+          _page([_comment('c2')], cursor: 'cursor-2'),
+        ),
+      );
+      when(
+        () => getComments('my-slug', cursor: 'cursor-2'),
+      ).thenAnswer((_) async => right<Failure, CommentPage>(_page([])));
+
+      bloc.add(const CommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(const MoreCommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(bloc.state.comments.map((comment) => comment.id), ['c1', 'c2']);
+      expect(bloc.state.hasMore, isTrue);
+
+      bloc.add(const MoreCommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(bloc.state.comments.map((comment) => comment.id), ['c1', 'c2']);
+      expect(bloc.state.hasMore, isFalse);
+      expect(bloc.state.paginationUnavailable, isFalse);
+      verify(() => getComments('my-slug', cursor: 'cursor-1')).called(1);
+      verify(() => getComments('my-slug', cursor: 'cursor-2')).called(1);
+    });
+
+    test('appends a short page and then stops', () async {
+      when(() => getComments('my-slug')).thenAnswer(
+        (_) async => right<Failure, CommentPage>(
+          _page([_comment('c1')], cursor: 'cursor-1'),
+        ),
+      );
+      when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer(
+        (_) async => right<Failure, CommentPage>(_page([_comment('c2')])),
+      );
+
+      bloc.add(const CommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(const MoreCommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(bloc.state.comments.map((comment) => comment.id), ['c1', 'c2']);
+      expect(bloc.state.hasMore, isFalse);
+      expect(bloc.state.paginationUnavailable, isFalse);
+    });
+
+    test('a failed page keeps its cursor and rows for retry', () async {
+      var attempts = 0;
+      when(() => getComments('my-slug')).thenAnswer(
+        (_) async => right<Failure, CommentPage>(
+          _page([_comment('c1')], cursor: 'cursor-1'),
+        ),
+      );
+      when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer((
+        _,
+      ) async {
+        attempts++;
+        if (attempts == 1) {
+          return left<Failure, CommentPage>(
+            Failure('网络暂时不可用', code: 'network.unavailable'),
+          );
+        }
+        return right<Failure, CommentPage>(
+          _page([_comment('c2')], cursor: 'cursor-2'),
+        );
+      });
+
+      bloc.add(const CommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(const MoreCommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(bloc.state.comments.map((comment) => comment.id), ['c1']);
+      expect(bloc.state.loadMoreFailure?.code, 'network.unavailable');
+      expect(bloc.state.hasMore, isTrue);
+
+      bloc.add(const MoreCommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(bloc.state.comments.map((comment) => comment.id), ['c1', 'c2']);
+      expect(bloc.state.loadMoreFailure, isNull);
+      expect(attempts, 2);
+    });
+
+    test('a cursor rejection stops while preserving loaded comments', () async {
+      when(() => getComments('my-slug')).thenAnswer(
+        (_) async => right<Failure, CommentPage>(
+          _page([_comment('c1')], cursor: 'cursor-1'),
+        ),
+      );
+      when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer(
+        (_) async => left<Failure, CommentPage>(
+          const Failure(
+            'The server rejected comment pagination.',
+            kind: FailureKind.server,
+            code: commentCursorUnavailableFailureCode,
+          ),
+        ),
+      );
+
+      bloc.add(const CommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(const MoreCommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(const MoreCommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(bloc.state.comments.map((comment) => comment.id), ['c1']);
+      expect(bloc.state.hasMore, isFalse);
+      expect(bloc.state.paginationUnavailable, isTrue);
+      expect(bloc.state.loadMoreFailure, isNull);
+      verify(() => getComments('my-slug', cursor: 'cursor-1')).called(1);
+    });
+
+    test(
+      'a cursor-blind server does not append the repeated first page',
+      () async {
+        when(() => getComments('my-slug')).thenAnswer(
+          (_) async => right<Failure, CommentPage>(
+            _page([_comment('c1')], cursor: 'cursor-1'),
+          ),
+        );
+        when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer(
+          (_) async => right<Failure, CommentPage>(
+            _page([_comment('c1')], cursor: 'cursor-1'),
+          ),
+        );
+
+        bloc.add(const CommentsRequested());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const MoreCommentsRequested());
+        await Future<void>.delayed(Duration.zero);
+
+        expect(bloc.state.comments.map((comment) => comment.id), ['c1']);
+        expect(bloc.state.hasMore, isFalse);
+        expect(bloc.state.paginationUnavailable, isTrue);
+      },
+    );
+
+    test('refresh replaces appended pages and starts from no cursor', () async {
+      var firstPageRequest = 0;
+      when(() => getComments('my-slug')).thenAnswer((_) async {
+        firstPageRequest++;
+        final id = firstPageRequest == 1 ? 'c1' : 'fresh';
+        final cursor = firstPageRequest == 1 ? 'cursor-1' : 'cursor-fresh';
+        return right<Failure, CommentPage>(
+          _page([_comment(id)], cursor: cursor),
+        );
+      });
+      when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer(
+        (_) async => right<Failure, CommentPage>(
+          _page([_comment('c2')], cursor: 'cursor-2'),
+        ),
+      );
+      when(
+        () => getComments('my-slug', cursor: 'cursor-fresh'),
+      ).thenAnswer((_) async => right<Failure, CommentPage>(_page([])));
+
+      bloc.add(const CommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(const MoreCommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(const CommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(bloc.state.comments.map((comment) => comment.id), ['fresh']);
+      expect(bloc.state.hasMore, isTrue);
+      bloc.add(const MoreCommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+      verify(() => getComments('my-slug', cursor: 'cursor-fresh')).called(1);
+    });
+
+    test('an in-flight older page cannot append after a refresh', () async {
+      final stalePage = Completer<Either<Failure, CommentPage>>();
+      var firstPageRequest = 0;
+      when(() => getComments('my-slug')).thenAnswer((_) async {
+        firstPageRequest++;
+        final id = firstPageRequest == 1 ? 'c1' : 'fresh';
+        return right<Failure, CommentPage>(
+          _page([_comment(id)], cursor: 'cursor-$id'),
+        );
+      });
+      when(
+        () => getComments('my-slug', cursor: 'cursor-c1'),
+      ).thenAnswer((_) => stalePage.future);
+
+      bloc.add(const CommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(const MoreCommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+      expect(bloc.state.isLoadingMore, isTrue);
+
+      bloc.add(const CommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+      stalePage.complete(
+        right<Failure, CommentPage>(_page([_comment('stale')])),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(bloc.state.comments.map((comment) => comment.id), ['fresh']);
+      expect(bloc.state.hasMore, isTrue);
+    });
+
+    test(
+      'a new root stays ordered while older pages continue at their cursor',
+      () async {
+        when(() => getComments('my-slug')).thenAnswer(
+          (_) async => right<Failure, CommentPage>(
+            _page([_comment('c1')], cursor: 'cursor-1'),
+          ),
+        );
+        when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer(
+          (_) async => right<Failure, CommentPage>(
+            _page([_comment('c2')], cursor: 'cursor-2'),
+          ),
+        );
+        when(
+          () => getComments('my-slug', cursor: 'cursor-2'),
+        ).thenAnswer((_) async => right<Failure, CommentPage>(_page([])));
+        when(
+          () => createComment(any(that: isA<CreateCommentParams>())),
+        ).thenAnswer((_) async => right<Failure, Comment>(_comment('c3')));
+
+        bloc.add(const CommentsRequested());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const CommentSubmitted(content: 'new root'));
+        await Future<void>.delayed(Duration.zero);
+        expect(bloc.state.comments.map((comment) => comment.id), ['c1', 'c3']);
+
+        bloc.add(const MoreCommentsRequested());
+        await Future<void>.delayed(Duration.zero);
+        expect(bloc.state.comments.map((comment) => comment.id), [
+          'c1',
+          'c2',
+          'c3',
+        ]);
+        expect(bloc.state.hasMore, isTrue);
+
+        bloc.add(const MoreCommentsRequested());
+        await Future<void>.delayed(Duration.zero);
+        verify(() => getComments('my-slug', cursor: 'cursor-2')).called(1);
+      },
+    );
+  });
+
   group('CommentSubmitted', () {
     test('appends a root comment and clears the submitting flag', () async {
       when(() => getComments('my-slug')).thenAnswer(
-        (_) async => right<Failure, List<Comment>>([_comment('c1')]),
+        (_) async => right<Failure, CommentPage>(_page([_comment('c1')])),
       );
       bloc.add(const CommentsRequested());
       await Future<void>.delayed(Duration.zero);
@@ -105,7 +368,7 @@ void main() {
 
     test('nests a reply under its direct parent', () async {
       when(() => getComments('my-slug')).thenAnswer(
-        (_) async => right<Failure, List<Comment>>([_comment('c1')]),
+        (_) async => right<Failure, CommentPage>(_page([_comment('c1')])),
       );
       bloc.add(const CommentsRequested());
       await Future<void>.delayed(Duration.zero);
@@ -192,9 +455,9 @@ void main() {
         createdAt: c1.createdAt,
         replies: [_comment('c2', parentId: 'c1')],
       );
-      when(
-        () => getComments('my-slug'),
-      ).thenAnswer((_) async => right<Failure, List<Comment>>([withReplies]));
+      when(() => getComments('my-slug')).thenAnswer(
+        (_) async => right<Failure, CommentPage>(_page([withReplies])),
+      );
       bloc.add(const CommentsRequested());
       await Future<void>.delayed(Duration.zero);
       expect(bloc.state.totalCount, 2);
@@ -213,7 +476,7 @@ void main() {
 
     test('a failed delete keeps the comment and reports the error', () async {
       when(() => getComments('my-slug')).thenAnswer(
-        (_) async => right<Failure, List<Comment>>([_comment('c1')]),
+        (_) async => right<Failure, CommentPage>(_page([_comment('c1')])),
       );
       bloc.add(const CommentsRequested());
       await Future<void>.delayed(Duration.zero);

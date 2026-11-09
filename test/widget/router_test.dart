@@ -28,12 +28,12 @@ import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
-import 'package:belog/features/blog/data/models/comment_model.dart';
 import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart';
 import 'package:belog/features/blog/data/repositories/comment_repository_impl.dart';
 import 'package:belog/features/blog/domain/entities/article_editions.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
+import 'package:belog/features/blog/domain/entities/comment_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_deleted_blogs.dart';
@@ -220,7 +220,7 @@ class Harness {
     ).thenAnswer((_) async => <BlogModel>[]);
     when(
       () => commentRemote.getComments(any()),
-    ).thenAnswer((_) async => <CommentModel>[]);
+    ).thenAnswer((_) async => CommentPage(items: const [], nextCursor: null));
     when(() => authorRemote.getAuthorProfile(any())).thenAnswer(
       (_) async => AuthorProfileModel(
         userId: 'author',

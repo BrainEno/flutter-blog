@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
@@ -15,6 +17,7 @@ Map<String, dynamic> _commentMap({
   String? parentId,
   String authorId = 'u1',
   String content = '写得真好',
+  String createdAt = '2025-06-01T00:00:00.000Z',
   List<Map<String, dynamic>> replies = const [],
 }) {
   return <String, dynamic>{
@@ -25,7 +28,7 @@ Map<String, dynamic> _commentMap({
     'content': content,
     'contentBlocks': null,
     'contentBlocksVersion': 0,
-    'createdAt': '2025-06-01T00:00:00.000Z',
+    'createdAt': createdAt,
     'updatedAt': '2025-06-01T00:00:00.000Z',
     'locale': 'zh-CN',
     'replies': replies,
@@ -36,6 +39,9 @@ Map<String, dynamic> _commentMap({
     },
   };
 }
+
+String _uuid(int value) =>
+    '00000000-0000-4000-8000-${value.toString().padLeft(12, '0')}';
 
 void main() {
   late MockNowaveApiClient client;
@@ -73,15 +79,16 @@ void main() {
           ],
         );
 
-        final comments = await dataSource.getComments(_kSlug);
+        final page = await dataSource.getComments(_kSlug);
 
-        expect(comments, hasLength(2));
-        expect(comments.first.id, 'c1');
-        expect(comments.first.authorName, '评论者-u1');
-        expect(comments.first.authorAvatarUrl, contains('u1'));
-        expect(comments.first.replies, hasLength(1));
-        expect(comments.first.replies.first.parentCommentId, 'c1');
-        expect(comments.first.replies.first.content, '同感');
+        expect(page.items, hasLength(2));
+        expect(page.nextCursor, isNull);
+        expect(page.items.first.id, 'c1');
+        expect(page.items.first.authorName, '评论者-u1');
+        expect(page.items.first.authorAvatarUrl, contains('u1'));
+        expect(page.items.first.replies, hasLength(1));
+        expect(page.items.first.replies.first.parentCommentId, 'c1');
+        expect(page.items.first.replies.first.content, '同感');
         verify(
           () => client.getJson(
             '/articles/$_kSlug/comments',
@@ -90,6 +97,108 @@ void main() {
         ).called(1);
       },
     );
+
+    test(
+      'builds the cursor from the exact timestamp of the last root',
+      () async {
+        const timestamp = '2026-06-01T00:00:00.123Z';
+        const replyTimestamp = '2026-06-01T00:00:00.456Z';
+        final rows = List<Map<String, dynamic>>.generate(
+          49,
+          (index) => _commentMap(
+            id: _uuid(index + 1),
+            createdAt: '2026-05-31T00:00:00.000Z',
+          ),
+        );
+        final lastRootId = _uuid(50);
+        rows.add(
+          _commentMap(
+            id: lastRootId,
+            createdAt: timestamp,
+            replies: [
+              _commentMap(
+                id: _uuid(51),
+                parentId: lastRootId,
+                createdAt: replyTimestamp,
+              ),
+            ],
+          ),
+        );
+        when(
+          () => client.getJson(any(), query: any(named: 'query')),
+        ).thenAnswer((_) async => rows);
+
+        final page = await dataSource.getComments(_kSlug);
+        final expected = base64Url
+            .encode(utf8.encode('$timestamp|$lastRootId'))
+            .replaceAll('=', '');
+
+        expect(page.items, hasLength(50));
+        expect(page.nextCursor, expected);
+        expect(page.nextCursor!.contains('='), isFalse);
+      },
+    );
+
+    test('sends the continuation cursor unchanged', () async {
+      const cursor = 'dGltZXN0YW1wfHV1aWQ';
+      when(
+        () => client.getJson(any(), query: any(named: 'query')),
+      ).thenAnswer((_) async => <dynamic>[]);
+
+      final page = await dataSource.getComments(_kSlug, cursor: cursor);
+
+      expect(page.items, isEmpty);
+      expect(page.nextCursor, isNull);
+      verify(
+        () => client.getJson(
+          '/articles/$_kSlug/comments',
+          query: {'locale': 'zh-CN', 'limit': '50', 'cursor': cursor},
+        ),
+      ).called(1);
+    });
+
+    test('a cursor-only 400 is reported as unavailable pagination', () async {
+      when(() => client.getJson(any(), query: any(named: 'query'))).thenThrow(
+        NowaveApiException(
+          statusCode: 400,
+          code: 'BAD_USER_INPUT',
+          message: 'Invalid comment cursor.',
+        ),
+      );
+
+      expect(
+        () => dataSource.getComments(_kSlug, cursor: 'valid-looking-cursor'),
+        throwsA(
+          isA<ServerException>().having(
+            (error) => error.code,
+            'code',
+            'comments.cursorUnavailable',
+          ),
+        ),
+      );
+    });
+
+    test('a malformed boundary on a full page is a parse failure', () async {
+      final rows = List<Map<String, dynamic>>.generate(
+        50,
+        (index) => _commentMap(id: _uuid(index + 1)),
+      );
+      rows.last['createdAt'] = '2026-06-01T00:00:00Z';
+      when(
+        () => client.getJson(any(), query: any(named: 'query')),
+      ).thenAnswer((_) async => rows);
+
+      expect(
+        () => dataSource.getComments(_kSlug),
+        throwsA(
+          isA<ServerException>().having(
+            (error) => error.code,
+            'code',
+            'client.parse',
+          ),
+        ),
+      );
+    });
 
     test('an API error surfaces as a ServerException', () async {
       when(() => client.getJson(any(), query: any(named: 'query'))).thenThrow(

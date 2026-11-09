@@ -78,6 +78,10 @@ void main() {
 
     await dataSource.getComments('yu-zhou');
     expect(requested.last.queryParameters['locale'], 'en');
+
+    await dataSource.getComments('yu-zhou', cursor: 'next-page');
+    expect(requested.last.queryParameters['locale'], 'en');
+    expect(requested.last.queryParameters['cursor'], 'next-page');
   });
 
   test(

@@ -4,6 +4,7 @@ import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
+import 'package:belog/features/blog/domain/entities/comment_page.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
 import 'package:fpdart/fpdart.dart';
 
@@ -17,14 +18,19 @@ class CommentRepositoryImpl implements CommentRepository {
   });
 
   @override
-  Future<Either<Failure, List<Comment>>> getComments(String slug) async {
+  Future<Either<Failure, CommentPage>> getComments(
+    String slug, {
+    String? cursor,
+  }) async {
     try {
       if (!await connectionChecker.isConnected) {
         return left(Failure.networkOffline());
       }
 
-      final res = await commentRemoteDataSource.getComments(slug);
-      return right(res);
+      final page = cursor == null
+          ? await commentRemoteDataSource.getComments(slug)
+          : await commentRemoteDataSource.getComments(slug, cursor: cursor);
+      return right(page);
     } on ServerException catch (e) {
       return left(e.toFailure());
     } catch (e, stackTrace) {
