@@ -45,6 +45,15 @@ abstract interface class MessageRepository {
     required NowaveSessionFence fence,
   });
 
+  /// Permanently deletes a conversation for every participant.
+  ///
+  /// Only its creator may do this. `false` means the conversation was already
+  /// gone; callers must not treat it as a successful delete.
+  Future<Either<Failure, bool>> deleteConversation(
+    String conversationId, {
+    required NowaveSessionFence fence,
+  });
+
   /// Opens a conversation with [recipientId].
   ///
   /// Opening is not idempotent server-side - the same participants can be in

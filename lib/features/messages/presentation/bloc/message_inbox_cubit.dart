@@ -37,6 +37,7 @@ final class MessageInboxLoaded extends MessageInboxState {
     required this.conversations,
     this.participants = const {},
     this.startingRecipient,
+    this.deletingConversationId,
   });
 
   /// The account these rows belong to, captured when they were read.
@@ -50,6 +51,9 @@ final class MessageInboxLoaded extends MessageInboxState {
 
   /// The recipient of an in-flight "start a conversation", if any.
   final String? startingRecipient;
+
+  /// The conversation currently being permanently deleted, if any.
+  final String? deletingConversationId;
 
   bool get isEmpty => conversations.isEmpty;
 
@@ -75,6 +79,8 @@ final class MessageInboxLoaded extends MessageInboxState {
     Map<String, MessageParticipant>? participants,
     String? startingRecipient,
     bool clearStartingRecipient = false,
+    String? deletingConversationId,
+    bool clearDeletingConversation = false,
   }) {
     return MessageInboxLoaded(
       viewerId: viewerId,
@@ -83,6 +89,9 @@ final class MessageInboxLoaded extends MessageInboxState {
       startingRecipient: clearStartingRecipient
           ? null
           : (startingRecipient ?? this.startingRecipient),
+      deletingConversationId: clearDeletingConversation
+          ? null
+          : (deletingConversationId ?? this.deletingConversationId),
     );
   }
 }
@@ -118,6 +127,12 @@ class MessageInboxCubit extends Cubit<MessageInboxState> {
   String? _pendingRecipient;
   String? _pendingKey;
 
+  /// Keeps an old in-flight list read from restoring a conversation just
+  /// deleted during this inbox lifetime. Keys are account-scoped because one
+  /// cubit may survive a sign-in switch.
+  final Map<String, Set<String>> _deletedConversationIdsByViewer = {};
+  final Map<String, String> _deletingConversationByViewer = {};
+
   NowaveSessionFence? get _fence {
     final userId = identity.activeUserId;
     final token = identity.accessToken;
@@ -134,6 +149,12 @@ class MessageInboxCubit extends Cubit<MessageInboxState> {
         identity.sessionGeneration == fence.generation;
   }
 
+  void _clearDeleteInFlight(String viewerId, String conversationId) {
+    if (_deletingConversationByViewer[viewerId] == conversationId) {
+      _deletingConversationByViewer.remove(viewerId);
+    }
+  }
+
   /// Loads the conversation list. [showLoading] is false for a silent refresh,
   /// which keeps the current rows on screen.
   Future<void> load({bool showLoading = true}) async {
@@ -148,10 +169,19 @@ class MessageInboxCubit extends Cubit<MessageInboxState> {
       limit: pageLimit,
     );
     if (isClosed || !_stillCurrent(fence)) return;
-    final state = result.fold<MessageInboxState>(
-      MessageInboxFailure.new,
-      (rows) => MessageInboxLoaded(viewerId: fence.userId, conversations: rows),
-    );
+    final state = result.fold<MessageInboxState>(MessageInboxFailure.new, (
+      rows,
+    ) {
+      final deleted =
+          _deletedConversationIdsByViewer[fence.userId] ?? const <String>{};
+      return MessageInboxLoaded(
+        viewerId: fence.userId,
+        conversations: rows
+            .where((row) => !deleted.contains(row.id))
+            .toList(growable: false),
+        deletingConversationId: _deletingConversationByViewer[fence.userId],
+      );
+    });
     emit(state);
     if (state is! MessageInboxLoaded) return;
 
@@ -177,6 +207,121 @@ class MessageInboxCubit extends Cubit<MessageInboxState> {
   /// not know who this is rather than showing an id as a name.
   Future<MessageParticipant?> resolveParticipant(String userId) =>
       names.lookup(userId);
+
+  /// Permanently deletes a conversation for all participants.
+  ///
+  /// The server is authoritative about ownership. The local owner check keeps
+  /// an unavailable destructive action out of the UI; a confirmed `true`
+  /// removes this row, while `false` leaves it for a refresh to reconcile.
+  Future<Either<Failure, bool>> deleteConversation(
+    String conversationId,
+  ) async {
+    final fence = _fence;
+    if (fence == null) {
+      if (!isClosed) emit(const MessageInboxSignedOut());
+      return left(
+        const Failure(
+          '登录后才能删除会话',
+          kind: FailureKind.auth,
+          code: 'auth.required',
+        ),
+      );
+    }
+    if (_deletingConversationByViewer.containsKey(fence.userId)) {
+      return left(
+        const Failure(
+          '正在删除另一个会话，请稍候',
+          kind: FailureKind.validation,
+          code: 'messages.deleteInProgress',
+        ),
+      );
+    }
+    final current = state;
+    if (current is! MessageInboxLoaded || current.viewerId != fence.userId) {
+      return left(
+        const Failure(
+          '会话不存在，或你不属于这个会话',
+          kind: FailureKind.validation,
+          code: 'messages.missing',
+        ),
+      );
+    }
+    Conversation? conversation;
+    for (final row in current.conversations) {
+      if (row.id == conversationId) {
+        conversation = row;
+        break;
+      }
+    }
+    if (conversation == null) {
+      return left(
+        const Failure(
+          '会话不存在，或你不属于这个会话',
+          kind: FailureKind.validation,
+          code: 'messages.missing',
+        ),
+      );
+    }
+    if (conversation.createdBy != fence.userId) {
+      return left(
+        const Failure(
+          '只有会话创建者可以删除这个会话',
+          kind: FailureKind.permission,
+          code: 'messages.deleteForbidden',
+        ),
+      );
+    }
+
+    _deletingConversationByViewer[fence.userId] = conversationId;
+    emit(current.copyWith(deletingConversationId: conversationId));
+    final result = await repository.deleteConversation(
+      conversationId,
+      fence: fence,
+    );
+    if (isClosed || !_stillCurrent(fence)) {
+      _clearDeleteInFlight(fence.userId, conversationId);
+      return left(
+        const Failure(
+          '登录状态已变化，无法确认删除结果；请先刷新收件箱',
+          kind: FailureKind.auth,
+          code: 'auth.sessionChanged',
+        ),
+      );
+    }
+    final latest = state;
+    return result.fold(
+      (failure) {
+        _clearDeleteInFlight(fence.userId, conversationId);
+        if (latest is MessageInboxLoaded &&
+            latest.viewerId == fence.userId &&
+            latest.deletingConversationId == conversationId) {
+          emit(latest.copyWith(clearDeletingConversation: true));
+        }
+        return left(failure.forPresentation());
+      },
+      (deleted) {
+        _clearDeleteInFlight(fence.userId, conversationId);
+        if (deleted) {
+          _deletedConversationIdsByViewer
+              .putIfAbsent(fence.userId, () => <String>{})
+              .add(conversationId);
+        }
+        if (latest is MessageInboxLoaded && latest.viewerId == fence.userId) {
+          emit(
+            latest.copyWith(
+              conversations: deleted
+                  ? latest.conversations
+                        .where((row) => row.id != conversationId)
+                        .toList(growable: false)
+                  : latest.conversations,
+              clearDeletingConversation: true,
+            ),
+          );
+        }
+        return right(deleted);
+      },
+    );
+  }
 
   /// Opens (or reuses) a conversation with [recipientId].
   ///

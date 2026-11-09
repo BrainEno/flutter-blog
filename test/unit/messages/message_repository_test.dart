@@ -223,6 +223,102 @@ void main() {
     expect(result.fold((_) => null, (v) => v), isFalse);
   });
 
+  test(
+    'deletes only through a fenced private request with redirects disabled',
+    () async {
+      final seen = <http.Request>[];
+      final repository = _repository(
+        _Auth(),
+        MockClient((request) async {
+          seen.add(request);
+          return _data(true);
+        }),
+      );
+
+      final result = await repository.deleteConversation(
+        'conversation-1',
+        fence: _fence,
+      );
+
+      expect(seen.single.method, 'DELETE');
+      expect(seen.single.url.path, '/api/v1/conversations/conversation-1');
+      expect(seen.single.followRedirects, isFalse);
+      expect(seen.single.headers['authorization'], 'Bearer fake-token-a');
+      expect(result.fold((_) => null, (deleted) => deleted), isTrue);
+    },
+  );
+
+  test(
+    'deleting an already missing conversation is not reported as success',
+    () async {
+      final repository = _repository(
+        _Auth(),
+        MockClient((_) async => _data(false)),
+      );
+
+      final result = await repository.deleteConversation(
+        'conversation-1',
+        fence: _fence,
+      );
+
+      expect(result.fold((_) => null, (deleted) => deleted), isFalse);
+    },
+  );
+
+  test(
+    'a deletion response other than a bool is not treated as confirmed',
+    () async {
+      final repository = _repository(
+        _Auth(),
+        MockClient((_) async => _data({'deleted': true})),
+      );
+
+      final failure = _failure(
+        await repository.deleteConversation('conversation-1', fence: _fence),
+      );
+
+      expect(failure?.code, 'client.parse');
+    },
+  );
+
+  test('an invalid conversation id never reaches DELETE', () async {
+    var requests = 0;
+    final repository = _repository(
+      _Auth(),
+      MockClient((_) async {
+        requests++;
+        return _data(true);
+      }),
+    );
+
+    final failure = _failure(
+      await repository.deleteConversation('', fence: _fence),
+    );
+
+    expect(requests, 0);
+    expect(failure?.code, 'client.parse');
+  });
+
+  test('a replaced account cannot delete an old viewer conversation', () async {
+    final auth = _Auth();
+    var requests = 0;
+    final repository = _repository(
+      auth,
+      MockClient((_) async {
+        requests++;
+        return _data(true);
+      }),
+    );
+    auth.replace();
+
+    final failure = _failure(
+      await repository.deleteConversation('conversation-1', fence: _fence),
+    );
+
+    expect(requests, 0);
+    expect(failure?.code, 'auth.sessionChanged');
+  });
+
   test('starts a conversation with an idempotency key', () async {
     final seen = <http.Request>[];
     final repository = _repository(
@@ -382,6 +478,30 @@ void main() {
 
       final failure = _failure(
         await repository.messages('conversation-1', fence: _fence),
+      );
+
+      expect(failure?.code, entry.value);
+      expect(failure?.message, isNot(contains('private server message')));
+      expect(failure?.cause, isNull);
+    });
+  }
+
+  for (final entry in <int, String>{
+    403: 'messages.deleteForbidden',
+    404: 'messages.deleteUnavailable',
+    405: 'messages.deleteUnavailable',
+    500: 'server.error',
+  }.entries) {
+    test('HTTP ${entry.key} on DELETE is classified for deletion', () async {
+      final repository = _repository(
+        _Auth(),
+        MockClient(
+          (_) async => http.Response('private server message', entry.key),
+        ),
+      );
+
+      final failure = _failure(
+        await repository.deleteConversation('conversation-1', fence: _fence),
       );
 
       expect(failure?.code, entry.value);

@@ -151,6 +151,20 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
       return l10n.categoryNotFound;
     case 'notifications.unavailable':
       return l10n.notificationsUnavailable;
+    case 'messages.deleteForbidden':
+      return l10n.messagesDeleteForbidden;
+    case 'messages.deleteUnavailable':
+      return l10n.messagesDeleteUnavailable;
+    case 'messages.deleteInProgress':
+      return l10n.messagesDeleteInProgress;
+    case 'messages.missing':
+      return l10n.messagesMissing;
+    case 'messages.forbidden':
+      return l10n.messagesForbidden;
+    case 'messages.unavailable':
+      return l10n.messagesUnavailable;
+    case 'messages.invalid':
+      return l10n.messagesInvalid;
     case 'feed.sourceChanged':
       return l10n.feedSourceChanged;
     case 'feed.paginationChanged':
