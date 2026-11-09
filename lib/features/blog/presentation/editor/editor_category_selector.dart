@@ -152,9 +152,9 @@ class EditorCategorySelector extends StatelessWidget {
               liveRegion: true,
               child: Text(
                 context.l10n.editorCategoryAtLimit(maxSelections),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: muted,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: muted),
               ),
             ),
           ],
@@ -167,9 +167,9 @@ class EditorCategorySelector extends StatelessWidget {
           const SizedBox(height: NoWaveSpacing.small),
           Text(
             context.l10n.editorCategoryUnknown(unknownCount),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: muted,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: muted),
           ),
         ],
       ],
