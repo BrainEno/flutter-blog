@@ -160,7 +160,7 @@ void main() {
     expect(find.byType(NoWaveAvatar), findsNWidgets(3));
   });
 
-  testWidgets('loads older pages and stops after a short page', (tester) async {
+  testWidgets('loads subsequent pages and stops after a short page', (tester) async {
     when(() => getComments('my-slug')).thenAnswer(
       (_) async => right<Failure, CommentPage>(
         _page([_comment('c1', content: '评论c1')], cursor: 'cursor-1'),
@@ -177,14 +177,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('已加载 1 条'), findsOneWidget);
-    expect(find.text('加载更早的评论'), findsOneWidget);
-    await tester.ensureVisible(find.text('加载更早的评论'));
-    await tester.tap(find.text('加载更早的评论'));
+    expect(find.text('加载更多评论'), findsOneWidget);
+    await tester.ensureVisible(find.text('加载更多评论'));
+    await tester.tap(find.text('加载更多评论'));
     await tester.pumpAndSettle();
 
     expect(find.text('评论c2'), findsOneWidget);
     expect(find.text('已加载 2 条'), findsOneWidget);
-    expect(find.text('加载更早的评论'), findsNothing);
+    expect(find.text('加载更多评论'), findsNothing);
   });
 
   testWidgets('pagination remains available after deleting the loaded rows', (
@@ -208,10 +208,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('还没有评论，来说第一句吧'), findsOneWidget);
-    expect(find.text('加载更早的评论'), findsOneWidget);
+    expect(find.text('加载更多评论'), findsOneWidget);
   });
 
-  testWidgets('a failed older page keeps rows and can be retried', (
+  testWidgets('a failed continuation page keeps rows and can be retried', (
     tester,
   ) async {
     var attempts = 0;
@@ -239,8 +239,8 @@ void main() {
     await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('加载更早的评论'));
-    await tester.tap(find.text('加载更早的评论'));
+    await tester.ensureVisible(find.text('加载更多评论'));
+    await tester.tap(find.text('加载更多评论'));
     await tester.pumpAndSettle();
     expect(find.text('评论c1'), findsOneWidget);
     expect(find.text('重试'), findsOneWidget);
@@ -254,7 +254,7 @@ void main() {
   });
 
   testWidgets('pagination loading uses the No Wave label', (tester) async {
-    final olderPage = Completer<Either<Failure, CommentPage>>();
+    final continuationPage = Completer<Either<Failure, CommentPage>>();
     when(() => getComments('my-slug')).thenAnswer(
       (_) async => right<Failure, CommentPage>(
         _page([_comment('c1', content: '评论c1')], cursor: 'cursor-1'),
@@ -262,24 +262,24 @@ void main() {
     );
     when(
       () => getComments('my-slug', cursor: 'cursor-1'),
-    ).thenAnswer((_) => olderPage.future);
+    ).thenAnswer((_) => continuationPage.future);
 
     final bloc = buildBloc();
     addTearDown(() async {
-      if (!olderPage.isCompleted) {
-        olderPage.complete(right<Failure, CommentPage>(_page([])));
+      if (!continuationPage.isCompleted) {
+        continuationPage.complete(right<Failure, CommentPage>(_page([])));
       }
       await bloc.close();
     });
     await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('加载更早的评论'));
-    await tester.tap(find.text('加载更早的评论'));
+    await tester.ensureVisible(find.text('加载更多评论'));
+    await tester.tap(find.text('加载更多评论'));
     await tester.pump();
     expect(find.byType(NoWaveLoadingLabel), findsOneWidget);
 
-    olderPage.complete(
+    continuationPage.complete(
       right<Failure, CommentPage>(_page([_comment('c2', content: '评论c2')])),
     );
     await tester.pumpAndSettle();
@@ -305,13 +305,13 @@ void main() {
     await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('加载更早的评论'));
-    await tester.tap(find.text('加载更早的评论'));
+    await tester.ensureVisible(find.text('加载更多评论'));
+    await tester.tap(find.text('加载更多评论'));
     await tester.pumpAndSettle();
 
     expect(find.text('评论c1'), findsOneWidget);
-    expect(find.text('此服务器暂不支持加载更早的评论。'), findsOneWidget);
-    expect(find.text('加载更早的评论'), findsNothing);
+    expect(find.text('此服务器暂不支持继续加载评论。'), findsOneWidget);
+    expect(find.text('加载更多评论'), findsNothing);
   });
 
   testWidgets('comment and reply portraits delegate author selection', (

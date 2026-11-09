@@ -95,7 +95,7 @@ void main() {
   });
 
   group('MoreCommentsRequested', () {
-    test('appends older pages until a short page ends the thread', () async {
+    test('appends continuation pages until a short page ends the thread', () async {
       when(() => getComments('my-slug')).thenAnswer(
         (_) async => right<Failure, CommentPage>(
           _page([_comment('c1')], cursor: 'cursor-1'),
@@ -241,6 +241,29 @@ void main() {
       },
     );
 
+    test('stops when a cursor advances without any new root comments', () async {
+      when(() => getComments('my-slug')).thenAnswer(
+        (_) async => right<Failure, CommentPage>(
+          _page([_comment('c1')], cursor: 'cursor-1'),
+        ),
+      );
+      when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer(
+        (_) async => right<Failure, CommentPage>(
+          _page([_comment('c1')], cursor: 'cursor-2'),
+        ),
+      );
+
+      bloc.add(const CommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(const MoreCommentsRequested());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(bloc.state.comments.map((comment) => comment.id), ['c1']);
+      expect(bloc.state.hasMore, isFalse);
+      expect(bloc.state.paginationUnavailable, isTrue);
+      verify(() => getComments('my-slug', cursor: 'cursor-1')).called(1);
+    });
+
     test('refresh replaces appended pages and starts from no cursor', () async {
       var firstPageRequest = 0;
       when(() => getComments('my-slug')).thenAnswer((_) async {
@@ -274,7 +297,7 @@ void main() {
       verify(() => getComments('my-slug', cursor: 'cursor-fresh')).called(1);
     });
 
-    test('an in-flight older page cannot append after a refresh', () async {
+    test('an in-flight continuation page cannot append after a refresh', () async {
       final stalePage = Completer<Either<Failure, CommentPage>>();
       var firstPageRequest = 0;
       when(() => getComments('my-slug')).thenAnswer((_) async {
@@ -306,7 +329,7 @@ void main() {
     });
 
     test(
-      'a new root stays ordered while older pages continue at their cursor',
+      'deduplicates a locally submitted root and continues the cursor page',
       () async {
         when(() => getComments('my-slug')).thenAnswer(
           (_) async => right<Failure, CommentPage>(
@@ -315,12 +338,12 @@ void main() {
         );
         when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer(
           (_) async => right<Failure, CommentPage>(
-            _page([_comment('c2')], cursor: 'cursor-2'),
+            _page([_comment('c2'), _comment('c3')], cursor: 'cursor-3'),
           ),
         );
-        when(
-          () => getComments('my-slug', cursor: 'cursor-2'),
-        ).thenAnswer((_) async => right<Failure, CommentPage>(_page([])));
+        when(() => getComments('my-slug', cursor: 'cursor-3')).thenAnswer(
+          (_) async => right<Failure, CommentPage>(_page([])),
+        );
         when(
           () => createComment(any(that: isA<CreateCommentParams>())),
         ).thenAnswer((_) async => right<Failure, Comment>(_comment('c3')));
@@ -333,16 +356,14 @@ void main() {
 
         bloc.add(const MoreCommentsRequested());
         await Future<void>.delayed(Duration.zero);
-        expect(bloc.state.comments.map((comment) => comment.id), [
-          'c1',
-          'c2',
-          'c3',
-        ]);
+        expect(bloc.state.comments.map((comment) => comment.id), ['c1', 'c2', 'c3']);
         expect(bloc.state.hasMore, isTrue);
+        expect(bloc.state.paginationUnavailable, isFalse);
 
         bloc.add(const MoreCommentsRequested());
         await Future<void>.delayed(Duration.zero);
-        verify(() => getComments('my-slug', cursor: 'cursor-2')).called(1);
+        expect(bloc.state.hasMore, isFalse);
+        verify(() => getComments('my-slug', cursor: 'cursor-3')).called(1);
       },
     );
   });

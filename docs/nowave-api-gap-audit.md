@@ -13,7 +13,7 @@ no-wave main `bbe9d198`（PR #253）现提供 `GET /articles/:slug/comments?limi
 | 能力 / API | 客户端状态 | 语义与后续 |
 |---|---|---|
 | 公开最新文章 `/articles`，点赞、评论、标签、作者、关注，发布、软删和恢复 | 已接入 | 延续现有实现；删除恢复后作品为服务端草稿。 |
-| 评论线程 `GET /articles/:slug/comments?limit=50&cursor=…` | 已接入 keyset 分页 | Flutter 按需读取 50 个顶级评论；回复树随根返回。cursor 由上一页最后根评论的原始 `createdAt` 与 UUID 生成；短页结束，满页继续直到空页。续页失败保留游标供重试；旧服务忽略/拒绝 cursor 时停止、不追加重复项。目标部署升级与 PostgreSQL `0031` 迁移状态未验证；细节见[评论线程](comments.md)。 |
+| 评论线程 `GET /articles/:slug/comments?limit=50&cursor=…` | 已接入 keyset 分页 | Flutter 按需读取 50 个顶级评论；回复树随根返回。cursor 由上一页最后根评论的原始 `createdAt` 与 UUID 生成；短页结束，满页继续直到空页。续页失败保留游标供重试；本地已有的根评论 ID 去重，cursor 未推进或续页无新根时停止并提示。目标部署升级与 PostgreSQL `0031` 迁移状态未验证；细节见[评论线程](comments.md)。 |
 | 最新文章 `GET /articles?cursor=…` | 首页在线 latest 已接入 | 与旧服务兼容回退 offset；密集时间窗口有上限并明确停止，无法保证完整快照。其他列表仍使用 offset；详见 [分页说明](latest-feed-cursor.md)。 |
 | 文章搜索 `query` | 已接入，依赖部署 | 新后端支持标题、摘要及部分正文块文本，旧部署可能只查标题/摘要；离线只查本机缓存标题，不能保证完整结果。 |
 | 内容语言 `locale` | 已接入（界面语言决定内容语言） | 内容语言由界面语言推导（`ContentLocale`），首页、关注、精选、搜索、作者、分类、标签订阅等请求都带该 `locale`；离线缓存以 `(slug, content_locale)` 为键，两种语言并存（v7）。界面切语言后分页会话按 generation 丢弃旧页。仍未提供 `zh-TW` 界面：该语言的作品只能经作者的“全部语言版本”列表看到。 |
