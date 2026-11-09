@@ -303,14 +303,18 @@ CocoaPods 以及 Xcode 命令行工具。脚本只检查并使用现有工具，
 
 脚本优先复用已运行的模拟器；指定 `-Avd` 时只使用该 AVD，否则在未运行时
 选择按名称排序的第一个可用 AVD。它等待 `adb` 报告开机完成，执行
-`flutter pub get` 并以指定模拟器启动 `flutter run --debug`。失败时提示而不
+`flutter pub get` 并以指定模拟器启动 `flutter run --debug --no-pub`。如果检测到
+Pub 镜像归档哈希与 lockfile 不符，会仅重试一次官方 `pub.dev`；失败时提示而不
 自动安装、删除或杀掉任何模拟器。若没有 AVD，请先在 Android Studio 的
 Device Manager 创建；如找不到 SDK，设置 `ANDROID_SDK_ROOT` 或将 emulator 和
 platform-tools 加入 PATH。可用 `emulator -list-avds` 查看 AVD 名称。
 
-Android 模拟器中的 `localhost` 是模拟器自身，访问运行在宿主机上的本地 API
-通常应使用 `http://10.0.2.2:端口`；真机或其他模拟器必须使用它们能访问的
-地址。后端须自行启动，脚本不会启动或验证生产服务。
+Android 模拟器中的 `localhost` 是模拟器自身，访问宿主机本地 API 通常使用
+`http://10.0.2.2:端口`。一键脚本也支持已有配置使用 `localhost`、`127.0.0.1`
+或 `::1`：开机后会自动执行 `adb reverse tcp:端口 tcp:端口`，把模拟器回环端口
+转发到主机；手动运行 `flutter run` 时则需自行设置转发或改用 `10.0.2.2`。映射
+保留到设备断开或手动移除；例如 `adb -s emulator-5554 reverse --remove tcp:4000`。
+真机或其他模拟器必须使用它们能访问的地址。后端须自行启动，脚本不会启动或验证生产服务。
 
 ### macOS：一键模拟器调试与 IPA
 
@@ -359,6 +363,13 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
   flutter upgrade
   ```
 
+- **`flutter pub get` 提示 `Downloaded archive ... had wrong content-hash`**：这是 Pub
+  镜像返回的归档内容与 `pubspec.lock` 的 SHA-256 不符，不是 Flutter 版本问题。不要改锁文件
+  哈希或关闭校验；`run_android.cmd` 会在明确的哈希不符时向官方 `https://pub.dev`
+  重试一次，继续使用 Pub 的锁文件完整性校验，随后以 `flutter run --no-pub` 启动，
+  避免再次访问坏镜像。若机器无法访问 `pub.dev`，需要恢复官方源连通性，或换用能返回
+  锁定原始归档的可信镜像；
+  `FLUTTER_STORAGE_BASE_URL`（Flutter SDK/引擎下载源）不受影响。
 - **`flutter pub get` 版本求解失败（`sqlite3` / `hooks` / `record_use` / `meta`）**：
   旧 Flutter SDK 把 `meta` 固定在旧版本，而 `sqlite3 >=3.6.0` 经 `hooks`
   → `record_use` 要求 `meta ^1.19.0`，于是报 `version solving failed`。dev-only 的
@@ -399,9 +410,11 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
   或 `request POST /api/v1/auth/login unreachable (SocketException)`，debug 控制台里
   也会打印实际探测的 origin。本机先自查 `curl http://localhost:4000/api/v1/health`；
   连不上时重点看后端监听地址：Node/Express 里 `listen(4000, 'localhost')` 在 Windows
-  上只绑定 `::1`，而模拟器的 `10.0.2.2` 走 IPv4 回环，会被直接拒绝——改成监听
-  `0.0.0.0`（或 `::`）。不想改绑定时，可 `adb reverse tcp:4000 tcp:4000`，再把
-  `env.json` 的 `API_BASE_URL` 改成本机的 `http://127.0.0.1:4000`。
+  上只绑定 `::1`，而模拟器的 `10.0.2.2` 走 IPv4 回环，可能被直接拒绝——改成监听
+  `0.0.0.0`（或 `::`）。不改绑定时，`adb reverse tcp:4000 tcp:4000` 可将模拟器
+  `localhost:4000` 转回主机；一键脚本检测到 `localhost` / `127.0.0.1` / `::1`
+  配置会自动执行。手动运行 Flutter 时仍需自己执行 reverse，或改用
+  `http://10.0.2.2:4000`。
 - **先看这一行**：`API_BASE_URL` 是**编译期**注入的（`AppSecrets`），所以「连不上」先要确认
   手上这个包到底指向哪个后端。debug 控制台启动时会打印
   `api origin: http://10.0.2.2:4000 (http, debug build allows cleartext)`；同一个头部
