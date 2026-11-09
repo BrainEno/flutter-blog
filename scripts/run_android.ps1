@@ -64,8 +64,8 @@ function Invoke-PubGet([string]$Flutter) {
         throw 'pub.dev reported a package content-hash mismatch. Do not edit pubspec.lock; verify the package cache/network and retry.'
     }
 
-    [Console]::Error.WriteLine('Warning: the configured Pub mirror returned an archive whose content hash does not match pubspec.lock.')
-    [Console]::Error.WriteLine('Retrying dependency resolution once against canonical https://pub.dev; lockfile integrity checks remain enabled.')
+    Write-Host 'Warning: the configured Pub mirror returned an archive whose content hash does not match pubspec.lock.'
+    Write-Host 'Retrying dependency resolution once against canonical https://pub.dev; lockfile integrity checks remain enabled.'
     $hostedUrlWasSet = Test-Path Env:PUB_HOSTED_URL
     try {
         $env:PUB_HOSTED_URL = 'https://pub.dev'
