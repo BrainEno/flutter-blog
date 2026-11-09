@@ -167,9 +167,8 @@ void main() {
       ),
     );
     when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer(
-      (_) async => right<Failure, CommentPage>(
-        _page([_comment('c2', content: '评论c2')]),
-      ),
+      (_) async =>
+          right<Failure, CommentPage>(_page([_comment('c2', content: '评论c2')])),
     );
 
     final bloc = buildBloc();
@@ -281,9 +280,7 @@ void main() {
     expect(find.byType(NoWaveLoadingLabel), findsOneWidget);
 
     olderPage.complete(
-      right<Failure, CommentPage>(
-        _page([_comment('c2', content: '评论c2')]),
-      ),
+      right<Failure, CommentPage>(_page([_comment('c2', content: '评论c2')])),
     );
     await tester.pumpAndSettle();
     expect(find.text('评论c2'), findsOneWidget);
