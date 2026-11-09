@@ -36,6 +36,7 @@ if "%~1"=="--version" (
 )
 echo flutter %*>>"%BELOG_TEST_LOG%"
 echo PUB_HOSTED_URL=%PUB_HOSTED_URL%>>"%BELOG_TEST_LOG%"
+echo MOCK_HASH_MISMATCH_PUB=%MOCK_HASH_MISMATCH_PUB%>>"%BELOG_TEST_LOG%"
 if "%~1"=="pub" (
   if "%MOCK_HASH_MISMATCH_PUB%"=="1" if "%PUB_HOSTED_URL%"=="https://pub.flutter-io.cn" (
     echo Downloaded archive for sample-1.0.0 had wrong content-hash. 1>&2
@@ -144,8 +145,9 @@ public static class FakeEmulator {
     $env:MOCK_HASH_MISMATCH_PUB = '1'
     Remove-Item -LiteralPath $log -Force
     $hashFallback = Run-Subject @()
+    $hashLog = Get-Content -LiteralPath $log -Raw
     Assert-True ($hashFallback.ExitCode -eq 0) "Pub mirror hash retry failed: $($hashFallback.Output)"
-    Assert-True ($hashFallback.Output -match 'Retrying dependency resolution once against canonical https://pub.dev') 'The official Pub retry was not explained.'
+    Assert-True ($hashFallback.Output -match 'Retrying dependency resolution once against canonical https://pub.dev') "The official Pub retry was not explained (parent host '$env:PUB_HOSTED_URL', mismatch flag '$env:MOCK_HASH_MISMATCH_PUB'). Output: $($hashFallback.Output) Mock log: $hashLog"
     $hostLines = @(Get-Content -LiteralPath $log | Where-Object { $_ -like 'PUB_HOSTED_URL=*' })
     Assert-True ($hostLines.Count -eq 3) "Expected mirror, official retry and run invocations; got $($hostLines.Count)."
     Assert-True ($hostLines[0] -eq 'PUB_HOSTED_URL=https://pub.flutter-io.cn') 'The first attempt did not preserve the configured mirror.'
