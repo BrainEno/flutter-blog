@@ -7,8 +7,15 @@ sealed class BlogByEvent {}
 final class GetBlogByPosterEvent extends BlogByEvent {
   final String userId;
 
-  GetBlogByPosterEvent({required this.userId});
+  /// `latest` (the default) or `popular`. The two orders are separate lists:
+  /// switching clears what the other one had read.
+  final BlogFeedKind kind;
+
+  GetBlogByPosterEvent({required this.userId, this.kind = BlogFeedKind.latest});
 }
+
+/// Scrolls into the next page of the author's list.
+final class BlogByMoreRequested extends BlogByEvent {}
 
 /// The viewer's own articles, drafts included (`/me/articles`). Kept separate
 /// from [GetBlogByPosterEvent] because the source is account-scoped.

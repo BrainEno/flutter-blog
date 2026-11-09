@@ -5,6 +5,7 @@ import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/author_articles_paging.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -313,6 +314,95 @@ void main() {
           query: any(named: 'query'),
         ),
       ).called(2);
+    });
+  });
+
+  group('author article pages', () {
+    test('the first page sends no offset and no sort', () async {
+      when(
+        () => client.getJson(
+          '/authors/author-1/articles',
+          query: any(named: 'query'),
+        ),
+      ).thenAnswer((_) async => <Map<String, dynamic>>[_articleMap()]);
+
+      await dataSource.getAuthorArticles('author-1');
+
+      final query =
+          verify(
+                () => client.getJson(
+                  '/authors/author-1/articles',
+                  query: captureAny(named: 'query'),
+                ),
+              ).captured.single
+              as Map<String, String>;
+      // An older deployment ignores `offset` and answers the first page, which
+      // is the right answer for a first page - so it is simply not sent.
+      expect(query.containsKey('offset'), isFalse);
+      expect(query.containsKey('sort'), isFalse);
+      expect(query['limit'], '$kAuthorPageSize');
+    });
+
+    test('the most-saved order names its sort and its offset', () async {
+      when(
+        () => client.getJson(
+          '/authors/author-1/articles',
+          query: any(named: 'query'),
+        ),
+      ).thenAnswer((_) async => <Map<String, dynamic>>[]);
+
+      await dataSource.getAuthorArticles(
+        'author-1',
+        kind: BlogFeedKind.popular,
+        offset: 40,
+      );
+
+      final query =
+          verify(
+                () => client.getJson(
+                  '/authors/author-1/articles',
+                  query: captureAny(named: 'query'),
+                ),
+              ).captured.single
+              as Map<String, String>;
+      expect(query['sort'], 'popular');
+      expect(query['offset'], '40');
+    });
+
+    test('the poster id is encoded, not pasted into the path', () async {
+      when(
+        () => client.getJson(any(), query: any(named: 'query')),
+      ).thenAnswer((_) async => <Map<String, dynamic>>[]);
+
+      await dataSource.getAuthorArticles('author/with?reserved%');
+
+      verify(
+        () => client.getJson(
+          '/authors/author%2Fwith%3Freserved%25/articles',
+          query: any(named: 'query'),
+        ),
+      ).called(1);
+    });
+
+    test('rows come back in server order', () async {
+      when(
+        () => client.getJson(
+          '/authors/author-1/articles',
+          query: any(named: 'query'),
+        ),
+      ).thenAnswer(
+        (_) async => <Map<String, dynamic>>[
+          {..._articleMap(), 'slug': 'second'},
+          {..._articleMap(), 'slug': 'first'},
+        ],
+      );
+
+      final rows = await dataSource.getAuthorArticles(
+        'author-1',
+        kind: BlogFeedKind.popular,
+      );
+
+      expect(rows.map((row) => row.id), ['second', 'first']);
     });
   });
 

@@ -7,9 +7,11 @@ import 'package:belog/core/theme/theme.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/author_articles_paging.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
-import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
+import 'package:belog/features/blog/domain/usecase/get_author_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_article_editions.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
@@ -44,7 +46,7 @@ AuthorProfile _profile({bool isFollowing = false}) => AuthorProfile(
   updatedAt: DateTime.utc(2025),
 );
 
-Blog _blog() => BlogModel(
+BlogModel _blog() => BlogModel(
   id: 'post-1',
   title: '作者的文章',
   content: '正文',
@@ -134,6 +136,7 @@ void main() {
   late AppUserCubit appUserCubit;
 
   setUp(() {
+    registerFallbackValue(BlogFeedKind.latest);
     getAuthorProfile = MockGetAuthorProfile();
     followAuthor = MockFollowAuthor();
     unfollowAuthor = MockUnfollowAuthor();
@@ -143,8 +146,14 @@ void main() {
     when(
       () => getAuthorProfile('author-1'),
     ).thenAnswer((_) async => right<Failure, AuthorProfile>(_profile()));
+    // The author page browses one page at a time; the data export is the only
+    // caller of the one-shot read, and it is not exercised here.
     when(
-      () => blogRepository.getBlogsByUser('author-1'),
+      () => blogRepository.getAuthorArticlePage(
+        'author-1',
+        kind: any(named: 'kind'),
+        offset: any(named: 'offset'),
+      ),
     ).thenAnswer((_) async => right<Failure, List<Blog>>([_blog()]));
   });
 
@@ -161,7 +170,7 @@ void main() {
   );
 
   BlogByBloc buildBlogByBloc() => BlogByBloc(
-    getBlogsByPoster: GetBlogsByPoster(blogRepository),
+    getAuthorArticles: GetAuthorArticles(blogRepository),
     getMyArticles: GetMyArticles(blogRepository),
     getMyArticleEditions: GetMyArticleEditions(blogRepository),
   );
@@ -215,7 +224,11 @@ void main() {
         ),
       );
       when(
-        () => blogRepository.getBlogsByUser('author-1'),
+        () => blogRepository.getAuthorArticlePage(
+          'author-1',
+          kind: any(named: 'kind'),
+          offset: any(named: 'offset'),
+        ),
       ).thenAnswer((_) async => right<Failure, List<Blog>>(const []));
       when(() => followAuthor('author-1')).thenAnswer(
         (_) async => left<Failure, AuthorProfile>(Failure.networkOffline()),
@@ -443,6 +456,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('作者的文章'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('作者的文章'));
     await tester.pumpAndSettle();
     expect(find.text('article: post-1'), findsOneWidget);
@@ -505,7 +519,13 @@ void main() {
           ? left<Failure, AuthorProfile>(Failure.networkOffline())
           : right<Failure, AuthorProfile>(_profile());
     });
-    when(() => blogRepository.getBlogsByUser('author-1')).thenAnswer((_) async {
+    when(
+      () => blogRepository.getAuthorArticlePage(
+        'author-1',
+        kind: any(named: 'kind'),
+        offset: any(named: 'offset'),
+      ),
+    ).thenAnswer((_) async {
       articleRequests++;
       return articleRequests == 1
           ? left<Failure, List<Blog>>(Failure.networkOffline())
@@ -537,5 +557,118 @@ void main() {
     expect(find.text('作者的文章'), findsOneWidget);
     expect(profileRequests, 2);
     expect(articleRequests, 2);
+  });
+
+  testWidgets('the list offers both orders and pages past the first', (
+    tester,
+  ) async {
+    appUserCubit.updateUser(_user());
+    final calls = <(BlogFeedKind, int)>[];
+    when(
+      () => blogRepository.getAuthorArticlePage(
+        'author-1',
+        kind: any(named: 'kind'),
+        offset: any(named: 'offset'),
+      ),
+    ).thenAnswer((invocation) async {
+      final kind = invocation.namedArguments[#kind] as BlogFeedKind;
+      final offset = invocation.namedArguments[#offset] as int;
+      calls.add((kind, offset));
+      return right<Failure, List<Blog>>([
+        for (var i = 0; i < kAuthorPageSize; i++)
+          _blog().copyWith(id: 'a${offset + i}'),
+      ]);
+    });
+    final authorCubit = buildAuthorCubit();
+    final blogByBloc = buildBlogByBloc();
+    addTearDown(authorCubit.close);
+    addTearDown(blogByBloc.close);
+    await _pumpPage(
+      tester,
+      appUserCubit: appUserCubit,
+      authorCubit: authorCubit,
+      blogByBloc: blogByBloc,
+    );
+    await tester.pumpAndSettle();
+
+    expect(calls.single, (BlogFeedKind.latest, 0));
+
+    // The first full page is not the end of the list.
+    await tester.ensureVisible(find.text('加载更多作品'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('加载更多作品'));
+    await tester.pumpAndSettle();
+    expect(calls.last, (BlogFeedKind.latest, kAuthorPageSize));
+
+    await tester.ensureVisible(find.text('最多收藏'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('最多收藏'));
+    await tester.pumpAndSettle();
+    expect(calls.last, (BlogFeedKind.popular, 0));
+  });
+
+  testWidgets('a refused deeper most-saved page offers the way out', (
+    tester,
+  ) async {
+    appUserCubit.updateUser(_user());
+    when(
+      () => blogRepository.getAuthorArticlePage(
+        'author-1',
+        kind: any(named: 'kind'),
+        offset: any(named: 'offset'),
+      ),
+    ).thenAnswer((invocation) async {
+      final kind = invocation.namedArguments[#kind] as BlogFeedKind;
+      final offset = invocation.namedArguments[#offset] as int;
+      if (kind == BlogFeedKind.popular && offset > 0) {
+        // What the server answers past its bound: not a network problem, and
+        // not retryable.
+        return left<Failure, List<Blog>>(
+          const Failure(
+            'offset is limited',
+            kind: FailureKind.validation,
+            code: 'server.BAD_USER_INPUT',
+          ),
+        );
+      }
+      return right<Failure, List<Blog>>([
+        for (var i = 0; i < kAuthorPageSize; i++)
+          _blog().copyWith(id: '${kind.name}$offset$i'),
+      ]);
+    });
+    final authorCubit = buildAuthorCubit();
+    final blogByBloc = buildBlogByBloc();
+    addTearDown(authorCubit.close);
+    addTearDown(blogByBloc.close);
+    await _pumpPage(
+      tester,
+      appUserCubit: appUserCubit,
+      authorCubit: authorCubit,
+      blogByBloc: blogByBloc,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('最多收藏'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('最多收藏'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('加载更多作品'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('加载更多作品'));
+    await tester.pumpAndSettle();
+
+    final failed = blogByBloc.state as GetBlogsByUserSuccess;
+    expect(failed.depthLimited, isTrue);
+    // The rows stay, and the footer explains the bound instead of a retry.
+    expect(failed.blogs, hasLength(kAuthorPageSize));
+    expect(failed.loadMoreFailure, isNull);
+    expect(find.text('去「最新」继续'), findsOneWidget);
+
+    await tester.tap(find.text('去「最新」继续'));
+    await tester.pumpAndSettle();
+    expect(
+      (blogByBloc.state as GetBlogsByUserSuccess).kind,
+      BlogFeedKind.latest,
+    );
   });
 }

@@ -1,7 +1,7 @@
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/article_editions.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
-import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
+import 'package:belog/features/blog/domain/usecase/get_author_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_article_editions.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
@@ -39,10 +39,10 @@ class _SingleList implements GetMyArticles {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _ByPoster implements GetBlogsByPoster {
+class _AuthorArticles implements GetAuthorArticles {
   @override
   Future<Either<Failure, List<Blog>>> call(
-    GetBlogsByPosterParams params,
+    GetAuthorArticlesParams params,
   ) async => right(const <Blog>[]);
 
   @override
@@ -62,7 +62,7 @@ Blog _blog(String id, String locale) => Blog(
 
 BlogByBloc _bloc(Future<Either<Failure, ArticleEditions>> Function() load) {
   return BlogByBloc(
-    getBlogsByPoster: _ByPoster(),
+    getAuthorArticles: _AuthorArticles(),
     getMyArticles: _SingleList((_) async => right(const <Blog>[])),
     getMyArticleEditions: _Editions((_) => load()),
   );

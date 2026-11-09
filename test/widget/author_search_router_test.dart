@@ -43,7 +43,12 @@ void main() {
       ),
     );
     when(
-      () => harness.remote.getBlogsByPosterId(readerId),
+      () => harness.remote.getAuthorArticles(
+        readerId,
+        kind: any(named: 'kind'),
+        offset: any(named: 'offset'),
+        limit: any(named: 'limit'),
+      ),
     ).thenAnswer((_) async => <BlogModel>[]);
     await harness.pump(tester);
     await tester.pumpAndSettle();

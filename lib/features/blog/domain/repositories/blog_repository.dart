@@ -88,7 +88,21 @@ abstract interface class BlogRepository {
 
   Future<Either<Failure, List<Blog>>> searchBlogs(String query);
 
+  /// The author's most recent work in one request, for readers that want a
+  /// whole list at once (the account data export). Browsing pages with
+  /// [getAuthorArticlePage] instead.
   Future<Either<Failure, List<Blog>>> getBlogsByUser(String userId);
+
+  /// One page of an author's published work, newest first or most-saved first.
+  ///
+  /// `popular` is re-ranked while it is read, so the server refuses an offset
+  /// past its bound and offers no cursor; the client stops at the same number
+  /// and says where the reader can keep reading.
+  Future<Either<Failure, List<Blog>>> getAuthorArticlePage(
+    String userId, {
+    required BlogFeedKind kind,
+    required int offset,
+  });
 
   /// The viewer's own articles, including server-side drafts, newest update
   /// first. Online only and never cached: the local cache mirrors the public

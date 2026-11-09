@@ -63,6 +63,7 @@ import 'package:belog/features/blog/domain/usecase/get_articles_by_tag.dart';
 import 'package:belog/features/blog/domain/usecase/get_articles_by_category.dart';
 import 'package:belog/features/blog/domain/usecase/get_categories.dart';
 import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
+import 'package:belog/features/blog/domain/usecase/get_author_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_blogs_by_poster.dart';
 import 'package:belog/features/blog/domain/usecase/get_deleted_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_article_editions.dart';
@@ -400,6 +401,7 @@ Future<void> _initBlog(
     ..registerFactory(() => UpdateBlog(serviceLocator<BlogRepository>()))
     ..registerFactory(() => DeleteBlog(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetBlogsByPoster(serviceLocator<BlogRepository>()))
+    ..registerFactory(() => GetAuthorArticles(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetMyArticles(serviceLocator<BlogRepository>()))
     ..registerFactory(
       () => GetMyArticleEditions(serviceLocator<BlogRepository>()),
@@ -438,7 +440,7 @@ Future<void> _initBlog(
     )
     ..registerFactory(
       () => BlogByBloc(
-        getBlogsByPoster: serviceLocator<GetBlogsByPoster>(),
+        getAuthorArticles: serviceLocator<GetAuthorArticles>(),
         getMyArticles: serviceLocator<GetMyArticles>(),
         getMyArticleEditions: serviceLocator<GetMyArticleEditions>(),
       ),

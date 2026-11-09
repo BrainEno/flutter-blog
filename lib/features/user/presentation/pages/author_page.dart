@@ -9,6 +9,7 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
+import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/tag_navigation.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
@@ -41,10 +42,91 @@ class AuthorPage extends StatefulWidget {
 }
 
 class _AuthorPageState extends State<AuthorPage> {
+  /// Which order the article list is showing.
+  ///
+  /// Kept on the page, not in the bloc's event, so the chips render before the
+  /// first page arrives and a switch never has to wait for the old list.
+  BlogFeedKind _articleKind = BlogFeedKind.latest;
+
   @override
   void initState() {
     super.initState();
-    context.read<BlogByBloc>().add(GetBlogByPosterEvent(userId: widget.userId));
+    context.read<BlogByBloc>().add(
+      GetBlogByPosterEvent(userId: widget.userId, kind: _articleKind),
+    );
+  }
+
+  void _selectArticleOrder(BlogFeedKind kind) {
+    if (kind == _articleKind) return;
+    setState(() => _articleKind = kind);
+    context.read<BlogByBloc>().add(
+      GetBlogByPosterEvent(userId: widget.userId, kind: kind),
+    );
+  }
+
+  /// What the list says after the rows: a next page, a retry, or the reason
+  /// this order cannot go deeper.
+  Widget _articlesFooter(BuildContext context, GetBlogsByUserSuccess state) {
+    final l10n = context.l10n;
+    if (state.loadingMore) {
+      return Padding(
+        padding: const EdgeInsets.all(NoWaveSpacing.medium),
+        child: Center(
+          child: NoWaveLoadingLabel(
+            semanticLabel: l10n.loadingMoreArticles,
+            compact: true,
+          ),
+        ),
+      );
+    }
+    if (state.depthLimited) {
+      // The order ended, not the author's work: say where reading continues
+      // instead of claiming there is nothing left.
+      return Padding(
+        padding: const EdgeInsets.all(NoWaveSpacing.medium),
+        child: Column(
+          children: [
+            Text(
+              l10n.feedPopularDepthLimit,
+              textAlign: TextAlign.center,
+              style: NoWaveTypography.meta(context),
+            ),
+            const SizedBox(height: NoWaveSpacing.small),
+            TextButton(
+              onPressed: () => _selectArticleOrder(BlogFeedKind.latest),
+              child: Text(l10n.feedPopularDepthAction),
+            ),
+          ],
+        ),
+      );
+    }
+    final loadMoreFailure = state.loadMoreFailure;
+    if (loadMoreFailure != null) {
+      return Padding(
+        padding: const EdgeInsets.all(NoWaveSpacing.medium),
+        child: Column(
+          children: [
+            Text(
+              localizedFailure(l10n, loadMoreFailure),
+              textAlign: TextAlign.center,
+            ),
+            TextButton(
+              onPressed: () =>
+                  context.read<BlogByBloc>().add(BlogByMoreRequested()),
+              child: Text(l10n.actionRetry),
+            ),
+          ],
+        ),
+      );
+    }
+    if (!state.hasMore) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.all(NoWaveSpacing.medium),
+      child: TextButton(
+        onPressed: () => context.read<BlogByBloc>().add(BlogByMoreRequested()),
+        child: Text(l10n.authorArticlesLoadMore),
+      ),
+    );
   }
 
   void _requestLogin() {
@@ -193,6 +275,25 @@ class _AuthorPageState extends State<AuthorPage> {
                       NoWaveSectionHeading(
                         title: context.l10n.authorArticlesTitle,
                       ),
+                      const SizedBox(height: NoWaveSpacing.small),
+                      // Two orders, one list at a time. `popular` is re-ranked
+                      // while it is read, so it can only go as deep as the
+                      // server allows - which the footer says out loud.
+                      Wrap(
+                        spacing: NoWaveSpacing.small,
+                        runSpacing: NoWaveSpacing.xs,
+                        children: [
+                          for (final (kind, label) in [
+                            (BlogFeedKind.latest, context.l10n.feedTabLatest),
+                            (BlogFeedKind.popular, context.l10n.feedTabPopular),
+                          ])
+                            ChoiceChip(
+                              label: Text(label),
+                              selected: _articleKind == kind,
+                              onSelected: (_) => _selectArticleOrder(kind),
+                            ),
+                        ],
+                      ),
                       const SizedBox(height: NoWaveSpacing.medium),
                       BlocBuilder<BlogByBloc, BlogByState>(
                         builder: (context, articleState) {
@@ -218,7 +319,10 @@ class _AuthorPageState extends State<AuthorPage> {
                                     : context.l10n.authorArticlesLoadFailed,
                                 actionLabel: context.l10n.actionRetry,
                                 onAction: () => context.read<BlogByBloc>().add(
-                                  GetBlogByPosterEvent(userId: widget.userId),
+                                  GetBlogByPosterEvent(
+                                    userId: widget.userId,
+                                    kind: _articleKind,
+                                  ),
                                 ),
                               ),
                             );
@@ -238,6 +342,7 @@ class _AuthorPageState extends State<AuthorPage> {
                               ),
                             );
                           }
+                          final success = articleState as GetBlogsByUserSuccess;
                           return Column(
                             children: [
                               for (var index = 0; index < blogs.length; index++)
@@ -254,6 +359,7 @@ class _AuthorPageState extends State<AuthorPage> {
                                     extra: blogs[index],
                                   ),
                                 ),
+                              _articlesFooter(context, success),
                             ],
                           );
                         },

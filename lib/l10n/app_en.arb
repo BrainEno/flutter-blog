@@ -375,6 +375,7 @@
   "relationshipLimitNotice": "Showing up to 100 people; there may be more.",
   "authorArticlesTitle": "Their articles",
   "authorArticlesLoadFailed": "Failed to load articles",
+  "authorArticlesLoadMore": "Load more articles",
   "authorNoArticles": "No articles yet",
   "thisIsYou": "This is you",
   "followingButton": "Following",
