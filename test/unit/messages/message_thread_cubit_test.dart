@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/messages/domain/entities/conversation_message.dart';
 import 'package:belog/features/messages/presentation/bloc/message_thread_cubit.dart';
@@ -59,6 +61,68 @@ void main() {
     expect(repository.calls.first, 'conversation:conversation-1');
     expect(repository.calls.last, 'messages:conversation-1');
     expect(repository.beforeCursors.single, isNull);
+  });
+
+  test('the creator updates active members from the confirmed server header', () async {
+    final harness = await pumpThread();
+
+    final failure = await harness.cubit.updateParticipants(
+      addUserIds: const ['user-c'],
+      removeUserIds: const ['user-b'],
+    );
+
+    expect(failure, isNull);
+    expect(repository.participantUpdateRequests.single.id, 'conversation-1');
+    expect(
+      repository.participantUpdateRequests.single.addUserIds,
+      ['user-c'],
+    );
+    expect(
+      repository.participantUpdateRequests.single.removeUserIds,
+      ['user-b'],
+    );
+    expect(repository.fences.last.userId, 'user-a');
+    expect(_loaded(harness.cubit).conversation.participantIds, [
+      'user-a',
+      'user-c',
+    ]);
+    expect(_loaded(harness.cubit).participants.containsKey('user-b'), isFalse);
+    await _settle();
+    expect(_loaded(harness.cubit).participants['user-c']?.displayName, '读者丙');
+  });
+
+  test('a non-creator cannot manage participants from the client', () async {
+    repository.conversationResult = testConversation(
+      createdBy: 'user-b',
+      unreadCount: 2,
+    );
+    final harness = await pumpThread();
+
+    final failure = await harness.cubit.updateParticipants(
+      addUserIds: const ['user-c'],
+    );
+
+    expect(failure?.code, 'messages.participantsForbidden');
+    expect(repository.participantUpdateRequests, isEmpty);
+  });
+
+  test('a session change during member update is not adopted', () async {
+    final harness = await pumpThread();
+    final gate = Completer<void>();
+    repository.participantUpdateGate = gate;
+    final update = harness.cubit.updateParticipants(
+      addUserIds: const ['user-c'],
+    );
+
+    harness.identity.replace('user-b');
+    gate.complete();
+    final failure = await update;
+
+    expect(failure?.code, 'auth.sessionChanged');
+    expect(_loaded(harness.cubit).conversation.participantIds, [
+      'user-a',
+      'user-b',
+    ]);
   });
 
   test('nobody signed in means sign-in, not a missing conversation', () async {

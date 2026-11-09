@@ -319,6 +319,130 @@ void main() {
     expect(failure?.code, 'auth.sessionChanged');
   });
 
+  test('updates participants with a fenced PATCH and parses the full header', () async {
+    final seen = <http.Request>[];
+    final repository = _repository(
+      _Auth(),
+      MockClient((request) async {
+        seen.add(request);
+        return _data(
+          _conversationRow(participants: const ['user-a', 'user-c']),
+        );
+      }),
+    );
+
+    final result = await repository.updateParticipants(
+      'conversation-1',
+      fence: _fence,
+      addUserIds: const ['user-c'],
+      removeUserIds: const ['user-b'],
+    );
+
+    expect(seen.single.method, 'PATCH');
+    expect(
+      seen.single.url.path,
+      '/api/v1/conversations/conversation-1/participants',
+    );
+    expect(seen.single.followRedirects, isFalse);
+    expect(seen.single.headers['authorization'], 'Bearer fake-token-a');
+    expect(jsonDecode(seen.single.body), {
+      'addUserIds': ['user-c'],
+      'removeUserIds': ['user-b'],
+    });
+    expect(
+      result.fold((_) => null, (conversation) => conversation.participantIds),
+      ['user-a', 'user-c'],
+    );
+  });
+
+  test('invalid participant updates are refused before a request', () async {
+    final invalid = <({List<String> add, List<String> remove})>[
+      (add: List.generate(21, (index) => 'person-$index'), remove: const []),
+      (add: const ['user-c', 'user-c'], remove: const []),
+      (add: const [' user-c'], remove: const []),
+      (add: ['u' * 301], remove: const []),
+      (add: const ['user-c'], remove: const ['user-c']),
+      (add: const [], remove: const ['user-a']),
+      (add: const ['user-a'], remove: const []),
+    ];
+    var requests = 0;
+    final repository = _repository(
+      _Auth(),
+      MockClient((_) async {
+        requests++;
+        return _data(_conversationRow());
+      }),
+    );
+
+    for (final update in invalid) {
+      final failure = _failure(
+        await repository.updateParticipants(
+          'conversation-1',
+          fence: _fence,
+          addUserIds: update.add,
+          removeUserIds: update.remove,
+        ),
+      );
+      expect(failure?.code, 'messages.participantsInvalid');
+    }
+    expect(requests, 0);
+  });
+
+  for (final entry in <int, String>{
+    400: 'messages.participantsInvalid',
+    403: 'messages.participantsForbidden',
+    404: 'messages.participantsUnavailable',
+    405: 'messages.participantsUnavailable',
+    409: 'messages.participantsConflict',
+    429: 'server.RATE_LIMITED',
+    500: 'server.error',
+  }.entries) {
+    test('HTTP ${entry.key} on participant updates is classified', () async {
+      final repository = _repository(
+        _Auth(),
+        MockClient(
+          (_) async => http.Response('private server message', entry.key),
+        ),
+      );
+
+      final failure = _failure(
+        await repository.updateParticipants(
+          'conversation-1',
+          fence: _fence,
+          addUserIds: const ['user-c'],
+        ),
+      );
+
+      expect(failure?.code, entry.value);
+      expect(failure?.message, isNot(contains('private server message')));
+      expect(failure?.cause, isNull);
+    });
+  }
+
+  test('a replaced account cannot update an old conversation', () async {
+    final auth = _Auth();
+    var requests = 0;
+    final repository = _repository(
+      auth,
+      MockClient((_) async {
+        requests++;
+        return _data(_conversationRow());
+      }),
+    );
+    auth.replace();
+
+    final failure = _failure(
+      await repository.updateParticipants(
+        'conversation-1',
+        fence: _fence,
+        addUserIds: const ['user-c'],
+      ),
+    );
+
+    expect(requests, 0);
+    expect(failure?.code, 'auth.sessionChanged');
+  });
+
   test('starts a conversation with an idempotency key', () async {
     final seen = <http.Request>[];
     final repository = _repository(

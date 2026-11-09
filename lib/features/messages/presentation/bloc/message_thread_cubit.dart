@@ -150,6 +150,8 @@ class MessageThreadCubit extends Cubit<MessageThreadState> {
     );
   }
 
+  bool _participantUpdateInProgress = false;
+
   bool _stillCurrent(NowaveSessionFence fence) {
     return identity.activeUserId == fence.userId &&
         identity.sessionGeneration == fence.generation;
@@ -207,6 +209,103 @@ class MessageThreadCubit extends Cubit<MessageThreadState> {
     final latest = state;
     if (latest is! MessageThreadLoaded) return;
     emit(latest.copyWith(conversation: conversation));
+  }
+
+  /// Adds or removes members after a creator-only, history-aware confirmation.
+  /// The server remains authoritative about ownership and membership.
+  Future<Failure?> updateParticipants({
+    List<String> addUserIds = const [],
+    List<String> removeUserIds = const [],
+  }) async {
+    final fence = _fence;
+    if (fence == null) {
+      if (!isClosed) emit(const MessageThreadSignedOut());
+      return const Failure(
+        'Sign in before managing conversation participants.',
+        kind: FailureKind.auth,
+        code: 'auth.notSignedIn',
+      );
+    }
+    final current = state;
+    if (current is! MessageThreadLoaded || current.viewerId != fence.userId) {
+      return const Failure(
+        'The conversation is no longer available.',
+        kind: FailureKind.validation,
+        code: 'messages.missing',
+      );
+    }
+    if (current.conversation.createdBy != fence.userId) {
+      return const Failure(
+        'Participant management is restricted to the conversation creator.',
+        kind: FailureKind.permission,
+        code: 'messages.participantsForbidden',
+      );
+    }
+    if (_participantUpdateInProgress) {
+      return const Failure(
+        'Another participant update is already in progress.',
+        kind: FailureKind.validation,
+        code: 'messages.participantsInProgress',
+      );
+    }
+    if (addUserIds.isEmpty && removeUserIds.isEmpty) return null;
+
+    _participantUpdateInProgress = true;
+    try {
+      final result = await repository.updateParticipants(
+        conversationId,
+        fence: fence,
+        addUserIds: addUserIds,
+        removeUserIds: removeUserIds,
+      );
+      if (isClosed || !_stillCurrent(fence)) {
+        return const Failure(
+          'The session changed before the participant update could be confirmed.',
+          kind: FailureKind.auth,
+          code: 'auth.sessionChanged',
+        );
+      }
+      final latest = state;
+      if (latest is! MessageThreadLoaded || latest.viewerId != fence.userId) {
+        return const Failure(
+          'The conversation is no longer available.',
+          kind: FailureKind.validation,
+          code: 'messages.missing',
+        );
+      }
+
+      return result.fold<Failure?>(
+        (failure) => failure.forPresentation(),
+        (conversation) {
+          final activeIds = conversation.participantIds.toSet();
+          if (conversation.id != conversationId ||
+              conversation.createdBy != fence.userId ||
+              !activeIds.contains(fence.userId) ||
+              addUserIds.any((id) => !activeIds.contains(id)) ||
+              removeUserIds.any((id) => activeIds.contains(id))) {
+            return const Failure(
+              'The server returned an inconsistent participant update.',
+              kind: FailureKind.validation,
+              code: 'client.parse',
+            );
+          }
+          final activeOthers = conversation.others(fence.userId).toSet();
+          emit(
+            latest.copyWith(
+              conversation: conversation,
+              participants: {
+                for (final entry in latest.participants.entries)
+                  if (activeOthers.contains(entry.key)) entry.key: entry.value,
+              },
+            ),
+          );
+          unawaited(_resolveNames(fence));
+          return null;
+        },
+      );
+    } finally {
+      _participantUpdateInProgress = false;
+    }
   }
 
   /// Loads the page before the oldest message on screen.
@@ -360,7 +459,13 @@ class MessageThreadCubit extends Cubit<MessageThreadState> {
     if (isClosed || !_stillCurrent(fence) || resolved.isEmpty) return;
     final latest = state;
     if (latest is! MessageThreadLoaded) return;
-    emit(latest.copyWith(participants: {...latest.participants, ...resolved}));
+    final activeIds = latest.conversation.others(fence.userId).toSet();
+    final stillActive = {
+      for (final entry in resolved.entries)
+        if (activeIds.contains(entry.key)) entry.key: entry.value,
+    };
+    if (stillActive.isEmpty) return;
+    emit(latest.copyWith(participants: {...latest.participants, ...stillActive}));
   }
 
   /// Replaces a message with the same id instead of listing it twice: a

@@ -157,6 +157,16 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
       return l10n.messagesDeleteUnavailable;
     case 'messages.deleteInProgress':
       return l10n.messagesDeleteInProgress;
+    case 'messages.participantsForbidden':
+      return l10n.messagesParticipantsForbidden;
+    case 'messages.participantsUnavailable':
+      return l10n.messagesParticipantsUnavailable;
+    case 'messages.participantsInvalid':
+      return l10n.messagesParticipantsInvalid;
+    case 'messages.participantsConflict':
+      return l10n.messagesParticipantsConflict;
+    case 'messages.participantsInProgress':
+      return l10n.messagesParticipantsInProgress;
     case 'messages.missing':
       return l10n.messagesMissing;
     case 'messages.forbidden':

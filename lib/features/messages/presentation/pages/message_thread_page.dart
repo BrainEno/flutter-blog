@@ -9,6 +9,7 @@ import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/messages/domain/entities/conversation_message.dart';
 import 'package:belog/features/messages/presentation/bloc/message_thread_cubit.dart';
 import 'package:belog/features/messages/presentation/bloc/message_thread_cubit_factory.dart';
+import 'package:belog/features/messages/presentation/pages/message_participants_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -26,6 +27,7 @@ class MessageThreadPage extends StatelessWidget {
     super.key,
     required this.conversationId,
     this.cubit,
+    this.participantSearch,
   });
 
   final String conversationId;
@@ -33,10 +35,16 @@ class MessageThreadPage extends StatelessWidget {
   /// Injected by tests; production builds a page-scoped cubit.
   final MessageThreadCubit? cubit;
 
+  /// The public author search used to choose new conversation members.
+  final MessageParticipantAuthorSearch? participantSearch;
+
   @override
   Widget build(BuildContext context) {
     final injected = cubit;
-    final view = _MessageThreadView(conversationId: conversationId);
+    final view = _MessageThreadView(
+      conversationId: conversationId,
+      participantSearch: participantSearch,
+    );
     if (injected != null) {
       return BlocProvider<MessageThreadCubit>.value(
         value: injected,
@@ -52,9 +60,13 @@ class MessageThreadPage extends StatelessWidget {
 }
 
 class _MessageThreadView extends StatefulWidget {
-  const _MessageThreadView({required this.conversationId});
+  const _MessageThreadView({
+    required this.conversationId,
+    this.participantSearch,
+  });
 
   final String conversationId;
+  final MessageParticipantAuthorSearch? participantSearch;
 
   @override
   State<_MessageThreadView> createState() => _MessageThreadViewState();
@@ -121,6 +133,34 @@ class _MessageThreadViewState extends State<_MessageThreadView> {
     if (grown > 0) _scroll.jumpTo(offset + grown);
   }
 
+  Future<void> _manageParticipants(MessageThreadLoaded loaded) async {
+    final searchAuthors = widget.participantSearch;
+    if (searchAuthors == null) return;
+    final cubit = context.read<MessageThreadCubit>();
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => MessageParticipantsSheet(
+        conversation: loaded.conversation,
+        viewerId: loaded.viewerId,
+        participants: loaded.participants,
+        searchAuthors: searchAuthors,
+        updateParticipants: ({
+          required addUserIds,
+          required removeUserIds,
+        }) => cubit.updateParticipants(
+          addUserIds: addUserIds,
+          removeUserIds: removeUserIds,
+        ),
+      ),
+    );
+    if (!mounted || updated != true) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.messagesParticipantsUpdated)),
+    );
+  }
+
   String _title(MessageThreadState state) {
     final l10n = context.l10n;
     if (state is! MessageThreadLoaded) return l10n.messagesThreadTitle;
@@ -143,7 +183,21 @@ class _MessageThreadViewState extends State<_MessageThreadView> {
     return BlocBuilder<MessageThreadCubit, MessageThreadState>(
       builder: (context, state) {
         return Scaffold(
-          appBar: AppBar(title: Text(_title(state)), centerTitle: true),
+          appBar: AppBar(
+            title: Text(_title(state)),
+            centerTitle: true,
+            actions: state is MessageThreadLoaded &&
+                    state.conversation.createdBy == state.viewerId &&
+                    widget.participantSearch != null
+                ? [
+                    IconButton(
+                      tooltip: l10n.messagesParticipantsManageAction,
+                      onPressed: () => _manageParticipants(state),
+                      icon: const Icon(Icons.groups_outlined),
+                    ),
+                  ]
+                : null,
+          ),
           body: switch (state) {
             MessageThreadLoading() => Center(
               child: NoWaveLoadingLabel(semanticLabel: l10n.loading),

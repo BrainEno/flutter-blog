@@ -338,6 +338,8 @@ GoRouter createAppRouter({
                         path: ':id',
                         builder: (context, state) => MessageThreadPage(
                           conversationId: state.pathParameters['id']!,
+                          participantSearch: (query) =>
+                              serviceLocator<SearchAuthors>()(query),
                         ),
                       ),
                     ],
