@@ -8,6 +8,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// Pumps the header the way a page does: inside something that scrolls. The
+/// header is a plain Column, so it needs room it can grow into.
+Future<void> _pumpHeader(WidgetTester tester, ArticleReaderHeader header) =>
+    _pump(tester, SingleChildScrollView(child: header));
+
 Future<void> _pump(WidgetTester tester, Widget child) {
   return tester.pumpWidget(
     MaterialApp(
@@ -84,7 +89,7 @@ void main() {
     tester,
   ) async {
     var opened = <String>[];
-    await _pump(
+    await _pumpHeader(
       tester,
       ArticleReaderHeader(
         blog: _blog(
@@ -116,7 +121,7 @@ void main() {
 
   testWidgets('a category with no address is not drawn', (tester) async {
     // A cache row written before names were kept carries ids alone.
-    await _pump(
+    await _pumpHeader(
       tester,
       ArticleReaderHeader(
         blog: _blog(
@@ -137,7 +142,7 @@ void main() {
   testWidgets('an article with no categories draws no row at all', (
     tester,
   ) async {
-    await _pump(
+    await _pumpHeader(
       tester,
       ArticleReaderHeader(
         blog: _blog(tags: const ['诗歌']),
