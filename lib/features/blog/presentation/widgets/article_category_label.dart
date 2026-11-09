@@ -1,4 +1,3 @@
-import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
@@ -16,11 +15,7 @@ import 'package:flutter/material.dart';
 /// With [onTap] it becomes a real button with a 48×48 target, like the tag
 /// label; the drawn plate stays compact.
 class ArticleCategoryLabel extends StatelessWidget {
-  const ArticleCategoryLabel({
-    super.key,
-    required this.category,
-    this.onTap,
-  });
+  const ArticleCategoryLabel({super.key, required this.category, this.onTap});
 
   /// The category as the article response described it. A ref with an empty
   /// slug or name is not addressable or printable, so callers filter it out.

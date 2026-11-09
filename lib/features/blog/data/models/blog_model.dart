@@ -88,8 +88,7 @@ class BlogModel extends Blog {
       // Named categories win: they carry the names, and the ids come from them.
       // An id-only override loses the names it cannot know - that is what a
       // fixture building rows from bare ids asks for.
-      categories:
-          categories ?? (categoryIds == null ? this.categories : null),
+      categories: categories ?? (categoryIds == null ? this.categories : null),
       categoryIds: categories == null ? categoryIds : null,
     );
   }

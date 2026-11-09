@@ -91,9 +91,7 @@ void main() {
     // chips on the next frame.
     expect(model.copyWith(title: '新标题').categories.single.name, '随笔');
     expect(model.copyWith(categoryIds: const []).categoryIds, isEmpty);
-    expect(model.copyWith(categoryIds: const ['cat-9']).categoryIds, [
-      'cat-9',
-    ]);
+    expect(model.copyWith(categoryIds: const ['cat-9']).categoryIds, ['cat-9']);
   });
 
   test('copyWith preserves the draft flag', () {

@@ -60,10 +60,7 @@ void main() {
     await _pump(
       tester,
       Center(
-        child: ArticleCategoryLabel(
-          category: _essay,
-          onTap: () => taps += 1,
-        ),
+        child: ArticleCategoryLabel(category: _essay, onTap: () => taps += 1),
       ),
     );
 
