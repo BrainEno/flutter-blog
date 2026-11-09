@@ -24,16 +24,16 @@ class CommentState {
   /// Comment ids with an in-flight delete request.
   final Set<String> deletingIds;
 
-  /// True while the next page of older comments is loading.
+  /// True while the next page of comments is loading.
   final bool isLoadingMore;
 
   /// Whether another root-comment cursor request can be made.
   final bool hasMore;
 
-  /// Retryable failure from loading an older page; loaded comments stay visible.
+  /// Retryable continuation failure; already-loaded comments stay visible.
   final Failure? loadMoreFailure;
 
-  /// The deployment rejected or ignored the cursor, so continuation stopped.
+  /// The deployment rejected the cursor or pagination stopped making progress.
   final bool paginationUnavailable;
 
   const CommentState({

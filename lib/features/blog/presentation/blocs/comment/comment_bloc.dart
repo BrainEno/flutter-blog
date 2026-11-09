@@ -130,23 +130,14 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
         emit(latest.copyWith(isLoadingMore: false, loadMoreFailure: failure));
       },
       (page) {
-        if (page.items.isEmpty) {
-          _nextCursor = null;
-          emit(
-            latest.copyWith(
-              isLoadingMore: false,
-              hasMore: false,
-              clearLoadMoreFailure: true,
-            ),
-          );
-          return;
-        }
-
-        // Older deployments may ignore `cursor` and return the first page
-        // again. Stop instead of duplicating rows or presenting an endless
-        // retry; retain the comments already shown.
+        // A locally submitted root can also arrive in a later server page when
+        // its sort key is beyond the saved cursor. Drop only repeated IDs; keep
+        // the cursor moving and append any unseen roots from that page.
+        final newRoots = _newRootComments(latest.comments, page.items);
         if (page.nextCursor == cursor ||
-            _containsRepeatedRoot(latest.comments, page.items)) {
+            (newRoots.isEmpty && page.nextCursor != null)) {
+          // Older deployments may ignore `cursor` and return a page that makes
+          // no progress. Stop rather than looping or duplicating rows.
           _nextCursor = null;
           emit(
             latest.copyWith(
@@ -159,10 +150,23 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
           return;
         }
 
+        if (newRoots.isEmpty) {
+          _nextCursor = null;
+          emit(
+            latest.copyWith(
+              isLoadingMore: false,
+              hasMore: false,
+              clearLoadMoreFailure: true,
+              paginationUnavailable: false,
+            ),
+          );
+          return;
+        }
+
         _nextCursor = page.nextCursor;
         emit(
           latest.copyWith(
-            comments: _sortRoots([...latest.comments, ...page.items]),
+            comments: _sortRoots([...latest.comments, ...newRoots]),
             isLoadingMore: false,
             hasMore: page.hasMore,
             clearLoadMoreFailure: true,
@@ -172,9 +176,12 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
     );
   }
 
-  static bool _containsRepeatedRoot(List<Comment> current, List<Comment> next) {
+  static List<Comment> _newRootComments(
+    List<Comment> current,
+    List<Comment> next,
+  ) {
     final seen = current.map((comment) => comment.id).toSet();
-    return next.any((comment) => !seen.add(comment.id));
+    return next.where((comment) => seen.add(comment.id)).toList();
   }
 
   static List<Comment> _sortRoots(List<Comment> comments) {

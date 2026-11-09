@@ -95,38 +95,41 @@ void main() {
   });
 
   group('MoreCommentsRequested', () {
-    test('appends older pages until a short page ends the thread', () async {
-      when(() => getComments('my-slug')).thenAnswer(
-        (_) async => right<Failure, CommentPage>(
-          _page([_comment('c1')], cursor: 'cursor-1'),
-        ),
-      );
-      when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer(
-        (_) async => right<Failure, CommentPage>(
-          _page([_comment('c2')], cursor: 'cursor-2'),
-        ),
-      );
-      when(
-        () => getComments('my-slug', cursor: 'cursor-2'),
-      ).thenAnswer((_) async => right<Failure, CommentPage>(_page([])));
+    test(
+      'appends continuation pages until a short page ends the thread',
+      () async {
+        when(() => getComments('my-slug')).thenAnswer(
+          (_) async => right<Failure, CommentPage>(
+            _page([_comment('c1')], cursor: 'cursor-1'),
+          ),
+        );
+        when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer(
+          (_) async => right<Failure, CommentPage>(
+            _page([_comment('c2')], cursor: 'cursor-2'),
+          ),
+        );
+        when(
+          () => getComments('my-slug', cursor: 'cursor-2'),
+        ).thenAnswer((_) async => right<Failure, CommentPage>(_page([])));
 
-      bloc.add(const CommentsRequested());
-      await Future<void>.delayed(Duration.zero);
-      bloc.add(const MoreCommentsRequested());
-      await Future<void>.delayed(Duration.zero);
+        bloc.add(const CommentsRequested());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const MoreCommentsRequested());
+        await Future<void>.delayed(Duration.zero);
 
-      expect(bloc.state.comments.map((comment) => comment.id), ['c1', 'c2']);
-      expect(bloc.state.hasMore, isTrue);
+        expect(bloc.state.comments.map((comment) => comment.id), ['c1', 'c2']);
+        expect(bloc.state.hasMore, isTrue);
 
-      bloc.add(const MoreCommentsRequested());
-      await Future<void>.delayed(Duration.zero);
+        bloc.add(const MoreCommentsRequested());
+        await Future<void>.delayed(Duration.zero);
 
-      expect(bloc.state.comments.map((comment) => comment.id), ['c1', 'c2']);
-      expect(bloc.state.hasMore, isFalse);
-      expect(bloc.state.paginationUnavailable, isFalse);
-      verify(() => getComments('my-slug', cursor: 'cursor-1')).called(1);
-      verify(() => getComments('my-slug', cursor: 'cursor-2')).called(1);
-    });
+        expect(bloc.state.comments.map((comment) => comment.id), ['c1', 'c2']);
+        expect(bloc.state.hasMore, isFalse);
+        expect(bloc.state.paginationUnavailable, isFalse);
+        verify(() => getComments('my-slug', cursor: 'cursor-1')).called(1);
+        verify(() => getComments('my-slug', cursor: 'cursor-2')).called(1);
+      },
+    );
 
     test('appends a short page and then stops', () async {
       when(() => getComments('my-slug')).thenAnswer(
@@ -241,6 +244,32 @@ void main() {
       },
     );
 
+    test(
+      'stops when a cursor advances without any new root comments',
+      () async {
+        when(() => getComments('my-slug')).thenAnswer(
+          (_) async => right<Failure, CommentPage>(
+            _page([_comment('c1')], cursor: 'cursor-1'),
+          ),
+        );
+        when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer(
+          (_) async => right<Failure, CommentPage>(
+            _page([_comment('c1')], cursor: 'cursor-2'),
+          ),
+        );
+
+        bloc.add(const CommentsRequested());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const MoreCommentsRequested());
+        await Future<void>.delayed(Duration.zero);
+
+        expect(bloc.state.comments.map((comment) => comment.id), ['c1']);
+        expect(bloc.state.hasMore, isFalse);
+        expect(bloc.state.paginationUnavailable, isTrue);
+        verify(() => getComments('my-slug', cursor: 'cursor-1')).called(1);
+      },
+    );
+
     test('refresh replaces appended pages and starts from no cursor', () async {
       var firstPageRequest = 0;
       when(() => getComments('my-slug')).thenAnswer((_) async {
@@ -274,39 +303,42 @@ void main() {
       verify(() => getComments('my-slug', cursor: 'cursor-fresh')).called(1);
     });
 
-    test('an in-flight older page cannot append after a refresh', () async {
-      final stalePage = Completer<Either<Failure, CommentPage>>();
-      var firstPageRequest = 0;
-      when(() => getComments('my-slug')).thenAnswer((_) async {
-        firstPageRequest++;
-        final id = firstPageRequest == 1 ? 'c1' : 'fresh';
-        return right<Failure, CommentPage>(
-          _page([_comment(id)], cursor: 'cursor-$id'),
+    test(
+      'an in-flight continuation page cannot append after a refresh',
+      () async {
+        final stalePage = Completer<Either<Failure, CommentPage>>();
+        var firstPageRequest = 0;
+        when(() => getComments('my-slug')).thenAnswer((_) async {
+          firstPageRequest++;
+          final id = firstPageRequest == 1 ? 'c1' : 'fresh';
+          return right<Failure, CommentPage>(
+            _page([_comment(id)], cursor: 'cursor-$id'),
+          );
+        });
+        when(
+          () => getComments('my-slug', cursor: 'cursor-c1'),
+        ).thenAnswer((_) => stalePage.future);
+
+        bloc.add(const CommentsRequested());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const MoreCommentsRequested());
+        await Future<void>.delayed(Duration.zero);
+        expect(bloc.state.isLoadingMore, isTrue);
+
+        bloc.add(const CommentsRequested());
+        await Future<void>.delayed(Duration.zero);
+        stalePage.complete(
+          right<Failure, CommentPage>(_page([_comment('stale')])),
         );
-      });
-      when(
-        () => getComments('my-slug', cursor: 'cursor-c1'),
-      ).thenAnswer((_) => stalePage.future);
+        await Future<void>.delayed(Duration.zero);
 
-      bloc.add(const CommentsRequested());
-      await Future<void>.delayed(Duration.zero);
-      bloc.add(const MoreCommentsRequested());
-      await Future<void>.delayed(Duration.zero);
-      expect(bloc.state.isLoadingMore, isTrue);
-
-      bloc.add(const CommentsRequested());
-      await Future<void>.delayed(Duration.zero);
-      stalePage.complete(
-        right<Failure, CommentPage>(_page([_comment('stale')])),
-      );
-      await Future<void>.delayed(Duration.zero);
-
-      expect(bloc.state.comments.map((comment) => comment.id), ['fresh']);
-      expect(bloc.state.hasMore, isTrue);
-    });
+        expect(bloc.state.comments.map((comment) => comment.id), ['fresh']);
+        expect(bloc.state.hasMore, isTrue);
+      },
+    );
 
     test(
-      'a new root stays ordered while older pages continue at their cursor',
+      'deduplicates a locally submitted root and continues the cursor page',
       () async {
         when(() => getComments('my-slug')).thenAnswer(
           (_) async => right<Failure, CommentPage>(
@@ -315,11 +347,11 @@ void main() {
         );
         when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer(
           (_) async => right<Failure, CommentPage>(
-            _page([_comment('c2')], cursor: 'cursor-2'),
+            _page([_comment('c2'), _comment('c3')], cursor: 'cursor-3'),
           ),
         );
         when(
-          () => getComments('my-slug', cursor: 'cursor-2'),
+          () => getComments('my-slug', cursor: 'cursor-3'),
         ).thenAnswer((_) async => right<Failure, CommentPage>(_page([])));
         when(
           () => createComment(any(that: isA<CreateCommentParams>())),
@@ -339,10 +371,12 @@ void main() {
           'c3',
         ]);
         expect(bloc.state.hasMore, isTrue);
+        expect(bloc.state.paginationUnavailable, isFalse);
 
         bloc.add(const MoreCommentsRequested());
         await Future<void>.delayed(Duration.zero);
-        verify(() => getComments('my-slug', cursor: 'cursor-2')).called(1);
+        expect(bloc.state.hasMore, isFalse);
+        verify(() => getComments('my-slug', cursor: 'cursor-3')).called(1);
       },
     );
   });
