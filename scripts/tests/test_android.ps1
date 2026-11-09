@@ -67,13 +67,13 @@ if "%~3"=="shell" (
 )
 if "%~3"=="reverse" (
   echo reverse failure marker=%BELOG_TEST_LOG%.fail>>"%BELOG_TEST_LOG%"
-  if exist "%BELOG_TEST_LOG%.fail" (
-    echo reverse failure marker exists>>"%BELOG_TEST_LOG%"
-    exit /b 8
-  )
+  if exist "%BELOG_TEST_LOG%.fail" goto reverse_fail
   exit /b 0
 )
 exit /b 1
+:reverse_fail
+echo reverse failure marker exists>>"%BELOG_TEST_LOG%"
+exit /b 8
 '@ | Set-Content -LiteralPath (Join-Path $bin 'adb.cmd') -Encoding Ascii
     $emulator = Join-Path $bin 'emulator.exe'
     Add-Type -OutputAssembly $emulator -OutputType ConsoleApplication -TypeDefinition @'
