@@ -160,7 +160,9 @@ void main() {
     expect(find.byType(NoWaveAvatar), findsNWidgets(3));
   });
 
-  testWidgets('loads subsequent pages and stops after a short page', (tester) async {
+  testWidgets('loads subsequent pages and stops after a short page', (
+    tester,
+  ) async {
     when(() => getComments('my-slug')).thenAnswer(
       (_) async => right<Failure, CommentPage>(
         _page([_comment('c1', content: '评论c1')], cursor: 'cursor-1'),
