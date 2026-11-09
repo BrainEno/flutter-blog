@@ -451,6 +451,12 @@
   "tagFiction": "Fiction",
   "tagOriginal": "Original",
   "tagOther": "Other",
+  "categoryBrowseSemantics": "Browse articles in {name}",
+  "@categoryBrowseSemantics": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
   "tagBrowseSemantics": "Browse articles tagged {tag}",
   "@tagBrowseSemantics": {
     "placeholders": {

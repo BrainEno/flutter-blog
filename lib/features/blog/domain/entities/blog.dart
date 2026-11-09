@@ -1,4 +1,5 @@
 import 'package:belog/features/blog/domain/entities/article_document.dart';
+import 'package:belog/features/blog/domain/entities/category_ref.dart';
 
 /// Published blog article.
 ///
@@ -40,14 +41,29 @@ class Blog {
   /// that must not guess fall back to the content language and say so.
   final String locale;
 
-  /// The categories the server last said this article belongs to, as ids.
+  /// The categories the server last said this article belongs to, with the
+  /// names it rendered for this row's content language.
   ///
-  /// Names are translated per content language and live in the catalog
-  /// (`GET /categories`), so the article carries the ids and the editor
-  /// resolves them there. Categories are editorial structure (ADR 0016): the
-  /// desk may only choose among existing ones, never invent one. An empty list
-  /// means "the server said it has none", not "unknown".
-  final List<String> categoryIds;
+  /// Every article response joins the taxonomy (`serializeRestArticle` adds a
+  /// `categories` array of `{id, slug, name, description}`), so a reader does
+  /// not have to fetch the catalog to say where an article sits. Names are
+  /// per language: this list describes *this edition*, not the article.
+  ///
+  /// Categories are editorial structure (ADR 0016): the desk may only choose
+  /// among existing ones, never invent one. An empty list means "the server
+  /// said it has none", not "unknown".
+  final List<CategoryRef> categories;
+
+  /// The same categories as ids - what an article write names (`categoryIds`).
+  ///
+  /// Derived, never stored beside [categories], so the editor and the reader
+  /// cannot disagree about which categories an article has. A ref that was
+  /// built from an id alone (a cache row written before names were kept) has
+  /// an empty slug and name; the reader skips those because they cannot be
+  /// opened, and the editor keeps showing them as the ids they are.
+  List<String> get categoryIds => [
+    for (final category in categories) category.id,
+  ];
 
   /// True only for the viewer's own server-side draft. Drafts never appear on
   /// public pages or in the shared cache; they are visible through the
@@ -69,5 +85,12 @@ class Blog {
     this.isDraft = false,
     this.locale = '',
     List<String>? categoryIds,
-  }) : categoryIds = List.unmodifiable(categoryIds ?? const []);
+    List<CategoryRef>? categories,
+  }) : categories = List.unmodifiable(
+         categories ??
+             [
+               for (final id in categoryIds ?? const <String>[])
+                 CategoryRef(id: id, slug: '', name: ''),
+             ],
+       );
 }

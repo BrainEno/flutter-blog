@@ -306,6 +306,7 @@
   "tagFiction": "小说",
   "tagOriginal": "原创",
   "tagOther": "其他",
+  "categoryBrowseSemantics": "浏览分类「{name}」的文章",
   "tagBrowseSemantics": "浏览标签「{tag}」的文章",
   "@tagBrowseSemantics": {
     "placeholders": {

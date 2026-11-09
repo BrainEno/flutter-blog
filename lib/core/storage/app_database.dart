@@ -15,7 +15,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -181,6 +181,21 @@ class AppDatabase extends GeneratedDatabase {
           );
         }
       }
+      if (from < 13) {
+        // v13 keeps the categories an article was filed under, with the names
+        // the server rendered for this edition. They used to be dropped at the
+        // cache boundary, so an offline article showed its tags and author but
+        // not where it sits. NULL means the row predates this column: no chip
+        // is drawn rather than an empty one that would claim "none".
+        if (!await _tableExists('blog_cache')) {
+          await _createBlogCache();
+          await _createBlogCacheFeedIndex();
+        } else if (!await _columnExists('blog_cache', 'categories_json')) {
+          await customStatement(
+            'ALTER TABLE blog_cache ADD COLUMN categories_json TEXT',
+          );
+        }
+      }
     },
   );
 
@@ -252,7 +267,7 @@ class AppDatabase extends GeneratedDatabase {
   /// `content_locale` is the language the body was fetched in, and is part of
   /// the key so both languages can be cached side by side (#108).
   Future<void> _createBlogCache() => customStatement(
-    'CREATE TABLE blog_cache (id TEXT NOT NULL, content_locale TEXT NOT NULL DEFAULT \'zh-CN\', article_id TEXT NOT NULL DEFAULT \'\', title TEXT NOT NULL, content TEXT NOT NULL, poster_id TEXT NOT NULL, image_url TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL, poster_name TEXT, poster_avatar TEXT, document_json TEXT, PRIMARY KEY (id, content_locale))',
+    'CREATE TABLE blog_cache (id TEXT NOT NULL, content_locale TEXT NOT NULL DEFAULT \'zh-CN\', article_id TEXT NOT NULL DEFAULT \'\', title TEXT NOT NULL, content TEXT NOT NULL, poster_id TEXT NOT NULL, image_url TEXT NOT NULL, tags TEXT NOT NULL, updated_at INTEGER NOT NULL, poster_name TEXT, poster_avatar TEXT, document_json TEXT, categories_json TEXT, PRIMARY KEY (id, content_locale))',
   );
 
   /// Supports stable, per-language feed pagination without sorting all cached
@@ -345,14 +360,15 @@ class AppDatabase extends GeneratedDatabase {
     String? posterName,
     String? posterAvatar,
     String? documentJson,
+    String? categoriesJson,
   }) => customStatement(
     '''
-    INSERT INTO blog_cache(id, content_locale, article_id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar, document_json)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO blog_cache(id, content_locale, article_id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar, document_json, categories_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id, content_locale) DO UPDATE SET article_id = excluded.article_id, title = excluded.title, content = excluded.content,
       poster_id = excluded.poster_id, image_url = excluded.image_url, tags = excluded.tags,
       updated_at = excluded.updated_at, poster_name = excluded.poster_name, poster_avatar = excluded.poster_avatar,
-      document_json = excluded.document_json
+      document_json = excluded.document_json, categories_json = excluded.categories_json
     ''',
     [
       id,
@@ -367,6 +383,7 @@ class AppDatabase extends GeneratedDatabase {
       posterName,
       posterAvatar,
       documentJson,
+      categoriesJson,
     ],
   );
 }

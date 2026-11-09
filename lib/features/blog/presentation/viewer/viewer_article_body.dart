@@ -3,6 +3,7 @@ import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
+import 'package:belog/features/blog/presentation/category_navigation.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controller.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controls.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.dart';
@@ -80,6 +81,8 @@ class ViewerArticleBody extends StatelessWidget {
                       blog: blog,
                       onAuthorTap: () => openAuthor(blog.posterId),
                       onTagTap: (tag) => openTagArticles(context, tag),
+                      onCategoryTap: (category) =>
+                          openCategoryArticles(context, category),
                       titleHighlight: reader?.highlights.first,
                       titleKey: blockKeys.isEmpty ? null : blockKeys.first,
                     ),

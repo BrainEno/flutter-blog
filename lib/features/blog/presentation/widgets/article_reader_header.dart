@@ -6,9 +6,11 @@ import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/calculate_reading_time.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/category_ref.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controller.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_highlight.dart';
+import 'package:belog/features/blog/presentation/widgets/article_category_label.dart';
 import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
 import 'package:belog/features/blog/presentation/widgets/article_tag_label.dart';
 import 'package:flutter/foundation.dart';
@@ -21,6 +23,7 @@ class ArticleReaderHeader extends StatelessWidget {
     required this.blog,
     required this.onAuthorTap,
     this.onTagTap,
+    this.onCategoryTap,
     this.titleHighlight,
     this.titleKey,
   });
@@ -30,6 +33,9 @@ class ArticleReaderHeader extends StatelessWidget {
 
   /// Opens a tag's article list; null keeps the labels read-only.
   final ValueChanged<String>? onTagTap;
+
+  /// Opens a category's article list; null keeps those plates read-only.
+  final ValueChanged<CategoryRef>? onCategoryTap;
   final ValueListenable<ReadAloudHighlight?>? titleHighlight;
   final GlobalKey? titleKey;
 
@@ -38,9 +44,32 @@ class ArticleReaderHeader extends StatelessWidget {
     final l10n = context.l10n;
     final name = authorDisplayName(l10n, blog.posterName);
     final scheme = Theme.of(context).colorScheme;
+    // Only what can be both named and opened. A cache row written before the
+    // names were kept carries ids alone; drawing a chip for it would offer a
+    // destination with no address.
+    final categories = [
+      for (final category in blog.categories)
+        if (category.slug.isNotEmpty && category.name.isNotEmpty) category,
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (categories.isNotEmpty) ...[
+          Wrap(
+            spacing: NoWaveSpacing.small,
+            runSpacing: NoWaveSpacing.small,
+            children: [
+              for (final category in categories)
+                ArticleCategoryLabel(
+                  category: category,
+                  onTap: onCategoryTap == null
+                      ? null
+                      : () => onCategoryTap!(category),
+                ),
+            ],
+          ),
+          const SizedBox(height: NoWaveSpacing.medium),
+        ],
         if (blog.tags.isNotEmpty) ...[
           Wrap(
             spacing: NoWaveSpacing.small,
