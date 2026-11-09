@@ -454,7 +454,7 @@
     }
   },
   "notificationArticleDeletedNoDate": "你评论过的作品已被作者删除，你的评论会随作品一起清除。",
-  "notificationMessageReceived": "收到一条新的私信（应用内暂不支持查看会话）",
+  "notificationMessageReceived": "收到一条新的私信",
   "notificationUnknown": "有一条新通知",
   "notificationsOlderHidden": "最多显示最近 {limit} 条通知；更早的通知暂不可见。",
   "@notificationsOlderHidden": {
