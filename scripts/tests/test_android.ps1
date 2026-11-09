@@ -8,6 +8,7 @@ $log = Join-Path $temp 'calls.log'
 $config = Join-Path $temp 'config with spaces.json'
 $marker = Join-Path $temp 'started.txt'
 $pidFile = Join-Path $temp 'emulator.pid'
+$reverseFailureMarker = Join-Path $temp 'fail reverse.txt'
 $oldPath = $env:PATH
 $pubHostedUrlWasSet = Test-Path Env:PUB_HOSTED_URL
 $oldPubHostedUrl = $env:PUB_HOSTED_URL
@@ -47,7 +48,6 @@ exit /b 0
     @'
 @echo off
 echo adb %*>>"%BELOG_TEST_LOG%"
-echo MOCK_FAIL_REVERSE=%MOCK_FAIL_REVERSE%>>"%BELOG_TEST_LOG%"
 if "%MOCK_NATIVE_STDERR%"=="1" echo adb daemon notice 1>&2
 if "%MOCK_FAIL_ADB%"=="1" exit /b 9
 if "%~1"=="devices" (
@@ -66,7 +66,7 @@ if "%~3"=="shell" (
   exit /b 0
 )
 if "%~3"=="reverse" (
-  if "%MOCK_FAIL_REVERSE%"=="1" exit /b 8
+  if exist "%BELOG_TEST_FAIL_REVERSE%" exit /b 8
   exit /b 0
 )
 exit /b 1
@@ -95,6 +95,7 @@ public static class FakeEmulator {
     $env:BELOG_TEST_LOG = $log
     $env:BELOG_TEST_STARTED = $marker
     $env:BELOG_TEST_PID = $pidFile
+    $env:BELOG_TEST_FAIL_REVERSE = $reverseFailureMarker
     $env:MOCK_NO_EMULATOR = ''
     $env:MOCK_NEVER_BOOT = ''
     $env:MOCK_FAIL_PUB = ''
@@ -126,13 +127,13 @@ public static class FakeEmulator {
     Assert-True ($loopback.Output -match 'ADB reverse is active') 'The loopback forwarding was not reported.'
     Assert-True ($calls -match 'flutter run --debug --no-pub -d emulator-5554') 'Flutter was not started after forwarding.'
 
-    $env:MOCK_FAIL_REVERSE = '1'
+    New-Item -ItemType File -Path $reverseFailureMarker | Out-Null
     Remove-Item -LiteralPath $log -Force
     $reverseFailure = Run-Subject @()
     $reverseLog = Get-Content -LiteralPath $log -Raw
     Assert-True ($reverseFailure.ExitCode -ne 0 -and $reverseFailure.Output -match 'Could not forward emulator localhost:4000') "An adb reverse failure was ignored (exit $($reverseFailure.ExitCode)): $($reverseFailure.Output) Mock log: $reverseLog"
     Assert-True ($reverseLog -notmatch 'flutter run') 'Flutter started without the required loopback tunnel.'
-    $env:MOCK_FAIL_REVERSE = ''
+    Remove-Item -LiteralPath $reverseFailureMarker -Force
 
     # A mirror checksum failure retries once against pub.dev, then Flutter uses
     # --no-pub so it cannot contact the broken mirror a second time.
@@ -265,7 +266,7 @@ public static class FakeEmulator {
         $proc = Get-Process -Id $id -ErrorAction SilentlyContinue
         if ($proc -and $proc.Path -eq $emulator) { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue }
     }
-    foreach ($name in @('BELOG_TEST_LOG', 'BELOG_TEST_STARTED', 'BELOG_TEST_PID', 'MOCK_NO_EMULATOR', 'MOCK_NEVER_BOOT', 'MOCK_FAIL_PUB', 'MOCK_HASH_MISMATCH_PUB', 'MOCK_FAIL_REVERSE', 'MOCK_NATIVE_STDERR', 'MOCK_FAIL_ADB', 'MOCK_FAIL_AVD_LIST', 'MOCK_FLUTTER_VERSION', 'MOCK_DART_VERSION', 'BELOG_STRICT_FLUTTER_VERSION', 'BELOG_NO_PROMPT')) {
+    foreach ($name in @('BELOG_TEST_LOG', 'BELOG_TEST_STARTED', 'BELOG_TEST_PID', 'BELOG_TEST_FAIL_REVERSE', 'MOCK_NO_EMULATOR', 'MOCK_NEVER_BOOT', 'MOCK_FAIL_PUB', 'MOCK_HASH_MISMATCH_PUB', 'MOCK_NATIVE_STDERR', 'MOCK_FAIL_ADB', 'MOCK_FAIL_AVD_LIST', 'MOCK_FLUTTER_VERSION', 'MOCK_DART_VERSION', 'BELOG_STRICT_FLUTTER_VERSION', 'BELOG_NO_PROMPT')) {
         Remove-Item -LiteralPath ('Env:' + $name) -ErrorAction SilentlyContinue
     }
     if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Recurse -Force }
