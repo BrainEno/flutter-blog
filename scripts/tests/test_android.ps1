@@ -66,7 +66,11 @@ if "%~3"=="shell" (
   exit /b 0
 )
 if "%~3"=="reverse" (
-  if exist "%BELOG_TEST_LOG%.fail" exit /b 8
+  echo reverse failure marker=%BELOG_TEST_LOG%.fail>>"%BELOG_TEST_LOG%"
+  if exist "%BELOG_TEST_LOG%.fail" (
+    echo reverse failure marker exists>>"%BELOG_TEST_LOG%"
+    exit /b 8
+  )
   exit /b 0
 )
 exit /b 1
@@ -129,7 +133,7 @@ public static class FakeEmulator {
     Remove-Item -LiteralPath $log -Force
     $reverseFailure = Run-Subject @()
     $reverseLog = Get-Content -LiteralPath $log -Raw
-    Assert-True ($reverseFailure.ExitCode -ne 0 -and $reverseFailure.Output -match 'Could not forward emulator localhost:4000') "An adb reverse failure was ignored (exit $($reverseFailure.ExitCode)): $($reverseFailure.Output) Mock log: $reverseLog"
+    Assert-True ($reverseFailure.ExitCode -ne 0 -and $reverseFailure.Output -match 'Could not forward emulator localhost:4000') "An adb reverse failure was ignored (exit $($reverseFailure.ExitCode), marker '$reverseFailureMarker' exists $(Test-Path -LiteralPath $reverseFailureMarker)): $($reverseFailure.Output) Mock log: $reverseLog"
     Assert-True ($reverseLog -notmatch 'flutter run') 'Flutter started without the required loopback tunnel.'
     Remove-Item -LiteralPath $reverseFailureMarker -Force
 
