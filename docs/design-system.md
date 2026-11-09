@@ -175,6 +175,8 @@
 | `NoWaveFadeTransition` | `design/components/no_wave_fade_transition.dart` | 标签切换的淡入；少动时不构建转场 |
 | `NoWaveCoverPlate` | `design/cover/no_wave_cover_plate.dart` | 四张编辑式默认封面，按文章身份稳定选一张 |
 | `ArticleCover` | `features/blog/presentation/widgets/article_cover.dart` | 真封面 / 加载 / 失败三种状态共用同一张版 |
+| `ArticleCategoryLabel` | `features/blog/presentation/widgets/article_category_label.dart` | 文章所属的分类（填充色块，与服务端给的名称；可点进分类列表） |
+| `ArticleTagLabel` | `features/blog/presentation/widgets/article_tag_label.dart` | 作者写的标签（描边，不填充；可点进标签列表） |
 
 ### 加载态：一句文案或一个形状
 

@@ -5,6 +5,7 @@ import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/features/blog/data/datasources/article_document_codec.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/entities/category_ref.dart';
 import 'package:drift/drift.dart';
 
 /// The offline cache is scoped by content language (#108): rows written for
@@ -39,6 +40,7 @@ class SqliteBlogCache implements BlogLocalDataSource {
           posterName: blog.posterName,
           posterAvatar: blog.posterAvatar,
           documentJson: blog.documentJson,
+          categoriesJson: _encodeCategories(blog.categories),
         );
       }
     });
@@ -110,6 +112,45 @@ class SqliteBlogCache implements BlogLocalDataSource {
       posterAvatar: data['poster_avatar'] as String?,
       // The row was fetched in this language, so the body is that edition.
       locale: data['content_locale'] as String? ?? '',
+      categories: _decodeCategories(data['categories_json'] as String?),
     );
+  }
+
+  /// The categories as the JSON array a row keeps.
+  ///
+  /// An article with none stores `[]`, because that is what the server said.
+  /// NULL is reserved for rows written before the column existed, so the two
+  /// never have to be guessed apart later.
+  String _encodeCategories(List<CategoryRef> categories) => jsonEncode([
+    for (final category in categories)
+      {
+        'id': category.id,
+        'slug': category.slug,
+        'name': category.name,
+        'description': category.description,
+      },
+  ]);
+
+  /// Reads the column back. A row that predates the column has no categories
+  /// to show; damaged JSON is treated the same way rather than failing a whole
+  /// offline list over one label.
+  List<CategoryRef> _decodeCategories(String? raw) {
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const [];
+      return [
+        for (final value in decoded)
+          if (value is Map)
+            CategoryRef(
+              id: value['id'] as String? ?? '',
+              slug: value['slug'] as String? ?? '',
+              name: value['name'] as String? ?? '',
+              description: value['description'] as String? ?? '',
+            ),
+      ];
+    } on FormatException {
+      return const [];
+    }
   }
 }

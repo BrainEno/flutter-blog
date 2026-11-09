@@ -1,6 +1,7 @@
 import 'package:belog/features/blog/data/datasources/article_document_codec.dart';
 import 'package:belog/features/blog/data/datasources/nowave_article_codec.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/entities/category_ref.dart';
 
 /// Data-layer representation of [Blog], including (de)serialization for the
 /// remote backend. The SQLite adapter that persists it (and maps rows back to
@@ -26,6 +27,7 @@ class BlogModel extends Blog {
     this.plainEditorCompatible = false,
     super.locale,
     super.categoryIds,
+    super.categories,
   });
 
   /// The no-wave server article id (UUID). [Blog.id] is the public slug;
@@ -61,6 +63,7 @@ class BlogModel extends Blog {
     String? posterAvatar,
     String? locale,
     List<String>? categoryIds,
+    List<CategoryRef>? categories,
   }) {
     return BlogModel(
       id: id ?? this.id,
@@ -82,7 +85,11 @@ class BlogModel extends Blog {
       posterAvatar: posterAvatar ?? this.posterAvatar,
       isDraft: isDraft,
       locale: locale ?? this.locale,
-      categoryIds: categoryIds ?? this.categoryIds,
+      // Named categories win: they carry the names, and the ids come from them.
+      // An id-only override loses the names it cannot know - that is what a
+      // fixture building rows from bare ids asks for.
+      categories: categories ?? (categoryIds == null ? this.categories : null),
+      categoryIds: categories == null ? categoryIds : null,
     );
   }
 
@@ -95,13 +102,36 @@ class BlogModel extends Blog {
         .map((tag) => (tag as Map<String, dynamic>)['name'] as String? ?? '')
         .where((name) => name.isNotEmpty)
         .toList();
-    // Categories travel as ids: the names are per language, and the catalog
-    // that explains them is a separate public read.
-    final categoryIds = (map['categories'] as List? ?? [])
-        .map((category) => (category as Map<String, dynamic>)['id'] as String?)
-        .whereType<String>()
-        .where((id) => id.isNotEmpty)
-        .toList();
+    // Categories travel as `{id, slug, name, description}`: the name is this
+    // edition's rendering, so the reader can say where the article sits
+    // without a second request. A malformed entry is dropped rather than
+    // failing the article: it can still be read without that one chip.
+    final categories = <CategoryRef>[];
+    final seenCategories = <String>{};
+    for (final value in map['categories'] as List? ?? const []) {
+      if (value is! Map<String, dynamic>) continue;
+      final id = value['id'];
+      final slug = value['slug'];
+      final name = value['name'];
+      if (slug is! String ||
+          slug.trim().isEmpty ||
+          name is! String ||
+          name.trim().isEmpty) {
+        continue;
+      }
+      // One address per category: a repeated slug would be a second row with
+      // the same destination.
+      if (!seenCategories.add(slug)) continue;
+      final description = value['description'];
+      categories.add(
+        CategoryRef(
+          id: id is String ? id.trim() : '',
+          slug: slug,
+          name: name.trim(),
+          description: description is String ? description.trim() : '',
+        ),
+      );
+    }
     final rawBlocks = map['contentBlocks'];
     final blocks = rawBlocks is List
         ? rawBlocks.whereType<Map<String, dynamic>>().toList()
@@ -137,7 +167,7 @@ class BlogModel extends Blog {
       posterId: map['authorId'] as String? ?? '',
       imageUrl: extracted.coverUrl,
       tags: tags,
-      categoryIds: categoryIds,
+      categories: categories,
       updatedAt:
           DateTime.tryParse(map['updatedAt'] as String? ?? '') ??
           DateTime.now(),

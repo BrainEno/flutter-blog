@@ -71,7 +71,7 @@ void main() {
         (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
           'user_version',
         ),
-        12,
+        13,
       );
       expect(
         (await db.customSelect('PRAGMA table_info(blog_cache)').get()).map(
@@ -79,6 +79,15 @@ void main() {
         ),
         contains('document_json'),
       );
+      // v13 adds the column for the categories an article sits in; a row that
+      // predates it reads as "no categories kept", not as an empty taxonomy.
+      expect(
+        (await db.customSelect('PRAGMA table_info(blog_cache)').get()).map(
+          (r) => r.read<String>('name'),
+        ),
+        contains('categories_json'),
+      );
+      expect((await cache.loadBlogById('old'))?.categories, isEmpty);
     } finally {
       await db.close();
       await dir.delete(recursive: true);
@@ -133,4 +142,45 @@ void main() {
       }
     },
   );
+
+  test('the categories an article sits in survive the cache', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    try {
+      final cache = SqliteBlogCache(db);
+      await cache.uploadLocalBlogs(
+        blogs: [
+          BlogModel.fromNowaveArticle({
+            ...structuredArticle(),
+            'categories': const [
+              {'id': 'cat-1', 'slug': 'essay', 'name': '随笔'},
+              {
+                'id': 'cat-2',
+                'slug': 'poem',
+                'name': 'Poetry',
+                'description': 'Verse.',
+              },
+            ],
+          }),
+        ],
+      );
+
+      final cached = await cache.loadBlogById('structured');
+      // Names are per language, so an offline row has to carry the ones the
+      // server rendered - the catalog is a network read.
+      expect(cached?.categories.map((c) => c.name), ['随笔', 'Poetry']);
+      expect(cached?.categories.last.description, 'Verse.');
+      expect(cached?.categoryIds, ['cat-1', 'cat-2']);
+
+      // Damaged JSON costs the labels, not the offline article.
+      await db.customStatement(
+        'UPDATE blog_cache SET categories_json = ? WHERE id = ?',
+        ['{broken', 'structured'],
+      );
+      final damaged = await cache.loadBlogById('structured');
+      expect(damaged?.categories, isEmpty);
+      expect(damaged?.title, cached?.title);
+    } finally {
+      await db.close();
+    }
+  });
 }
