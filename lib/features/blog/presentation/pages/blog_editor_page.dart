@@ -82,13 +82,15 @@ class _BlogEditorState extends State<BlogEditorPage> {
   bool _categoriesLoading = false;
   bool _categoriesFailed = false;
 
-  /// The one category the author has picked (single-select), or null.
+  /// The categories the author has picked, in the order they were picked.
   ///
   /// Categories are editorial structure the desk cannot create, so the write
-  /// only names this when the author actually touched the row: [_categoryTouched]
-  /// is what separates "chose none" from "never looked", and only the first of
-  /// those clears the article's category on the server.
-  String? _selectedCategoryId;
+  /// only names these when the author actually touched the row:
+  /// [_categoryTouched] is what separates "chose none" from "never looked",
+  /// and only the first of those clears the article's categories on the server.
+  /// The list starts as whatever the article already belongs to, including ids
+  /// this page cannot name, so editing one chip does not drop the others.
+  List<String> _selectedCategoryIds = const [];
   bool _categoryTouched = false;
 
   File? image;
@@ -161,9 +163,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
       selectedTags = List.from(_target.tags);
       // Show what the server says it is. Until the author touches the row this
       // is display only - the write omits `categoryIds` entirely.
-      if (_target.categoryIds.isNotEmpty) {
-        _selectedCategoryId = _target.categoryIds.first;
-      }
+      _selectedCategoryIds = List.of(_target.categoryIds);
     }
     final resumed = widget.queueEntry;
     if (resumed != null && !_invalidated) {
@@ -178,9 +178,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
       final queuedCategoryIds = resumed.categoryIds;
       if (queuedCategoryIds != null) {
         _categoryTouched = true;
-        _selectedCategoryId = queuedCategoryIds.isEmpty
-            ? null
-            : queuedCategoryIds.first;
+        _selectedCategoryIds = List.of(queuedCategoryIds);
       }
       unawaited(_loadQueuedCover(resumed));
     }
@@ -286,9 +284,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     title: titleController.text,
     content: contentController.text,
     tags: List.of(selectedTags),
-    categoryIds: _categoryTouched
-        ? [if (_selectedCategoryId != null) _selectedCategoryId!]
-        : null,
+    categoryIds: _categoryTouched ? List.of(_selectedCategoryIds) : null,
     updatedAt: DateTime.now(),
   );
 
@@ -355,9 +351,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
             final draftCategoryIds = draft.categoryIds;
             if (draftCategoryIds != null) {
               _categoryTouched = true;
-              _selectedCategoryId = draftCategoryIds.isEmpty
-                  ? null
-                  : draftCategoryIds.first;
+              _selectedCategoryIds = List.of(draftCategoryIds);
             }
           });
         } finally {
@@ -737,10 +731,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
             autoSaveStatus: _autoSaveStatus,
             onPickCover: selectImage,
             categories: _categories,
-            selectedCategoryId: _selectedCategoryId,
+            selectedCategoryIds: _selectedCategoryIds,
             categoriesLoading: _categoriesLoading,
             categoriesFailed: _categoriesFailed,
-            onCategorySelected: _onCategorySelected,
+            onCategoriesChanged: _onCategoriesChanged,
             onRetryCategories: () => unawaited(_loadCategories()),
           );
         },
@@ -784,9 +778,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
     }
   }
 
-  void _onCategorySelected(String? categoryId) {
+  void _onCategoriesChanged(List<String> categoryIds) {
     setState(() {
-      _selectedCategoryId = categoryId;
+      _selectedCategoryIds = List.of(categoryIds);
       _categoryTouched = true;
     });
     _onEditorContentChanged();

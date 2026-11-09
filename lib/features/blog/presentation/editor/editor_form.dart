@@ -35,10 +35,10 @@ class EditorForm extends StatelessWidget {
     required this.autoSaveStatus,
     required this.onPickCover,
     required this.categories,
-    required this.selectedCategoryId,
+    required this.selectedCategoryIds,
     required this.categoriesLoading,
     required this.categoriesFailed,
-    required this.onCategorySelected,
+    required this.onCategoriesChanged,
     required this.onRetryCategories,
   });
 
@@ -59,10 +59,10 @@ class EditorForm extends StatelessWidget {
   final AutoSaveStatus autoSaveStatus;
   final VoidCallback onPickCover;
   final List<CategoryRef> categories;
-  final String? selectedCategoryId;
+  final List<String> selectedCategoryIds;
   final bool categoriesLoading;
   final bool categoriesFailed;
-  final ValueChanged<String?> onCategorySelected;
+  final ValueChanged<List<String>> onCategoriesChanged;
   final VoidCallback onRetryCategories;
 
   @override
@@ -112,10 +112,10 @@ class EditorForm extends StatelessWidget {
               const SizedBox(height: NoWaveSpacing.large),
               EditorCategorySelector(
                 categories: categories,
-                selectedId: selectedCategoryId,
+                selectedIds: selectedCategoryIds,
                 isLoading: categoriesLoading,
                 hasFailed: categoriesFailed,
-                onSelected: onCategorySelected,
+                onChanged: onCategoriesChanged,
                 onRetry: onRetryCategories,
               ),
               const SizedBox(height: NoWaveSpacing.large),
