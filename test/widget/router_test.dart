@@ -569,6 +569,22 @@ void main() {
     verify(() => harness.remote.getBlogById('abc')).called(1);
   });
 
+  testWidgets(
+    'the reader opens if the optional related-articles use case is absent',
+    (tester) async {
+      final harness = Harness()..buildRouter(initialLocation: '/view/abc');
+      addTearDown(harness.dispose);
+      await GetIt.instance.unregister<GetRelatedArticles>();
+
+      await harness.pump(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BlogViewerPage), findsOneWidget);
+      expect(find.text('深链文章'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('a nowave:// article link opens the reader while running', (
     tester,
   ) async {

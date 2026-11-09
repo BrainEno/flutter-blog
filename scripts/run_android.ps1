@@ -31,6 +31,56 @@ function Invoke-Checked([string]$Executable, [string[]]$ToolArguments) {
     if ($LASTEXITCODE -ne 0) { throw "A required command failed ($LASTEXITCODE): $([IO.Path]::GetFileName($Executable))." }
 }
 
+function Test-PubDevHostedUrl([string]$Value) {
+    if ([string]::IsNullOrWhiteSpace($Value)) { return $true }
+    $uri = $null
+    if (![Uri]::TryCreate($Value.Trim(), [UriKind]::Absolute, [ref]$uri)) { return $false }
+    return $uri.Scheme -ieq 'https' -and $uri.Host -ieq 'pub.dev' -and $uri.AbsolutePath -eq '/'
+}
+
+function Invoke-PubGet([string]$Flutter) {
+    # Preserve the configured mirror unless it returns bytes that disagree with
+    # pubspec.lock. In that case retry once against canonical pub.dev; never
+    # weaken or rewrite the lockfile checksum to accommodate a mirror.
+    $pubOutput = @()
+    $preference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        & $Flutter pub get 2>&1 | Tee-Object -Variable pubOutput | Out-Host
+        $pubExitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $preference
+    }
+    if ($pubExitCode -eq 0) { return }
+
+    $outputText = $pubOutput -join [Environment]::NewLine
+    $hashMismatch = $outputText -match '(?is)(wrong|mismatch|does not match|failed).{0,100}content[- ]hash|content[- ]hash.{0,100}(wrong|mismatch|does not match|failed)'
+    if (!$hashMismatch) {
+        throw "A required command failed ($pubExitCode): flutter pub get."
+    }
+
+    $configuredHostedUrl = $env:PUB_HOSTED_URL
+    if (Test-PubDevHostedUrl $configuredHostedUrl) {
+        throw 'pub.dev reported a package content-hash mismatch. Do not edit pubspec.lock; verify the package cache/network and retry.'
+    }
+
+    Write-Host 'Warning: the configured Pub mirror returned an archive whose content hash does not match pubspec.lock.'
+    Write-Host 'Retrying dependency resolution once against canonical https://pub.dev; lockfile integrity checks remain enabled.'
+    $hostedUrlWasSet = Test-Path Env:PUB_HOSTED_URL
+    try {
+        $env:PUB_HOSTED_URL = 'https://pub.dev'
+        Invoke-Checked $Flutter @('pub', 'get')
+    } catch {
+        throw 'The Pub mirror failed the lockfile content-hash check and the retry from pub.dev also failed. Ensure this machine can reach pub.dev or use a trusted mirror that serves the exact locked archive; the launcher does not rewrite lockfile hashes.'
+    } finally {
+        if ($hostedUrlWasSet) {
+            $env:PUB_HOSTED_URL = $configuredHostedUrl
+        } else {
+            Remove-Item Env:PUB_HOSTED_URL -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 function Invoke-QuietNative([string]$Executable, [string[]]$ToolArguments) {
     # Windows PowerShell 5.1 can surface native stderr as a terminating error
     # under Stop even for successful commands (e.g. adb starting its daemon).
@@ -233,8 +283,8 @@ try {
     $api = Validate-Origin $apiProperty.Value 'API_BASE_URL'
     $webProperty = $data.PSObject.Properties['WEB_BASE_URL']
     if ($webProperty -and $webProperty.Value -cne '') { $null = Validate-Origin $webProperty.Value 'WEB_BASE_URL' }
-    if ($api.Host -in @('localhost', '127.0.0.1', '::1')) {
-        Write-Host 'Warning: localhost inside the Android emulator is not the host. Use 10.0.2.2 for a host-local API.'
+    if ($api.IsLoopback) {
+        Write-Host "Detected a loopback API origin; after boot the script will set up adb reverse for port $($api.Port)."
     }
     if ($api.Scheme -eq 'http') {
         Write-Host 'Warning: HTTP is allowed only by the debug app and sends credentials unencrypted. Use a trusted local backend.'
@@ -297,10 +347,23 @@ try {
     }
     if (!$ready) { throw 'Android emulator boot timed out. Open Android Studio Device Manager and retry.' }
 
+    if ($api.IsLoopback) {
+        $port = $api.Port
+        if ($port -lt 1 -or $port -gt 65535) { throw 'The loopback API origin has an invalid TCP port for adb reverse.' }
+        $mapping = "tcp:$port"
+        try {
+            $null = Invoke-QuietNative $script:Adb @('-s', $serial, 'reverse', $mapping, $mapping)
+            if ($script:LastNativeExit -ne 0) { throw 'adb reverse returned a non-zero exit code.' }
+        } catch {
+            throw "Could not forward emulator localhost:$port to the host. Check adb reverse support or use http://10.0.2.2:$port in env.json."
+        }
+        Write-Host "ADB reverse is active: emulator localhost:$port forwards to the host's localhost:$port."
+    }
+
     Push-Location $ProjectRoot
     try {
-        Invoke-Checked $flutter @('pub', 'get')
-        Invoke-Checked $flutter @('run', '--debug', '-d', $serial, "--dart-define-from-file=$Config", '--dart-define=BELOG_DEV_BACKEND_CHECK=true')
+        Invoke-PubGet $flutter
+        Invoke-Checked $flutter @('run', '--debug', '--no-pub', '-d', $serial, "--dart-define-from-file=$Config", '--dart-define=BELOG_DEV_BACKEND_CHECK=true')
     } finally { Pop-Location }
 } catch {
     [Console]::Error.WriteLine("Error: $($_.Exception.Message)")
