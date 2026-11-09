@@ -181,11 +181,7 @@ class MessageRepositoryImpl implements MessageRepository {
       return right(conversationFromRow(data));
     } catch (error) {
       return left(
-        _failureOf(
-          error,
-          conversationScoped: true,
-          managingParticipants: true,
-        ),
+        _failureOf(error, conversationScoped: true, managingParticipants: true),
       );
     }
   }

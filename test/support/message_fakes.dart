@@ -123,9 +123,8 @@ class FakeMessageRepository implements MessageRepository {
   final List<String> calls = [];
   final List<NowaveSessionFence> fences = [];
   final List<String> deletedConversationIds = [];
-  final List<
-    ({String id, List<String> addUserIds, List<String> removeUserIds})
-  > participantUpdateRequests = [];
+  final List<({String id, List<String> addUserIds, List<String> removeUserIds})>
+  participantUpdateRequests = [];
   final List<({String recipient, String key})> startRequests = [];
   final List<({String body, String key})> sendRequests = [];
   final List<String?> beforeCursors = [];

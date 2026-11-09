@@ -109,7 +109,10 @@ void main() {
     expect(zh.messagesParticipantsHistoryWarning, contains('全部历史消息'));
     expect(zh.messagesParticipantsHistoryWarning, contains('不会因此标为未读'));
     expect(en.messagesParticipantsHistoryWarning, contains('all messages'));
-    expect(en.messagesParticipantsHistoryWarning, contains('not be marked unread'));
+    expect(
+      en.messagesParticipantsHistoryWarning,
+      contains('not be marked unread'),
+    );
     expect(zh.messagesParticipantsRemoveBody, contains('不会被删除'));
     expect(en.messagesParticipantsRemoveBody, contains('not deleted'));
     for (final code in <String, String>{

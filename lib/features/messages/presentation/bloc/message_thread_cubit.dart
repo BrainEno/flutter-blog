@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
@@ -274,35 +276,34 @@ class MessageThreadCubit extends Cubit<MessageThreadState> {
         );
       }
 
-      return result.fold<Failure?>(
-        (failure) => failure.forPresentation(),
-        (conversation) {
-          final activeIds = conversation.participantIds.toSet();
-          if (conversation.id != conversationId ||
-              conversation.createdBy != fence.userId ||
-              !activeIds.contains(fence.userId) ||
-              addUserIds.any((id) => !activeIds.contains(id)) ||
-              removeUserIds.any((id) => activeIds.contains(id))) {
-            return const Failure(
-              'The server returned an inconsistent participant update.',
-              kind: FailureKind.validation,
-              code: 'client.parse',
-            );
-          }
-          final activeOthers = conversation.others(fence.userId).toSet();
-          emit(
-            latest.copyWith(
-              conversation: conversation,
-              participants: {
-                for (final entry in latest.participants.entries)
-                  if (activeOthers.contains(entry.key)) entry.key: entry.value,
-              },
-            ),
+      return result.fold<Failure?>((failure) => failure.forPresentation(), (
+        conversation,
+      ) {
+        final activeIds = conversation.participantIds.toSet();
+        if (conversation.id != conversationId ||
+            conversation.createdBy != fence.userId ||
+            !activeIds.contains(fence.userId) ||
+            addUserIds.any((id) => !activeIds.contains(id)) ||
+            removeUserIds.any((id) => activeIds.contains(id))) {
+          return const Failure(
+            'The server returned an inconsistent participant update.',
+            kind: FailureKind.validation,
+            code: 'client.parse',
           );
-          unawaited(_resolveNames(fence));
-          return null;
-        },
-      );
+        }
+        final activeOthers = conversation.others(fence.userId).toSet();
+        emit(
+          latest.copyWith(
+            conversation: conversation,
+            participants: {
+              for (final entry in latest.participants.entries)
+                if (activeOthers.contains(entry.key)) entry.key: entry.value,
+            },
+          ),
+        );
+        unawaited(_resolveNames(fence));
+        return null;
+      });
     } finally {
       _participantUpdateInProgress = false;
     }
@@ -465,7 +466,9 @@ class MessageThreadCubit extends Cubit<MessageThreadState> {
         if (activeIds.contains(entry.key)) entry.key: entry.value,
     };
     if (stillActive.isEmpty) return;
-    emit(latest.copyWith(participants: {...latest.participants, ...stillActive}));
+    emit(
+      latest.copyWith(participants: {...latest.participants, ...stillActive}),
+    );
   }
 
   /// Replaces a message with the same id instead of listing it twice: a

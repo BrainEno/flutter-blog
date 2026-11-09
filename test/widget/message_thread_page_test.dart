@@ -1,3 +1,4 @@
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:belog/features/messages/presentation/bloc/message_thread_cubit.dart';
 import 'package:belog/features/messages/presentation/pages/message_participants_sheet.dart';
@@ -12,10 +13,8 @@ import 'package:go_router/go_router.dart';
 import '../support/message_fakes.dart';
 
 class _Harness {
-  _Harness({
-    String conversationId = 'conversation-1',
-    this.participantSearch,
-  }) : conversationId = conversationId {
+  _Harness({String conversationId = 'conversation-1', this.participantSearch})
+    : conversationId = conversationId {
     repository.conversationResult = testConversation(unreadCount: 2);
     repository.messagesResult = [
       testMessage(id: 'message-1', senderId: 'user-b', body: '你好'),
@@ -95,14 +94,17 @@ void main() {
   testWidgets('only the creator sees the member-management action', (
     tester,
   ) async {
-    final MessageParticipantAuthorSearch search =
-        (_) async => right(<AuthorSearchResult>[]);
+    Future<Either<Failure, List<AuthorSearchResult>>> search(String _) async =>
+        right(<AuthorSearchResult>[]);
     final owner = _Harness(participantSearch: search);
     addTearDown(owner.dispose);
     await owner.pump(tester);
     final l10n = lookupAppLocalizations(const Locale('en'));
 
-    expect(find.byTooltip(l10n.messagesParticipantsManageAction), findsOneWidget);
+    expect(
+      find.byTooltip(l10n.messagesParticipantsManageAction),
+      findsOneWidget,
+    );
 
     final other = _Harness(participantSearch: search);
     other.repository.conversationResult = testConversation(
@@ -119,7 +121,7 @@ void main() {
   testWidgets('the creator can add a member from the thread page', (
     tester,
   ) async {
-    final MessageParticipantAuthorSearch search = (_) async =>
+    Future<Either<Failure, List<AuthorSearchResult>>> search(String _) async =>
         right(<AuthorSearchResult>[
           const AuthorSearchResult(userId: 'user-c', displayName: 'New author'),
         ]);
@@ -149,10 +151,9 @@ void main() {
     await tester.tap(find.text(l10n.messagesParticipantsConfirmAdd));
     await tester.pumpAndSettle();
 
-    expect(
-      harness.repository.participantUpdateRequests.single.addUserIds,
-      ['user-c'],
-    );
+    expect(harness.repository.participantUpdateRequests.single.addUserIds, [
+      'user-c',
+    ]);
     expect(find.text(l10n.messagesParticipantsUpdated), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

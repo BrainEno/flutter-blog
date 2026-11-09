@@ -319,41 +319,44 @@ void main() {
     expect(failure?.code, 'auth.sessionChanged');
   });
 
-  test('updates participants with a fenced PATCH and parses the full header', () async {
-    final seen = <http.Request>[];
-    final repository = _repository(
-      _Auth(),
-      MockClient((request) async {
-        seen.add(request);
-        return _data(
-          _conversationRow(participants: const ['user-a', 'user-c']),
-        );
-      }),
-    );
+  test(
+    'updates participants with a fenced PATCH and parses the full header',
+    () async {
+      final seen = <http.Request>[];
+      final repository = _repository(
+        _Auth(),
+        MockClient((request) async {
+          seen.add(request);
+          return _data(
+            _conversationRow(participants: const ['user-a', 'user-c']),
+          );
+        }),
+      );
 
-    final result = await repository.updateParticipants(
-      'conversation-1',
-      fence: _fence,
-      addUserIds: const ['user-c'],
-      removeUserIds: const ['user-b'],
-    );
+      final result = await repository.updateParticipants(
+        'conversation-1',
+        fence: _fence,
+        addUserIds: const ['user-c'],
+        removeUserIds: const ['user-b'],
+      );
 
-    expect(seen.single.method, 'PATCH');
-    expect(
-      seen.single.url.path,
-      '/api/v1/conversations/conversation-1/participants',
-    );
-    expect(seen.single.followRedirects, isFalse);
-    expect(seen.single.headers['authorization'], 'Bearer fake-token-a');
-    expect(jsonDecode(seen.single.body), {
-      'addUserIds': ['user-c'],
-      'removeUserIds': ['user-b'],
-    });
-    expect(
-      result.fold((_) => null, (conversation) => conversation.participantIds),
-      ['user-a', 'user-c'],
-    );
-  });
+      expect(seen.single.method, 'PATCH');
+      expect(
+        seen.single.url.path,
+        '/api/v1/conversations/conversation-1/participants',
+      );
+      expect(seen.single.followRedirects, isFalse);
+      expect(seen.single.headers['authorization'], 'Bearer fake-token-a');
+      expect(jsonDecode(seen.single.body), {
+        'addUserIds': ['user-c'],
+        'removeUserIds': ['user-b'],
+      });
+      expect(
+        result.fold((_) => null, (conversation) => conversation.participantIds),
+        ['user-a', 'user-c'],
+      );
+    },
+  );
 
   test('invalid participant updates are refused before a request', () async {
     final invalid = <({List<String> add, List<String> remove})>[

@@ -87,6 +87,20 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('the complete-history warning is localized into Chinese', (
+    tester,
+  ) async {
+    final harness = _Harness(locale: const Locale('zh'));
+    await tester.pumpWidget(harness.app());
+    await tester.tap(find.text('Open manager'));
+    await tester.pumpAndSettle();
+    final l10n = lookupAppLocalizations(const Locale('zh'));
+
+    expect(find.text(l10n.messagesParticipantsHistoryWarning), findsOneWidget);
+    expect(find.text(l10n.messagesParticipantsCurrent), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('adding a searched author requires explicit history consent', (
     tester,
   ) async {
@@ -112,8 +126,14 @@ void main() {
     await tester.tap(find.text(l10n.messagesParticipantsAddSelected(1)));
     await tester.pumpAndSettle();
 
-    expect(find.text(l10n.messagesParticipantsHistoryWarning), findsNWidgets(2));
-    expect(find.text(l10n.messagesParticipantsAddConfirmTitle(1)), findsOneWidget);
+    expect(
+      find.text(l10n.messagesParticipantsHistoryWarning),
+      findsNWidgets(2),
+    );
+    expect(
+      find.text(l10n.messagesParticipantsAddConfirmTitle(1)),
+      findsOneWidget,
+    );
     await tester.tap(find.text(l10n.messagesParticipantsConfirmAdd));
     await tester.pumpAndSettle();
 
@@ -122,51 +142,55 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('an update with unknown outcome cannot be retried in the same sheet', (
-    tester,
-  ) async {
-    final harness = _Harness()
-      ..searchResults = const [
-        AuthorSearchResult(userId: 'user-c', displayName: 'New author'),
-      ]
-      ..updateFailure = const Failure(
-        'timeout',
-        kind: FailureKind.network,
-        code: 'network.timeout',
+  testWidgets(
+    'an update with unknown outcome cannot be retried in the same sheet',
+    (tester) async {
+      final harness = _Harness()
+        ..searchResults = const [
+          AuthorSearchResult(userId: 'user-c', displayName: 'New author'),
+        ]
+        ..updateFailure = const Failure(
+          'timeout',
+          kind: FailureKind.network,
+          code: 'network.timeout',
+        );
+      await tester.pumpWidget(harness.app());
+      await tester.tap(find.text('Open manager'));
+      await tester.pumpAndSettle();
+      final l10n = lookupAppLocalizations(const Locale('en'));
+
+      await tester.tap(find.text(l10n.messagesParticipantsAddAction));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'New');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('New author'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.messagesParticipantsAddSelected(1)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.messagesParticipantsConfirmAdd));
+      await tester.pumpAndSettle();
+
+      expect(harness.updates, hasLength(1));
+      expect(
+        find.text(l10n.messagesParticipantsOutcomeUnknown),
+        findsOneWidget,
       );
-    await tester.pumpWidget(harness.app());
-    await tester.tap(find.text('Open manager'));
-    await tester.pumpAndSettle();
-    final l10n = lookupAppLocalizations(const Locale('en'));
+      final retry = tester.widget<FilledButton>(
+        find.widgetWithText(
+          FilledButton,
+          l10n.messagesParticipantsAddSelected(1),
+        ),
+      );
+      expect(retry.onPressed, isNull);
 
-    await tester.tap(find.text(l10n.messagesParticipantsAddAction));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'New');
-    await tester.pump(const Duration(milliseconds: 350));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('New author'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text(l10n.messagesParticipantsAddSelected(1)));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text(l10n.messagesParticipantsConfirmAdd));
-    await tester.pumpAndSettle();
-
-    expect(harness.updates, hasLength(1));
-    expect(find.text(l10n.messagesParticipantsOutcomeUnknown), findsOneWidget);
-    final retry = tester.widget<FilledButton>(
-      find.widgetWithText(
-        FilledButton,
-        l10n.messagesParticipantsAddSelected(1),
-      ),
-    );
-    expect(retry.onPressed, isNull);
-
-    await tester.tap(find.byTooltip(l10n.actionClose));
-    await tester.pumpAndSettle();
-    expect(find.text(l10n.messagesParticipantsSearchScope), findsNothing);
-    expect(harness.updates, hasLength(1));
-    expect(tester.takeException(), isNull);
-  });
+      await tester.tap(find.byTooltip(l10n.actionClose));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.messagesParticipantsSearchScope), findsNothing);
+      expect(harness.updates, hasLength(1));
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('the picker excludes existing members from author search', (
     tester,

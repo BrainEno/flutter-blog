@@ -4,6 +4,7 @@ import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
+import 'package:belog/core/design/motion/no_wave_motion_policy.dart';
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
@@ -13,7 +14,7 @@ import 'package:belog/features/messages/domain/entities/message_participant.dart
 import 'package:belog/features/user/domain/entities/author_search_result.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fpdart/fpdart.dart';
+import 'package:fpdart/fpdart.dart' show Either, left;
 
 /// Search is deliberately limited to profiles the public author directory can
 /// return; the conversation API itself accepts unchecked user IDs.
@@ -145,9 +146,7 @@ class _MessageParticipantsSheetState extends State<MessageParticipantsSheet> {
     );
   }
 
-  List<AuthorSearchResult> _eligibleAuthors(
-    List<AuthorSearchResult> people,
-  ) {
+  List<AuthorSearchResult> _eligibleAuthors(List<AuthorSearchResult> people) {
     final activeIds = widget.conversation.participantIds.toSet();
     final seen = <String>{};
     return List.unmodifiable([
@@ -177,7 +176,9 @@ class _MessageParticipantsSheetState extends State<MessageParticipantsSheet> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(l10n.messagesParticipantsAddConfirmTitle(_selectedIds.length)),
+        title: Text(
+          l10n.messagesParticipantsAddConfirmTitle(_selectedIds.length),
+        ),
         content: Text(l10n.messagesParticipantsHistoryWarning),
         actions: [
           TextButton(
@@ -241,19 +242,20 @@ class _MessageParticipantsSheetState extends State<MessageParticipantsSheet> {
     } catch (error) {
       failure = mapErrorToFailure(error).forPresentation();
     }
+    final updateFailure = failure;
     if (!mounted) return;
-    if (failure == null) {
+    if (updateFailure == null) {
       Navigator.of(context).pop(true);
       return;
     }
     setState(() {
       _updating = false;
-      _updateFailure = failure.forPresentation();
+      _updateFailure = updateFailure.forPresentation();
       _actionsBlocked =
-          _isOutcomeUnknown(failure) ||
-          failure.code == 'messages.participantsConflict' ||
-          failure.code == 'messages.participantsUnavailable' ||
-          failure.code == 'messages.participantsForbidden';
+          _isOutcomeUnknown(updateFailure) ||
+          updateFailure.code == 'messages.participantsConflict' ||
+          updateFailure.code == 'messages.participantsUnavailable' ||
+          updateFailure.code == 'messages.participantsForbidden';
     });
   }
 
@@ -433,9 +435,7 @@ class _MessageParticipantsSheetState extends State<MessageParticipantsSheet> {
       return NoWaveStatus(message: localizedFailure(l10n, failure));
     }
     if (_searching) {
-      return Center(
-        child: NoWaveLoadingLabel(semanticLabel: l10n.loading),
-      );
+      return Center(child: NoWaveLoadingLabel(semanticLabel: l10n.loading));
     }
     if (_query.isEmpty) {
       return NoWaveStatus(message: l10n.messagesParticipantsSearchPrompt);
@@ -503,7 +503,9 @@ class _MessageParticipantsSheetState extends State<MessageParticipantsSheet> {
         Expanded(child: _searchContent(context)),
         if (_selectedIds.length >= 20)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: NoWaveSpacing.medium),
+            padding: const EdgeInsets.symmetric(
+              horizontal: NoWaveSpacing.medium,
+            ),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -548,7 +550,9 @@ class _MessageParticipantsSheetState extends State<MessageParticipantsSheet> {
             child: SizedBox(
               width: double.infinity,
               child: TextButton(
-                onPressed: _updating || _actionsBlocked ? null : _returnToMembers,
+                onPressed: _updating || _actionsBlocked
+                    ? null
+                    : _returnToMembers,
                 child: Text(l10n.actionCancel),
               ),
             ),
@@ -562,7 +566,7 @@ class _MessageParticipantsSheetState extends State<MessageParticipantsSheet> {
     final viewInsets = MediaQuery.viewInsetsOf(context);
     final height = MediaQuery.sizeOf(context).height - viewInsets.bottom;
     return AnimatedPadding(
-      duration: const Duration(milliseconds: 180),
+      duration: NoWaveMotionPolicy.resolve(context, NoWaveMotion.normal),
       padding: EdgeInsets.only(bottom: viewInsets.bottom),
       child: SafeArea(
         top: false,

@@ -146,13 +146,11 @@ class _MessageThreadViewState extends State<_MessageThreadView> {
         viewerId: loaded.viewerId,
         participants: loaded.participants,
         searchAuthors: searchAuthors,
-        updateParticipants: ({
-          required addUserIds,
-          required removeUserIds,
-        }) => cubit.updateParticipants(
-          addUserIds: addUserIds,
-          removeUserIds: removeUserIds,
-        ),
+        updateParticipants: ({required addUserIds, required removeUserIds}) =>
+            cubit.updateParticipants(
+              addUserIds: addUserIds,
+              removeUserIds: removeUserIds,
+            ),
       ),
     );
     if (!mounted || updated != true) return;
@@ -186,7 +184,8 @@ class _MessageThreadViewState extends State<_MessageThreadView> {
           appBar: AppBar(
             title: Text(_title(state)),
             centerTitle: true,
-            actions: state is MessageThreadLoaded &&
+            actions:
+                state is MessageThreadLoaded &&
                     state.conversation.createdBy == state.viewerId &&
                     widget.participantSearch != null
                 ? [
