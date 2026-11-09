@@ -58,7 +58,8 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
   资料仅保留在页面内存，目录不带头像（头像依赖读者，改成姓名首字）；内容语言随
   界面语言推导。
   关注 / 取消关注由服务端校准（重复请求幂等，防连点；未登录引导登录；自己
-  主页不显示关注按钮）。站点相对头像仍待 [#63](https://github.com/BrainEno/flutter-blog/issues/63)
+  主页不显示关注按钮）。站点相对头像只在配置可信 `WEB_BASE_URL` 时解析；未配置或地址不安全时
+  显示中性占位，不从 API origin 猜测。
 - 阅读：设备本地阅读历史（按账号隔离，退出时尽力清理），分享文章到系统
   分享面板（标题 + 摘要 + 指向 no-wave web 文章页的 canonical URL，需配置
   `WEB_BASE_URL`），`nowave://article/<slug>` 深链在应用内打开同一篇文章
