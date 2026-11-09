@@ -11,6 +11,7 @@ import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/category_repository.dart';
 import 'package:belog/features/blog/domain/usecase/get_categories.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
+import 'package:belog/features/blog/presentation/editor/editor_category_selector.dart';
 import 'package:belog/features/blog/presentation/pages/blog_editor_page.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -160,7 +161,7 @@ Future<void> _publish(WidgetTester tester, String label) async {
 }
 
 void main() {
-  testWidgets('the picker offers the server catalog and publishes one id', (
+  testWidgets('the picker offers the server catalog and publishes the picks', (
     tester,
   ) async {
     final store = _FakeDraftStore();
@@ -176,12 +177,61 @@ void main() {
 
     await tester.tap(find.text('诗'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('随笔'));
+    await tester.pumpAndSettle();
     await _publish(tester, '发布');
 
     final event = bloc.events.single;
     expect(event, isA<UpdateBlogEvent>());
-    // Single-select: the whole selection is the one id the author tapped.
-    expect((event as UpdateBlogEvent).categoryIds, ['cat-2']);
+    // Multi-select: the second tap adds, it does not replace the first. The
+    // order is the order the author picked; the server sorts.
+    expect((event as UpdateBlogEvent).categoryIds, ['cat-2', 'cat-1']);
+  });
+
+  testWidgets('an article in two categories keeps the one not tapped', (
+    tester,
+  ) async {
+    final store = _FakeDraftStore();
+    final bloc = await _openEditor(
+      tester,
+      blog: _blog(const ['cat-1', 'cat-2']),
+      source: GetCategories(_FakeCategoryRepository(_categories)),
+      store: store,
+    );
+
+    // The author removes one of the two; the other is still theirs.
+    await tester.tap(find.text('随笔'));
+    await tester.pumpAndSettle();
+    await _publish(tester, '发布');
+
+    expect((bloc.events.single as UpdateBlogEvent).categoryIds, ['cat-2']);
+  });
+
+  testWidgets('a category the catalog cannot name survives the edit', (
+    tester,
+  ) async {
+    final store = _FakeDraftStore();
+    final bloc = await _openEditor(
+      tester,
+      blog: _blog(const ['cat-1', 'cat-3']),
+      source: GetCategories(_FakeCategoryRepository(_categories)),
+      store: store,
+    );
+
+    // The catalog is one page in one language, so `cat-3` has no chip. It is
+    // still the article's, and the row says so rather than silently editing it
+    // away.
+    expect(find.text('另有 1 个分类不在当前目录里，保持原样。'), findsOneWidget);
+
+    await tester.tap(find.text('诗'));
+    await tester.pumpAndSettle();
+    await _publish(tester, '发布');
+
+    expect((bloc.events.single as UpdateBlogEvent).categoryIds, [
+      'cat-1',
+      'cat-3',
+      'cat-2',
+    ]);
   });
 
   testWidgets('an untouched picker sends nothing, so nothing is cleared', (
@@ -250,7 +300,28 @@ void main() {
     expect(event.categoryIds, isNull);
   });
 
-  testWidgets('a queued edit restores the category it was queued with', (
+  testWidgets('clearing every chip is still a choice, not an omission', (
+    tester,
+  ) async {
+    final store = _FakeDraftStore();
+    final bloc = await _openEditor(
+      tester,
+      blog: _blog(const ['cat-1', 'cat-2']),
+      source: GetCategories(_FakeCategoryRepository(_categories)),
+      store: store,
+    );
+
+    await tester.tap(find.text('随笔'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('诗'));
+    await tester.pumpAndSettle();
+    await _publish(tester, '发布');
+
+    // Empty, not null: the author looked and chose none.
+    expect((bloc.events.single as UpdateBlogEvent).categoryIds, isEmpty);
+  });
+
+  testWidgets('the draft keeps every pick, not just the last one', (
     tester,
   ) async {
     final store = _FakeDraftStore();
@@ -263,9 +334,79 @@ void main() {
 
     await tester.tap(find.text('随笔'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('诗'));
+    await tester.pumpAndSettle();
     await _publish(tester, '发布');
 
-    expect((bloc.events.single as UpdateBlogEvent).categoryIds, ['cat-1']);
-    expect(store.saved?.categoryIds, ['cat-1']);
+    expect((bloc.events.single as UpdateBlogEvent).categoryIds, [
+      'cat-1',
+      'cat-2',
+    ]);
+    expect(store.saved?.categoryIds, ['cat-1', 'cat-2']);
   });
+
+  testWidgets('the chips stop at the server limit', (tester) async {
+    var latest = const <String>[];
+    await _pumpSelector(
+      tester,
+      categories: const [
+        CategoryRef(id: 'cat-1', slug: 'a', name: '一'),
+        CategoryRef(id: 'cat-2', slug: 'b', name: '二'),
+        CategoryRef(id: 'cat-3', slug: 'c', name: '三'),
+        CategoryRef(id: 'cat-4', slug: 'd', name: '四'),
+      ],
+      selected: const [],
+      maxSelections: 3,
+      onChanged: (ids) => latest = ids,
+    );
+
+    for (final label in ['一', '二', '三']) {
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+    }
+    expect(latest, ['cat-1', 'cat-2', 'cat-3']);
+    expect(find.text('最多 3 个分类，要换一个得先取消一个。'), findsOneWidget);
+
+    // The fourth chip does nothing rather than silently dropping one of the
+    // three the author already has.
+    await tester.tap(find.text('四'));
+    await tester.pumpAndSettle();
+    expect(latest, ['cat-1', 'cat-2', 'cat-3']);
+  });
+}
+
+/// Pumps the row on its own, for bounds that would take too many taps to
+/// reach through the whole editor.
+Future<void> _pumpSelector(
+  WidgetTester tester, {
+  required List<CategoryRef> categories,
+  required List<String> selected,
+  required int maxSelections,
+  required ValueChanged<List<String>> onChanged,
+}) async {
+  var current = selected;
+  await tester.pumpWidget(
+    MaterialApp(
+      locale: const Locale('zh'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: StatefulBuilder(
+          builder: (context, setState) => EditorCategorySelector(
+            categories: categories,
+            selectedIds: current,
+            isLoading: false,
+            hasFailed: false,
+            maxSelections: maxSelections,
+            onChanged: (ids) {
+              onChanged(ids);
+              setState(() => current = ids);
+            },
+            onRetry: () {},
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
 }

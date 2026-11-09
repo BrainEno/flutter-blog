@@ -8,8 +8,11 @@ import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
+import 'package:belog/features/blog/domain/entities/category_ref.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
+import 'package:belog/features/blog/domain/repositories/category_repository.dart';
+import 'package:belog/features/blog/domain/usecase/get_categories.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/editor/editor_body_field.dart';
 import 'package:belog/features/blog/presentation/pages/blog_editor_page.dart';
@@ -17,6 +20,7 @@ import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../support/publish_queue_fakes.dart';
@@ -72,6 +76,26 @@ class _FakeDraftStore implements BlogDraftStore {
   }) async => 0;
 }
 
+class _Catalog implements CategoryRepository {
+  _Catalog(this.categories);
+
+  final List<CategoryRef> categories;
+
+  @override
+  Future<Either<Failure, List<CategoryRef>>> listCategories() async =>
+      right(categories);
+
+  @override
+  Future<Either<Failure, CategoryRef?>> getCategory(String slug) async =>
+      right(null);
+
+  @override
+  Future<Either<Failure, List<Blog>>> getArticlesByCategory(
+    String slug, {
+    required int offset,
+  }) async => right(const []);
+}
+
 class _RecordingUploadBloc extends Mock implements BlogUploadBloc {
   _RecordingUploadBloc(this.states);
 
@@ -94,6 +118,7 @@ class _Harness {
     this.blog,
     List<PublishQueueEntry> rows = const [],
     ImageUpload? cover,
+    this.getCategories,
   }) : queue = FakePublishQueueStore(rows: rows, storedCover: cover),
        drafts = _FakeDraftStore() {
     identity = _Identity();
@@ -113,6 +138,7 @@ class _Harness {
 
   final PublishQueueEntry? queueEntry;
   final Blog? blog;
+  final GetCategories? getCategories;
   final FakePublishQueueStore queue;
   final _FakeDraftStore drafts;
   late final _Identity identity;
@@ -139,6 +165,7 @@ class _Harness {
             sessionIdentity: identity,
             publishQueueStore: queue,
             publishQueueDrainer: drainer,
+            getCategories: getCategories,
           ),
         ),
       ),
@@ -331,5 +358,44 @@ void main() {
     harness.states.add(BlogUploadSuccess());
     await tester.pumpAndSettle();
     expect(harness.queue.removed, [entry.id]);
+  });
+
+  testWidgets('a resumed edit keeps every category it was queued with', (
+    tester,
+  ) async {
+    final entry = queueEntry(
+      kind: PublishQueueKind.edit,
+      targetId: 'my-slug',
+      categoryIds: const ['cat-1', 'cat-2'],
+    );
+    final harness = _Harness(
+      queueEntry: entry,
+      rows: [entry],
+      getCategories: GetCategories(
+        _Catalog(const [
+          CategoryRef(id: 'cat-1', slug: 'essay', name: '随笔'),
+          CategoryRef(id: 'cat-2', slug: 'poem', name: '诗'),
+        ]),
+      ),
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+
+    // Both chips come back selected, not just the first one: the entry stores
+    // the whole list, and an edit that resumed with one would drop the other on
+    // the next save.
+    for (final label in ['随笔', '诗']) {
+      final chip = tester.widget<InputChip>(
+        find.ancestor(of: find.text(label), matching: find.byType(InputChip)),
+      );
+      expect(chip.selected, isTrue);
+    }
+
+    await tester.tap(find.text('发布'));
+    await tester.pump();
+    expect((harness.bloc.events.single as UpdateBlogEvent).categoryIds, [
+      'cat-1',
+      'cat-2',
+    ]);
   });
 }

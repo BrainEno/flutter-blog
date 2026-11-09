@@ -1,3 +1,12 @@
+/// How many categories one article may carry.
+///
+/// The server takes at most 20 on `POST /articles` and, as of the audited
+/// snapshot, 100 on `PUT /articles/:id` (`normalizeTaxonomyIds(…, 20)` vs
+/// `(…, 100)`); more than that, a repeated id, or a non-UUID is a
+/// `400 BAD_USER_INPUT`. The picker takes the tighter of the two: a queued
+/// create has to satisfy it, and one number is easier to explain than two.
+const int kMaxArticleCategories = 20;
+
 /// A category as the server knows it.
 ///
 /// The slug is server-generated and opaque: it is the only address
