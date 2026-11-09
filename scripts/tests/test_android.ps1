@@ -8,7 +8,7 @@ $log = Join-Path $temp 'calls.log'
 $config = Join-Path $temp 'config with spaces.json'
 $marker = Join-Path $temp 'started.txt'
 $pidFile = Join-Path $temp 'emulator.pid'
-$reverseFailureMarker = Join-Path $temp 'fail reverse.txt'
+$reverseFailureMarker = "$log.fail"
 $oldPath = $env:PATH
 $pubHostedUrlWasSet = Test-Path Env:PUB_HOSTED_URL
 $oldPubHostedUrl = $env:PUB_HOSTED_URL
@@ -66,7 +66,7 @@ if "%~3"=="shell" (
   exit /b 0
 )
 if "%~3"=="reverse" (
-  if exist "%BELOG_TEST_FAIL_REVERSE%" exit /b 8
+  if exist "%BELOG_TEST_LOG%.fail" exit /b 8
   exit /b 0
 )
 exit /b 1
@@ -95,12 +95,10 @@ public static class FakeEmulator {
     $env:BELOG_TEST_LOG = $log
     $env:BELOG_TEST_STARTED = $marker
     $env:BELOG_TEST_PID = $pidFile
-    $env:BELOG_TEST_FAIL_REVERSE = $reverseFailureMarker
     $env:MOCK_NO_EMULATOR = ''
     $env:MOCK_NEVER_BOOT = ''
     $env:MOCK_FAIL_PUB = ''
     $env:MOCK_HASH_MISMATCH_PUB = ''
-    $env:MOCK_FAIL_REVERSE = ''
     $env:MOCK_FLUTTER_VERSION = '3.47.8'
     $env:MOCK_DART_VERSION = '3.10.4'
     # Never leave a first-run prompt waiting in a non-interactive test process.
@@ -266,7 +264,7 @@ public static class FakeEmulator {
         $proc = Get-Process -Id $id -ErrorAction SilentlyContinue
         if ($proc -and $proc.Path -eq $emulator) { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue }
     }
-    foreach ($name in @('BELOG_TEST_LOG', 'BELOG_TEST_STARTED', 'BELOG_TEST_PID', 'BELOG_TEST_FAIL_REVERSE', 'MOCK_NO_EMULATOR', 'MOCK_NEVER_BOOT', 'MOCK_FAIL_PUB', 'MOCK_HASH_MISMATCH_PUB', 'MOCK_NATIVE_STDERR', 'MOCK_FAIL_ADB', 'MOCK_FAIL_AVD_LIST', 'MOCK_FLUTTER_VERSION', 'MOCK_DART_VERSION', 'BELOG_STRICT_FLUTTER_VERSION', 'BELOG_NO_PROMPT')) {
+    foreach ($name in @('BELOG_TEST_LOG', 'BELOG_TEST_STARTED', 'BELOG_TEST_PID', 'MOCK_NO_EMULATOR', 'MOCK_NEVER_BOOT', 'MOCK_FAIL_PUB', 'MOCK_HASH_MISMATCH_PUB', 'MOCK_NATIVE_STDERR', 'MOCK_FAIL_ADB', 'MOCK_FAIL_AVD_LIST', 'MOCK_FLUTTER_VERSION', 'MOCK_DART_VERSION', 'BELOG_STRICT_FLUTTER_VERSION', 'BELOG_NO_PROMPT')) {
         Remove-Item -LiteralPath ('Env:' + $name) -ErrorAction SilentlyContinue
     }
     if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Recurse -Force }
