@@ -128,7 +128,7 @@ public static class FakeEmulator {
     $env:MOCK_FAIL_REVERSE = '1'
     Remove-Item -LiteralPath $log -Force
     $reverseFailure = Run-Subject @()
-    Assert-True ($reverseFailure.ExitCode -ne 0 -and $reverseFailure.Output -match 'Could not forward emulator localhost:4000') 'An adb reverse failure was ignored.'
+    Assert-True ($reverseFailure.ExitCode -ne 0 -and $reverseFailure.Output -match 'Could not forward emulator localhost:4000') "An adb reverse failure was ignored (exit $($reverseFailure.ExitCode)): $($reverseFailure.Output)"
     Assert-True ((Get-Content -LiteralPath $log -Raw) -notmatch 'flutter run') 'Flutter started without the required loopback tunnel.'
     $env:MOCK_FAIL_REVERSE = ''
 
