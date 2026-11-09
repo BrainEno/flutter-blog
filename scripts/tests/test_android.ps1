@@ -69,13 +69,11 @@ if "%~3"=="shell" (
   exit /b 0
 )
 if "%~3"=="reverse" (
-  echo reverse failure marker=%BELOG_TEST_LOG%.fail>>"%BELOG_TEST_LOG%"
   if exist "%BELOG_TEST_LOG%.fail" goto reverse_fail
   exit /b 0
 )
 exit /b 1
 :reverse_fail
-echo reverse failure marker exists>>"%BELOG_TEST_LOG%"
 exit /b 8
 '@ | Set-Content -LiteralPath (Join-Path $bin 'adb.cmd') -Encoding Ascii
     $emulator = Join-Path $bin 'emulator.exe'
@@ -136,7 +134,7 @@ public static class FakeEmulator {
     Remove-Item -LiteralPath $log -Force
     $reverseFailure = Run-Subject @()
     $reverseLog = Get-Content -LiteralPath $log -Raw
-    Assert-True ($reverseFailure.ExitCode -ne 0 -and $reverseFailure.Output -match 'Could not forward emulator localhost:4000') "An adb reverse failure was ignored (exit $($reverseFailure.ExitCode), marker '$reverseFailureMarker' exists $(Test-Path -LiteralPath $reverseFailureMarker)): $($reverseFailure.Output) Mock log: $reverseLog"
+    Assert-True ($reverseFailure.ExitCode -ne 0 -and $reverseFailure.Output -match 'Could not forward emulator localhost:4000') "An adb reverse failure was ignored: $($reverseFailure.Output)"
     Assert-True ($reverseLog -notmatch 'flutter run') 'Flutter started without the required loopback tunnel.'
     Remove-Item -LiteralPath $reverseFailureMarker -Force
 
@@ -148,7 +146,7 @@ public static class FakeEmulator {
     $hashFallback = Run-Subject @()
     $hashLog = Get-Content -LiteralPath $log -Raw
     Assert-True ($hashFallback.ExitCode -eq 0) "Pub mirror hash retry failed: $($hashFallback.Output) Mock log: $hashLog"
-    Assert-True ($hashFallback.Output -match 'Retrying dependency resolution once against canonical https://pub.dev') "The official Pub retry was not explained (parent host '$env:PUB_HOSTED_URL'). Output: $($hashFallback.Output) Mock log: $hashLog"
+    Assert-True ($hashFallback.Output -match 'Retrying dependency resolution once against canonical https://pub.dev') "The official Pub retry was not explained: $($hashFallback.Output) Mock log: $hashLog"
     $hostLines = @(Get-Content -LiteralPath $log | Where-Object { $_ -like 'PUB_HOSTED_URL=*' })
     Assert-True ($hostLines.Count -eq 3) "Expected mirror, official retry and run invocations; got $($hostLines.Count)."
     Assert-True ($hostLines[0] -eq 'PUB_HOSTED_URL=https://pub.flutter-io.cn') 'The first attempt did not preserve the configured mirror.'
