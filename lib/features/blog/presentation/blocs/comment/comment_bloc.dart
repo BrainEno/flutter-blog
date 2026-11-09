@@ -107,9 +107,7 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
     }
 
     final generation = _pageGeneration;
-    emit(
-      current.copyWith(isLoadingMore: true, clearLoadMoreFailure: true),
-    );
+    emit(current.copyWith(isLoadingMore: true, clearLoadMoreFailure: true));
     final result = await getComments(slug, cursor: cursor);
     if (emit.isDone || generation != _pageGeneration) return;
     final latest = state;
@@ -129,9 +127,7 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
           );
           return;
         }
-        emit(
-          latest.copyWith(isLoadingMore: false, loadMoreFailure: failure),
-        );
+        emit(latest.copyWith(isLoadingMore: false, loadMoreFailure: failure));
       },
       (page) {
         if (page.items.isEmpty) {
@@ -176,20 +172,16 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
     );
   }
 
-  static bool _containsRepeatedRoot(
-    List<Comment> current,
-    List<Comment> next,
-  ) {
+  static bool _containsRepeatedRoot(List<Comment> current, List<Comment> next) {
     final seen = current.map((comment) => comment.id).toSet();
     return next.any((comment) => !seen.add(comment.id));
   }
 
   static List<Comment> _sortRoots(List<Comment> comments) {
-    return comments
-      ..sort((a, b) {
-        final byTime = a.createdAt.compareTo(b.createdAt);
-        return byTime != 0 ? byTime : a.id.compareTo(b.id);
-      });
+    return comments..sort((a, b) {
+      final byTime = a.createdAt.compareTo(b.createdAt);
+      return byTime != 0 ? byTime : a.id.compareTo(b.id);
+    });
   }
 
   Future<void> _onCommentSubmitted(

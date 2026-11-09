@@ -160,17 +160,17 @@ void main() {
     expect(find.byType(NoWaveAvatar), findsNWidgets(3));
   });
 
-  testWidgets('loads older pages and stops after a short page', (
-    tester,
-  ) async {
+  testWidgets('loads older pages and stops after a short page', (tester) async {
     when(() => getComments('my-slug')).thenAnswer(
       (_) async => right<Failure, CommentPage>(
-        _page([_comment('c1')], cursor: 'cursor-1'),
+        _page([_comment('c1', content: '评论c1')], cursor: 'cursor-1'),
       ),
     );
-    when(
-      () => getComments('my-slug', cursor: 'cursor-1'),
-    ).thenAnswer((_) async => right<Failure, CommentPage>(_page([_comment('c2')])));
+    when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer(
+      (_) async => right<Failure, CommentPage>(
+        _page([_comment('c2', content: '评论c2')]),
+      ),
+    );
 
     final bloc = buildBloc();
     addTearDown(bloc.close);
@@ -218,19 +218,21 @@ void main() {
     var attempts = 0;
     when(() => getComments('my-slug')).thenAnswer(
       (_) async => right<Failure, CommentPage>(
-        _page([_comment('c1')], cursor: 'cursor-1'),
+        _page([_comment('c1', content: '评论c1')], cursor: 'cursor-1'),
       ),
     );
-    when(
-      () => getComments('my-slug', cursor: 'cursor-1'),
-    ).thenAnswer((_) async {
+    when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer((
+      _,
+    ) async {
       attempts++;
       if (attempts == 1) {
         return left<Failure, CommentPage>(
           Failure('网络暂时不可用', code: 'network.unavailable'),
         );
       }
-      return right<Failure, CommentPage>(_page([_comment('c2')]));
+      return right<Failure, CommentPage>(
+        _page([_comment('c2', content: '评论c2')]),
+      );
     });
 
     final bloc = buildBloc();
@@ -256,7 +258,7 @@ void main() {
     final olderPage = Completer<Either<Failure, CommentPage>>();
     when(() => getComments('my-slug')).thenAnswer(
       (_) async => right<Failure, CommentPage>(
-        _page([_comment('c1')], cursor: 'cursor-1'),
+        _page([_comment('c1', content: '评论c1')], cursor: 'cursor-1'),
       ),
     );
     when(
@@ -278,7 +280,11 @@ void main() {
     await tester.pump();
     expect(find.byType(NoWaveLoadingLabel), findsOneWidget);
 
-    olderPage.complete(right<Failure, CommentPage>(_page([_comment('c2')])));
+    olderPage.complete(
+      right<Failure, CommentPage>(
+        _page([_comment('c2', content: '评论c2')]),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('评论c2'), findsOneWidget);
   });
@@ -288,14 +294,12 @@ void main() {
   ) async {
     when(() => getComments('my-slug')).thenAnswer(
       (_) async => right<Failure, CommentPage>(
-        _page([_comment('c1')], cursor: 'cursor-1'),
+        _page([_comment('c1', content: '评论c1')], cursor: 'cursor-1'),
       ),
     );
-    when(
-      () => getComments('my-slug', cursor: 'cursor-1'),
-    ).thenAnswer(
+    when(() => getComments('my-slug', cursor: 'cursor-1')).thenAnswer(
       (_) async => right<Failure, CommentPage>(
-        _page([_comment('c1')], cursor: 'cursor-1'),
+        _page([_comment('c1', content: '评论c1')], cursor: 'cursor-1'),
       ),
     );
 
@@ -442,9 +446,9 @@ void main() {
     tester,
   ) async {
     appUserCubit.updateUser(_user());
-    when(
-      () => getComments('my-slug'),
-    ).thenAnswer((_) async => right<Failure, CommentPage>(_page([_comment('c1')])));
+    when(() => getComments('my-slug')).thenAnswer(
+      (_) async => right<Failure, CommentPage>(_page([_comment('c1')])),
+    );
     when(() => createComment(any(that: isA<CreateCommentParams>()))).thenAnswer(
       (_) async => right<Failure, Comment>(
         _comment('c2', authorId: 'viewer-1', content: '回复内容', parentId: 'c1'),

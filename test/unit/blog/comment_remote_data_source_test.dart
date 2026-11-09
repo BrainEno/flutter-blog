@@ -152,19 +152,13 @@ void main() {
       verify(
         () => client.getJson(
           '/articles/$_kSlug/comments',
-          query: {
-            'locale': 'zh-CN',
-            'limit': '50',
-            'cursor': cursor,
-          },
+          query: {'locale': 'zh-CN', 'limit': '50', 'cursor': cursor},
         ),
       ).called(1);
     });
 
     test('a cursor-only 400 is reported as unavailable pagination', () async {
-      when(
-        () => client.getJson(any(), query: any(named: 'query')),
-      ).thenThrow(
+      when(() => client.getJson(any(), query: any(named: 'query'))).thenThrow(
         NowaveApiException(
           statusCode: 400,
           code: 'BAD_USER_INPUT',

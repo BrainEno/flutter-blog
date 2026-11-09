@@ -286,9 +286,8 @@ class _CommentsSectionState extends State<CommentsSection> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.small),
       child: TextButton.icon(
-        onPressed: () => context.read<CommentBloc>().add(
-          const MoreCommentsRequested(),
-        ),
+        onPressed: () =>
+            context.read<CommentBloc>().add(const MoreCommentsRequested()),
         icon: const Icon(Icons.expand_more),
         label: Text(l10n.commentsLoadMore),
       ),

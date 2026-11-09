@@ -40,10 +40,9 @@ void main() {
 
   group('getComments', () {
     test('returns the thread on success', () async {
-      when(
-        () => remote.getComments('my-slug'),
-      ).thenAnswer(
-        (_) async => _page([_comment('c1'), _comment('c2')], nextCursor: 'next'),
+      when(() => remote.getComments('my-slug')).thenAnswer(
+        (_) async =>
+            _page([_comment('c1'), _comment('c2')], nextCursor: 'next'),
       );
 
       final result = await repository.getComments('my-slug');
@@ -60,7 +59,9 @@ void main() {
     test('forwards a continuation cursor to the remote source', () async {
       when(
         () => remote.getComments('my-slug', cursor: 'cursor-next'),
-      ).thenAnswer((_) async => _page([_comment('c3')], nextCursor: 'cursor-end'));
+      ).thenAnswer(
+        (_) async => _page([_comment('c3')], nextCursor: 'cursor-end'),
+      );
 
       final result = await repository.getComments(
         'my-slug',
