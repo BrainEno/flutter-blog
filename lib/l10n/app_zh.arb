@@ -443,9 +443,21 @@
       }
     }
   },
+  "notificationsLoadedUnreadCount": "已加载的通知中有 {count} 条未读",
+  "@notificationsLoadedUnreadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "notificationsAllRead": "已全部标为已读",
   "notificationsMarkedRead": "已标为已读",
   "notificationsRetry": "重试",
+  "notificationsLoadOlder": "加载更早的通知",
+  "notificationsLoadingOlder": "正在加载更早的通知",
+  "notificationsNoOlder": "没有更早的通知了。",
+  "notificationsCursorUnavailable": "当前服务器暂不支持加载更早的通知。",
   "notificationArticleDeleted": "你评论过的作品已被作者删除，你的评论会在 {date} 随作品一起清除。",
   "@notificationArticleDeleted": {
     "placeholders": {
@@ -457,14 +469,6 @@
   "notificationArticleDeletedNoDate": "你评论过的作品已被作者删除，你的评论会随作品一起清除。",
   "notificationMessageReceived": "收到一条新的私信",
   "notificationUnknown": "有一条新通知",
-  "notificationsOlderHidden": "最多显示最近 {limit} 条通知；更早的通知暂不可见。",
-  "@notificationsOlderHidden": {
-    "placeholders": {
-      "limit": {
-        "type": "int"
-      }
-    }
-  },
   "publishQueueResumeEditing": "继续编辑",
   "publishQueueEditEntry": "编辑已发布文章",
   "publishQueueResumedNotice": "已载入队列中的内容；这次发布成功后，原条目会被移除。",

@@ -4,6 +4,7 @@ import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/notifications/domain/entities/app_notification.dart';
+import 'package:belog/features/notifications/domain/entities/notification_page.dart';
 import 'package:belog/features/notifications/domain/repositories/notification_repository.dart';
 import 'package:belog/features/notifications/presentation/bloc/notification_inbox_cubit.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -39,8 +40,12 @@ class _Repository implements NotificationRepository {
   final fences = <NowaveSessionFence>[];
   final calls = <String>[];
 
-  /// Rows returned per account.
+  /// Rows returned per account when no cursor-specific fixture is configured.
   Map<String, List<AppNotification>> rowsByUser = {};
+  final cursors = <String?>[];
+
+  /// Exact pages keyed by account and the cursor used to request them.
+  Map<String, Map<String?, NotificationPage>> pagesByCursor = {};
 
   Failure? listFailure;
   Failure? markFailure;
@@ -51,16 +56,31 @@ class _Repository implements NotificationRepository {
   final gate = Completer<void>();
 
   @override
-  Future<Either<Failure, List<AppNotification>>> list({
+  Future<Either<Failure, NotificationPage>> list({
     required NowaveSessionFence fence,
     int limit = 50,
+    String? cursor,
   }) async {
     fences.add(fence);
     calls.add('list');
+    cursors.add(cursor);
     if (gateUser == fence.userId) await gate.future;
     final failure = listFailure;
     if (failure != null) return left(failure);
-    return right(rowsByUser[fence.userId] ?? const []);
+    final configuredPages = pagesByCursor[fence.userId];
+    if (configuredPages != null) {
+      return right(
+        configuredPages[cursor] ??
+            const NotificationPage(items: [], nextCursor: null),
+      );
+    }
+    final rows = rowsByUser[fence.userId] ?? const <AppNotification>[];
+    return right(
+      NotificationPage(
+        items: List.unmodifiable(rows),
+        nextCursor: rows.isEmpty ? null : 'cursor-${rows.last.id}',
+      ),
+    );
   }
 
   @override
@@ -170,6 +190,161 @@ void main() {
     expect(repository.calls, ['list']);
     expect(repository.fences.single.userId, 'user-a');
     expect(repository.fences.single.generation, 1);
+  });
+
+  test('loads older pages until an empty page marks the inbox end', () async {
+    final firstPage = NotificationPage(
+      items: [_notification(id: 'newest')],
+      nextCursor: 'cursor-newest',
+    );
+    final secondPage = NotificationPage(
+      items: [_notification(id: 'older')],
+      nextCursor: 'cursor-older',
+    );
+    await pumpCubit(
+      configure: (repository) {
+        repository.pagesByCursor['user-a'] = {
+          null: firstPage,
+          'cursor-newest': secondPage,
+          'cursor-older': const NotificationPage(items: [], nextCursor: null),
+        };
+      },
+    );
+
+    expect(_loaded(cubit).items.map((item) => item.id), ['newest']);
+    expect(_loaded(cubit).hasMore, isTrue);
+
+    await cubit.loadMore();
+
+    expect(_loaded(cubit).items.map((item) => item.id), ['newest', 'older']);
+    expect(_loaded(cubit).hasMore, isTrue);
+    expect(repository.cursors, [null, 'cursor-newest']);
+
+    await cubit.loadMore();
+
+    expect(_loaded(cubit).items.map((item) => item.id), ['newest', 'older']);
+    expect(_loaded(cubit).hasMore, isFalse);
+    expect(_loaded(cubit).paginationUnavailable, isFalse);
+    expect(repository.cursors, [null, 'cursor-newest', 'cursor-older']);
+  });
+
+  test('refresh replaces appended history with the newest page', () async {
+    await pumpCubit(
+      configure: (repository) {
+        repository.pagesByCursor['user-a'] = {
+          null: NotificationPage(
+            items: [_notification(id: 'newest')],
+            nextCursor: 'cursor-newest',
+          ),
+          'cursor-newest': NotificationPage(
+            items: [_notification(id: 'older')],
+            nextCursor: 'cursor-older',
+          ),
+        };
+      },
+    );
+    await cubit.loadMore();
+    expect(_loaded(cubit).items.map((item) => item.id), ['newest', 'older']);
+
+    repository.pagesByCursor['user-a'] = {
+      null: NotificationPage(
+        items: [_notification(id: 'refreshed')],
+        nextCursor: 'cursor-refreshed',
+      ),
+    };
+    await cubit.load();
+
+    expect(_loaded(cubit).items.map((item) => item.id), ['refreshed']);
+    expect(_loaded(cubit).hasMore, isTrue);
+    expect(repository.cursors, [null, 'cursor-newest', null]);
+  });
+
+  test(
+    'does not append a repeated first page from a cursor-blind server',
+    () async {
+      await pumpCubit(
+        rows: {
+          'user-a': [
+            _notification(id: 'newest'),
+            _notification(id: 'older'),
+          ],
+        },
+      );
+
+      await cubit.loadMore();
+
+      expect(_loaded(cubit).items.map((item) => item.id), ['newest', 'older']);
+      expect(_loaded(cubit).hasMore, isFalse);
+      expect(_loaded(cubit).paginationUnavailable, isTrue);
+    },
+  );
+
+  test(
+    'a cursor rejection stops retrying without dropping loaded rows',
+    () async {
+      await pumpCubit(rows: {'user-a': [_notification(id: 'newest')]});
+      repository.listFailure = const Failure(
+        'The server rejected notification pagination.',
+        kind: FailureKind.server,
+        code: notificationCursorUnavailableFailureCode,
+      );
+
+      await cubit.loadMore();
+
+      expect(_loaded(cubit).items.single.id, 'newest');
+      expect(_loaded(cubit).hasMore, isFalse);
+      expect(_loaded(cubit).paginationUnavailable, isTrue);
+      expect(_loaded(cubit).loadMoreFailure, isNull);
+    },
+  );
+
+  test('a failed older-page request keeps its cursor for retry', () async {
+    await pumpCubit(rows: {'user-a': [_notification(id: 'newest')]});
+    repository.listFailure = _offline;
+    repository.pagesByCursor['user-a'] = {
+      'cursor-newest': NotificationPage(
+        items: [_notification(id: 'older')],
+        nextCursor: 'cursor-older',
+      ),
+    };
+
+    await cubit.loadMore();
+
+    expect(_loaded(cubit).items.single.id, 'newest');
+    expect(_loaded(cubit).loadMoreFailure?.code, 'network.unavailable');
+    expect(_loaded(cubit).hasMore, isTrue);
+
+    repository.listFailure = null;
+    await cubit.loadMore();
+
+    expect(_loaded(cubit).items.map((item) => item.id), ['newest', 'older']);
+    expect(_loaded(cubit).loadMoreFailure, isNull);
+    expect(repository.cursors, [null, 'cursor-newest', 'cursor-newest']);
+  });
+
+  test('an older-page response from a previous account is dropped', () async {
+    await pumpCubit(
+      rows: {
+        'user-a': [_notification(id: 'row-a')],
+        'user-b': [_notification(id: 'row-b')],
+      },
+    );
+    repository.gateUser = 'user-a';
+
+    final stalePage = cubit.loadMore();
+    await Future<void>.delayed(Duration.zero);
+    expect(_loaded(cubit).isLoadingMore, isTrue);
+
+    identity.replace('user-b');
+    await Future<void>.delayed(Duration.zero);
+    expect(_loaded(cubit).items.single.id, 'row-b');
+
+    repository.gate.complete();
+    await stalePage;
+
+    expect(_loaded(cubit).items.single.id, 'row-b');
+    expect(repository.fences.last.userId, 'user-b');
+    expect(repository.cursors, [null, 'cursor-row-a', null]);
   });
 
   test('nobody signed in means a sign-in state and no request', () async {

@@ -5,6 +5,7 @@ import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/notifications/domain/entities/app_notification.dart';
+import 'package:belog/features/notifications/domain/entities/notification_page.dart';
 import 'package:belog/features/notifications/domain/repositories/notification_repository.dart';
 import 'package:belog/features/notifications/presentation/bloc/notification_inbox_cubit.dart';
 import 'package:belog/features/notifications/presentation/pages/notification_inbox_page.dart';
@@ -33,18 +34,21 @@ class _Identity implements NowaveSessionIdentity {
 }
 
 class _Repository implements NotificationRepository {
-  final queues = <Completer<Either<Failure, List<AppNotification>>>>[];
+  final queues = <Completer<Either<Failure, NotificationPage>>>[];
   final calls = <String>[];
+  final cursors = <String?>[];
   List<AppNotification> rows = [];
   Failure? failure;
 
   @override
-  Future<Either<Failure, List<AppNotification>>> list({
+  Future<Either<Failure, NotificationPage>> list({
     required NowaveSessionFence fence,
     int limit = 50,
+    String? cursor,
   }) {
     calls.add('list');
-    final result = Completer<Either<Failure, List<AppNotification>>>();
+    cursors.add(cursor);
+    final result = Completer<Either<Failure, NotificationPage>>();
     queues.add(result);
     return result.future;
   }
@@ -137,13 +141,17 @@ class _Harness {
     await tester.pump();
   }
 
-  void settle([Either<Failure, List<AppNotification>>? result]) {
+  void settle([Either<Failure, NotificationPage>? result]) {
     final failure = repository.failure;
+    final rows = List<AppNotification>.unmodifiable(repository.rows);
+    final page = NotificationPage(
+      items: rows,
+      nextCursor: rows.isEmpty ? null : 'cursor-${rows.last.id}',
+    );
     for (final queue in repository.queues) {
       if (queue.isCompleted) continue;
       queue.complete(
-        result ??
-            (failure != null ? left(failure) : right(List.of(repository.rows))),
+        result ?? (failure != null ? left(failure) : right(page)),
       );
     }
   }
@@ -179,7 +187,7 @@ void main() {
     expect(find.textContaining('removed with it'), findsOneWidget);
     expect(find.textContaining('private message'), findsOneWidget);
     expect(find.textContaining('new notification'), findsOneWidget);
-    expect(find.text('3 unread'), findsOneWidget);
+    expect(find.text('3 unread among loaded notifications'), findsOneWidget);
     expect(find.text('Mark as read'), findsNWidgets(3));
     // No polling: opening the page is the only read.
     expect(harness.repository.calls, ['list']);
@@ -199,32 +207,104 @@ void main() {
 
     expect(find.text('收到一条新的私信'), findsOneWidget);
     expect(find.text('打开会话'), findsOneWidget);
+    expect(find.text('加载更早的通知'), findsOneWidget);
     expect(find.textContaining('暂不支持查看会话'), findsNothing);
   });
 
-  testWidgets('a full page says that older notifications are hidden', (
+  testWidgets('loads older pages and stops when the server returns empty', (
     tester,
   ) async {
-    final harness = _Harness(
-      rows: [
-        for (var index = 0; index < 50; index++)
-          _notification(id: 'notification-$index'),
-      ],
-    );
+    final harness = _Harness(rows: [_notification(id: 'newest')]);
     addTearDown(harness.dispose);
     await harness.pump(tester);
     harness.settle();
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('older ones'), findsNothing);
-    await tester.scrollUntilVisible(
-      find.textContaining('older ones are not available'),
-      300,
-    );
+    expect(find.text('Load older notifications'), findsOneWidget);
+    await tester.tap(find.text('Load older notifications'));
+    await tester.pump();
+    expect(harness.repository.calls, ['list', 'list']);
+    expect(harness.repository.cursors, [null, 'cursor-newest']);
+
+    harness.repository.rows = [_notification(id: 'older')];
+    harness.settle();
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('removed with it'), findsNWidgets(2));
+    expect(find.text('Load older notifications'), findsOneWidget);
+    await tester.tap(find.text('Load older notifications'));
+    await tester.pump();
+    expect(harness.repository.cursors, [null, 'cursor-newest', 'cursor-older']);
+
+    harness.repository.rows = [];
+    harness.settle();
+    await tester.pumpAndSettle();
+
+    expect(find.text('No older notifications.'), findsOneWidget);
+    expect(find.text('Load older notifications'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a server that ignores cursors does not append duplicate rows', (
+    tester,
+  ) async {
+    final harness = _Harness(rows: [_notification(id: 'newest')]);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.settle();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Load older notifications'));
+    await tester.pump();
+    harness.settle();
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('removed with it'), findsOneWidget);
     expect(
-      find.textContaining('Only the latest 50 notifications'),
+      find.text(
+        'This server does not support loading older notifications yet.',
+      ),
       findsOneWidget,
     );
+    expect(find.text('Load older notifications'), findsNothing);
+    expect(harness.repository.cursors, [null, 'cursor-newest']);
+  });
+
+  testWidgets('a failed older-page request keeps rows and can be retried', (
+    tester,
+  ) async {
+    final harness = _Harness(rows: [_notification(id: 'newest')]);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.settle();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Load older notifications'));
+    await tester.pump();
+    harness.repository.failure = const Failure(
+      '无法连接到网络，请检查网络设置',
+      kind: FailureKind.network,
+      code: 'network.unavailable',
+    );
+    harness.settle();
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('removed with it'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+
+    harness.repository.failure = null;
+    harness.repository.rows = [_notification(id: 'older')];
+    await tester.tap(find.text('Retry'));
+    await tester.pump();
+    harness.settle();
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('removed with it'), findsNWidgets(2));
+    expect(harness.repository.cursors, [
+      null,
+      'cursor-newest',
+      'cursor-newest',
+    ]);
   });
 
   testWidgets('marks one row read and says so', (tester) async {
@@ -244,7 +324,7 @@ void main() {
 
     expect(harness.repository.calls, contains('markRead:notification-1'));
     expect(find.text('Mark as read'), findsOneWidget);
-    expect(find.text('1 unread'), findsOneWidget);
+    expect(find.text('1 unread among loaded notifications'), findsOneWidget);
     expect(find.text('Marked as read'), findsOneWidget);
   });
 
@@ -275,7 +355,9 @@ void main() {
     final harness = _Harness();
     addTearDown(harness.dispose);
     await harness.pump(tester);
-    harness.settle(right(const []));
+    harness.settle(
+      right(const NotificationPage(items: [], nextCursor: null)),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Nothing here yet'), findsOneWidget);

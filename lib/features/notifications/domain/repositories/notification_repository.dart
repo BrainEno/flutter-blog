@@ -1,7 +1,13 @@
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/notifications/domain/entities/app_notification.dart';
+import 'package:belog/features/notifications/domain/entities/notification_page.dart';
 import 'package:fpdart/fpdart.dart';
+
+/// A cursor rejection means the API answered the inbox request but does not
+/// support the current keyset-pagination contract.
+const notificationCursorUnavailableFailureCode =
+    'notifications.cursorUnavailable';
 
 /// The signed-in account's notification inbox (`me.notifications*`).
 ///
@@ -9,10 +15,13 @@ import 'package:fpdart/fpdart.dart';
 /// and a request that started before a sign-in change must not be adopted by
 /// the account that replaced it. Nothing here is cached on disk.
 abstract interface class NotificationRepository {
-  /// Newest first. The server caps `limit` at 100 and defaults to 50.
-  Future<Either<Failure, List<AppNotification>>> list({
+  /// Reads one page newest first. The server caps `limit` at 100 and defaults
+  /// to 50; [cursor] is the opaque continuation token from the preceding page.
+  /// The response cursor is null only when the server returned an empty page.
+  Future<Either<Failure, NotificationPage>> list({
     required NowaveSessionFence fence,
     int limit = 50,
+    String? cursor,
   });
 
   /// Marks one notification read and returns the server's row.
@@ -26,7 +35,7 @@ abstract interface class NotificationRepository {
 
   /// How many notifications this account has not read yet.
   ///
-  /// Asked for by the profile menu badge, which needs one number and not a
-  /// page of rows: the list only knows the unread count of the newest 50.
+  /// Asked for by the profile menu badge, which needs the whole-inbox count
+  /// rather than the subset of rows currently loaded in the inbox view.
   Future<Either<Failure, int>> unreadCount({required NowaveSessionFence fence});
 }
