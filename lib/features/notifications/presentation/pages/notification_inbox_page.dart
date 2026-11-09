@@ -110,8 +110,7 @@ class _NotificationInboxView extends StatelessWidget {
           final showSummary = loaded.unreadCount > 0;
           final showPaginationFooter =
               loaded.items.isNotEmpty && !loaded.isRefreshing;
-          final extra =
-              (showSummary ? 1 : 0) + (showPaginationFooter ? 1 : 0);
+          final extra = (showSummary ? 1 : 0) + (showPaginationFooter ? 1 : 0);
           return RefreshIndicator(
             onRefresh: () =>
                 context.read<NotificationInboxCubit>().load(showLoading: false),

@@ -264,10 +264,7 @@ void main() {
     () async {
       await pumpCubit(
         rows: {
-          'user-a': [
-            _notification(id: 'newest'),
-            _notification(id: 'older'),
-          ],
+          'user-a': [_notification(id: 'newest'), _notification(id: 'older')],
         },
       );
 
@@ -282,7 +279,11 @@ void main() {
   test(
     'a cursor rejection stops retrying without dropping loaded rows',
     () async {
-      await pumpCubit(rows: {'user-a': [_notification(id: 'newest')]});
+      await pumpCubit(
+        rows: {
+          'user-a': [_notification(id: 'newest')],
+        },
+      );
       repository.listFailure = const Failure(
         'The server rejected notification pagination.',
         kind: FailureKind.server,
@@ -299,7 +300,11 @@ void main() {
   );
 
   test('a failed older-page request keeps its cursor for retry', () async {
-    await pumpCubit(rows: {'user-a': [_notification(id: 'newest')]});
+    await pumpCubit(
+      rows: {
+        'user-a': [_notification(id: 'newest')],
+      },
+    );
     repository.listFailure = _offline;
     repository.pagesByCursor['user-a'] = {
       'cursor-newest': NotificationPage(

@@ -180,20 +180,17 @@ class NotificationInboxCubit extends Cubit<NotificationInboxState> {
     if (isClosed || !_stillCurrent(fence) || generation != _pageGeneration) {
       return;
     }
-    result.fold(
-      (failure) => emit(NotificationInboxFailure(failure)),
-      (page) {
-        _nextCursor = page.nextCursor;
-        emit(
-          NotificationInboxLoaded(
-            items: page.items,
-            hasMore: page.nextCursor != null,
-            paginationUnavailable:
-                page.items.isNotEmpty && page.nextCursor == null,
-          ),
-        );
-      },
-    );
+    result.fold((failure) => emit(NotificationInboxFailure(failure)), (page) {
+      _nextCursor = page.nextCursor;
+      emit(
+        NotificationInboxLoaded(
+          items: page.items,
+          hasMore: page.nextCursor != null,
+          paginationUnavailable:
+              page.items.isNotEmpty && page.nextCursor == null,
+        ),
+      );
+    });
   }
 
   /// Loads the next older page. Empty arrays are the API's end-of-inbox signal.
@@ -219,20 +216,13 @@ class NotificationInboxCubit extends Cubit<NotificationInboxState> {
     }
 
     final generation = _pageGeneration;
-    emit(
-      current.copyWith(
-        isLoadingMore: true,
-        clearLoadMoreFailure: true,
-      ),
-    );
+    emit(current.copyWith(isLoadingMore: true, clearLoadMoreFailure: true));
     final result = await repository.list(
       fence: fence,
       limit: pageLimit,
       cursor: cursor,
     );
-    if (isClosed ||
-        !_stillCurrent(fence) ||
-        generation != _pageGeneration) {
+    if (isClosed || !_stillCurrent(fence) || generation != _pageGeneration) {
       return;
     }
     final latest = state;

@@ -135,9 +135,7 @@ void main() {
         _Auth(),
         MockClient((request) async {
           seen.add(request);
-          return _data([
-            _row(id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
-          ]);
+          return _data([_row(id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')]);
         }),
       );
 

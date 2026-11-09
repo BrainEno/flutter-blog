@@ -150,9 +150,7 @@ class _Harness {
     );
     for (final queue in repository.queues) {
       if (queue.isCompleted) continue;
-      queue.complete(
-        result ?? (failure != null ? left(failure) : right(page)),
-      );
+      queue.complete(result ?? (failure != null ? left(failure) : right(page)));
     }
   }
 
@@ -355,9 +353,7 @@ void main() {
     final harness = _Harness();
     addTearDown(harness.dispose);
     await harness.pump(tester);
-    harness.settle(
-      right(const NotificationPage(items: [], nextCursor: null)),
-    );
+    harness.settle(right(const NotificationPage(items: [], nextCursor: null)));
     await tester.pumpAndSettle();
 
     expect(find.text('Nothing here yet'), findsOneWidget);
