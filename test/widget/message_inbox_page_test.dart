@@ -128,21 +128,20 @@ void main() {
     expect(find.text('2'), findsNothing);
   });
 
-  testWidgets(
-    'a non-creator is not offered permanent deletion',
-    (tester) async {
-      final harness = _Harness(
-        conversations: [
-          testConversation(participants: ['user-b', 'user-a']),
-        ],
-      );
-      addTearDown(harness.dispose);
-      await harness.pump(tester);
-      final l10n = lookupAppLocalizations(const Locale('en'));
+  testWidgets('a non-creator is not offered permanent deletion', (
+    tester,
+  ) async {
+    final harness = _Harness(
+      conversations: [
+        testConversation(participants: ['user-b', 'user-a']),
+      ],
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = lookupAppLocalizations(const Locale('en'));
 
-      expect(find.byTooltip(l10n.messagesActions), findsNothing);
-    },
-  );
+    expect(find.byTooltip(l10n.messagesActions), findsNothing);
+  });
 
   testWidgets('a name the server did not give is stated, not faked', (
     tester,

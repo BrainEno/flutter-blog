@@ -155,24 +155,21 @@ void main() {
     expect(state.conversations.single.id, 'new-conversation');
   });
 
-  test(
-    'only the creator can delete, and a refusal makes no request',
-    () async {
-      repository.conversationsResult = [
-        testConversation(participants: ['user-b', 'user-a']),
-      ];
-      final harness = await pumpInbox();
+  test('only the creator can delete, and a refusal makes no request', () async {
+    repository.conversationsResult = [
+      testConversation(participants: ['user-b', 'user-a']),
+    ];
+    final harness = await pumpInbox();
 
-      final result = await harness.cubit.deleteConversation('conversation-1');
+    final result = await harness.cubit.deleteConversation('conversation-1');
 
-      expect(
-        result.fold((failure) => failure.code, (_) => null),
-        'messages.deleteForbidden',
-      );
-      expect(repository.deletedConversationIds, isEmpty);
-      expect(_loaded(harness.cubit).conversations, hasLength(1));
-    },
-  );
+    expect(
+      result.fold((failure) => failure.code, (_) => null),
+      'messages.deleteForbidden',
+    );
+    expect(repository.deletedConversationIds, isEmpty);
+    expect(_loaded(harness.cubit).conversations, hasLength(1));
+  });
 
   test(
     'a confirmed delete removes the row and filters stale list reads',
@@ -191,18 +188,16 @@ void main() {
       expect(result.fold((_) => null, (deleted) => deleted), isTrue);
       expect(repository.deletedConversationIds, ['conversation-1']);
       expect(repository.fences.last.userId, 'user-a');
-      expect(
-        _loaded(harness.cubit).conversations.map((row) => row.id),
-        ['conversation-2'],
-      );
+      expect(_loaded(harness.cubit).conversations.map((row) => row.id), [
+        'conversation-2',
+      ]);
       expect(_loaded(harness.cubit).deletingConversationId, isNull);
 
       // The next inbox refresh cannot restore the deleted row.
       await harness.cubit.load(showLoading: false);
-      expect(
-        _loaded(harness.cubit).conversations.map((row) => row.id),
-        ['conversation-2'],
-      );
+      expect(_loaded(harness.cubit).conversations.map((row) => row.id), [
+        'conversation-2',
+      ]);
     },
   );
 

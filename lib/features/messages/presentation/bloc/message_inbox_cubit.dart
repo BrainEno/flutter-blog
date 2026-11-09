@@ -169,21 +169,19 @@ class MessageInboxCubit extends Cubit<MessageInboxState> {
       limit: pageLimit,
     );
     if (isClosed || !_stillCurrent(fence)) return;
-    final state = result.fold<MessageInboxState>(
-      MessageInboxFailure.new,
-      (rows) {
-        final deleted =
-            _deletedConversationIdsByViewer[fence.userId] ?? const <String>{};
-        return MessageInboxLoaded(
-          viewerId: fence.userId,
-          conversations: rows
-              .where((row) => !deleted.contains(row.id))
-              .toList(growable: false),
-          deletingConversationId:
-              _deletingConversationByViewer[fence.userId],
-        );
-      },
-    );
+    final state = result.fold<MessageInboxState>(MessageInboxFailure.new, (
+      rows,
+    ) {
+      final deleted =
+          _deletedConversationIdsByViewer[fence.userId] ?? const <String>{};
+      return MessageInboxLoaded(
+        viewerId: fence.userId,
+        conversations: rows
+            .where((row) => !deleted.contains(row.id))
+            .toList(growable: false),
+        deletingConversationId: _deletingConversationByViewer[fence.userId],
+      );
+    });
     emit(state);
     if (state is! MessageInboxLoaded) return;
 
