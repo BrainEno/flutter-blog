@@ -5,6 +5,8 @@ import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/notifications/data/repositories/notification_repository_impl.dart';
 import 'package:belog/features/notifications/domain/entities/app_notification.dart';
+import 'package:belog/features/notifications/domain/entities/notification_page.dart';
+import 'package:belog/features/notifications/domain/repositories/notification_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:http/http.dart' as http;
@@ -81,9 +83,9 @@ void main() {
       MockClient((request) async {
         seen.add(request);
         return _data([
-          _row(),
+          _row(id: '11111111-1111-4111-8111-111111111111'),
           _row(
-            id: 'notification-2',
+            id: '22222222-2222-4222-8222-222222222222',
             payload: const {
               'type': 'article.deleted',
               'articleId': 'article-9',
@@ -95,7 +97,8 @@ void main() {
     );
 
     final result = await repository.list(fence: _fence);
-    final items = result.fold<List<AppNotification>?>((_) => null, (v) => v)!;
+    final page = result.fold<NotificationPage?>((_) => null, (value) => value)!;
+    final items = page.items;
 
     expect(seen, hasLength(1));
     expect(seen.single.method, 'GET');
@@ -103,11 +106,51 @@ void main() {
     expect(seen.single.url.queryParameters['limit'], '50');
     expect(seen.single.followRedirects, isFalse);
     expect(seen.single.headers['authorization'], 'Bearer fake-token-a');
-    expect(items.map((item) => item.id), ['notification-1', 'notification-2']);
+    expect(items.map((item) => item.id), [
+      '11111111-1111-4111-8111-111111111111',
+      '22222222-2222-4222-8222-222222222222',
+    ]);
     expect(items.first.kind, AppNotificationKind.messageReceived);
     expect(items.last.kind, AppNotificationKind.articleDeleted);
+    expect(
+      utf8.decode(base64Url.decode(base64Url.normalize(page.nextCursor!))),
+      '2026-11-05T04:30:00.000Z|22222222-2222-4222-8222-222222222222',
+    );
+    expect(page.nextCursor, isNot(contains('=')));
     expect(() => items.clear(), throwsUnsupportedError);
   });
+
+  test(
+    'sends the exact continuation cursor with the bounded page size',
+    () async {
+      final expectedCursor = base64Url
+          .encode(
+            utf8.encode(
+              '2026-11-05T04:29:00.000Z|aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            ),
+          )
+          .replaceAll('=', '');
+      final seen = <http.Request>[];
+      final repository = _repository(
+        _Auth(),
+        MockClient((request) async {
+          seen.add(request);
+          return _data([_row(id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')]);
+        }),
+      );
+
+      final result = await repository.list(
+        fence: _fence,
+        limit: 20,
+        cursor: expectedCursor,
+      );
+
+      expect(_failure(result), isNull);
+      expect(seen.single.url.queryParameters['limit'], '20');
+      expect(seen.single.url.queryParameters['cursor'], expectedCursor);
+      expect(seen.single.url.queryParameters.containsKey('offset'), isFalse);
+    },
+  );
 
   test('keeps a request below the server maximum', () async {
     final limits = <String?>[];
@@ -131,7 +174,10 @@ void main() {
 
     final result = await repository.list(fence: _fence);
 
-    expect(result.fold<List<AppNotification>?>((_) => null, (v) => v), isEmpty);
+    final page = result.fold<NotificationPage?>((_) => null, (value) => value)!;
+
+    expect(page.items, isEmpty);
+    expect(page.nextCursor, isNull);
   });
 
   for (final entry in <int, String>{
@@ -178,6 +224,58 @@ void main() {
       });
     }
   });
+
+  test('rejects rows that cannot form a backend cursor', () async {
+    final invalidResponses = <Object?>[
+      [
+        {..._row(), 'id': 'not-a-uuid'},
+      ],
+      [
+        {
+          ..._row(id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+          'createdAt': '2026-11-05T04:30:00Z',
+        },
+      ],
+    ];
+
+    for (final response in invalidResponses) {
+      final repository = _repository(
+        _Auth(),
+        MockClient((_) async => _data(response)),
+      );
+
+      expect(
+        _failure(await repository.list(fence: _fence))?.code,
+        'client.parse',
+      );
+    }
+  });
+
+  test(
+    'a cursor-only 400 is reported as an unsupported continuation',
+    () async {
+      final repository = _repository(
+        _Auth(),
+        MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'error': {
+                'code': 'BAD_USER_INPUT',
+                'message': 'Invalid cursor query parameter.',
+              },
+            }),
+            400,
+          ),
+        ),
+      );
+
+      final failure = _failure(
+        await repository.list(fence: _fence, cursor: 'a-valid-looking-cursor'),
+      );
+
+      expect(failure?.code, notificationCursorUnavailableFailureCode);
+    },
+  );
 
   test('a replaced account cannot read the old inbox', () async {
     final auth = _Auth();

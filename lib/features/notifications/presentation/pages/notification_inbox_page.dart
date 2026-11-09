@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/components/no_wave_skeleton.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
@@ -15,9 +16,10 @@ import 'package:go_router/go_router.dart';
 
 /// The signed-in account's notification inbox.
 ///
-/// The server has no push channel and this app does not poll: the list is read
-/// when the page opens, on pull-to-refresh, and when the session changes. The
-/// only write is marking read - one row or all of them.
+/// The server has no push channel and this app does not poll: the newest page is
+/// read when the page opens, on pull-to-refresh, and when the session changes;
+/// older pages are fetched only when requested. The only write is marking read -
+/// one row or all of them.
 class NotificationInboxPage extends StatelessWidget {
   const NotificationInboxPage({super.key, this.cubit});
 
@@ -75,10 +77,10 @@ class _NotificationInboxView extends StatelessWidget {
                 return const SizedBox.shrink();
               }
               if (state.unreadCount == 0) return const SizedBox.shrink();
+              final busy =
+                  state.markingAll || state.isLoadingMore || state.isRefreshing;
               return TextButton(
-                onPressed: state.markingAll
-                    ? null
-                    : () => _markAllRead(context),
+                onPressed: busy ? null : () => _markAllRead(context),
                 child: Text(context.l10n.notificationsMarkAllRead),
               );
             },
@@ -106,9 +108,9 @@ class _NotificationInboxView extends StatelessWidget {
           }
           final loaded = state as NotificationInboxLoaded;
           final showSummary = loaded.unreadCount > 0;
-          final capped =
-              loaded.items.length >= NotificationInboxCubit.pageLimit;
-          final extra = (showSummary ? 1 : 0) + (capped ? 1 : 0);
+          final showPaginationFooter =
+              loaded.items.isNotEmpty && !loaded.isRefreshing;
+          final extra = (showSummary ? 1 : 0) + (showPaginationFooter ? 1 : 0);
           return RefreshIndicator(
             onRefresh: () =>
                 context.read<NotificationInboxCubit>().load(showLoading: false),
@@ -134,9 +136,7 @@ class _NotificationInboxView extends StatelessWidget {
                         return _UnreadSummary(count: loaded.unreadCount);
                       }
                       if (row >= loaded.items.length) {
-                        return _OlderHidden(
-                          limit: NotificationInboxCubit.pageLimit,
-                        );
+                        return _NotificationPaginationFooter(state: loaded);
                       }
                       final item = loaded.items[row];
                       final conversationId = item.conversationId;
@@ -175,22 +175,64 @@ class _UnreadSummary extends StatelessWidget {
         NoWaveSpacing.small,
       ),
       child: Text(
-        context.l10n.notificationsUnreadCount(count),
+        context.l10n.notificationsLoadedUnreadCount(count),
         style: Theme.of(context).textTheme.bodySmall,
       ),
     );
   }
 }
 
-/// Shown only when the app received a full page: the server offers no cursor,
-/// so anything older than this window is genuinely not reachable yet.
-class _OlderHidden extends StatelessWidget {
-  const _OlderHidden({required this.limit});
+class _NotificationPaginationFooter extends StatelessWidget {
+  const _NotificationPaginationFooter({required this.state});
 
-  final int limit;
+  final NotificationInboxLoaded state;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final textStyle = Theme.of(context).textTheme.bodySmall;
+    final content = switch (state) {
+      _ when state.paginationUnavailable => Text(
+        l10n.notificationsCursorUnavailable,
+        textAlign: TextAlign.center,
+        style: textStyle,
+      ),
+      _ when state.isLoadingMore => NoWaveLoadingLabel(
+        label: l10n.notificationsLoadingOlder,
+        compact: true,
+      ),
+      _ when state.loadMoreFailure != null => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            localizedFailure(l10n, state.loadMoreFailure!),
+            textAlign: TextAlign.center,
+            style: textStyle,
+          ),
+          const SizedBox(height: NoWaveSpacing.small),
+          NoWaveButton(
+            label: l10n.notificationsRetry,
+            variant: NoWaveButtonVariant.secondary,
+            onPressed: state.markingAll
+                ? null
+                : () => context.read<NotificationInboxCubit>().loadMore(),
+          ),
+        ],
+      ),
+      _ when state.hasMore => NoWaveButton(
+        label: l10n.notificationsLoadOlder,
+        variant: NoWaveButtonVariant.secondary,
+        onPressed: state.markingAll
+            ? null
+            : () => context.read<NotificationInboxCubit>().loadMore(),
+      ),
+      _ => Text(
+        l10n.notificationsNoOlder,
+        textAlign: TextAlign.center,
+        style: textStyle,
+      ),
+    };
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         NoWaveSpacing.medium,
@@ -198,10 +240,7 @@ class _OlderHidden extends StatelessWidget {
         NoWaveSpacing.medium,
         NoWaveSpacing.medium,
       ),
-      child: Text(
-        context.l10n.notificationsOlderHidden(limit),
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
+      child: Center(child: content),
     );
   }
 }

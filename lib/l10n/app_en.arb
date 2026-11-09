@@ -607,9 +607,21 @@
       }
     }
   },
+  "notificationsLoadedUnreadCount": "{count} unread among loaded notifications",
+  "@notificationsLoadedUnreadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "notificationsAllRead": "All marked as read",
   "notificationsMarkedRead": "Marked as read",
   "notificationsRetry": "Retry",
+  "notificationsLoadOlder": "Load older notifications",
+  "notificationsLoadingOlder": "Loading older notifications",
+  "notificationsNoOlder": "No older notifications.",
+  "notificationsCursorUnavailable": "This server does not support loading older notifications yet.",
   "notificationArticleDeleted": "A work you commented on was deleted by its author; your comment will be removed with it on {date}.",
   "@notificationArticleDeleted": {
     "placeholders": {
@@ -621,14 +633,6 @@
   "notificationArticleDeletedNoDate": "A work you commented on was deleted by its author; your comment will be removed with it.",
   "notificationMessageReceived": "You received a private message",
   "notificationUnknown": "You have a new notification",
-  "notificationsOlderHidden": "Only the latest {limit} notifications are shown; older ones are not available yet.",
-  "@notificationsOlderHidden": {
-    "placeholders": {
-      "limit": {
-        "type": "int"
-      }
-    }
-  },
   "publishQueueResumeEditing": "Continue editing",
   "publishQueueEditEntry": "Edits a published article",
   "publishQueueResumedNotice": "Loaded from the queue. The original entry is removed once this publishes.",

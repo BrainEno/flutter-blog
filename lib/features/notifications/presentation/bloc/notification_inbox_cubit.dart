@@ -20,7 +20,7 @@ final class NotificationInboxSignedOut extends NotificationInboxState {
   const NotificationInboxSignedOut();
 }
 
-/// The list itself could not be loaded (offline, unavailable deployment, ...).
+/// The first page itself could not be loaded (offline, unavailable deployment, ...).
 final class NotificationInboxFailure extends NotificationInboxState {
   final Failure failure;
 
@@ -39,14 +39,37 @@ final class NotificationInboxLoaded extends NotificationInboxState {
   /// True while "mark all as read" is in flight.
   final bool markingAll;
 
+  /// True while a silent first-page refresh is replacing the current page walk.
+  final bool isRefreshing;
+
+  /// True while the next older page is being fetched.
+  final bool isLoadingMore;
+
+  /// Whether another cursor request may be attempted. The API has no
+  /// `hasMore` flag, so this remains true after any non-empty page until an
+  /// empty response, a refresh, or a cursor-compatibility failure.
+  final bool hasMore;
+
+  /// A retryable failure loading an older page; already loaded rows stay visible.
+  final Failure? loadMoreFailure;
+
+  /// The server ignored or rejected the cursor, so retrying it would not advance.
+  final bool paginationUnavailable;
+
   const NotificationInboxLoaded({
     required this.items,
     this.markingId,
     this.markingAll = false,
+    this.isRefreshing = false,
+    this.isLoadingMore = false,
+    this.hasMore = false,
+    this.loadMoreFailure,
+    this.paginationUnavailable = false,
   });
 
   bool get isEmpty => items.isEmpty;
 
+  /// The summary covers pages currently loaded in this view, not the full inbox.
   int get unreadCount => items.where((item) => !item.isRead).length;
 
   NotificationInboxLoaded copyWith({
@@ -54,11 +77,25 @@ final class NotificationInboxLoaded extends NotificationInboxState {
     String? markingId,
     bool clearMarkingId = false,
     bool? markingAll,
+    bool? isRefreshing,
+    bool? isLoadingMore,
+    bool? hasMore,
+    Failure? loadMoreFailure,
+    bool clearLoadMoreFailure = false,
+    bool? paginationUnavailable,
   }) {
     return NotificationInboxLoaded(
       items: items ?? this.items,
       markingId: clearMarkingId ? null : (markingId ?? this.markingId),
       markingAll: markingAll ?? this.markingAll,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      hasMore: hasMore ?? this.hasMore,
+      loadMoreFailure: clearLoadMoreFailure
+          ? null
+          : (loadMoreFailure ?? this.loadMoreFailure),
+      paginationUnavailable:
+          paginationUnavailable ?? this.paginationUnavailable,
     );
   }
 }
@@ -66,10 +103,11 @@ final class NotificationInboxLoaded extends NotificationInboxState {
 /// Reads and updates the signed-in account's notification inbox.
 ///
 /// Reading happens when the screen opens and when the user asks for it: the
-/// server has no push channel and this app does not poll. Every request carries
-/// the fence that was current when it started, and a result is dropped if the
-/// session changed while it was in flight, so a sign-in switch can never show
-/// one account's inbox to another.
+/// server has no push channel and this app does not poll. Older pages use the
+/// server's `(createdAt, id)` cursor. Every request carries the fence that was
+/// current when it started, and a result is dropped if the session or first-page
+/// generation changed while it was in flight, so one account's inbox can never
+/// be appended to another account's view.
 class NotificationInboxCubit extends Cubit<NotificationInboxState> {
   NotificationInboxCubit({required this.repository, required this.identity})
     : super(const NotificationInboxLoading()) {
@@ -79,14 +117,15 @@ class NotificationInboxCubit extends Cubit<NotificationInboxState> {
     unawaited(load());
   }
 
-  /// How many rows the inbox asks for. The server caps a page at 100 and
-  /// offers no cursor, so this is also the newest window the app can show.
+  /// Number of rows requested per page; the server accepts up to 100.
   static const int pageLimit = 50;
 
   final NotificationRepository repository;
   final NowaveSessionIdentity identity;
 
   StreamSubscription<void>? _identitySubscription;
+  String? _nextCursor;
+  int _pageGeneration = 0;
 
   /// The fence of the account this screen belongs to, or null when nobody is
   /// signed in.
@@ -106,21 +145,161 @@ class NotificationInboxCubit extends Cubit<NotificationInboxState> {
         identity.sessionGeneration == fence.generation;
   }
 
-  /// Loads the inbox. [showLoading] is false for a silent refresh, which keeps
-  /// the current list on screen instead of replacing it with a spinner.
+  /// Reloads the newest page and resets any older pages already appended.
+  /// [showLoading] is false for pull-to-refresh, which keeps the current rows on
+  /// screen while the first page is fetched again.
   Future<void> load({bool showLoading = true}) async {
+    if (!showLoading) {
+      final current = state;
+      if (current is NotificationInboxLoaded && current.markingAll) return;
+    }
+    final generation = ++_pageGeneration;
+    _nextCursor = null;
     final fence = _fence;
     if (fence == null) {
       if (!isClosed) emit(const NotificationInboxSignedOut());
       return;
     }
-    if (showLoading && !isClosed) emit(const NotificationInboxLoading());
+    if (showLoading && !isClosed) {
+      emit(const NotificationInboxLoading());
+    } else {
+      final current = state;
+      if (!isClosed && current is NotificationInboxLoaded) {
+        emit(
+          current.copyWith(
+            isRefreshing: true,
+            isLoadingMore: false,
+            hasMore: false,
+            clearLoadMoreFailure: true,
+            paginationUnavailable: false,
+          ),
+        );
+      }
+    }
     final result = await repository.list(fence: fence, limit: pageLimit);
-    if (isClosed || !_stillCurrent(fence)) return;
-    result.fold(
-      (failure) => emit(NotificationInboxFailure(failure)),
-      (items) => emit(NotificationInboxLoaded(items: items)),
+    if (isClosed || !_stillCurrent(fence) || generation != _pageGeneration) {
+      return;
+    }
+    result.fold((failure) => emit(NotificationInboxFailure(failure)), (page) {
+      _nextCursor = page.nextCursor;
+      emit(
+        NotificationInboxLoaded(
+          items: page.items,
+          hasMore: page.nextCursor != null,
+          paginationUnavailable:
+              page.items.isNotEmpty && page.nextCursor == null,
+        ),
+      );
+    });
+  }
+
+  /// Loads the next older page. Empty arrays are the API's end-of-inbox signal.
+  /// Failures keep the rows and cursor so the same request can be retried.
+  Future<void> loadMore() async {
+    final fence = _fence;
+    if (fence == null) {
+      _nextCursor = null;
+      _pageGeneration++;
+      if (!isClosed) emit(const NotificationInboxSignedOut());
+      return;
+    }
+    final current = state;
+    final cursor = _nextCursor;
+    if (current is! NotificationInboxLoaded ||
+        cursor == null ||
+        !current.hasMore ||
+        current.isRefreshing ||
+        current.isLoadingMore ||
+        current.markingAll ||
+        current.paginationUnavailable) {
+      return;
+    }
+
+    final generation = _pageGeneration;
+    emit(current.copyWith(isLoadingMore: true, clearLoadMoreFailure: true));
+    final result = await repository.list(
+      fence: fence,
+      limit: pageLimit,
+      cursor: cursor,
     );
+    if (isClosed || !_stillCurrent(fence) || generation != _pageGeneration) {
+      return;
+    }
+    final latest = state;
+    if (latest is! NotificationInboxLoaded) return;
+
+    result.fold(
+      (failure) {
+        if (failure.code == notificationCursorUnavailableFailureCode) {
+          _nextCursor = null;
+          emit(
+            latest.copyWith(
+              isLoadingMore: false,
+              hasMore: false,
+              clearLoadMoreFailure: true,
+              paginationUnavailable: true,
+            ),
+          );
+          return;
+        }
+        emit(latest.copyWith(isLoadingMore: false, loadMoreFailure: failure));
+      },
+      (page) {
+        if (page.items.isEmpty) {
+          _nextCursor = null;
+          emit(
+            latest.copyWith(
+              isLoadingMore: false,
+              hasMore: false,
+              clearLoadMoreFailure: true,
+            ),
+          );
+          return;
+        }
+
+        // Older deployments may ignore an unknown `cursor` query parameter and
+        // answer the first page again. Never append repeats or offer an endless
+        // retry loop; retain the current rows and explain the compatibility cap.
+        if (page.nextCursor == null ||
+            page.nextCursor == cursor ||
+            _containsRepeatedId(latest.items, page.items)) {
+          _nextCursor = null;
+          emit(
+            latest.copyWith(
+              isLoadingMore: false,
+              hasMore: false,
+              clearLoadMoreFailure: true,
+              paginationUnavailable: true,
+            ),
+          );
+          return;
+        }
+
+        _nextCursor = page.nextCursor;
+        emit(
+          latest.copyWith(
+            items: List<AppNotification>.unmodifiable([
+              ...latest.items,
+              ...page.items,
+            ]),
+            isLoadingMore: false,
+            hasMore: true,
+            clearLoadMoreFailure: true,
+          ),
+        );
+      },
+    );
+  }
+
+  static bool _containsRepeatedId(
+    List<AppNotification> current,
+    List<AppNotification> next,
+  ) {
+    final seen = current.map((item) => item.id).toSet();
+    for (final item in next) {
+      if (!seen.add(item.id)) return true;
+    }
+    return false;
   }
 
   /// Marks one notification read and returns the failure, or null on success.
@@ -163,7 +342,11 @@ class NotificationInboxCubit extends Cubit<NotificationInboxState> {
       return null;
     }
     final current = state;
-    if (current is! NotificationInboxLoaded || current.unreadCount == 0) {
+    if (current is! NotificationInboxLoaded ||
+        current.unreadCount == 0 ||
+        current.markingAll ||
+        current.isLoadingMore ||
+        current.isRefreshing) {
       return null;
     }
     emit(current.copyWith(markingAll: true));

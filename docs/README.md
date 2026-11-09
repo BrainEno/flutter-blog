@@ -19,8 +19,8 @@
 - [SQLite 存储](sqlite-storage.md)：schema 版本、迁移、Isar 移除与降级限制。
 - [发布队列](publish-queue.md)：离线/失败后的安全重试、幂等键、账号与后端隔离和
   已知限制。
-- [通知收件箱](notifications.md)：进页面读一次、无推送与轮询、账号围栏、已读语义、
-  服务端无分页的限制。
+- [通知收件箱](notifications.md)：按需 cursor 翻页、无推送与轮询、账号围栏、已读语义、
+  服务端 cursor 语义与旧部署兼容限制。
 - [私信](messages.md)：会话与消息游标、幂等键（建会话与发送）、显式已读、参与者名字
   解析与「暂不提供私信」的旧部署降级。
 - [账户邮箱](account-email.md)：`PUT /me/email` 的当前密码、单飞写、结果未知；

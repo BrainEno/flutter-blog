@@ -19,6 +19,7 @@ import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/notifications/domain/entities/app_notification.dart';
+import 'package:belog/features/notifications/domain/entities/notification_page.dart';
 import 'package:belog/features/notifications/domain/repositories/notification_repository.dart';
 import 'package:belog/features/notifications/presentation/bloc/notification_badge_cubit.dart';
 import 'package:belog/features/user/domain/usecases/export_user_data.dart';
@@ -80,10 +81,11 @@ class _BadgeRepository implements NotificationRepository {
   }
 
   @override
-  Future<Either<Failure, List<AppNotification>>> list({
+  Future<Either<Failure, NotificationPage>> list({
     required NowaveSessionFence fence,
     int limit = 50,
-  }) async => right(const []);
+    String? cursor,
+  }) async => right(const NotificationPage(items: [], nextCursor: null));
 
   @override
   Future<Either<Failure, AppNotification>> markRead(

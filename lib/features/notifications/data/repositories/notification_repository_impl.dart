@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/notifications/data/datasources/notification_codec.dart';
 import 'package:belog/features/notifications/domain/entities/app_notification.dart';
+import 'package:belog/features/notifications/domain/entities/notification_page.dart';
 import 'package:belog/features/notifications/domain/repositories/notification_repository.dart';
 import 'package:fpdart/fpdart.dart';
 
@@ -18,25 +21,35 @@ class NotificationRepositoryImpl implements NotificationRepository {
 
   /// The server accepts 1..100 and defaults to 50.
   static const int _kMaxLimit = 100;
+  static const int _kMaxCursorLength = 512;
+  static final RegExp _cursorTimestamp = RegExp(
+    r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$',
+  );
+  static final RegExp _cursorId = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+  );
 
   @override
-  Future<Either<Failure, List<AppNotification>>> list({
+  Future<Either<Failure, NotificationPage>> list({
     required NowaveSessionFence fence,
     int limit = 50,
+    String? cursor,
   }) async {
     var bounded = limit;
     if (bounded < 1) bounded = 1;
     if (bounded > _kMaxLimit) bounded = _kMaxLimit;
+    final query = <String, String>{'limit': '$bounded'};
+    if (cursor != null) query['cursor'] = cursor;
     try {
       final data = await client.getJson(
         '/me/notifications',
-        query: {'limit': '$bounded'},
+        query: query,
         sessionFence: fence,
         followRedirects: false,
       );
-      return right(_parseList(data, bounded));
+      return right(_parsePage(data, bounded));
     } catch (error) {
-      return left(_failureOf(error));
+      return left(_failureOf(error, cursorRequest: cursor != null));
     }
   }
 
@@ -103,17 +116,54 @@ class NotificationRepositoryImpl implements NotificationRepository {
     }
   }
 
-  List<AppNotification> _parseList(dynamic data, int limit) {
+  NotificationPage _parsePage(dynamic data, int limit) {
     if (data is! List || data.length > limit) {
       throw const FormatException('Invalid notification list');
     }
-    return List.unmodifiable(data.map(notificationFromRow));
+    final items = List<AppNotification>.unmodifiable(
+      data.map(notificationFromRow),
+    );
+    if (data.isEmpty) return NotificationPage(items: items, nextCursor: null);
+
+    // Preserve the timestamp exactly as it arrived. The backend compares this
+    // millisecond ISO string against its indexed `(created_at, id)` key; parsing
+    // and formatting it through DateTime would make the cursor depend on local
+    // timezone or precision rules.
+    final last = data.last;
+    if (last is! Map<String, dynamic>) {
+      throw const FormatException('Invalid notification cursor row');
+    }
+    final createdAt = last['createdAt'];
+    final id = last['id'];
+    if (createdAt is! String ||
+        !_cursorTimestamp.hasMatch(createdAt) ||
+        DateTime.tryParse(createdAt) == null ||
+        id is! String ||
+        !_cursorId.hasMatch(id)) {
+      throw const FormatException('Invalid notification cursor row');
+    }
+    final cursor = base64Url
+        .encode(utf8.encode('$createdAt|$id'))
+        .replaceAll('=', '');
+    if (cursor.isEmpty || cursor.length > _kMaxCursorLength) {
+      throw const FormatException('Invalid notification cursor');
+    }
+    return NotificationPage(items: items, nextCursor: cursor);
   }
 
   /// Deployments that predate the inbox answer 404/405; that is an honest
-  /// "unavailable", not a broken request.
-  Failure _failureOf(Object error) {
+  /// "unavailable", not a broken request. A cursor-only 400 also means this
+  /// server cannot continue the page contract; the cubit turns it into a
+  /// localized compatibility notice while keeping the rows already loaded.
+  Failure _failureOf(Object error, {bool cursorRequest = false}) {
     if (error is NowaveApiException) {
+      if (cursorRequest && error.statusCode == 400) {
+        return const Failure(
+          'The server rejected notification pagination.',
+          kind: FailureKind.server,
+          code: notificationCursorUnavailableFailureCode,
+        );
+      }
       if (error.statusCode == 404 || error.statusCode == 405) {
         return const Failure(
           '此服务器暂不提供通知',
