@@ -128,6 +128,22 @@ void main() {
     expect(find.text('2'), findsNothing);
   });
 
+  testWidgets(
+    'a non-creator is not offered permanent deletion',
+    (tester) async {
+      final harness = _Harness(
+        conversations: [
+          testConversation(participants: ['user-b', 'user-a']),
+        ],
+      );
+      addTearDown(harness.dispose);
+      await harness.pump(tester);
+      final l10n = lookupAppLocalizations(const Locale('en'));
+
+      expect(find.byTooltip(l10n.messagesActions), findsNothing);
+    },
+  );
+
   testWidgets('a name the server did not give is stated, not faked', (
     tester,
   ) async {
@@ -179,6 +195,69 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('thread: conversation-7'), findsOneWidget);
+  });
+
+  testWidgets('cancel keeps a destructive conversation delete untouched', (
+    tester,
+  ) async {
+    final harness = _Harness(conversations: [testConversation()]);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = lookupAppLocalizations(const Locale('en'));
+
+    await tester.tap(find.byTooltip(l10n.messagesActions));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.messagesDeleteAction));
+    await tester.pumpAndSettle();
+
+    expect(find.text(l10n.messagesDeleteTitle), findsOneWidget);
+    expect(find.text(l10n.messagesDeleteBody), findsOneWidget);
+    await tester.tap(find.text(l10n.actionCancel));
+    await tester.pumpAndSettle();
+
+    expect(harness.repository.deletedConversationIds, isEmpty);
+    expect(find.text('读者乙'), findsOneWidget);
+  });
+
+  testWidgets('confirmed delete removes the row after the server agrees', (
+    tester,
+  ) async {
+    final harness = _Harness(conversations: [testConversation()]);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = lookupAppLocalizations(const Locale('en'));
+
+    await tester.tap(find.byTooltip(l10n.messagesActions));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.messagesDeleteAction));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.actionDelete));
+    await tester.pumpAndSettle();
+
+    expect(harness.repository.deletedConversationIds, ['conversation-1']);
+    expect(find.text('读者乙'), findsNothing);
+    expect(find.text(l10n.messagesDeleted), findsOneWidget);
+  });
+
+  testWidgets('an unknown delete outcome keeps the row and advises refresh', (
+    tester,
+  ) async {
+    final harness = _Harness(conversations: [testConversation()]);
+    harness.repository.deleteConversationFailure = testOffline;
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = lookupAppLocalizations(const Locale('en'));
+
+    await tester.tap(find.byTooltip(l10n.messagesActions));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.messagesDeleteAction));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.actionDelete));
+    await tester.pumpAndSettle();
+
+    expect(find.text('读者乙'), findsOneWidget);
+    expect(find.text(l10n.messagesDeleteOutcomeUnknown), findsOneWidget);
+    expect(harness.repository.deletedConversationIds, ['conversation-1']);
   });
 
   testWidgets('an author page recipient with a thread goes straight there', (

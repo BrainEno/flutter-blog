@@ -155,6 +155,140 @@ void main() {
     expect(state.conversations.single.id, 'new-conversation');
   });
 
+  test(
+    'only the creator can delete, and a refusal makes no request',
+    () async {
+      repository.conversationsResult = [
+        testConversation(participants: ['user-b', 'user-a']),
+      ];
+      final harness = await pumpInbox();
+
+      final result = await harness.cubit.deleteConversation('conversation-1');
+
+      expect(
+        result.fold((failure) => failure.code, (_) => null),
+        'messages.deleteForbidden',
+      );
+      expect(repository.deletedConversationIds, isEmpty);
+      expect(_loaded(harness.cubit).conversations, hasLength(1));
+    },
+  );
+
+  test(
+    'a confirmed delete removes the row and filters stale list reads',
+    () async {
+      repository.conversationsResult = [
+        testConversation(),
+        testConversation(
+          id: 'conversation-2',
+          participants: ['user-a', 'user-c'],
+        ),
+      ];
+      final harness = await pumpInbox();
+
+      final result = await harness.cubit.deleteConversation('conversation-1');
+
+      expect(result.fold((_) => null, (deleted) => deleted), isTrue);
+      expect(repository.deletedConversationIds, ['conversation-1']);
+      expect(repository.fences.last.userId, 'user-a');
+      expect(
+        _loaded(harness.cubit).conversations.map((row) => row.id),
+        ['conversation-2'],
+      );
+      expect(_loaded(harness.cubit).deletingConversationId, isNull);
+
+      // The next inbox refresh cannot restore the deleted row.
+      await harness.cubit.load(showLoading: false);
+      expect(
+        _loaded(harness.cubit).conversations.map((row) => row.id),
+        ['conversation-2'],
+      );
+    },
+  );
+
+  test('a false delete response leaves reconciliation to the inbox', () async {
+    repository.conversationsResult = [testConversation()];
+    repository.deleteConversationResult = false;
+    final harness = await pumpInbox();
+
+    final result = await harness.cubit.deleteConversation('conversation-1');
+
+    expect(result.fold((_) => null, (deleted) => deleted), isFalse);
+    expect(_loaded(harness.cubit).conversations, hasLength(1));
+    expect(_loaded(harness.cubit).deletingConversationId, isNull);
+  });
+
+  test(
+    'a failed delete retains the row and clears its in-flight marker',
+    () async {
+      repository.conversationsResult = [testConversation()];
+      repository.deleteConversationFailure = testOffline;
+      final harness = await pumpInbox();
+
+      final result = await harness.cubit.deleteConversation('conversation-1');
+
+      expect(
+        result.fold((failure) => failure.code, (_) => null),
+        'network.unavailable',
+      );
+      expect(_loaded(harness.cubit).conversations, hasLength(1));
+      expect(_loaded(harness.cubit).deletingConversationId, isNull);
+    },
+  );
+
+  test(
+    'refresh cannot start a second delete while the first is in flight',
+    () async {
+      repository.conversationsResult = [testConversation()];
+      final gate = Completer<void>();
+      repository.deleteConversationGate = gate;
+      final harness = await pumpInbox();
+
+      final pending = harness.cubit.deleteConversation('conversation-1');
+      await _settle();
+      await harness.cubit.load(showLoading: false);
+      expect(_loaded(harness.cubit).deletingConversationId, 'conversation-1');
+
+      final second = await harness.cubit.deleteConversation('conversation-1');
+      expect(
+        second.fold((failure) => failure.code, (_) => null),
+        'messages.deleteInProgress',
+      );
+      expect(repository.deletedConversationIds, ['conversation-1']);
+
+      gate.complete();
+      await pending;
+      expect(_loaded(harness.cubit).conversations, isEmpty);
+    },
+  );
+
+  test(
+    'a delete response from an old account does not update the new inbox',
+    () async {
+      repository.conversationsResult = [testConversation()];
+      final gate = Completer<void>();
+      repository.deleteConversationGate = gate;
+      final harness = await pumpInbox();
+
+      final pending = harness.cubit.deleteConversation('conversation-1');
+      await _settle();
+      expect(_loaded(harness.cubit).deletingConversationId, 'conversation-1');
+
+      harness.identity.replace('user-b');
+      await _settle();
+      await _settle();
+      gate.complete();
+      final result = await pending;
+
+      expect(
+        result.fold((failure) => failure.code, (_) => null),
+        'auth.sessionChanged',
+      );
+      expect(_loaded(harness.cubit).viewerId, 'user-b');
+      expect(_loaded(harness.cubit).conversations, hasLength(1));
+    },
+  );
+
   test('a conversation that already exists with someone is reused', () async {
     repository.conversationsResult = [
       testConversation(id: 'existing'),

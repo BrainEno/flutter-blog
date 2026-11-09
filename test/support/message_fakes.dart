@@ -101,10 +101,12 @@ class FakeMessageRepository implements MessageRepository {
   Failure? conversationFailure;
   Failure? messagesFailure;
   Failure? markReadFailure;
+  Failure? deleteConversationFailure;
   Failure? startFailure;
   Failure? sendFailure;
 
   bool markReadResult = true;
+  bool deleteConversationResult = true;
   Conversation? startResult;
   ConversationMessage? sendResult;
 
@@ -117,6 +119,7 @@ class FakeMessageRepository implements MessageRepository {
 
   final List<String> calls = [];
   final List<NowaveSessionFence> fences = [];
+  final List<String> deletedConversationIds = [];
   final List<({String recipient, String key})> startRequests = [];
   final List<({String body, String key})> sendRequests = [];
   final List<String?> beforeCursors = [];
@@ -124,6 +127,7 @@ class FakeMessageRepository implements MessageRepository {
   /// When set, `conversations()` waits for it before answering, so a test can
   /// switch accounts while the request is in flight.
   Completer<void>? conversationsGate;
+  Completer<void>? deleteConversationGate;
 
   @override
   Future<Either<Failure, List<Conversation>>> conversations({
@@ -183,6 +187,21 @@ class FakeMessageRepository implements MessageRepository {
     final failure = markReadFailure;
     if (failure != null) return left(failure);
     return right(markReadResult);
+  }
+
+  @override
+  Future<Either<Failure, bool>> deleteConversation(
+    String conversationId, {
+    required NowaveSessionFence fence,
+  }) async {
+    calls.add('delete:$conversationId');
+    fences.add(fence);
+    deletedConversationIds.add(conversationId);
+    final gate = deleteConversationGate;
+    if (gate != null) await gate.future;
+    final failure = deleteConversationFailure;
+    if (failure != null) return left(failure);
+    return right(deleteConversationResult);
   }
 
   @override

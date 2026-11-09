@@ -1,5 +1,6 @@
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
 import 'package:belog/core/design/components/no_wave_skeleton.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -125,6 +126,50 @@ class _MessageInboxViewState extends State<_MessageInboxView> {
     );
   }
 
+  Future<void> _deleteConversation(Conversation conversation) async {
+    final l10n = context.l10n;
+    final confirmed = await showNoWaveConfirmDialog(
+      context,
+      title: l10n.messagesDeleteTitle,
+      message: l10n.messagesDeleteBody,
+      cancelLabel: l10n.actionCancel,
+      confirmLabel: l10n.actionDelete,
+    );
+    if (!confirmed || !mounted) return;
+
+    final cubit = context.read<MessageInboxCubit>();
+    final result = await cubit.deleteConversation(conversation.id);
+    if (!mounted) return;
+    await result.fold<Future<void>>(
+      (failure) async {
+        const uncertainCodes = {
+          'network.unavailable',
+          'network.timeout',
+          'auth.sessionChanged',
+          'server.error',
+          'server.SERVICE_UNAVAILABLE',
+          'client.parse',
+          'unknown',
+        };
+        showSnackBar(
+          context,
+          uncertainCodes.contains(failure.code)
+              ? l10n.messagesDeleteOutcomeUnknown
+              : localizedFailure(l10n, failure),
+        );
+      },
+      (deleted) async {
+        if (deleted) {
+          showSnackBar(context, l10n.messagesDeleted);
+          return;
+        }
+        await cubit.load(showLoading: false);
+        if (!mounted) return;
+        showSnackBar(context, l10n.messagesDeleteAlreadyGone);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -208,7 +253,9 @@ class _MessageInboxViewState extends State<_MessageInboxView> {
                         conversation: conversation,
                         viewerId: loaded.viewerId,
                         participants: loaded.participants,
+                        deleting: loaded.deletingConversationId != null,
                         onTap: () => _openThread(conversation.id),
+                        onDelete: () => _deleteConversation(conversation),
                       );
                     },
                   ),
@@ -275,13 +322,17 @@ class _ConversationRow extends StatelessWidget {
     required this.conversation,
     required this.viewerId,
     required this.participants,
+    required this.deleting,
     required this.onTap,
+    required this.onDelete,
   });
 
   final Conversation conversation;
   final String viewerId;
   final Map<String, MessageParticipant> participants;
+  final bool deleting;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   String _names(BuildContext context) {
     final l10n = context.l10n;
@@ -385,6 +436,22 @@ class _ConversationRow extends StatelessWidget {
               const SizedBox(width: NoWaveSpacing.small),
               _UnreadPill(count: conversation.unreadCount),
             ],
+            if (conversation.createdBy == viewerId)
+              PopupMenuButton<String>(
+                tooltip: deleting
+                    ? l10n.messagesDeleting
+                    : l10n.messagesActions,
+                enabled: !deleting,
+                onSelected: (action) {
+                  if (action == 'delete') onDelete();
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem<String>(
+                    value: 'delete',
+                    child: Text(l10n.messagesDeleteAction),
+                  ),
+                ],
+              ),
           ],
         ),
       ),

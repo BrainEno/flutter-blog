@@ -26,8 +26,8 @@ class Conversation {
   /// How many messages *this* member has not read yet. `0` is a real answer.
   final int unreadCount;
 
-  /// The member who opened the conversation; only that member may change the
-  /// participant list (a capability this build does not use yet).
+  /// The member who opened the conversation; only that member may manage
+  /// participants or permanently delete the conversation.
   final String? createdBy;
 
   final DateTime? createdAt;

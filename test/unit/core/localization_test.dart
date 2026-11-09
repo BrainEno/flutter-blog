@@ -77,6 +77,34 @@ void main() {
     },
   );
 
+  test('conversation deletion copy makes the global effect explicit', () {
+    expect(zh.messagesDeleteBody, contains('所有参与者'));
+    expect(zh.messagesDeleteBody, contains('无法撤销'));
+    expect(en.messagesDeleteBody, contains('every participant'));
+    expect(en.messagesDeleteBody, contains('cannot be undone'));
+    expect(
+      localizedFailure(
+        zh,
+        const Failure('fallback', code: 'messages.deleteForbidden'),
+      ),
+      zh.messagesDeleteForbidden,
+    );
+    expect(
+      localizedFailure(
+        en,
+        const Failure('fallback', code: 'messages.deleteUnavailable'),
+      ),
+      en.messagesDeleteUnavailable,
+    );
+    expect(
+      localizedFailure(
+        zh,
+        const Failure('fallback', code: 'messages.deleteInProgress'),
+      ),
+      zh.messagesDeleteInProgress,
+    );
+  });
+
   test(
     'locale resolution preserves English regions and uses Simplified Chinese',
     () {

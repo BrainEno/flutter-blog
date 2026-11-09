@@ -11,9 +11,9 @@ import 'package:fpdart/fpdart.dart';
 /// The no-wave conversation API.
 ///
 /// The fence goes to the HTTP client on every call, so a 401 cannot be replayed
-/// as a different account, and private reads do not follow redirects (a bearer
-/// token must not be forwarded to wherever a 3xx points). Nothing is cached or
-/// logged; a conversation is read from the server or not at all.
+/// as a different account, and private requests do not follow redirects (a
+/// bearer token must not be forwarded to wherever a 3xx points). Nothing is
+/// cached or logged; conversations are read from or changed on the server.
 class MessageRepositoryImpl implements MessageRepository {
   const MessageRepositoryImpl(this.client);
 
@@ -127,6 +127,30 @@ class MessageRepositoryImpl implements MessageRepository {
       return right(data);
     } catch (error) {
       return left(_failureOf(error, conversationScoped: true));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> deleteConversation(
+    String conversationId, {
+    required NowaveSessionFence fence,
+  }) async {
+    final invalid = _invalidConversationId(conversationId);
+    if (invalid != null) return left(invalid);
+    try {
+      final data = await client.deleteJson(
+        '/conversations/${Uri.encodeComponent(conversationId)}',
+        sessionFence: fence,
+        followRedirects: false,
+      );
+      if (data is! bool) {
+        // The route returns false when another actor already removed it; only
+        // an explicit true confirms this request permanently deleted it.
+        throw const FormatException('Invalid conversation deletion result');
+      }
+      return right(data);
+    } catch (error) {
+      return left(_failureOf(error, deletingConversation: true));
     }
   }
 
@@ -245,7 +269,11 @@ class MessageRepositoryImpl implements MessageRepository {
   /// conversation endpoint, which the server also uses for "no such
   /// conversation") from "this deployment has no conversations at all" (404 on
   /// the collection endpoints).
-  Failure _failureOf(Object error, {bool conversationScoped = false}) {
+  Failure _failureOf(
+    Object error, {
+    bool conversationScoped = false,
+    bool deletingConversation = false,
+  }) {
     if (error is NowaveApiException) {
       if (error.code == 'SESSION_CHANGED') {
         // The account moved under this request. That is the caller's fence to
@@ -262,13 +290,28 @@ class MessageRepositoryImpl implements MessageRepository {
         );
       }
       if (error.statusCode == 403) {
-        return const Failure(
-          '你没有权限查看这个会话',
-          kind: FailureKind.permission,
-          code: 'messages.forbidden',
-        );
+        return deletingConversation
+            ? const Failure(
+                '只有会话创建者可以删除这个会话',
+                kind: FailureKind.permission,
+                code: 'messages.deleteForbidden',
+              )
+            : const Failure(
+                '你没有权限查看这个会话',
+                kind: FailureKind.permission,
+                code: 'messages.forbidden',
+              );
       }
       if (error.statusCode == 404) {
+        if (deletingConversation) {
+          // The current API returns data:false for a missing conversation, so
+          // an HTTP 404 on DELETE means this deployment lacks the route.
+          return const Failure(
+            '此服务器暂不支持删除会话',
+            kind: FailureKind.server,
+            code: 'messages.deleteUnavailable',
+          );
+        }
         return conversationScoped
             ? const Failure(
                 '会话不存在，或你不属于这个会话',
@@ -284,11 +327,17 @@ class MessageRepositoryImpl implements MessageRepository {
       if (error.statusCode == 405) {
         // The method/route shape is not supported: an older deployment, not a
         // missing conversation.
-        return const Failure(
-          '此服务器暂不提供私信',
-          kind: FailureKind.server,
-          code: 'messages.unavailable',
-        );
+        return deletingConversation
+            ? const Failure(
+                '此服务器暂不支持删除会话',
+                kind: FailureKind.server,
+                code: 'messages.deleteUnavailable',
+              )
+            : const Failure(
+                '此服务器暂不提供私信',
+                kind: FailureKind.server,
+                code: 'messages.unavailable',
+              );
       }
       if (error.statusCode == 401) {
         return const Failure(

@@ -1,7 +1,7 @@
 # 私信（会话）
 
 私信只有服务端一个来源：no-wave 的 `conversations*` REST 接口。**没有推送，也没有
-轮询**：客户端能做的是「进页面读一次」，加上下拉刷新和明确的「全部已读」动作。
+轮询**：客户端能做的是「进页面读一次」，加上下拉刷新、明确的「全部已读」动作和仅创建者可用的删除会话。
 
 ## 与服务器的契约
 
@@ -11,6 +11,7 @@
 | `GET /conversations/{id}` | 打开会话页时读表头：参与者、未读数、最后一条 |
 | `GET /conversations/{id}/messages?limit=&before=` | 消息页（最新一页 100 条，oldest first）；`before` 是屏上最旧一条的 id |
 | `PUT /conversations/{id}/read` | 显式「标为已读」；无游标，服务端一次性把它已收到的全部标为已读 |
+| `DELETE /conversations/{id}` | 仅创建者可用；永久删除整个会话（含所有消息、参与者、相关通知及 outbox 事件），`{data:true}` 表示本次删除，`{data:false}` 表示此前已不存在 |
 | `POST /conversations` | 新建会话，body `{participantIds:[recipientId]}`，**必须**带 `Idempotency-Key` |
 | `POST /conversations/{id}/messages` | 发送，body `{body}`，**必须**带 `Idempotency-Key` |
 
@@ -39,6 +40,12 @@ unreadCount, lastMessage?}`，一行消息形如
 - **已读是显式动作。** 会话页顶部只在有未读时出现一条横幅，说明服务端会把**截至
   此刻收到的全部消息**标为已读（包括本机还没加载出来的部分），用户点了才写。
   只有服务端明确回 `{data: true}` 才把未读数清零并显示「已标为已读」。
+- **删除仅对创建者开放，且是全局永久删除。** 这不是只隐藏自己的收件箱：服务端会
+  删除会话、所有消息、参与者记录及相关通知/outbox 事件，其他参与者也无法再访问。
+  入口只向创建者显示；提交前弹出说明全体影响且不可撤销的破坏性确认，只有服务端回
+  `true` 后才从本机列表移除。回 `false` 表示会话此前已不存在，客户端刷新收件箱；
+  网络/超时/无效响应等无法确认结果时不自动重试，并提示先刷新再决定是否重试。
+  旧部署对 DELETE 回 404/405 时显示服务器暂不支持，而不误报为「会话不存在」。
 - **发送不产生重复消息。** 见下节。
 
 ## 幂等键
@@ -78,7 +85,6 @@ unreadCount, lastMessage?}`，一行消息形如
 ## 已知限制
 
 - 收件箱没有游标：只有最近 50 个会话，占满一页时界面说明更早的会话不可见。
-- 会话参与者的增删（`addUserIds`/`removeUserIds`）与删除会话（`DELETE
-  /conversations/{id}`）本版未接入。
+- 会话参与者的增删（`addUserIds`/`removeUserIds`）本版未接入。
 - 没有推送，也没有未读角标：未读数只在收件箱与会话页里按读取时的状态显示。
 - 服务端会话 id 在 Web 代理侧按 UUID 校验；Flutter 直连 API，不依赖该约束。
