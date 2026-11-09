@@ -9,8 +9,8 @@ enum AppNotificationKind {
   /// it, and [AppNotification.purgesAt] is the date the sweep runs.
   articleDeleted,
 
-  /// Another participant sent a private message. The app has no conversation
-  /// screen yet, so the row states what happened without pretending to open it.
+  /// Another participant sent a private message. The inbox offers a link to
+  /// the conversation when the notification includes its id.
   messageReceived,
 
   /// An event type this build does not know (or a payload it cannot read).

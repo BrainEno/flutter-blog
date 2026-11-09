@@ -186,6 +186,22 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Chinese private-message notification offers its conversation', (
+    tester,
+  ) async {
+    final harness = _Harness(
+      rows: [_notification(kind: AppNotificationKind.messageReceived)],
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester, locale: const Locale('zh'));
+    harness.settle();
+    await tester.pumpAndSettle();
+
+    expect(find.text('收到一条新的私信'), findsOneWidget);
+    expect(find.text('打开会话'), findsOneWidget);
+    expect(find.textContaining('暂不支持查看会话'), findsNothing);
+  });
+
   testWidgets('a full page says that older notifications are hidden', (
     tester,
   ) async {
