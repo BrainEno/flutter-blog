@@ -125,6 +125,21 @@ void main() {
     );
   });
 
+  test('living docs describe the current content and avatar URL behavior', () {
+    final accessibility = File('docs/accessibility.md').readAsStringSync();
+    final readme = File('README.md').readAsStringSync();
+
+    expect(accessibility, contains('content_language.dart'));
+    expect(accessibility, contains('`zh-CN`'));
+    expect(accessibility, contains('`en`'));
+    expect(accessibility, contains('`zh-TW`'));
+    expect(accessibility, isNot(contains('请求的语言（仍是 `zh-CN`）')));
+    expect(readme, contains('`WEB_BASE_URL`'));
+    expect(readme, contains('中性占位'));
+    expect(readme, contains('不从 API origin 猜测'));
+    expect(readme, isNot(contains('站点相对头像仍待')));
+  });
+
   test('the scan reaches the documents it guards', () {
     for (final doc in living) {
       expect(File(doc).existsSync(), isTrue, reason: '$doc is missing');
