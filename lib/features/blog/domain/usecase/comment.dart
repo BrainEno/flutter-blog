@@ -1,16 +1,17 @@
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/usecase/usecase.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
+import 'package:belog/features/blog/domain/entities/comment_page.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
 import 'package:fpdart/fpdart.dart';
 
-class GetComments implements UseCase<List<Comment>, String> {
+class GetComments implements UseCase<CommentPage, String> {
   final CommentRepository commentRepository;
   const GetComments(this.commentRepository);
 
   @override
-  Future<Either<Failure, List<Comment>>> call(String slug) {
-    return commentRepository.getComments(slug);
+  Future<Either<Failure, CommentPage>> call(String slug, {String? cursor}) {
+    return commentRepository.getComments(slug, cursor: cursor);
   }
 }
 

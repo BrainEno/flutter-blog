@@ -24,6 +24,18 @@ class CommentState {
   /// Comment ids with an in-flight delete request.
   final Set<String> deletingIds;
 
+  /// True while the next page of older comments is loading.
+  final bool isLoadingMore;
+
+  /// Whether another root-comment cursor request can be made.
+  final bool hasMore;
+
+  /// Retryable failure from loading an older page; loaded comments stay visible.
+  final Failure? loadMoreFailure;
+
+  /// The deployment rejected or ignored the cursor, so continuation stopped.
+  final bool paginationUnavailable;
+
   const CommentState({
     this.status = CommentListStatus.initial,
     this.comments = const [],
@@ -31,9 +43,13 @@ class CommentState {
     this.failure,
     this.submitting = false,
     this.deletingIds = const {},
+    this.isLoadingMore = false,
+    this.hasMore = false,
+    this.loadMoreFailure,
+    this.paginationUnavailable = false,
   });
 
-  /// Total comment count including nested replies.
+  /// Count of currently loaded comments, including nested replies.
   int get totalCount => comments.fold(0, (sum, c) => sum + c.totalCount);
 
   /// Copies the state. [error] and [failure] move together: passing
@@ -47,6 +63,11 @@ class CommentState {
     Failure? failure,
     bool? submitting,
     Set<String>? deletingIds,
+    bool? isLoadingMore,
+    bool? hasMore,
+    Failure? loadMoreFailure,
+    bool clearLoadMoreFailure = false,
+    bool? paginationUnavailable,
   }) {
     return CommentState(
       status: status ?? this.status,
@@ -55,6 +76,13 @@ class CommentState {
       failure: failure ?? (error == null ? this.failure : null),
       submitting: submitting ?? this.submitting,
       deletingIds: deletingIds ?? this.deletingIds,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      hasMore: hasMore ?? this.hasMore,
+      loadMoreFailure: clearLoadMoreFailure
+          ? null
+          : (loadMoreFailure ?? this.loadMoreFailure),
+      paginationUnavailable:
+          paginationUnavailable ?? this.paginationUnavailable,
     );
   }
 }

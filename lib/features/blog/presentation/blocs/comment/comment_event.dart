@@ -7,9 +7,14 @@ sealed class CommentEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-/// (Re)loads the whole comment thread of the bloc's article.
+/// Loads or resets the first page of the bloc's article thread.
 final class CommentsRequested extends CommentEvent {
   const CommentsRequested();
+}
+
+/// Loads the next page of top-level comments for the current article.
+final class MoreCommentsRequested extends CommentEvent {
+  const MoreCommentsRequested();
 }
 
 /// Submits the composer's text as a new comment, or as a reply when

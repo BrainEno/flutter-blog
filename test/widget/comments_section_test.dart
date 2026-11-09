@@ -1,11 +1,16 @@
+import 'dart:async';
+
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
+import 'package:belog/features/blog/domain/entities/comment_page.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_bloc.dart';
+import 'package:belog/features/blog/presentation/blocs/comment/comment_event.dart';
 import 'package:belog/features/blog/presentation/widgets/comments_section.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -39,6 +44,9 @@ Comment _comment(
   createdAt: DateTime.utc(2025, 6, 1),
   replies: replies,
 );
+
+CommentPage _page(List<Comment> items, {String? cursor}) =>
+    CommentPage(items: items, nextCursor: cursor);
 
 User _user() => User(
   id: 'viewer-1',
@@ -127,13 +135,15 @@ void main() {
     tester,
   ) async {
     when(() => getComments('my-slug')).thenAnswer(
-      (_) async => right<Failure, List<Comment>>([
-        _comment(
-          'c1',
-          replies: [_comment('c2', content: '同感', parentId: 'c1')],
-        ),
-        _comment('c3', content: '沙发'),
-      ]),
+      (_) async => right<Failure, CommentPage>(
+        _page([
+          _comment(
+            'c1',
+            replies: [_comment('c2', content: '同感', parentId: 'c1')],
+          ),
+          _comment('c3', content: '沙发'),
+        ]),
+      ),
     );
 
     final bloc = buildBloc();
@@ -146,21 +156,176 @@ void main() {
     expect(find.text('同感'), findsOneWidget);
     expect(find.text('沙发'), findsOneWidget);
     // Two roots + one nested reply share the same neutral portrait component.
-    expect(find.text('3'), findsOneWidget);
+    expect(find.text('已加载 3 条'), findsOneWidget);
     expect(find.byType(NoWaveAvatar), findsNWidgets(3));
+  });
+
+  testWidgets('loads older pages and stops after a short page', (
+    tester,
+  ) async {
+    when(() => getComments('my-slug')).thenAnswer(
+      (_) async => right<Failure, CommentPage>(
+        _page([_comment('c1')], cursor: 'cursor-1'),
+      ),
+    );
+    when(
+      () => getComments('my-slug', cursor: 'cursor-1'),
+    ).thenAnswer((_) async => right<Failure, CommentPage>(_page([_comment('c2')])));
+
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+    await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
+    await tester.pumpAndSettle();
+
+    expect(find.text('已加载 1 条'), findsOneWidget);
+    expect(find.text('加载更早的评论'), findsOneWidget);
+    await tester.ensureVisible(find.text('加载更早的评论'));
+    await tester.tap(find.text('加载更早的评论'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('评论c2'), findsOneWidget);
+    expect(find.text('已加载 2 条'), findsOneWidget);
+    expect(find.text('加载更早的评论'), findsNothing);
+  });
+
+  testWidgets('pagination remains available after deleting the loaded rows', (
+    tester,
+  ) async {
+    when(() => getComments('my-slug')).thenAnswer(
+      (_) async => right<Failure, CommentPage>(
+        _page([_comment('c1')], cursor: 'cursor-1'),
+      ),
+    );
+    when(
+      () => deleteComment('c1'),
+    ).thenAnswer((_) async => right<Failure, void>(null));
+
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+    await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
+    await tester.pumpAndSettle();
+
+    bloc.add(const CommentDeleteRequested('c1'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('还没有评论，来说第一句吧'), findsOneWidget);
+    expect(find.text('加载更早的评论'), findsOneWidget);
+  });
+
+  testWidgets('a failed older page keeps rows and can be retried', (
+    tester,
+  ) async {
+    var attempts = 0;
+    when(() => getComments('my-slug')).thenAnswer(
+      (_) async => right<Failure, CommentPage>(
+        _page([_comment('c1')], cursor: 'cursor-1'),
+      ),
+    );
+    when(
+      () => getComments('my-slug', cursor: 'cursor-1'),
+    ).thenAnswer((_) async {
+      attempts++;
+      if (attempts == 1) {
+        return left<Failure, CommentPage>(
+          Failure('网络暂时不可用', code: 'network.unavailable'),
+        );
+      }
+      return right<Failure, CommentPage>(_page([_comment('c2')]));
+    });
+
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+    await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('加载更早的评论'));
+    await tester.tap(find.text('加载更早的评论'));
+    await tester.pumpAndSettle();
+    expect(find.text('评论c1'), findsOneWidget);
+    expect(find.text('重试'), findsOneWidget);
+
+    await tester.tap(find.text('重试'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('评论c2'), findsOneWidget);
+    expect(find.text('重试'), findsNothing);
+    expect(attempts, 2);
+  });
+
+  testWidgets('pagination loading uses the No Wave label', (tester) async {
+    final olderPage = Completer<Either<Failure, CommentPage>>();
+    when(() => getComments('my-slug')).thenAnswer(
+      (_) async => right<Failure, CommentPage>(
+        _page([_comment('c1')], cursor: 'cursor-1'),
+      ),
+    );
+    when(
+      () => getComments('my-slug', cursor: 'cursor-1'),
+    ).thenAnswer((_) => olderPage.future);
+
+    final bloc = buildBloc();
+    addTearDown(() async {
+      if (!olderPage.isCompleted) {
+        olderPage.complete(right<Failure, CommentPage>(_page([])));
+      }
+      await bloc.close();
+    });
+    await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('加载更早的评论'));
+    await tester.tap(find.text('加载更早的评论'));
+    await tester.pump();
+    expect(find.byType(NoWaveLoadingLabel), findsOneWidget);
+
+    olderPage.complete(right<Failure, CommentPage>(_page([_comment('c2')])));
+    await tester.pumpAndSettle();
+    expect(find.text('评论c2'), findsOneWidget);
+  });
+
+  testWidgets('a cursor-blind server shows a localized compatibility notice', (
+    tester,
+  ) async {
+    when(() => getComments('my-slug')).thenAnswer(
+      (_) async => right<Failure, CommentPage>(
+        _page([_comment('c1')], cursor: 'cursor-1'),
+      ),
+    );
+    when(
+      () => getComments('my-slug', cursor: 'cursor-1'),
+    ).thenAnswer(
+      (_) async => right<Failure, CommentPage>(
+        _page([_comment('c1')], cursor: 'cursor-1'),
+      ),
+    );
+
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+    await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('加载更早的评论'));
+    await tester.tap(find.text('加载更早的评论'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('评论c1'), findsOneWidget);
+    expect(find.text('此服务器暂不支持加载更早的评论。'), findsOneWidget);
+    expect(find.text('加载更早的评论'), findsNothing);
   });
 
   testWidgets('comment and reply portraits delegate author selection', (
     tester,
   ) async {
     when(() => getComments('my-slug')).thenAnswer(
-      (_) async => right<Failure, List<Comment>>([
-        _comment(
-          'c1',
-          authorId: 'first-author',
-          replies: [_comment('c2', authorId: 'reply-author', parentId: 'c1')],
-        ),
-      ]),
+      (_) async => right<Failure, CommentPage>(
+        _page([
+          _comment(
+            'c1',
+            authorId: 'first-author',
+            replies: [_comment('c2', authorId: 'reply-author', parentId: 'c1')],
+          ),
+        ]),
+      ),
     );
     final bloc = buildBloc();
     addTearDown(bloc.close);
@@ -194,7 +359,7 @@ void main() {
   ) async {
     when(
       () => getComments('my-slug'),
-    ).thenAnswer((_) async => right<Failure, List<Comment>>(const []));
+    ).thenAnswer((_) async => right<Failure, CommentPage>(_page(const [])));
 
     final bloc = buildBloc();
     addTearDown(bloc.close);
@@ -211,7 +376,7 @@ void main() {
   testWidgets('the login prompt routes through onRequestLogin', (tester) async {
     when(
       () => getComments('my-slug'),
-    ).thenAnswer((_) async => right<Failure, List<Comment>>(const []));
+    ).thenAnswer((_) async => right<Failure, CommentPage>(_page(const [])));
     var requested = false;
     final bloc = buildBloc();
     addTearDown(bloc.close);
@@ -247,7 +412,7 @@ void main() {
     appUserCubit.updateUser(_user());
     when(
       () => getComments('my-slug'),
-    ).thenAnswer((_) async => right<Failure, List<Comment>>(const []));
+    ).thenAnswer((_) async => right<Failure, CommentPage>(_page(const [])));
     when(() => createComment(any(that: isA<CreateCommentParams>()))).thenAnswer(
       (_) async => right<Failure, Comment>(
         _comment('c9', authorId: 'viewer-1', content: '我来抢沙发'),
@@ -279,7 +444,7 @@ void main() {
     appUserCubit.updateUser(_user());
     when(
       () => getComments('my-slug'),
-    ).thenAnswer((_) async => right<Failure, List<Comment>>([_comment('c1')]));
+    ).thenAnswer((_) async => right<Failure, CommentPage>(_page([_comment('c1')])));
     when(() => createComment(any(that: isA<CreateCommentParams>()))).thenAnswer(
       (_) async => right<Failure, Comment>(
         _comment('c2', authorId: 'viewer-1', content: '回复内容', parentId: 'c1'),
@@ -314,9 +479,9 @@ void main() {
   ) async {
     appUserCubit.updateUser(_user());
     when(() => getComments('my-slug')).thenAnswer(
-      (_) async => right<Failure, List<Comment>>([
-        _comment('c1', authorId: 'viewer-1', content: '我自己说的'),
-      ]),
+      (_) async => right<Failure, CommentPage>(
+        _page([_comment('c1', authorId: 'viewer-1', content: '我自己说的')]),
+      ),
     );
     when(
       () => deleteComment('c1'),
@@ -346,7 +511,7 @@ void main() {
   testWidgets('a failed load offers a retry', (tester) async {
     when(
       () => getComments('my-slug'),
-    ).thenAnswer((_) async => left<Failure, List<Comment>>(Failure('评论加载失败')));
+    ).thenAnswer((_) async => left<Failure, CommentPage>(Failure('评论加载失败')));
 
     final bloc = buildBloc();
     addTearDown(bloc.close);
@@ -363,7 +528,7 @@ void main() {
   ) async {
     when(
       () => getComments('my-slug'),
-    ).thenAnswer((_) async => left<Failure, List<Comment>>(Failure('评论加载失败')));
+    ).thenAnswer((_) async => left<Failure, CommentPage>(Failure('评论加载失败')));
 
     final bloc = buildBloc();
     addTearDown(bloc.close);
@@ -384,7 +549,7 @@ void main() {
   testWidgets('the empty state is localized in English too', (tester) async {
     when(
       () => getComments('my-slug'),
-    ).thenAnswer((_) async => right<Failure, List<Comment>>(const []));
+    ).thenAnswer((_) async => right<Failure, CommentPage>(_page(const [])));
 
     final bloc = buildBloc();
     addTearDown(bloc.close);
@@ -410,12 +575,14 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     when(() => getComments('my-slug')).thenAnswer(
-      (_) async => right<Failure, List<Comment>>([
-        _comment(
-          'c1',
-          replies: [_comment('c2', content: '同感', parentId: 'c1')],
-        ),
-      ]),
+      (_) async => right<Failure, CommentPage>(
+        _page([
+          _comment(
+            'c1',
+            replies: [_comment('c2', content: '同感', parentId: 'c1')],
+          ),
+        ]),
+      ),
     );
 
     final bloc = buildBloc();

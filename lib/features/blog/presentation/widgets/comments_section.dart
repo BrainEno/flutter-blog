@@ -141,9 +141,11 @@ class _CommentsSectionState extends State<CommentsSection> {
                   ),
                 ),
                 Text(
-                  formatNumber(
-                    Localizations.localeOf(context),
-                    state.totalCount,
+                  context.l10n.commentsLoadedCount(
+                    formatNumber(
+                      Localizations.localeOf(context),
+                      state.totalCount,
+                    ),
                   ),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
@@ -205,29 +207,91 @@ class _CommentsSectionState extends State<CommentsSection> {
         );
       case CommentListStatus.loaded:
         if (state.comments.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.large),
-            child: Center(
-              child: Text(
-                context.l10n.commentsEmpty,
-                style: Theme.of(context).textTheme.bodySmall,
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: NoWaveSpacing.large,
+                ),
+                child: Center(
+                  child: Text(
+                    context.l10n.commentsEmpty,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
               ),
-            ),
+              _buildPaginationFooter(state),
+            ],
           );
         }
         return Column(
-          children: state.comments
-              .map(
-                (comment) => CommentTile(
-                  comment: comment,
-                  depth: 0,
-                  onReply: _startReply,
-                  onOpenAuthor: widget.onOpenAuthor,
-                  confirmDelete: () => _confirmDelete(context),
-                ),
-              )
-              .toList(),
+          children: [
+            ...state.comments.map(
+              (comment) => CommentTile(
+                comment: comment,
+                depth: 0,
+                onReply: _startReply,
+                onOpenAuthor: widget.onOpenAuthor,
+                confirmDelete: () => _confirmDelete(context),
+              ),
+            ),
+            _buildPaginationFooter(state),
+          ],
         );
     }
+  }
+
+  Widget _buildPaginationFooter(CommentState state) {
+    final l10n = context.l10n;
+    if (state.isLoadingMore) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.medium),
+        child: NoWaveLoadingLabel(semanticLabel: l10n.commentsLoadingMore),
+      );
+    }
+    if (state.loadMoreFailure != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.medium),
+        child: Column(
+          children: [
+            Text(
+              localizedFailureOr(
+                l10n,
+                state.loadMoreFailure,
+                l10n.commentsLoadFailed,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            TextButton(
+              onPressed: () => context.read<CommentBloc>().add(
+                const MoreCommentsRequested(),
+              ),
+              child: Text(l10n.actionRetry),
+            ),
+          ],
+        ),
+      );
+    }
+    if (state.paginationUnavailable) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.medium),
+        child: Text(
+          l10n.commentsPaginationUnavailable,
+          style: Theme.of(context).textTheme.bodySmall,
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+    if (!state.hasMore) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.small),
+      child: TextButton.icon(
+        onPressed: () => context.read<CommentBloc>().add(
+          const MoreCommentsRequested(),
+        ),
+        icon: const Icon(Icons.expand_more),
+        label: Text(l10n.commentsLoadMore),
+      ),
+    );
   }
 }

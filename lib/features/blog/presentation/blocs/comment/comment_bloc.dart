@@ -1,5 +1,6 @@
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
+import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_event.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_state.dart';
@@ -36,6 +37,7 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
   }) : uuid = uuidGenerator ?? const Uuid(),
        super(const CommentState()) {
     on<CommentsRequested>(_onCommentsRequested);
+    on<MoreCommentsRequested>(_onMoreCommentsRequested);
     on<CommentSubmitted>(_onCommentSubmitted);
     on<CommentDeleteRequested>(_onCommentDeleteRequested);
   }
@@ -43,13 +45,28 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
   String? _pendingKey;
   String? _pendingContent;
   String? _pendingParent;
+  String? _nextCursor;
+  int _pageGeneration = 0;
 
   Future<void> _onCommentsRequested(
     CommentsRequested event,
     Emitter<CommentState> emit,
   ) async {
-    emit(state.copyWith(status: CommentListStatus.loading, error: ''));
+    final generation = ++_pageGeneration;
+    _nextCursor = null;
+    emit(
+      state.copyWith(
+        status: CommentListStatus.loading,
+        comments: const [],
+        error: '',
+        hasMore: false,
+        isLoadingMore: false,
+        clearLoadMoreFailure: true,
+        paginationUnavailable: false,
+      ),
+    );
     final result = await getComments(slug);
+    if (emit.isDone || generation != _pageGeneration) return;
     result.fold(
       (failure) => emit(
         state.copyWith(
@@ -58,14 +75,121 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
           failure: _withCode(failure, 'comments.load'),
         ),
       ),
-      (comments) => emit(
-        state.copyWith(
-          status: CommentListStatus.loaded,
-          comments: comments,
-          error: '',
-        ),
-      ),
+      (page) {
+        _nextCursor = page.nextCursor;
+        emit(
+          state.copyWith(
+            status: CommentListStatus.loaded,
+            comments: page.items,
+            error: '',
+            hasMore: page.hasMore,
+            isLoadingMore: false,
+            clearLoadMoreFailure: true,
+            paginationUnavailable: false,
+          ),
+        );
+      },
     );
+  }
+
+  Future<void> _onMoreCommentsRequested(
+    MoreCommentsRequested event,
+    Emitter<CommentState> emit,
+  ) async {
+    final current = state;
+    final cursor = _nextCursor;
+    if (current.status != CommentListStatus.loaded ||
+        cursor == null ||
+        !current.hasMore ||
+        current.isLoadingMore ||
+        current.paginationUnavailable) {
+      return;
+    }
+
+    final generation = _pageGeneration;
+    emit(
+      current.copyWith(isLoadingMore: true, clearLoadMoreFailure: true),
+    );
+    final result = await getComments(slug, cursor: cursor);
+    if (emit.isDone || generation != _pageGeneration) return;
+    final latest = state;
+    if (latest.status != CommentListStatus.loaded) return;
+
+    result.fold(
+      (failure) {
+        if (failure.code == commentCursorUnavailableFailureCode) {
+          _nextCursor = null;
+          emit(
+            latest.copyWith(
+              isLoadingMore: false,
+              hasMore: false,
+              clearLoadMoreFailure: true,
+              paginationUnavailable: true,
+            ),
+          );
+          return;
+        }
+        emit(
+          latest.copyWith(isLoadingMore: false, loadMoreFailure: failure),
+        );
+      },
+      (page) {
+        if (page.items.isEmpty) {
+          _nextCursor = null;
+          emit(
+            latest.copyWith(
+              isLoadingMore: false,
+              hasMore: false,
+              clearLoadMoreFailure: true,
+            ),
+          );
+          return;
+        }
+
+        // Older deployments may ignore `cursor` and return the first page
+        // again. Stop instead of duplicating rows or presenting an endless
+        // retry; retain the comments already shown.
+        if (page.nextCursor == cursor ||
+            _containsRepeatedRoot(latest.comments, page.items)) {
+          _nextCursor = null;
+          emit(
+            latest.copyWith(
+              isLoadingMore: false,
+              hasMore: false,
+              clearLoadMoreFailure: true,
+              paginationUnavailable: true,
+            ),
+          );
+          return;
+        }
+
+        _nextCursor = page.nextCursor;
+        emit(
+          latest.copyWith(
+            comments: _sortRoots([...latest.comments, ...page.items]),
+            isLoadingMore: false,
+            hasMore: page.hasMore,
+            clearLoadMoreFailure: true,
+          ),
+        );
+      },
+    );
+  }
+
+  static bool _containsRepeatedRoot(
+    List<Comment> current,
+    List<Comment> next,
+  ) {
+    final seen = current.map((comment) => comment.id).toSet();
+    return next.any((comment) => !seen.add(comment.id));
+  }
+
+  static List<Comment> _sortRoots(List<Comment> comments) {
+    return comments
+      ..sort((a, b) {
+        final byTime = a.createdAt.compareTo(b.createdAt);
+        return byTime != 0 ? byTime : a.id.compareTo(b.id);
+      });
   }
 
   Future<void> _onCommentSubmitted(
@@ -205,12 +329,12 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
     _ => '评论加载失败，请稍后重试',
   };
 
-  /// Appends a root comment at the end (oldest first) or nests a reply
-  /// under its direct parent.
+  /// Inserts a root comment in server order or nests a reply under its direct
+  /// parent.
   static List<Comment> _insertComment(List<Comment> comments, Comment added) {
     final parent = added.parentCommentId;
     if (parent == null) {
-      return [...comments, added];
+      return _sortRoots([...comments, added]);
     }
     return comments
         .map(

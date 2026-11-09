@@ -2,6 +2,10 @@
 
 本表静态核对 no-wave 默认分支快照 [`effeb9a7`](https://github.com/BrainEno/no-wave/tree/effeb9a7016278a385ecfd19d49a26eb7151c58b) 的 [`routes.ts`](https://github.com/BrainEno/no-wave/blob/effeb9a7016278a385ecfd19d49a26eb7151c58b/apps/api/src/transport/rest/routes.ts)、handler、数据校验以及 Flutter main 和表中明确标注的客户端变更；改密相关的会话语义另复核了 `7590ca98` 与 `58dc3419`。相对前次审计 `ea276a5e`，后端增加 latest 游标、搜索正文、会话列表/撤销并修复改密的会话语义；`596ca5ae` 到此快照仅有 CI/文档改动。网页也新增本地划线等功能，但不意味着已有服务端同步 API。源码存在不代表某个部署已升级、邮件可投递或移动端联调通过。
 
+### 增量核对：评论线程 cursor
+
+no-wave main `bbe9d198`（PR #253）现提供 `GET /articles/:slug/comments?limit=N&cursor=…`：按 `(createdAt ASC, id ASC)` 排序；每页最多 100 个顶级评论、回复树随根返回；cursor 是 `base64url("<createdAt>|<id>")`，取上一页最后一条根评论的原始毫秒时间戳和 UUID。响应仍为普通数组，短页表示到末尾，满页需要继续读直到空页；PostgreSQL 需先应用 `0031_comment_created_at_millisecond_precision.sql`。Flutter 客户端已接入按需分页，并为旧服务忽略/拒绝 cursor 增加重复页保护和停止提示。部署是否已升级未验证；实现细节见 [评论线程文档](comments.md) 与 [no-wave 契约](https://github.com/BrainEno/no-wave/blob/bbe9d198208cc9f4267e18e3a4ddcc88b2ad535a/docs/api/comment-thread-pagination.md)。
+
 本表包含改密 [#73](https://github.com/BrainEno/flutter-blog/pull/73)、只读会话列表 [#82](https://github.com/BrainEno/flutter-blog/pull/82)、结束登录会话 与账号作用域的“我的文章”列表（含服务端草稿）；离线 outbox [#66](https://github.com/BrainEno/flutter-blog/pull/66) 已关闭，需按 #23 重做。后端已提供登录会话列表与单个/批量撤销；客户端只实现列表，不实现撤销。列表不提供设备名称或位置，旧无 `sid` token 可能无法识别当前会话；请求 IP 仍用于限流。
 
 ## 接口与用户能力
@@ -9,6 +13,7 @@
 | 能力 / API | 客户端状态 | 语义与后续 |
 |---|---|---|
 | 公开最新文章 `/articles`，点赞、评论、标签、作者、关注，发布、软删和恢复 | 已接入 | 延续现有实现；删除恢复后作品为服务端草稿。 |
+| 评论线程 `GET /articles/:slug/comments?limit=50&cursor=…` | 已接入 keyset 分页 | Flutter 按需读取 50 个顶级评论；回复树随根返回。cursor 由上一页最后根评论的原始 `createdAt` 与 UUID 生成；短页结束，满页继续直到空页。续页失败保留游标供重试；旧服务忽略/拒绝 cursor 时停止、不追加重复项。目标部署升级与 PostgreSQL `0031` 迁移状态未验证；细节见[评论线程](comments.md)。 |
 | 最新文章 `GET /articles?cursor=…` | 首页在线 latest 已接入 | 与旧服务兼容回退 offset；密集时间窗口有上限并明确停止，无法保证完整快照。其他列表仍使用 offset；详见 [分页说明](latest-feed-cursor.md)。 |
 | 文章搜索 `query` | 已接入，依赖部署 | 新后端支持标题、摘要及部分正文块文本，旧部署可能只查标题/摘要；离线只查本机缓存标题，不能保证完整结果。 |
 | 内容语言 `locale` | 已接入（界面语言决定内容语言） | 内容语言由界面语言推导（`ContentLocale`），首页、关注、精选、搜索、作者、分类、标签订阅等请求都带该 `locale`；离线缓存以 `(slug, content_locale)` 为键，两种语言并存（v7）。界面切语言后分页会话按 generation 丢弃旧页。仍未提供 `zh-TW` 界面：该语言的作品只能经作者的“全部语言版本”列表看到。 |
