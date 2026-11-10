@@ -194,32 +194,36 @@ void main() {
     addTearDown(authorCubit.close);
     final blogByBloc = buildBlogByBloc();
     addTearDown(blogByBloc.close);
-    addTearDown(() {
-      if (!pending.isCompleted) pending.complete(right(const <Blog>[]));
-    });
     final handle = tester.ensureSemantics();
     addTearDown(handle.dispose);
 
-    await _pumpPage(
-      tester,
-      appUserCubit: appUserCubit,
-      authorCubit: authorCubit,
-      blogByBloc: blogByBloc,
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('作者甲'), findsOneWidget);
-    final skeleton = tester.widget<BlogFeedSkeleton>(
-      find.byType(BlogFeedSkeleton),
-    );
-    expect(skeleton.showFeatured, isFalse);
-    final l10n = lookupAppLocalizations(const Locale('zh'));
-    expect(find.bySemanticsLabel(l10n.loadingArticles), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    try {
+      await _pumpPage(
+        tester,
+        appUserCubit: appUserCubit,
+        authorCubit: authorCubit,
+        blogByBloc: blogByBloc,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('作者甲'), findsOneWidget);
+      final skeleton = tester.widget<BlogFeedSkeleton>(
+        find.byType(BlogFeedSkeleton),
+      );
+      expect(skeleton.showFeatured, isFalse);
+      final l10n = lookupAppLocalizations(const Locale('zh'));
+      expect(find.bySemanticsLabel(l10n.loadingArticles), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
 
-    pending.complete(right([_blog()]));
-    await tester.pumpAndSettle();
-    expect(find.byType(BlogFeedSkeleton), findsNothing);
-    expect(find.text('作者的文章'), findsOneWidget);
+      pending.complete(right([_blog()]));
+      await tester.pumpAndSettle();
+      expect(find.byType(BlogFeedSkeleton), findsNothing);
+      expect(find.text('作者的文章'), findsOneWidget);
+    } finally {
+      // Complete the held request inside the widget test's fake-async zone,
+      // even if an assertion fails, before the bloc is closed by teardown.
+      if (!pending.isCompleted) pending.complete(right(const <Blog>[]));
+      await tester.pump();
+    }
   });
 
   testWidgets('renders the profile and the article list', (tester) async {
