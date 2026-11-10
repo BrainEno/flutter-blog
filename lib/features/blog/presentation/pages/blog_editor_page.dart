@@ -19,6 +19,9 @@ import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
 import 'package:belog/features/blog/domain/usecase/get_categories.dart';
+import 'package:belog/features/user/domain/entities/user_media_asset.dart';
+import 'package:belog/features/user/domain/usecases/get_user_media_library_page.dart';
+import 'package:belog/features/user/presentation/widgets/user_media_picker_sheet.dart';
 import 'package:belog/core/usecase/usecase.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
@@ -54,6 +57,9 @@ class BlogEditorPage extends StatefulWidget {
   /// The category catalog read. Injectable so a test can answer without a
   /// server; production resolves the shared, credential-free use case.
   final GetCategories? getCategories;
+
+  /// The private media-library read. Injectable so picker tests can stay local.
+  final GetUserMediaLibraryPage? getUserMediaLibraryPage;
   const BlogEditorPage({
     super.key,
     this.blog,
@@ -63,6 +69,7 @@ class BlogEditorPage extends StatefulWidget {
     this.publishQueueStore,
     this.publishQueueDrainer,
     this.getCategories,
+    this.getUserMediaLibraryPage,
   });
 
   @override
@@ -95,6 +102,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
 
   File? image;
   bool isNewImageSelected = false;
+  String? _selectedCoverUrl;
+  int _coverSelectionVersion = 0;
 
   /// The picked cover's bytes and MIME type; [image] only feeds the preview.
   ImageUpload? imageUpload;
@@ -123,9 +132,14 @@ class _BlogEditorState extends State<BlogEditorPage> {
   DateTime? _publishStartedAt;
   BlogDraft? _publishedDraftSnapshot;
 
-  /// The cover sent with the current publish attempt, kept so a failure can
-  /// be queued with exactly the same bytes.
+  /// The cover sent with the current attempt, kept so a failure can be queued
+  /// with the same bytes or reusable immutable media URL.
   ImageUpload? _publishImageSnapshot;
+  String? _publishCoverUrlSnapshot;
+
+  NavigatorState? _mediaPickerNavigator;
+  Route<dynamic>? _mediaPickerRoute;
+  bool _mediaPickerOpen = false;
 
   /// One key per publish intent (issue #23): a queued retry reuses it so the
   /// server replays the article instead of creating a second one. It is only
@@ -167,6 +181,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
     }
     final resumed = widget.queueEntry;
     if (resumed != null && !_invalidated) {
+      _selectedCoverUrl = resumed.coverUrl;
+      isNewImageSelected = resumed.coverUrl != null;
       // A resumed edit already filled the fields through [_target]; a resumed
       // create has no article behind it, so its text comes from the entry.
       if (_target == null) {
@@ -217,6 +233,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     _invalidated = true;
     _draftRequestVersion++;
     _dismissRecoveryDialog();
+    _dismissMediaPicker();
     if (mounted) setState(() {});
   }
 
@@ -230,6 +247,24 @@ class _BlogEditorState extends State<BlogEditorPage> {
     // Remove only our exact route after the current navigation frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (navigator.mounted && route.isActive) navigator.removeRoute(route);
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  void _dismissMediaPicker() {
+    if (!_mediaPickerOpen) return;
+    final navigator = _mediaPickerNavigator;
+    final route = _mediaPickerRoute;
+    _mediaPickerOpen = false;
+    _mediaPickerNavigator = null;
+    // Keep the route slot until the pending modal future completes: its
+    // builder may not have run yet when an identity change schedules removal.
+    if (navigator == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final activeRoute = route ?? _mediaPickerRoute;
+      if (navigator.mounted && activeRoute != null && activeRoute.isActive) {
+        navigator.removeRoute(activeRoute);
+      }
     });
     WidgetsBinding.instance.ensureVisualUpdate();
   }
@@ -385,12 +420,12 @@ class _BlogEditorState extends State<BlogEditorPage> {
       final pickedImage = await pickImage();
       if (!_isCurrentEditor) return;
       if (pickedImage != null) {
+        _coverSelectionVersion++;
         setState(() {
           image = pickedImage.file;
           imageUpload = pickedImage.upload;
-          // A freshly picked file wins over the bytes restored from a queue
-          // entry; keeping both would preview the wrong image.
           imageBytes = null;
+          _selectedCoverUrl = null;
           isNewImageSelected = true;
         });
       }
@@ -402,6 +437,62 @@ class _BlogEditorState extends State<BlogEditorPage> {
         showSnackBar(context, context.l10n.imagePickFailed);
       }
     }
+  }
+
+  Future<void> selectCoverFromLibrary() async {
+    if (!_isCurrentEditor) return;
+    final getPage =
+        widget.getUserMediaLibraryPage ??
+        (GetIt.instance.isRegistered<GetUserMediaLibraryPage>()
+            ? GetIt.instance<GetUserMediaLibraryPage>()
+            : null);
+    if (getPage == null) {
+      showSnackBar(context, context.l10n.userMediaPickerLoadFailed);
+      return;
+    }
+
+    final navigator = Navigator.of(context, rootNavigator: true);
+    _mediaPickerNavigator = navigator;
+    _mediaPickerOpen = true;
+    UserMediaAsset? selected;
+    try {
+      selected = await showModalBottomSheet<UserMediaAsset>(
+        context: context,
+        useRootNavigator: true,
+        isScrollControlled: true,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        builder: (sheetContext) {
+          _mediaPickerRoute = ModalRoute.of(sheetContext);
+          return UserMediaPickerSheet(
+            getPage: getPage,
+            sessionFence: NowaveSessionFence(
+              userId: _draftOwnerId!,
+              generation: _editorGeneration,
+            ),
+            sessionIdentity: _session,
+          );
+        },
+      );
+    } catch (_) {
+      if (mounted && _isCurrentEditor) {
+        showSnackBar(context, context.l10n.userMediaPickerLoadFailed);
+      }
+    } finally {
+      _mediaPickerOpen = false;
+      _mediaPickerNavigator = null;
+      _mediaPickerRoute = null;
+    }
+
+    final selectedAsset = selected;
+    if (selectedAsset == null || !mounted || !_isCurrentEditor) return;
+    _coverSelectionVersion++;
+    setState(() {
+      image = null;
+      imageUpload = null;
+      imageBytes = null;
+      _selectedCoverUrl = selectedAsset.imageUrl;
+      isNewImageSelected = true;
+    });
   }
 
   /// The queue is optional at this layer so the page can still be built (and
@@ -425,8 +516,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
   /// Rebuilds the article a queued edit targets, so a resumed edit updates
   /// that article instead of creating a new one.
   ///
-  /// Only the identity and the queued text are taken from the entry: the
-  /// update re-reads the real article (and its cover) before writing.
+  /// The entry also supplies a cover URL when the author selected or uploaded
+  /// one before queueing. The update re-reads the real article before writing.
   Blog? _queuedEditTarget() {
     final entry = widget.queueEntry;
     final targetId = entry?.targetId;
@@ -449,13 +540,14 @@ class _BlogEditorState extends State<BlogEditorPage> {
   /// Restores the cover a failed entry kept inside the app's storage. The text
   /// is already on screen: a missing cover only leaves the slot empty.
   Future<void> _loadQueuedCover(PublishQueueEntry entry) async {
+    final selectionVersion = _coverSelectionVersion;
     final store = _queueStore;
     if (store == null) return;
     try {
       final cover = await store.readCover(entry);
       if (cover == null || !mounted || !_isCurrentEditor) return;
       // A slow read must not replace a cover the user picked meanwhile.
-      if (image != null && isNewImageSelected) return;
+      if (_coverSelectionVersion != selectionVersion) return;
       setState(() {
         imageUpload = cover;
         imageBytes = cover.bytes;
@@ -518,6 +610,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
         tags: List.of(snapshot.tags),
         idempotencyKey: key,
         cover: _publishImageSnapshot,
+        coverUrl: _publishCoverUrlSnapshot,
         kind: target == null ? PublishQueueKind.create : PublishQueueKind.edit,
         targetId: target?.id,
         categoryIds: snapshot.categoryIds,
@@ -537,6 +630,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     await _clearPublishedDraft();
     _publishedDraftSnapshot = null;
     _publishImageSnapshot = null;
+    _publishCoverUrlSnapshot = null;
     unawaited(_queueDrainer?.drain());
     return true;
   }
@@ -558,6 +652,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     final publishImage = _target == null || isNewImageSelected
         ? imageUpload
         : null;
+    final publishCoverUrl = isNewImageSelected ? _selectedCoverUrl : null;
     final sessionFence = NowaveSessionFence(
       userId: draft.userId,
       generation: _editorGeneration,
@@ -566,6 +661,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     // first request, and reused by every retry of that intent (#23).
     final idempotencyKey = _publishIdempotencyKey ??= const Uuid().v4();
     _publishImageSnapshot = publishImage;
+    _publishCoverUrlSnapshot = publishCoverUrl;
     // Persist the exact request snapshot first. If the route is closed, the
     // account changes, or the server response is lost, the text survives.
     try {
@@ -585,6 +681,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
       context.read<BlogUploadBloc>().add(
         UploadBlogEvent(
           image: publishImage,
+          uploadedCoverUrl: publishCoverUrl,
           title: draft.title.trim(),
           content: draft.content.trim(),
           posterId: draft.userId,
@@ -599,6 +696,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
         UpdateBlogEvent(
           blogId: _target.id,
           image: publishImage,
+          uploadedCoverUrl: publishCoverUrl,
           title: draft.title.trim(),
           content: draft.content.trim(),
           tags: List.of(draft.tags),
@@ -660,6 +758,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     if (identitySubscription != null) unawaited(identitySubscription.cancel());
     if (userSubscription != null) unawaited(userSubscription.cancel());
     _dismissRecoveryDialog();
+    _dismissMediaPicker();
     titleController.dispose();
     contentController.dispose();
     super.dispose();
@@ -693,10 +792,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
           if (state is BlogUploadFailure) {
             unawaited(_reportPublishFailure(state));
           } else if (state is BlogUploadSuccess) {
-            // No manual imageCache eviction needed: covers are immutable
-            // media URLs that change whenever a new cover is uploaded, so
-            // the refreshed list/editor automatically fetches the new
-            // asset.
+            // No manual imageCache eviction needed: covers use immutable
+            // media URLs, whether picked from the library or newly uploaded.
             showSnackBar(
               context,
               _target == null
@@ -708,6 +805,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
             unawaited(_retireResumedEntry());
             _publishIdempotencyKey = null;
             _publishImageSnapshot = null;
+            _publishCoverUrlSnapshot = null;
             unawaited(_clearPublishedDraft());
             Navigator.of(context).pop(true);
           }
@@ -724,12 +822,14 @@ class _BlogEditorState extends State<BlogEditorPage> {
             onTagsChanged: _onTagsChanged,
             image: image,
             imageBytes: imageBytes,
+            selectedCoverUrl: _selectedCoverUrl,
             isNewImageSelected: isNewImageSelected,
             blog: _target,
             hasUnclaimedDrafts: _hasUnclaimedDrafts,
             resumedFromQueue: widget.queueEntry != null,
             autoSaveStatus: _autoSaveStatus,
             onPickCover: selectImage,
+            onChooseCoverFromLibrary: () => unawaited(selectCoverFromLibrary()),
             categories: _categories,
             selectedCategoryIds: _selectedCategoryIds,
             categoriesLoading: _categoriesLoading,

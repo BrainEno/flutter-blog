@@ -17,6 +17,7 @@ class EditorCoverField extends StatelessWidget {
     this.blog,
     this.image,
     this.imageBytes,
+    this.selectedCoverUrl,
     this.isNewImageSelected = false,
     required this.onTap,
   });
@@ -32,7 +33,10 @@ class EditorCoverField extends StatelessWidget {
   /// storage, so there is no picker file to point at.
   final Uint8List? imageBytes;
 
-  /// Whether [image] replaces the published cover.
+  /// An immutable cover asset selected from the user's media library.
+  final String? selectedCoverUrl;
+
+  /// Whether a newly selected cover replaces the published cover.
   final bool isNewImageSelected;
 
   final VoidCallback onTap;
@@ -69,6 +73,19 @@ class EditorCoverField extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Image.memory(bytes, fit: BoxFit.cover),
+        ),
+      );
+    }
+    final selectedCover = selectedCoverUrl;
+    if (isNewImageSelected &&
+        selectedCover != null &&
+        selectedCover.isNotEmpty) {
+      return SizedBox(
+        height: NoWaveSizes.coverEditorBox,
+        width: double.infinity,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: CachedNetworkImage(imageUrl: selectedCover, fit: BoxFit.cover),
         ),
       );
     }

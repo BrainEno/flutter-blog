@@ -5,7 +5,7 @@ import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/user/data/datasources/user_remote_data_source.dart';
-
+import 'package:belog/features/user/domain/entities/user_media_page.dart';
 import 'package:belog/features/user/domain/repositories/user_repository.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:belog/core/common/entities/image_upload.dart';
@@ -15,6 +15,27 @@ class UserRepositoryImpl implements UserRepository {
   final ConnectionChecker connectionChecker;
 
   const UserRepositoryImpl(this.remoteDataSource, this.connectionChecker);
+
+  @override
+  Future<Either<Failure, UserMediaPage>> getMediaLibraryPage({
+    required NowaveSessionFence sessionFence,
+    String? cursor,
+  }) async {
+    try {
+      if (!await connectionChecker.isConnected) {
+        return left(Failure.networkOffline());
+      }
+      final page = await remoteDataSource.getMediaLibraryPage(
+        sessionFence: sessionFence,
+        cursor: cursor,
+      );
+      return right(page);
+    } on ServerException catch (error) {
+      return left(error.toFailure());
+    } catch (error) {
+      return left(mapErrorToFailure(error));
+    }
+  }
 
   @override
   Future<Either<Failure, User>> editUserInfo({

@@ -7,6 +7,9 @@ abstract class BlogUploadEvent extends Equatable {
 class UploadBlogEvent extends BlogUploadEvent {
   /// Picked cover; null publishes a text-only article (issue #17).
   final ImageUpload? image;
+
+  /// An existing immutable media asset selected from the user's library.
+  final String? uploadedCoverUrl;
   final String title;
   final String content;
   final String posterId;
@@ -22,6 +25,7 @@ class UploadBlogEvent extends BlogUploadEvent {
 
   const UploadBlogEvent({
     required this.image,
+    this.uploadedCoverUrl,
     required this.title,
     required this.content,
     required this.posterId,
@@ -34,6 +38,7 @@ class UploadBlogEvent extends BlogUploadEvent {
   @override
   List<Object?> get props => [
     image,
+    uploadedCoverUrl,
     title,
     content,
     posterId,
@@ -48,6 +53,9 @@ class UploadBlogEvent extends BlogUploadEvent {
 class UpdateBlogEvent extends BlogUploadEvent {
   final String blogId;
   final ImageUpload? image; // Optional, only if updating image
+
+  /// An existing immutable media asset selected from the user's library.
+  final String? uploadedCoverUrl;
   final String title;
   final String content;
   final List<String> tags;
@@ -65,6 +73,7 @@ class UpdateBlogEvent extends BlogUploadEvent {
   const UpdateBlogEvent({
     required this.blogId,
     this.image,
+    this.uploadedCoverUrl,
     required this.title,
     required this.content,
     required this.tags,
@@ -77,6 +86,7 @@ class UpdateBlogEvent extends BlogUploadEvent {
   List<Object?> get props => [
     blogId,
     image,
+    uploadedCoverUrl,
     title,
     content,
     tags,

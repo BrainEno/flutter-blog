@@ -28,12 +28,14 @@ class EditorForm extends StatelessWidget {
     required this.onTagsChanged,
     required this.image,
     this.imageBytes,
+    this.selectedCoverUrl,
     required this.isNewImageSelected,
     required this.blog,
     required this.hasUnclaimedDrafts,
     this.resumedFromQueue = false,
     required this.autoSaveStatus,
     required this.onPickCover,
+    required this.onChooseCoverFromLibrary,
     required this.categories,
     required this.selectedCategoryIds,
     required this.categoriesLoading,
@@ -49,6 +51,7 @@ class EditorForm extends StatelessWidget {
   final ValueChanged<List<String>> onTagsChanged;
   final File? image;
   final Uint8List? imageBytes;
+  final String? selectedCoverUrl;
   final bool isNewImageSelected;
   final Blog? blog;
   final bool hasUnclaimedDrafts;
@@ -58,6 +61,7 @@ class EditorForm extends StatelessWidget {
   final bool resumedFromQueue;
   final AutoSaveStatus autoSaveStatus;
   final VoidCallback onPickCover;
+  final VoidCallback onChooseCoverFromLibrary;
   final List<CategoryRef> categories;
   final List<String> selectedCategoryIds;
   final bool categoriesLoading;
@@ -101,8 +105,17 @@ class EditorForm extends StatelessWidget {
                 blog: blog,
                 image: image,
                 imageBytes: imageBytes,
+                selectedCoverUrl: selectedCoverUrl,
                 isNewImageSelected: isNewImageSelected,
                 onTap: onPickCover,
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: onChooseCoverFromLibrary,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: Text(context.l10n.editorCoverChooseFromLibrary),
+                ),
               ),
               const SizedBox(height: NoWaveSpacing.large),
               EditorTagSelector(

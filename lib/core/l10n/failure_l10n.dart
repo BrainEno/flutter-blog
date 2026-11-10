@@ -167,6 +167,8 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
     // Category browsing (see categories_page.dart).
     case 'categories.unavailable':
       return l10n.categoriesUnavailable;
+    case 'user.mediaLibraryUnavailable':
+      return l10n.userMediaPickerUnavailable;
     case 'category.notFound':
       return l10n.categoryNotFound;
     case 'notifications.unavailable':
