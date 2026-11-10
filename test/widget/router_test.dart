@@ -286,9 +286,7 @@ class Harness {
       ..registerFactory<RequestPasswordReset>(
         () => RequestPasswordReset(passwordRecovery),
       )
-      ..registerFactory<ResetPassword>(
-        () => ResetPassword(passwordRecovery),
-      )
+      ..registerFactory<ResetPassword>(() => ResetPassword(passwordRecovery))
       ..registerFactory(() => GetAllBlogs(repository))
       ..registerFactory(() => GetBlogById(repository))
       ..registerFactory(() => SearchBlogs(repository))

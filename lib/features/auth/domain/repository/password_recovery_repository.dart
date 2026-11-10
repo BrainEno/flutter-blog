@@ -7,9 +7,7 @@ import 'package:fpdart/fpdart.dart';
 /// address exists or a message was delivered. Resetting a password invalidates
 /// every session for the recovered account.
 abstract interface class PasswordRecoveryRepository {
-  Future<Either<Failure, void>> requestPasswordReset({
-    required String email,
-  });
+  Future<Either<Failure, void>> requestPasswordReset({required String email});
 
   /// [token] may be the raw one-time token or the whole reset link copied from
   /// an e-mail. Implementations must extract and send only the token itself.

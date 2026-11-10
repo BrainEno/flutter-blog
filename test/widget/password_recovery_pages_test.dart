@@ -70,32 +70,33 @@ Future<void> _tap(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
-  testWidgets('accepted recovery copy does not reveal whether the e-mail exists', (
-    tester,
-  ) async {
-    final repository = _Repository();
-    final l10n = lookupAppLocalizations(const Locale('en'));
-    await _pump(
-      tester,
-      PasswordRecoveryPage(
-        requestPasswordReset: RequestPasswordReset(repository),
-      ),
-    );
+  testWidgets(
+    'accepted recovery copy does not reveal whether the e-mail exists',
+    (tester) async {
+      final repository = _Repository();
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      await _pump(
+        tester,
+        PasswordRecoveryPage(
+          requestPasswordReset: RequestPasswordReset(repository),
+        ),
+      );
 
-    await tester.enterText(
-      find.byType(TextFormField),
-      'reader@example.invalid',
-    );
-    await _tap(
-      tester,
-      find.widgetWithText(NoWaveButton, l10n.passwordRecoverySend),
-    );
+      await tester.enterText(
+        find.byType(TextFormField),
+        'reader@example.invalid',
+      );
+      await _tap(
+        tester,
+        find.widgetWithText(NoWaveButton, l10n.passwordRecoverySend),
+      );
 
-    expect(repository.requestedEmails, ['reader@example.invalid']);
-    expect(find.text(l10n.passwordRecoveryRequestAccepted), findsOneWidget);
-    expect(find.textContaining('reader@example.invalid'), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+      expect(repository.requestedEmails, ['reader@example.invalid']);
+      expect(find.text(l10n.passwordRecoveryRequestAccepted), findsOneWidget);
+      expect(find.textContaining('reader@example.invalid'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('MAIL_DISABLED is shown as temporarily unavailable', (
     tester,
@@ -126,38 +127,42 @@ void main() {
     );
 
     expect(find.text('暂不提供'), findsOneWidget);
-    expect(find.widgetWithText(NoWaveButton, l10n.passwordRecoverySend), findsNothing);
+    expect(
+      find.widgetWithText(NoWaveButton, l10n.passwordRecoverySend),
+      findsNothing,
+    );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('pasting a complete link sends only its token and exact password', (
-    tester,
-  ) async {
-    final repository = _Repository();
-    final l10n = lookupAppLocalizations(const Locale('en'));
-    await _pump(
-      tester,
-      PasswordResetPage(resetPassword: ResetPassword(repository)),
-    );
+  testWidgets(
+    'pasting a complete link sends only its token and exact password',
+    (tester) async {
+      final repository = _Repository();
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      await _pump(
+        tester,
+        PasswordResetPage(resetPassword: ResetPassword(repository)),
+      );
 
-    final fields = find.byType(TextFormField);
-    await tester.enterText(
-      fields.at(0),
-      'https://site.example/reset-password?token=$_token',
-    );
-    await tester.enterText(fields.at(1), _password);
-    await tester.enterText(fields.at(2), _password);
-    await _tap(
-      tester,
-      find.widgetWithText(NoWaveButton, l10n.passwordRecoveryReset),
-    );
+      final fields = find.byType(TextFormField);
+      await tester.enterText(
+        fields.at(0),
+        'https://site.example/reset-password?token=$_token',
+      );
+      await tester.enterText(fields.at(1), _password);
+      await tester.enterText(fields.at(2), _password);
+      await _tap(
+        tester,
+        find.widgetWithText(NoWaveButton, l10n.passwordRecoveryReset),
+      );
 
-    expect(repository.resetTokens, [_token]);
-    expect(repository.resetPasswords, [_password]);
-    expect(find.text(l10n.passwordRecoveryResetSuccess), findsOneWidget);
-    expect(find.byType(TextFormField), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+      expect(repository.resetTokens, [_token]);
+      expect(repository.resetPasswords, [_password]);
+      expect(find.text(l10n.passwordRecoveryResetSuccess), findsOneWidget);
+      expect(find.byType(TextFormField), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('mismatched passwords are rejected before the repository', (
     tester,
@@ -183,36 +188,43 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('an uncertain reset result cannot be resubmitted with the same link', (
-    tester,
-  ) async {
-    final repository = _Repository()
-      ..resetResult = left(
-        const Failure(
-          'ignored fallback',
-          code: 'auth.passwordRecoveryResetOutcomeUnknown',
-        ),
+  testWidgets(
+    'an uncertain reset result cannot be resubmitted with the same link',
+    (tester) async {
+      final repository = _Repository()
+        ..resetResult = left(
+          const Failure(
+            'ignored fallback',
+            code: 'auth.passwordRecoveryResetOutcomeUnknown',
+          ),
+        );
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      await _pump(
+        tester,
+        PasswordResetPage(resetPassword: ResetPassword(repository)),
       );
-    final l10n = lookupAppLocalizations(const Locale('en'));
-    await _pump(
-      tester,
-      PasswordResetPage(resetPassword: ResetPassword(repository)),
-    );
 
-    final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), _token);
-    await tester.enterText(fields.at(1), _password);
-    await tester.enterText(fields.at(2), _password);
-    await _tap(
-      tester,
-      find.widgetWithText(NoWaveButton, l10n.passwordRecoveryReset),
-    );
+      final fields = find.byType(TextFormField);
+      await tester.enterText(fields.at(0), _token);
+      await tester.enterText(fields.at(1), _password);
+      await tester.enterText(fields.at(2), _password);
+      await _tap(
+        tester,
+        find.widgetWithText(NoWaveButton, l10n.passwordRecoveryReset),
+      );
 
-    expect(find.text(l10n.passwordRecoveryResetOutcomeUnknown), findsOneWidget);
-    expect(find.byType(TextFormField), findsNothing);
-    expect(find.widgetWithText(NoWaveButton, l10n.passwordRecoveryReset), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+      expect(
+        find.text(l10n.passwordRecoveryResetOutcomeUnknown),
+        findsOneWidget,
+      );
+      expect(find.byType(TextFormField), findsNothing);
+      expect(
+        find.widgetWithText(NoWaveButton, l10n.passwordRecoveryReset),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('reset form remains scrollable at narrow width and large text', (
     tester,

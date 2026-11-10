@@ -101,8 +101,7 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final failure = _failure;
-    final mailDisabled =
-        failure?.code == 'auth.passwordRecoveryMailDisabled';
+    final mailDisabled = failure?.code == 'auth.passwordRecoveryMailDisabled';
     final unsupported = failure?.code == 'auth.passwordRecoveryUnsupported';
     final failureIsWarning =
         mailDisabled ||

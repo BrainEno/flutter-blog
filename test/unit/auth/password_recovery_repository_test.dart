@@ -34,21 +34,19 @@ class _Authenticator implements NowaveAuthenticator {
   }
 }
 
-http.Response _ok(Object? data, {int status = 200}) =>
-    http.Response(
-      jsonEncode({'data': data}),
-      status,
-      headers: const {'content-type': 'application/json'},
-    );
+http.Response _ok(Object? data, {int status = 200}) => http.Response(
+  jsonEncode({'data': data}),
+  status,
+  headers: const {'content-type': 'application/json'},
+);
 
-http.Response _error(int status, String code) =>
-    http.Response(
-      jsonEncode({
-        'error': {'code': code, 'message': 'private server detail'},
-      }),
-      status,
-      headers: const {'content-type': 'application/json'},
-    );
+http.Response _error(int status, String code) => http.Response(
+  jsonEncode({
+    'error': {'code': code, 'message': 'private server detail'},
+  }),
+  status,
+  headers: const {'content-type': 'application/json'},
+);
 
 PasswordRecoveryRepositoryImpl _repository(
   MockClient httpClient, {
@@ -86,37 +84,43 @@ void main() {
       // the canonical encoding accepted by the API's tokenInput helper.
       expect(isPasswordResetToken('${_token.substring(0, 42)}1'), isFalse);
       expect(extractPasswordResetToken('token=${_token.substring(1)}'), isNull);
-      expect(extractPasswordResetToken('https://site.example/reset-password'), isNull);
+      expect(
+        extractPasswordResetToken('https://site.example/reset-password'),
+        isNull,
+      );
       expect(extractPasswordResetToken(''), isNull);
     });
   });
 
-  test('forgot-password is anonymous, exact, and accepts the generic 202', () async {
-    final requests = <http.Request>[];
-    final authenticator = _Authenticator();
-    final repository = _repository(
-      MockClient((request) async {
-        requests.add(request);
-        return _ok({'ok': true}, status: 202);
-      }),
-      authenticator: authenticator,
-    );
+  test(
+    'forgot-password is anonymous, exact, and accepts the generic 202',
+    () async {
+      final requests = <http.Request>[];
+      final authenticator = _Authenticator();
+      final repository = _repository(
+        MockClient((request) async {
+          requests.add(request);
+          return _ok({'ok': true}, status: 202);
+        }),
+        authenticator: authenticator,
+      );
 
-    final result = await repository.requestPasswordReset(
-      email: '  Alice@Example.invalid  ',
-    );
+      final result = await repository.requestPasswordReset(
+        email: '  Alice@Example.invalid  ',
+      );
 
-    expect(result.isRight(), isTrue);
-    expect(requests, hasLength(1));
-    expect(authenticator.refreshCalls, 0);
-    final request = requests.single;
-    expect(request.method, 'POST');
-    expect(request.url.path, '/api/v1/auth/forgot-password');
-    expect(request.headers['content-type'], contains('application/json'));
-    expect(request.headers['authorization'], isNull);
-    expect(request.followRedirects, isFalse);
-    expect(jsonDecode(request.body), {'email': 'alice@example.invalid'});
-  });
+      expect(result.isRight(), isTrue);
+      expect(requests, hasLength(1));
+      expect(authenticator.refreshCalls, 0);
+      final request = requests.single;
+      expect(request.method, 'POST');
+      expect(request.url.path, '/api/v1/auth/forgot-password');
+      expect(request.headers['content-type'], contains('application/json'));
+      expect(request.headers['authorization'], isNull);
+      expect(request.followRedirects, isFalse);
+      expect(jsonDecode(request.body), {'email': 'alice@example.invalid'});
+    },
+  );
 
   test('invalid email and offline status send no request', () async {
     var calls = 0;
@@ -138,19 +142,22 @@ void main() {
     expect(calls, 0);
   });
 
-  test('MAIL_DISABLED is a permanent unavailable answer, not success', () async {
-    final repository = _repository(
-      MockClient((_) async => _error(409, 'MAIL_DISABLED')),
-    );
+  test(
+    'MAIL_DISABLED is a permanent unavailable answer, not success',
+    () async {
+      final repository = _repository(
+        MockClient((_) async => _error(409, 'MAIL_DISABLED')),
+      );
 
-    final failure = _failure(
-      await repository.requestPasswordReset(email: 'reader@example.invalid'),
-    );
+      final failure = _failure(
+        await repository.requestPasswordReset(email: 'reader@example.invalid'),
+      );
 
-    expect(failure?.code, 'auth.passwordRecoveryMailDisabled');
-    expect(failure?.cause, isNull);
-    expect(failure.toString(), isNot(contains('private server detail')));
-  });
+      expect(failure?.code, 'auth.passwordRecoveryMailDisabled');
+      expect(failure?.cause, isNull);
+      expect(failure.toString(), isNot(contains('private server detail')));
+    },
+  );
 
   test('an unknown recovery result is not automatically replayed', () async {
     var calls = 0;
@@ -170,32 +177,38 @@ void main() {
     expect(calls, 1);
   });
 
-  test('reset extracts the token and sends the exact password anonymously once', () async {
-    final requests = <http.Request>[];
-    final authenticator = _Authenticator();
-    final repository = _repository(
-      MockClient((request) async {
-        requests.add(request);
-        return _ok({'ok': true});
-      }),
-      authenticator: authenticator,
-    );
+  test(
+    'reset extracts the token and sends the exact password anonymously once',
+    () async {
+      final requests = <http.Request>[];
+      final authenticator = _Authenticator();
+      final repository = _repository(
+        MockClient((request) async {
+          requests.add(request);
+          return _ok({'ok': true});
+        }),
+        authenticator: authenticator,
+      );
 
-    final result = await repository.resetPassword(
-      token: 'https://site.example/reset-password?token=$_token',
-      password: _password,
-    );
+      final result = await repository.resetPassword(
+        token: 'https://site.example/reset-password?token=$_token',
+        password: _password,
+      );
 
-    expect(result.isRight(), isTrue);
-    expect(requests, hasLength(1));
-    expect(authenticator.refreshCalls, 0);
-    final request = requests.single;
-    expect(request.method, 'POST');
-    expect(request.url.path, '/api/v1/auth/reset-password');
-    expect(request.headers['authorization'], isNull);
-    expect(request.followRedirects, isFalse);
-    expect(jsonDecode(request.body), {'token': _token, 'password': _password});
-  });
+      expect(result.isRight(), isTrue);
+      expect(requests, hasLength(1));
+      expect(authenticator.refreshCalls, 0);
+      final request = requests.single;
+      expect(request.method, 'POST');
+      expect(request.url.path, '/api/v1/auth/reset-password');
+      expect(request.headers['authorization'], isNull);
+      expect(request.followRedirects, isFalse);
+      expect(jsonDecode(request.body), {
+        'token': _token,
+        'password': _password,
+      });
+    },
+  );
 
   test('malformed token and weak password never reach the server', () async {
     var calls = 0;
@@ -241,21 +254,24 @@ void main() {
     expect(authenticator.refreshCalls, 0);
   });
 
-  test('a lost reset result is not retried and requires a fresh decision', () async {
-    var calls = 0;
-    final repository = _repository(
-      MockClient((_) async {
-        calls++;
-        return _error(503, 'SERVICE_UNAVAILABLE');
-      }),
-    );
+  test(
+    'a lost reset result is not retried and requires a fresh decision',
+    () async {
+      var calls = 0;
+      final repository = _repository(
+        MockClient((_) async {
+          calls++;
+          return _error(503, 'SERVICE_UNAVAILABLE');
+        }),
+      );
 
-    final failure = _failure(
-      await repository.resetPassword(token: _token, password: _password),
-    );
+      final failure = _failure(
+        await repository.resetPassword(token: _token, password: _password),
+      );
 
-    expect(failure?.code, 'auth.passwordRecoveryResetOutcomeUnknown');
-    expect(failure?.cause, isNull);
-    expect(calls, 1);
-  });
+      expect(failure?.code, 'auth.passwordRecoveryResetOutcomeUnknown');
+      expect(failure?.cause, isNull);
+      expect(calls, 1);
+    },
+  );
 }
