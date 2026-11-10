@@ -194,6 +194,35 @@ void main() {
     verifyNever(() => useCase(any()));
   });
 
+  testWidgets('cancelling the media picker preserves the current avatar', (
+    tester,
+  ) async {
+    final repository = _MockUserRepository();
+    when(
+      () => repository.getMediaLibraryPage(
+        sessionFence: any(named: 'sessionFence'),
+        cursor: null,
+      ),
+    ).thenAnswer(
+      (_) async => right(UserMediaPage(items: [], nextCursor: null)),
+    );
+    when(
+      () => useCase(any()),
+    ).thenAnswer((_) async => left(Failure.networkOffline()));
+    await pumpPage(tester, getPage: GetUserMediaLibraryPage(repository));
+    final l10n = lookupAppLocalizations(const Locale('en'));
+    await tester.tap(find.text(l10n.editProfileChooseAvatarFromLibrary));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Close'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(NoWaveButton));
+    await tester.pumpAndSettle();
+    final params =
+        verify(() => useCase(captureAny())).captured.single as EditUserParams;
+    expect(params.uploadedAvatarUrl, isNull);
+    expect(params.avatar, isNull);
+  });
+
   testWidgets('same-account re-login invalidates the original form', (
     tester,
   ) async {

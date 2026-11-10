@@ -100,8 +100,9 @@ class UserEditBloc extends Bloc<UserEditEvent, UserEditState> {
     final userId = session?.activeUserId ?? '';
     if (session == null ||
         userId.isEmpty ||
-        (session.accessToken?.isEmpty ?? true))
+        (session.accessToken?.isEmpty ?? true)) {
       return null;
+    }
     return NowaveSessionFence(
       userId: userId,
       generation: session.sessionGeneration,
