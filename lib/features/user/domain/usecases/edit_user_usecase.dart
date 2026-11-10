@@ -17,6 +17,7 @@ class EditUserUseCase implements UseCase<User, EditUserParams> {
       userId: params.userId,
       name: params.name,
       avatar: params.avatar,
+      uploadedAvatarUrl: params.uploadedAvatarUrl,
       bio: params.bio,
       website: params.website,
       sessionFence: params.sessionFence,
@@ -28,6 +29,9 @@ class EditUserParams {
   final String userId;
   final String name;
   final ImageUpload? avatar;
+
+  /// A previously uploaded media-library asset, reused without uploading.
+  final String? uploadedAvatarUrl;
 
   /// Public introduction; sent as-is so the backend never has to guess.
   final String bio;
@@ -45,5 +49,6 @@ class EditUserParams {
     required this.website,
     required this.sessionFence,
     this.avatar,
+    this.uploadedAvatarUrl,
   });
 }

@@ -117,6 +117,7 @@ void main() {
     required NowaveApiClient client,
     required AppUserCubit cubit,
     ImageUpload? avatarFile,
+    String? uploadedAvatarUrl,
   }) async {
     final repository = UserRepositoryImpl(
       UserRemoteDataSourceImpl(client, manager),
@@ -132,7 +133,14 @@ void main() {
     final done = bloc.stream.firstWhere(
       (state) => state is UserEditSuccess || state is UserEditFailure,
     );
-    bloc.add(UserEditSubmitted(name: '新名字', bio: '简介', avatar: avatarFile));
+    bloc.add(
+      UserEditSubmitted(
+        name: '新名字',
+        bio: '简介',
+        avatar: avatarFile,
+        uploadedAvatarUrl: uploadedAvatarUrl,
+      ),
+    );
     await done;
     await bloc.close();
   }
@@ -265,6 +273,36 @@ void main() {
     expect((cubit.state as AppUserLoggedIn).user.name, '作者 A');
   });
 
+  test('a library avatar is sent in the profile write without upload', () async {
+    await signInAs('A');
+    const avatarUrl =
+        'https://api.example.invalid/api/v1/media/64f7a2c6-42b6-4b7b-9f89-2d68b8c45a01';
+    Map<String, dynamic>? body;
+    final client = clientFor((request) async {
+      if (request.method == 'PUT') {
+        body = jsonDecode(request.body) as Map<String, dynamic>;
+      }
+      return _json(_profile('A'));
+    });
+    final cubit = AppUserCubit()
+      ..updateUser(
+        UserModel(
+          id: 'A',
+          email: 'A@example.invalid',
+          name: 'A',
+          updatedAt: DateTime.utc(2024),
+        ),
+      );
+
+    await pumpSave(client: client, cubit: cubit, uploadedAvatarUrl: avatarUrl);
+
+    expect(body?['avatarUrl'], avatarUrl);
+    expect(body?['bio'], '简介');
+    expect(requests, contains('PUT /api/v1/me/profile'));
+    expect(requests, isNot(contains('POST /api/v1/me/media')));
+    await cubit.close();
+  });
+
   test('a switch after the write does not repaint the new account', () async {
     final useCase = _MockEditUserUseCase();
     final cubit = AppUserCubit()
@@ -306,6 +344,43 @@ void main() {
     expect((state as UserEditFailure).failure.code, 'auth.sessionChanged');
     expect(cubit.state, before, reason: "A's profile must not paint B's UI");
     await bloc.close();
+  });
+
+  test('an old form fence cannot submit into a replacement account', () async {
+    await signInAs('A');
+    final openingFence = NowaveSessionFence(
+      userId: 'A',
+      generation: manager.sessionGeneration,
+    );
+    await signInAs('B');
+    final useCase = _MockEditUserUseCase();
+    final cubit = AppUserCubit()
+      ..updateUser(
+        UserModel(
+          id: 'B',
+          email: 'B@example.invalid',
+          name: 'B',
+          updatedAt: DateTime.utc(2024),
+        ),
+      );
+    final bloc = UserEditBloc(
+      editUserUseCase: useCase,
+      appUserCubit: cubit,
+      sessionIdentity: manager,
+    );
+    final done = bloc.stream.firstWhere((state) => state is UserEditFailure);
+    bloc.add(
+      UserEditSubmitted(
+        name: 'Old form',
+        uploadedAvatarUrl: 'https://api.example.invalid/api/v1/media/old',
+        sessionFence: openingFence,
+      ),
+    );
+    final failure = await done as UserEditFailure;
+    expect(failure.failure.code, 'auth.sessionChanged');
+    verifyNever(() => useCase(any()));
+    await bloc.close();
+    await cubit.close();
   });
 
   test('signed out means nothing is sent', () async {
