@@ -67,6 +67,7 @@ import 'package:belog/features/blog/presentation/pages/user_blogs_page.dart';
 import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_grid_item.dart';
+import 'package:belog/features/messages/presentation/bloc/message_unread_badge_cubit.dart';
 import 'package:belog/features/notifications/domain/entities/app_notification.dart';
 import 'package:belog/features/notifications/domain/entities/notification_page.dart';
 import 'package:belog/features/notifications/domain/repositories/notification_repository.dart';
@@ -90,6 +91,7 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import '../support/locale_test_support.dart';
+import '../support/message_fakes.dart';
 
 /// The header the cross-language "my articles" list carries.
 const _kEditionsHint = '每种语言最多列出 50 篇，按更新时间排序；同一篇文章的不同语言版本会各占一条。';
@@ -331,6 +333,12 @@ class Harness {
       ..registerFactory(
         () => NotificationBadgeCubit(
           repository: SilentNotifications(),
+          identity: SignedOutBadgeIdentity(),
+        ),
+      )
+      ..registerFactory(
+        () => MessageUnreadBadgeCubit(
+          repository: FakeMessageRepository(),
           identity: SignedOutBadgeIdentity(),
         ),
       );

@@ -17,6 +17,7 @@ import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:belog/features/messages/presentation/bloc/message_unread_badge_cubit.dart';
 import 'package:belog/features/notifications/presentation/bloc/notification_badge_cubit.dart';
 import 'package:belog/features/user/domain/usecases/export_user_data.dart';
 import 'package:flutter/material.dart';
@@ -26,30 +27,43 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 
 /// The signed-in account's own page: identity, the way into every account
-/// screen, and a badge with how many notifications are still unread.
+/// screen, and badges for unread notifications and private messages.
 ///
-/// The badge is page-scoped state ([NotificationBadgeCubit]): it is read when
-/// the page opens, when the account changes, and when the inbox is closed -
-/// never on a timer, because this client has no push channel and a polling
-/// badge would spend requests to stay stale.
+/// The badges are page-scoped state: they read when the page opens, when the
+/// account changes, and when their inbox is closed. The message count is
+/// limited to the newest 50 conversations because the API has no global count
+/// endpoint or list cursor. Neither badge polls; this client has no push
+/// channel, so polling would spend requests to stay stale.
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key, this.badgeCubit});
+  const ProfilePage({super.key, this.badgeCubit, this.messageBadgeCubit});
 
-  /// Injected by tests; production reads the shared instance.
+  /// Injected by tests; production creates page-scoped instances.
   final NotificationBadgeCubit? badgeCubit;
+  final MessageUnreadBadgeCubit? messageBadgeCubit;
 
   @override
   Widget build(BuildContext context) {
-    final injected = badgeCubit;
-    if (injected != null) {
+    final messages = messageBadgeCubit;
+    final Widget profileView = messages == null
+        ? BlocProvider<MessageUnreadBadgeCubit>(
+            create: (_) => GetIt.instance<MessageUnreadBadgeCubit>(),
+            child: const _ProfileView(),
+          )
+        : BlocProvider<MessageUnreadBadgeCubit>.value(
+            value: messages,
+            child: const _ProfileView(),
+          );
+
+    final notifications = badgeCubit;
+    if (notifications != null) {
       return BlocProvider<NotificationBadgeCubit>.value(
-        value: injected,
-        child: const _ProfileView(),
+        value: notifications,
+        child: profileView,
       );
     }
     return BlocProvider<NotificationBadgeCubit>(
       create: (_) => GetIt.instance<NotificationBadgeCubit>(),
-      child: const _ProfileView(),
+      child: profileView,
     );
   }
 }
@@ -57,11 +71,18 @@ class ProfilePage extends StatelessWidget {
 class _ProfileView extends StatelessWidget {
   const _ProfileView();
 
-  /// Opens the inbox and re-reads the badge on the way back: reading
-  /// notifications there is the only thing on this page that changes the count.
+  /// Re-reads the notification badge after returning from its inbox.
   Future<void> _openInbox(BuildContext context) async {
     final badge = context.read<NotificationBadgeCubit>();
     await context.push('/profile/notifications');
+    if (!context.mounted) return;
+    unawaited(badge.refresh());
+  }
+
+  /// Re-reads unread totals after messages were opened or marked read.
+  Future<void> _openMessages(BuildContext context) async {
+    final badge = context.read<MessageUnreadBadgeCubit>();
+    await context.push('/profile/messages');
     if (!context.mounted) return;
     unawaited(badge.refresh());
   }
@@ -189,15 +210,28 @@ class _ProfileView extends StatelessWidget {
                             description: l10n.notificationsMenuHint,
                             onTap: () => _openInbox(context),
                             trailing: unread > 0
-                                ? _UnreadBadge(count: unread)
+                                ? _UnreadBadge(
+                                    count: unread,
+                                    semanticLabel: l10n
+                                        .notificationsUnreadCount(unread),
+                                  )
                                 : null,
                           ),
                         ),
-                        NoWaveActionRow(
-                          icon: Icons.mail_outline,
-                          label: l10n.messagesTitle,
-                          description: l10n.messagesMenuHint,
-                          onTap: () => context.push('/profile/messages'),
+                        BlocBuilder<MessageUnreadBadgeCubit, int>(
+                          builder: (context, unread) => NoWaveActionRow(
+                            icon: Icons.mail_outline,
+                            label: l10n.messagesTitle,
+                            description: l10n.messagesMenuHint,
+                            onTap: () => _openMessages(context),
+                            trailing: unread > 0
+                                ? _UnreadBadge(
+                                    count: unread,
+                                    semanticLabel: l10n
+                                        .messagesUnreadRecentCount(unread),
+                                  )
+                                : null,
+                          ),
                         ),
                         NoWaveActionRow(
                           icon: Icons.cloud_upload_outlined,
@@ -284,20 +318,21 @@ class _ProfileView extends StatelessWidget {
   }
 }
 
-/// The unread count as a pill. The number is announced as "3 unread" rather
-/// than as a bare digit, and it is capped so a long count cannot stretch the
+/// The unread count as a pill. [semanticLabel] gives screen readers its
+/// meaning; the visible number is capped so a long count cannot stretch the
 /// row at large text sizes.
 class _UnreadBadge extends StatelessWidget {
-  const _UnreadBadge({required this.count});
+  const _UnreadBadge({required this.count, required this.semanticLabel});
 
   final int count;
+  final String semanticLabel;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final label = count > 99 ? '99+' : '$count';
     return Semantics(
-      label: context.l10n.notificationsUnreadCount(count),
+      label: semanticLabel,
       excludeSemantics: true,
       child: Container(
         constraints: const BoxConstraints(minWidth: 26),

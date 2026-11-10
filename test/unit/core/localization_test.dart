@@ -77,6 +77,16 @@ void main() {
     },
   );
 
+  test('message badge copy discloses its recent-conversation scope', () {
+    expect(zh.messagesUnreadRecentCount(5), '最近 50 个会话中有 5 条未读消息');
+    expect(
+      en.messagesUnreadRecentCount(5),
+      '5 unread messages across the 50 most recent conversations',
+    );
+    expect(zh.messagesMenuHint, contains('最近 50 个会话'));
+    expect(en.messagesMenuHint, contains('50 most recent conversations'));
+  });
+
   test('conversation deletion copy makes the global effect explicit', () {
     expect(zh.messagesDeleteBody, contains('所有参与者'));
     expect(zh.messagesDeleteBody, contains('无法撤销'));
