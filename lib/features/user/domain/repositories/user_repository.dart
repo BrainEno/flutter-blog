@@ -1,10 +1,21 @@
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/features/user/domain/entities/user_media_page.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:belog/core/common/entities/image_upload.dart';
 
 abstract class UserRepository {
+  /// Reads one page of the signed-in user's own uploaded media.
+  ///
+  /// The cursor is opaque. [sessionFence] binds every page to the identity that
+  /// opened the picker, so a session switch cannot expose another account's
+  /// library.
+  Future<Either<Failure, UserMediaPage>> getMediaLibraryPage({
+    required NowaveSessionFence sessionFence,
+    String? cursor,
+  });
+
   /// Edits profile display data (name, bio, website, avatar).
   ///
   /// The e-mail address is not part of the editable profile: the backend

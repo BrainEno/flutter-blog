@@ -392,9 +392,15 @@ void main() {
     expect(await store.entries(userId: 'alice'), isEmpty);
   });
 
-  test('an entry that already has a cover URL is not uploaded again', () async {
-    final queued = await enqueueWithCover();
-    await store.recordCoverUrl(queued.id, url: _kCoverUrl);
+  test('a media-library cover URL is sent without uploading', () async {
+    await store.enqueue(
+      userId: 'alice',
+      title: 'Reuse library cover',
+      content: 'body',
+      tags: const ['tag'],
+      idempotencyKey: 'key-library-cover',
+      coverUrl: _kCoverUrl,
+    );
     when(
       () => repository.uploadBlog(
         uploadedCoverUrl: any(named: 'uploadedCoverUrl'),

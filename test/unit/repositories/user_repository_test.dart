@@ -9,6 +9,7 @@ import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
 import 'package:belog/features/user/data/datasources/user_remote_data_source.dart';
 import 'package:belog/features/user/data/repositories/user_repository_impl.dart';
+import 'package:belog/features/user/domain/entities/user_media_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -27,6 +28,7 @@ void main() {
   late UserRepositoryImpl repository;
 
   setUpAll(() {
+    registerFallbackValue(_fence);
     registerFallbackValue(
       ImageUpload(bytes: Uint8List(3), mimeType: 'image/jpeg'),
     );
@@ -274,6 +276,55 @@ void main() {
         (_) => fail('offline edit must not report success'),
       );
       verifyNever(() => remote.getUserById(any()));
+    });
+  });
+
+  group('getMediaLibraryPage', () {
+    test(
+      'returns an offline failure without making a remote request',
+      () async {
+        when(() => connection.isConnected).thenAnswer((_) async => false);
+
+        final result = await repository.getMediaLibraryPage(
+          sessionFence: _fence,
+          cursor: 'opaque-cursor',
+        );
+
+        result.fold(
+          (failure) => expect(failure.kind, FailureKind.network),
+          (_) => fail('offline media reads must fail'),
+        );
+        verifyNever(
+          () => remote.getMediaLibraryPage(
+            sessionFence: any(named: 'sessionFence'),
+            cursor: any(named: 'cursor'),
+          ),
+        );
+      },
+    );
+
+    test('forwards the original fence and opaque cursor', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      final page = UserMediaPage(items: const [], nextCursor: 'next-page');
+      when(
+        () => remote.getMediaLibraryPage(
+          sessionFence: _fence,
+          cursor: 'opaque-cursor',
+        ),
+      ).thenAnswer((_) async => page);
+
+      final result = await repository.getMediaLibraryPage(
+        sessionFence: _fence,
+        cursor: 'opaque-cursor',
+      );
+
+      expect(result.getRight().toNullable(), same(page));
+      verify(
+        () => remote.getMediaLibraryPage(
+          sessionFence: _fence,
+          cursor: 'opaque-cursor',
+        ),
+      ).called(1);
     });
   });
 }

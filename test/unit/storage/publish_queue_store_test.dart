@@ -62,6 +62,32 @@ void main() {
   });
 
   test(
+    'an already selected media-library cover survives queue storage',
+    () async {
+      const coverUrl =
+          'https://api.example.invalid/api/v1/media/64f7a2c6-42b6-4b7b-9f89-2d68b8c45a01';
+      final entry = await store.enqueue(
+        userId: 'alice',
+        title: 'Reuse media',
+        content: 'body',
+        tags: const [],
+        idempotencyKey: 'key-media-library',
+        coverUrl: coverUrl,
+        kind: PublishQueueKind.edit,
+        targetId: 'article-1',
+        locale: 'zh-CN',
+      );
+
+      expect(entry.coverUrl, coverUrl);
+      expect(entry.coverFileName, isNull);
+      final stored = (await store.entries(userId: 'alice')).single;
+      expect(stored.coverUrl, coverUrl);
+      expect(stored.targetId, 'article-1');
+      expect(stored.locale, 'zh-CN');
+    },
+  );
+
+  test(
     'the queued category survives an untouched and a cleared picker',
     () async {
       await store.enqueue(

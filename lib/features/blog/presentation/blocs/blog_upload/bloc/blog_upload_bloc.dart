@@ -36,6 +36,7 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
     final res = await _uploadBlog(
       UploadBlogParams(
         image: event.image,
+        uploadedCoverUrl: event.uploadedCoverUrl,
         title: event.title,
         content: event.content,
         posterId: event.posterId,
@@ -61,6 +62,7 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
       UpdateBlogParams(
         blogId: event.blogId,
         image: event.image,
+        uploadedCoverUrl: event.uploadedCoverUrl,
         title: event.title,
         content: event.content,
         tags: event.tags,

@@ -74,6 +74,7 @@ class FakePublishQueueStore implements PublishQueueStore {
     required List<String> tags,
     required String idempotencyKey,
     ImageUpload? cover,
+    String? coverUrl,
     PublishQueueKind kind = PublishQueueKind.create,
     String? targetId,
     String? locale,
@@ -92,6 +93,8 @@ class FakePublishQueueStore implements PublishQueueStore {
       kind: kind,
       targetId: targetId,
       locale: locale,
+      categoryIds: categoryIds,
+      coverUrl: coverUrl,
     );
     enqueued.add(entry);
     rows = [...rows, entry];

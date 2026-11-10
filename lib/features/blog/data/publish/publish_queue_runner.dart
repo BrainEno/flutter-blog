@@ -29,10 +29,9 @@ import 'package:fpdart/fpdart.dart';
 ///   article the server already created instead of publishing a second copy.
 ///   An edit needs no key of its own: it addresses one article id, so replaying
 ///   it rewrites that article instead of creating another.
-/// - **One cover upload.** Media assets are immutable, so the URL an attempt
-///   uploaded the cover to is written back to the entry before the article is
-///   created: a retry (or a crash between the two steps) reuses that URL and
-///   never leaves a second unreferenced asset behind.
+/// - **One cover asset.** A selected library URL is reused as-is; if the
+///   cover is local bytes, its first upload is written back before the article
+///   request. Retries never create a second asset for the same cover.
 /// - **Bounded retries.** Network, timeout and storage failures back off
 ///   (1m, 5m, 15m, 60m, 3h) up to [_kMaxAttempts]; content rejections stop
 ///   immediately and wait for a human. A missing session pauses the queue
@@ -114,8 +113,9 @@ class PublishQueueRunner implements PublishQueueDrainer {
       return false;
     }
 
-    // An earlier attempt may already have uploaded the cover. Reuse that asset
-    // instead of sending the same bytes again (see [_uploadCover]).
+    // The editor may already have selected a library asset, or an earlier
+    // attempt may have uploaded the cover. Reuse that URL instead of uploading
+    // another asset (see [_uploadCover]).
     var coverUrl = entry.coverUrl;
     if (coverUrl == null) {
       final uploaded = await _uploadCover(entry, fence);

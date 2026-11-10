@@ -118,12 +118,12 @@ class PublishQueueEntry {
   final String? coverFileName;
   final String? coverMimeType;
 
-  /// Where the cover already lives on the server, once an attempt uploaded it.
+  /// Where the cover already lives on the server: selected from the media
+  /// library, or uploaded by an earlier attempt.
   ///
   /// Media assets are immutable, so a retry reuses this URL instead of sending
-  /// the same bytes again: without it, every failed attempt that got as far as
-  /// the upload left an unreferenced asset behind. Null means "not uploaded
-  /// yet" (including every entry queued before this field existed).
+  /// the same bytes again. Null means no reusable asset is recorded yet,
+  /// including every entry queued before this field existed.
   final String? coverUrl;
 
   /// When a retryable failure may be attempted again; null means "as soon as

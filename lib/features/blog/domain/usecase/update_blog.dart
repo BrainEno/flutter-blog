@@ -15,6 +15,7 @@ class UpdateBlog implements UseCase<Blog, UpdateBlogParams> {
     return await blogRepository.editBlog(
       blogId: params.blogId,
       image: params.image,
+      uploadedCoverUrl: params.uploadedCoverUrl,
       title: params.title,
       content: params.content,
       tags: params.tags,
@@ -28,6 +29,9 @@ class UpdateBlog implements UseCase<Blog, UpdateBlogParams> {
 class UpdateBlogParams {
   final String blogId;
   final ImageUpload? image;
+
+  /// Existing immutable media URL chosen as the cover; avoids uploading it.
+  final String? uploadedCoverUrl;
   final String title;
   final String content;
   final List<String> tags;
@@ -45,6 +49,7 @@ class UpdateBlogParams {
   UpdateBlogParams({
     required this.blogId,
     this.image,
+    this.uploadedCoverUrl,
     required this.title,
     required this.content,
     required this.tags,

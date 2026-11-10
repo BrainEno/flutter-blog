@@ -14,6 +14,7 @@ class UploadBlog implements UseCase<Blog, UploadBlogParams> {
   Future<Either<Failure, Blog>> call(UploadBlogParams params) async {
     return await blogRepository.uploadBlog(
       image: params.image,
+      uploadedCoverUrl: params.uploadedCoverUrl,
       title: params.title,
       content: params.content,
       posterId: params.posterId,
@@ -28,6 +29,9 @@ class UploadBlog implements UseCase<Blog, UploadBlogParams> {
 class UploadBlogParams {
   /// Picked cover; null publishes a text-only article (issue #17).
   final ImageUpload? image;
+
+  /// Existing immutable media URL chosen as the cover; avoids uploading it.
+  final String? uploadedCoverUrl;
   final String title;
   final String content;
   final String posterId;
@@ -47,6 +51,7 @@ class UploadBlogParams {
 
   UploadBlogParams({
     required this.image,
+    this.uploadedCoverUrl,
     required this.title,
     required this.content,
     required this.posterId,

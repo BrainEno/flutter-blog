@@ -29,6 +29,13 @@ abstract interface class PublishQueueStore {
     required List<String> tags,
     required String idempotencyKey,
     ImageUpload? cover,
+
+    /// A media-library cover selected before the request was queued.
+    ///
+    /// When present, the retry reuses this immutable asset rather than
+    /// uploading new bytes. [cover] may also be present if an earlier attempt
+    /// already uploaded a locally selected file.
+    String? coverUrl,
     PublishQueueKind kind = PublishQueueKind.create,
     String? targetId,
     String? locale,

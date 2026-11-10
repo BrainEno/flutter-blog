@@ -5,6 +5,7 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
@@ -13,6 +14,10 @@ import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/category_repository.dart';
 import 'package:belog/features/blog/domain/usecase/get_categories.dart';
+import 'package:belog/features/user/domain/entities/user_media_asset.dart';
+import 'package:belog/features/user/domain/entities/user_media_page.dart';
+import 'package:belog/features/user/domain/repositories/user_repository.dart';
+import 'package:belog/features/user/domain/usecases/get_user_media_library_page.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/editor/editor_body_field.dart';
 import 'package:belog/features/blog/presentation/pages/blog_editor_page.dart';
@@ -96,6 +101,8 @@ class _Catalog implements CategoryRepository {
   }) async => right(const []);
 }
 
+class _MockMediaUserRepository extends Mock implements UserRepository {}
+
 class _RecordingUploadBloc extends Mock implements BlogUploadBloc {
   _RecordingUploadBloc(this.states);
 
@@ -119,6 +126,7 @@ class _Harness {
     List<PublishQueueEntry> rows = const [],
     ImageUpload? cover,
     this.getCategories,
+    this.getUserMediaLibraryPage,
   }) : queue = FakePublishQueueStore(rows: rows, storedCover: cover),
        drafts = _FakeDraftStore() {
     identity = _Identity();
@@ -139,6 +147,7 @@ class _Harness {
   final PublishQueueEntry? queueEntry;
   final Blog? blog;
   final GetCategories? getCategories;
+  final GetUserMediaLibraryPage? getUserMediaLibraryPage;
   final FakePublishQueueStore queue;
   final _FakeDraftStore drafts;
   late final _Identity identity;
@@ -166,6 +175,7 @@ class _Harness {
             publishQueueStore: queue,
             publishQueueDrainer: drainer,
             getCategories: getCategories,
+            getUserMediaLibraryPage: getUserMediaLibraryPage,
           ),
         ),
       ),
@@ -203,6 +213,12 @@ String bodyText(WidgetTester tester) => tester
     .text;
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(
+      const NowaveSessionFence(userId: 'user', generation: 1),
+    );
+  });
+
   testWidgets('a failed entry resumes its text, tags and cover', (
     tester,
   ) async {
@@ -397,5 +413,131 @@ void main() {
       'cat-1',
       'cat-2',
     ]);
+  });
+
+  testWidgets('a selected media-library cover is sent and retained when queued', (
+    tester,
+  ) async {
+    const coverUrl =
+        'https://api.example.invalid/api/v1/media/64f7a2c6-42b6-4b7b-9f89-2d68b8c45a01';
+    final repository = _MockMediaUserRepository();
+    final asset = UserMediaAsset(
+      id: '64f7a2c6-42b6-4b7b-9f89-2d68b8c45a01',
+      imageUrl: coverUrl,
+      width: 1200,
+      height: 800,
+      byteSize: 4096,
+      createdAt: DateTime.utc(2026, 10, 28),
+    );
+    when(
+      () => repository.getMediaLibraryPage(
+        sessionFence: any(named: 'sessionFence'),
+        cursor: null,
+      ),
+    ).thenAnswer(
+      (_) async => right(UserMediaPage(items: [asset], nextCursor: null)),
+    );
+    final harness = _Harness(
+      getUserMediaLibraryPage: GetUserMediaLibraryPage(repository),
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = lookupAppLocalizations(const Locale('zh'));
+
+    await tester.tap(find.text(l10n.editorCoverChooseFromLibrary));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.userMediaPickerTitle), findsOneWidget);
+    expect(find.text('1200 × 800'), findsOneWidget);
+    await tester.tap(find.text('1200 × 800'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField).first, 'Reuse cover');
+    await tester.enterText(find.byType(EditorBodyField), 'Article body');
+    await tester.pump();
+    await tester.tap(find.text('发布'));
+    await tester.pump();
+
+    final event = harness.bloc.events.single as UploadBlogEvent;
+    expect(event.image, isNull);
+    expect(event.uploadedCoverUrl, coverUrl);
+
+    harness.states.add(
+      const BlogUploadFailure(
+        Failure(
+          '无法连接到网络，请检查网络设置',
+          kind: FailureKind.network,
+          code: 'network.unavailable',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(harness.queue.enqueued, hasLength(1));
+    expect(harness.queue.enqueued.single.coverUrl, coverUrl);
+    expect(harness.queue.enqueued.single.coverFileName, isNull);
+    final capturedFence =
+        verify(
+              () => repository.getMediaLibraryPage(
+                sessionFence: captureAny(named: 'sessionFence'),
+                cursor: null,
+              ),
+            ).captured.single
+            as NowaveSessionFence;
+    expect(capturedFence.userId, 'user');
+    expect(capturedFence.generation, 1);
+  });
+
+  testWidgets('a session change clears and closes the media picker', (
+    tester,
+  ) async {
+    final repository = _MockMediaUserRepository();
+    when(
+      () => repository.getMediaLibraryPage(
+        sessionFence: any(named: 'sessionFence'),
+        cursor: null,
+      ),
+    ).thenAnswer(
+      (_) async => right(UserMediaPage(items: [], nextCursor: null)),
+    );
+    final harness = _Harness(
+      getUserMediaLibraryPage: GetUserMediaLibraryPage(repository),
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = lookupAppLocalizations(const Locale('zh'));
+
+    await tester.tap(find.text(l10n.editorCoverChooseFromLibrary));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.userMediaPickerTitle), findsOneWidget);
+
+    harness.identity.userId = null;
+    harness.identity.controller.add(null);
+    await tester.pumpAndSettle();
+
+    expect(find.text(l10n.userMediaPickerTitle), findsNothing);
+    expect(find.text(l10n.editorSessionChanged), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a queued media-library cover is reused by the editor', (
+    tester,
+  ) async {
+    const coverUrl =
+        'https://api.example.invalid/api/v1/media/64f7a2c6-42b6-4b7b-9f89-2d68b8c45a01';
+    final entry = queueEntry(
+      title: 'Queued media cover',
+      content: 'Queued body',
+      coverUrl: coverUrl,
+    );
+    final harness = _Harness(queueEntry: entry, rows: [entry]);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+
+    await tester.tap(find.text('发布'));
+    await tester.pump();
+
+    final event = harness.bloc.events.single as UploadBlogEvent;
+    expect(event.image, isNull);
+    expect(event.uploadedCoverUrl, coverUrl);
   });
 }

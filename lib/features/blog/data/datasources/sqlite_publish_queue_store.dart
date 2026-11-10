@@ -48,6 +48,7 @@ class SqlitePublishQueueStore implements PublishQueueStore {
     required List<String> tags,
     required String idempotencyKey,
     ImageUpload? cover,
+    String? coverUrl,
     PublishQueueKind kind = PublishQueueKind.create,
     String? targetId,
     String? locale,
@@ -81,7 +82,7 @@ class SqlitePublishQueueStore implements PublishQueueStore {
         'title, content, tags, cover_file, cover_mime, cover_url, kind, '
         'target_id, locale, category_ids, state, attempts, next_attempt_at, '
         'last_error_code, created_at, updated_at) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, 0, NULL, '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, '
         'NULL, ?, ?)',
         variables: [
           Variable<String>(id),
@@ -93,6 +94,7 @@ class SqlitePublishQueueStore implements PublishQueueStore {
           Variable<String>(jsonEncode(tags)),
           Variable<String>(coverFileName),
           Variable<String>(coverMime),
+          Variable<String>(coverUrl),
           Variable<String>(kind.name),
           Variable<String>(kind == PublishQueueKind.edit ? targetId : null),
           Variable<String>(
@@ -127,6 +129,7 @@ class SqlitePublishQueueStore implements PublishQueueStore {
         updatedAt: now,
         coverFileName: coverFileName,
         coverMimeType: coverFileName == null ? null : coverMime,
+        coverUrl: coverUrl,
       );
     });
   }

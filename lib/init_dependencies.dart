@@ -124,6 +124,7 @@ import 'package:belog/features/user/domain/usecases/browse_authors.dart';
 import 'package:belog/features/user/domain/usecases/edit_user_usecase.dart';
 import 'package:belog/features/user/domain/usecases/export_user_data.dart';
 import 'package:belog/features/user/domain/usecases/get_author_relationships.dart';
+import 'package:belog/features/user/domain/usecases/get_user_media_library_page.dart';
 import 'package:belog/features/user/domain/usecases/search_authors.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:get_it/get_it.dart';
@@ -664,6 +665,9 @@ void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {
       ),
     )
     // Usecases
+    ..registerFactory(
+      () => GetUserMediaLibraryPage(serviceLocator<UserRepository>()),
+    )
     ..registerFactory(() => EditUserUseCase(serviceLocator<UserRepository>()))
     // Page-scoped blocs created and disposed with their routes.
     ..registerFactory(
