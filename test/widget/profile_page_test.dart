@@ -146,10 +146,8 @@ class _Harness {
       routes: [
         GoRoute(
           path: '/profile',
-          builder: (_, _) => ProfilePage(
-            badgeCubit: badge,
-            messageBadgeCubit: messageBadge,
-          ),
+          builder: (_, _) =>
+              ProfilePage(badgeCubit: badge, messageBadgeCubit: messageBadge),
           routes: [
             for (final path in [
               'edit',
@@ -362,56 +360,55 @@ void main() {
     }
   });
 
-  testWidgets(
-    'messages badge sums recent counts and refreshes on return',
-    (tester) async {
-      final semantics = tester.ensureSemantics();
-      final harness = _Harness(_user(), messageUnreadCounts: [2, 3]);
-      addTearDown(harness.dispose);
-      try {
-        await harness.pump(tester);
-        final l10n = lookupAppLocalizations(const Locale('en'));
-        final messagesRow = find.widgetWithText(
-          NoWaveActionRow,
-          l10n.messagesTitle,
-        );
-        await tester.scrollUntilVisible(messagesRow, 100);
-        await tester.ensureVisible(messagesRow);
-        await tester.pumpAndSettle();
+  testWidgets('messages badge sums recent counts and refreshes on return', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    final harness = _Harness(_user(), messageUnreadCounts: [2, 3]);
+    addTearDown(harness.dispose);
+    try {
+      await harness.pump(tester);
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      final messagesRow = find.widgetWithText(
+        NoWaveActionRow,
+        l10n.messagesTitle,
+      );
+      await tester.scrollUntilVisible(messagesRow, 100);
+      await tester.ensureVisible(messagesRow);
+      await tester.pumpAndSettle();
 
-        expect(harness.messages.calls, ['conversations']);
-        expect(find.text('5'), findsOneWidget);
-        expect(find.text(l10n.messagesMenuHint), findsOneWidget);
-        expect(
-          find.bySemanticsLabel(
-            RegExp(RegExp.escape(l10n.messagesUnreadRecentCount(5))),
-          ),
-          findsOneWidget,
-        );
+      expect(harness.messages.calls, ['conversations']);
+      expect(find.text('5'), findsOneWidget);
+      expect(find.text(l10n.messagesMenuHint), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(
+          RegExp(RegExp.escape(l10n.messagesUnreadRecentCount(5))),
+        ),
+        findsOneWidget,
+      );
 
-        await tester.tap(messagesRow);
-        await tester.pumpAndSettle();
-        expect(find.text('destination: messages'), findsOneWidget);
+      await tester.tap(messagesRow);
+      await tester.pumpAndSettle();
+      expect(find.text('destination: messages'), findsOneWidget);
 
-        harness.messages.conversationsResult = [
-          testConversation(
-            id: 'message-badge-updated',
-            participants: const ['viewer', 'author'],
-            unreadCount: 1,
-          ),
-        ];
-        harness.router.pop();
-        await tester.pumpAndSettle();
+      harness.messages.conversationsResult = [
+        testConversation(
+          id: 'message-badge-updated',
+          participants: const ['viewer', 'author'],
+          unreadCount: 1,
+        ),
+      ];
+      harness.router.pop();
+      await tester.pumpAndSettle();
 
-        expect(harness.messages.calls, ['conversations', 'conversations']);
-        expect(find.text('5'), findsNothing);
-        expect(find.text('1'), findsOneWidget);
-        expect(tester.takeException(), isNull);
-      } finally {
-        semantics.dispose();
-      }
-    },
-  );
+      expect(harness.messages.calls, ['conversations', 'conversations']);
+      expect(find.text('5'), findsNothing);
+      expect(find.text('1'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    } finally {
+      semantics.dispose();
+    }
+  });
 
   testWidgets('a clear inbox shows no badge at all', (tester) async {
     final harness = _Harness(_user(), unread: 0);

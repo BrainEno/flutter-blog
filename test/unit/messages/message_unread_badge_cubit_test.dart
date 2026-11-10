@@ -189,10 +189,10 @@ void main() {
 
       expect(emissions, [0, 1]);
       expect(cubit.state, 1);
-      expect(
-        repository.fences.map((fence) => fence.userId),
-        ['user-a', 'user-b'],
-      );
+      expect(repository.fences.map((fence) => fence.userId), [
+        'user-a',
+        'user-b',
+      ]);
     },
   );
 
@@ -226,10 +226,10 @@ void main() {
       await _settle();
 
       expect(cubit.state, 2);
-      expect(
-        repository.fences.map((fence) => fence.userId),
-        ['user-a', 'user-b'],
-      );
+      expect(repository.fences.map((fence) => fence.userId), [
+        'user-a',
+        'user-b',
+      ]);
     },
   );
 

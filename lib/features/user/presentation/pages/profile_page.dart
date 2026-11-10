@@ -212,9 +212,8 @@ class _ProfileView extends StatelessWidget {
                             trailing: unread > 0
                                 ? _UnreadBadge(
                                     count: unread,
-                                    semanticLabel: l10n.notificationsUnreadCount(
-                                      unread,
-                                    ),
+                                    semanticLabel: l10n
+                                        .notificationsUnreadCount(unread),
                                   )
                                 : null,
                           ),
@@ -228,8 +227,8 @@ class _ProfileView extends StatelessWidget {
                             trailing: unread > 0
                                 ? _UnreadBadge(
                                     count: unread,
-                                    semanticLabel:
-                                        l10n.messagesUnreadRecentCount(unread),
+                                    semanticLabel: l10n
+                                        .messagesUnreadRecentCount(unread),
                                   )
                                 : null,
                           ),
