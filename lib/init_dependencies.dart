@@ -25,10 +25,14 @@ import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dar
 import 'package:belog/features/auth/data/datasources/profile_cache_store.dart';
 import 'package:belog/features/auth/data/repositories/account_security_repository_impl.dart';
 import 'package:belog/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:belog/features/auth/data/repositories/password_recovery_repository_impl.dart';
 import 'package:belog/features/auth/domain/auth_intent_gate.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
+import 'package:belog/features/auth/domain/repository/password_recovery_repository.dart';
 import 'package:belog/features/auth/domain/usecases/current_user.dart';
+import 'package:belog/features/auth/domain/usecases/request_password_reset.dart';
+import 'package:belog/features/auth/domain/usecases/reset_password.dart';
 import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
@@ -325,7 +329,15 @@ void _initAuth(
         rememberEmail: sessionManager.updateEmail,
       ),
     )
+    ..registerLazySingleton<PasswordRecoveryRepository>(
+      () => PasswordRecoveryRepositoryImpl(
+        client: apiClient,
+        connectionChecker: serviceLocator(),
+      ),
+    )
     // Usecases
+    ..registerFactory(() => RequestPasswordReset(serviceLocator()))
+    ..registerFactory(() => ResetPassword(serviceLocator()))
     ..registerFactory(() => UserSignUp(serviceLocator()))
     ..registerFactory(() => UserLogin(serviceLocator()))
     ..registerFactory(() => UserSignOut(serviceLocator()))

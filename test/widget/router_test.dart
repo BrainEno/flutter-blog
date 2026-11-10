@@ -8,10 +8,15 @@ import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
+import 'package:belog/features/auth/domain/repository/password_recovery_repository.dart';
+import 'package:belog/features/auth/domain/usecases/request_password_reset.dart';
+import 'package:belog/features/auth/domain/usecases/reset_password.dart';
 import 'package:belog/features/auth/domain/email_verification.dart';
 import 'package:belog/features/auth/presentation/pages/change_email_page.dart';
 import 'package:belog/features/auth/presentation/pages/email_verification_page.dart';
 import 'package:belog/features/auth/presentation/pages/change_password_page.dart';
+import 'package:belog/features/auth/presentation/pages/password_recovery_page.dart';
+import 'package:belog/features/auth/presentation/pages/password_reset_page.dart';
 import 'package:belog/core/theme/app_theme_mode.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
@@ -106,6 +111,8 @@ class MockAuthRepository extends Mock implements AuthRepository {}
 
 class MockAccountSecurity extends Mock implements AccountSecurityRepository {}
 
+class MockPasswordRecovery extends Mock implements PasswordRecoveryRepository {}
+
 class MockSessionManager extends Mock implements NowaveSessionManager {}
 
 class MockCommentRemote extends Mock implements CommentRemoteDataSource {}
@@ -196,6 +203,7 @@ class Harness {
   final MockBlogLocal local = MockBlogLocal();
   final MockConnection connection = MockConnection();
   final MockAuthRepository authRepository = MockAuthRepository();
+  final MockPasswordRecovery passwordRecovery = MockPasswordRecovery();
   late final ThemeBloc themeBloc;
   late final AppUserCubit appUserCubit;
   late final AuthBloc authBloc;
@@ -274,6 +282,13 @@ class Harness {
     final repository = BlogRepositoryImpl(remote, local, connection);
     final sl = GetIt.instance;
     sl
+      ..registerFactory<PasswordRecoveryRepository>(() => passwordRecovery)
+      ..registerFactory<RequestPasswordReset>(
+        () => RequestPasswordReset(passwordRecovery),
+      )
+      ..registerFactory<ResetPassword>(
+        () => ResetPassword(passwordRecovery),
+      )
       ..registerFactory(() => GetAllBlogs(repository))
       ..registerFactory(() => GetBlogById(repository))
       ..registerFactory(() => SearchBlogs(repository))
@@ -524,6 +539,41 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AboutPage), findsOneWidget);
+  });
+
+  testWidgets('the login page opens the public password recovery flow', (
+    tester,
+  ) async {
+    final harness = Harness()..buildRouter(initialLocation: '/login');
+    addTearDown(harness.dispose);
+    final l10n = lookupAppLocalizations(const Locale('en'));
+    await harness.pump(tester, locale: const Locale('en'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(l10n.passwordRecoveryTitle));
+    await tester.pumpAndSettle();
+    expect(find.byType(PasswordRecoveryPage), findsOneWidget);
+    expect(find.byType(LoginPage), findsNothing);
+
+    harness.router!.go('/reset-password');
+    await tester.pumpAndSettle();
+    expect(find.byType(PasswordResetPage), findsOneWidget);
+    expect(find.byType(LoginPage), findsNothing);
+  });
+
+  testWidgets('signed-in visitors are redirected away from recovery routes', (
+    tester,
+  ) async {
+    final harness = Harness();
+    harness.appUserCubit.updateUser(sampleUser());
+    harness.buildRouter(initialLocation: '/reset-password');
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PasswordResetPage), findsNothing);
+    expect(find.byType(LoginPage), findsNothing);
+    expect(find.byType(BlogPage), findsOneWidget);
   });
 
   testWidgets('a network login failure offers the diagnostics report', (

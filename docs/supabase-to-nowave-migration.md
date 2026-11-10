@@ -6,7 +6,7 @@
 ### 2026-10-31 当前状态与修正
 
 - G1：软删、回收站、恢复已实现并接入 App；服务端过期清扫由写入触发，不能保证准时清除。
-- G2：服务端已有 `POST /auth/forgot-password`、`POST /auth/reset-password`、`POST /auth/verify-email`、`POST /me/email-verification`，可配置 SMTP；邮件默认关闭，实际部署和投递未验证。App 仍没有忘记密码、验证、重发及邮件链接处理界面；当前也没有改邮箱或登录态下直接改密码的接口。注册后可立即登录，邮箱验证不是登录/发布门槛。
+- G2：服务端已有 `POST /auth/forgot-password`、`POST /auth/reset-password`、`POST /auth/verify-email`、`POST /me/email-verification`，并提供改邮箱、登录态改密接口。App 已接入改邮箱、改密、邮箱验证及密码找回/重置；邮件链接由网页处理，移动端密码重置支持手动粘贴链接或 token，不更改现有深链规则。邮件默认关闭，部署开关、SMTP 配置和真实投递未验证。注册后可立即登录，邮箱验证不是登录/发布门槛。
 - G3：`GET /me` 可包含邮箱与验证状态；App 目前只用 id，账号页邮箱依旧来自本地缓存，未与服务端资料同步。
 - 媒体：每次上传产生独立资产，尚无服务端幂等或完整孤儿回收；本客户端封面及头像不对连接失败或超时自动重发。断流时写入结果可能未知，手动重试仍可能重复。明确的 401 经刷新后的单次请求重放保留。
 - 截至该快照，上传响应的 `src` 与实际媒体路由仍不一致；客户端继续根据 id 构造版本化 URL。部署状态、真实邮件投递及生产数据不在本核对范围。
@@ -18,7 +18,7 @@
 | # | 当前状态 | 影响 | 后续 |
 |---|----------|------|------|
 | G1 | 服务端软删、回收站、恢复已实现，App 已接入 | 删除和恢复文章 | 清扫由写入触发，需单独解决准时回收 |
-| G2 | 服务端已有密码重置、邮箱验证和重发验证；修改邮箱和登录态直接改密未提供 | App 缺少对应界面与邮件链接处理 | 先修复和验证服务端身份/邮件流程，再设计安全的 App 接入；不假装已完成 |
+| G2 | 服务端已有密码重置、邮箱验证/重发、改邮箱与登录态改密端点 | App 已接入账户安全界面；找回密码走匿名防枚举请求，重置时手动粘贴网页链接或 token | 邮件默认关闭；`MAIL_DISABLED` 显示「暂不提供」。部署配置和真实投递未验证，详见[密码找回](password-recovery.md)与[账户邮箱](account-email.md) |
 | G3 | `GET /me` 可返回 email 和验证状态，App 目前只读取 id | 账号页仍显示登录时本地缓存的邮箱 | 若要同步，需明确兼容旧部署和本地缓存策略 |
 
 下面的调用点和实施顺序包含迁移前设计记录；与「当前状态」冲突时以上方快照结论为准。
@@ -52,7 +52,7 @@
 
 - accessToken 为短时效 JWT（`config.ttlSeconds`），`Authorization: Bearer <jwt>`。
 - 公开读端点可带可不带 token；带错 token 不报错只降级为匿名 viewer。
-- 邮箱验证、忘记/重置密码、重发验证已有服务端代码；客户端未接入。邮件默认关闭。当前无修改邮箱或登录态下直接修改密码的端点。
+- 邮箱验证、忘记/重置密码、重发验证、改邮箱及登录态改密均已有服务端代码并已接入客户端。邮件默认关闭；生产部署是否启用 SMTP 与真实投递尚未核实。密码重置的移动端限制见[密码找回](password-recovery.md)。
 
 ### 1.2 资料（profile）
 
@@ -122,12 +122,12 @@
 | `signUpWithEmailPassword(name,email,password)` | `POST /auth/register {email,password}` → 拿到会话后 `PUT /me/profile {displayName:name}` 补写名字 | ✅ 已迁移。注册即登录，验证邮箱不是前置条件；**密码最短 12 位**，客户端已同步校验。 |
 | `loginWithEmailPassword` | `POST /auth/login` | ✅。返回无 user 对象：id 从后续 `GET /me` 拿，或解析 JWT（推荐前者） |
 | `currentUserSession` / 会话恢复 | 本地 secure storage 存 `{accessToken,refreshToken,…}`；恢复时 `GET /me` 验活 | ✅。需自建 `TokenSessionManager`：401 时单飞刷新（`POST /auth/refresh`），**refresh 单次有效且轮换**，并发请求必须共享一次刷新，拿到新对后原子替换；刷新失败（重用被撤族）→ 清会话登出 |
-| `resendConfirmationEmail` | `POST /me/email-verification` | 服务端已有，客户端未接入；邮件默认关闭 |
-| `sendPasswordResetEmail` | `POST /auth/forgot-password`、`POST /auth/reset-password` | 服务端已有，客户端未接入；需先修复并验证完整流程 |
+| `resendConfirmationEmail` | `POST /me/email-verification` | 已接入账户安全界面；`MAIL_DISABLED` 明确显示暂不提供，部署邮件能力未验证 |
+| `sendPasswordResetEmail` | `POST /auth/forgot-password`、`POST /auth/reset-password` | 已接入移动端找回/重置；匿名请求不泄露账号是否存在，网页链接需在 App 内手动粘贴；邮件配置及投递未验证 |
 | `logout` | `POST /auth/logout {refreshToken}`（撤销 refresh）+ 可选 `DELETE /me/session`（连 access 一起撤） | ✅。推荐登出即 `DELETE /me/session` + 本地清 token |
 | `getCurrentUserData` | `GET /me`（拿 id）+ `GET /me/profile`（拿档案） | ⚠️ G3：当前 `/me` 可返回 email 和验证状态，App 仍使用登录/注册时的本地缓存；name ← displayName |
 
-旧 Supabase 邮件回调已下线；no-wave 的邮件链接处理尚未接入客户端，需与界面和可信站点/深链配置一并设计、验证。
+旧 Supabase 邮件回调已下线。移动端已接入邮箱验证与密码找回/重置界面；密码重置邮件链接仍指向网页，不由 App 深链自动接管，用户可在 App 内粘贴链接或 token。邮件启用、SMTP 与投递需按[密码找回](password-recovery.md)另行核验。
 
 ### 2.2 `BlogRemoteDataSource`
 
@@ -216,13 +216,13 @@
 
 **B. 需 no-wave 加端点（建议先做）**：
 1. ~~`DELETE /articles/:articleId`（G1）~~ 已落地（no-wave #100/#101）：软删墓碑 + 回收站 + 恢复 + `ARTICLE_TOMBSTONE_RETENTION_DAYS` 过期清扫（默认 30 天）。
-2. 修改邮箱、登录态直接改密仍缺端点；密码重置和邮箱验证已有服务端代码，但需完善并验证，再接入 App（G2）。
+2. 修改邮箱、登录态直接改密、密码重置和邮箱验证端点均已存在并接入 App（G2）；部署的邮件开关、SMTP 与真实投递仍需单独配置和验证。
 
 **C. 需 no-wave 修的小问题（顺手）**：
 1. `POST /me/media` 响应 `src` 缺 `/v1` 段（与 `GET /api/v1/media/:id` 不一致）。
 2. `GET /me` 已可返回 email（G3）；App 尚未使用该字段同步本地缓存。
 
-**D. App 侧未接入项**：no-wave 邮箱验证/重置链接处理、媒体孤儿回滚、直接修改邮箱/密码。Supabase 依赖和旧存储版本化逻辑已移除；没有客户端回滚不代表服务端不会产生孤儿。
+**D. App 侧未接入项**：媒体孤儿回滚，以及邮箱/密码邮件链接的自动深链接管（验证和密码重置均提供手动粘贴路径）。直接改邮箱/改密与密码找回界面已接入。Supabase 依赖和旧存储版本化逻辑已移除；没有客户端回滚不代表服务端不会产生孤儿。
 
 ---
 
