@@ -173,7 +173,7 @@ class _UserMediaPickerSheetState extends State<UserMediaPickerSheet> {
               height: 4,
               decoration: BoxDecoration(
                 color: theme.colorScheme.outlineVariant,
-                borderRadius: const BorderRadius.circular(NoWaveRadius.badge),
+                borderRadius: BorderRadius.circular(NoWaveRadius.badge),
               ),
             ),
             Padding(
@@ -349,13 +349,13 @@ class _UserMediaPickerSheetState extends State<UserMediaPickerSheet> {
       ),
       child: InkWell(
         onTap: () => _select(asset),
-        borderRadius: const BorderRadius.circular(NoWaveRadius.none),
+        borderRadius: BorderRadius.circular(NoWaveRadius.none),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
               child: ClipRRect(
-                borderRadius: const BorderRadius.circular(NoWaveRadius.none),
+                borderRadius: BorderRadius.circular(NoWaveRadius.none),
                 child: CachedNetworkImage(
                   imageUrl: asset.imageUrl,
                   fit: BoxFit.cover,

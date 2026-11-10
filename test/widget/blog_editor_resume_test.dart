@@ -511,7 +511,7 @@ void main() {
     expect(find.text(l10n.userMediaPickerTitle), findsOneWidget);
 
     harness.identity.userId = null;
-    harness.identity.controller.add();
+    harness.identity.controller.add(null);
     await tester.pumpAndSettle();
 
     expect(find.text(l10n.userMediaPickerTitle), findsNothing);
