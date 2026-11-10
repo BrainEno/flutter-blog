@@ -15,6 +15,7 @@ import 'package:belog/features/blog/domain/usecase/get_author_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_article_editions.dart';
 import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
+import 'package:belog/features/blog/presentation/widgets/blog_feed_skeleton.dart';
 import 'package:belog/features/user/presentation/pages/author_page.dart';
 import 'package:belog/features/user/domain/entities/author_profile.dart';
 import 'package:belog/features/user/domain/usecases/author.dart';
@@ -174,6 +175,52 @@ void main() {
     getMyArticles: GetMyArticles(blogRepository),
     getMyArticleEditions: GetMyArticleEditions(blogRepository),
   );
+
+  testWidgets('article loading keeps the profile and shows compact rows', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final pending = Completer<Either<Failure, List<Blog>>>();
+    when(
+      () => blogRepository.getAuthorArticlePage(
+        'author-1',
+        kind: any(named: 'kind'),
+        offset: any(named: 'offset'),
+      ),
+    ).thenAnswer((_) => pending.future);
+    final authorCubit = buildAuthorCubit();
+    addTearDown(authorCubit.close);
+    final blogByBloc = buildBlogByBloc();
+    addTearDown(blogByBloc.close);
+    addTearDown(() {
+      if (!pending.isCompleted) pending.complete(right(const <Blog>[]));
+    });
+    final handle = tester.ensureSemantics();
+    addTearDown(handle.dispose);
+
+    await _pumpPage(
+      tester,
+      appUserCubit: appUserCubit,
+      authorCubit: authorCubit,
+      blogByBloc: blogByBloc,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('作者甲'), findsOneWidget);
+    final skeleton = tester.widget<BlogFeedSkeleton>(
+      find.byType(BlogFeedSkeleton),
+    );
+    expect(skeleton.showFeatured, isFalse);
+    final l10n = lookupAppLocalizations(const Locale('zh'));
+    expect(find.bySemanticsLabel(l10n.loadingArticles), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    pending.complete(right([_blog()]));
+    await tester.pumpAndSettle();
+    expect(find.byType(BlogFeedSkeleton), findsNothing);
+    expect(find.text('作者的文章'), findsOneWidget);
+  });
 
   testWidgets('renders the profile and the article list', (tester) async {
     appUserCubit.updateUser(_user());

@@ -36,6 +36,28 @@ void main() {
     expect(find.byType(NoWaveSkeleton), findsOneWidget);
   });
 
+  testWidgets('a compact list has rows but no featured cover', (tester) async {
+    final handle = tester.ensureSemantics();
+    addTearDown(handle.dispose);
+    await tester.pumpWidget(
+      _app(
+        const BlogFeedSkeleton(
+          showFeatured: false,
+          rows: 3,
+          semanticLabel: 'Loading articles',
+        ),
+      ),
+    );
+
+    expect(find.byType(NoWaveSkeletonBlock), findsNothing);
+    expect(find.byType(NoWaveSkeletonDivider), findsNWidgets(3));
+    expect(find.byType(NoWaveSkeletonLine), findsNWidgets(9));
+    expect(find.bySemanticsLabel('Loading articles'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    await tester.pumpAndSettle();
+    expect(tester.binding.hasScheduledFrame, isFalse);
+  });
+
   testWidgets('the cover keeps the ratio the real cover uses', (tester) async {
     await tester.pumpWidget(_app(const BlogFeedSkeleton()));
 

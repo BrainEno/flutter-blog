@@ -13,6 +13,7 @@ import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/tag_navigation.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
+import 'package:belog/features/blog/presentation/widgets/blog_feed_skeleton.dart';
 import 'package:belog/features/user/domain/entities/author_profile.dart';
 import 'package:belog/features/user/domain/entities/author_relationship.dart';
 import 'package:belog/features/user/presentation/bloc/author/author_cubit.dart';
@@ -299,10 +300,9 @@ class _AuthorPageState extends State<AuthorPage> {
                         builder: (context, articleState) {
                           if (articleState is GetBlogsByUserLoading ||
                               articleState is BlogByInitial) {
-                            return Center(
-                              child: NoWaveLoadingLabel(
-                                semanticLabel: context.l10n.loadingArticles,
-                              ),
+                            return BlogFeedSkeleton(
+                              showFeatured: false,
+                              semanticLabel: context.l10n.loadingArticles,
                             );
                           }
                           if (articleState is GetBlogsByUserFailure) {

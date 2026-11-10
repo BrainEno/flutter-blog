@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
 import 'package:belog/features/blog/domain/usecase/get_articles_by_category.dart';
 import 'package:belog/features/blog/presentation/blocs/category_articles/bloc/category_articles_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/category_articles_page.dart';
+import 'package:belog/features/blog/presentation/widgets/blog_feed_skeleton.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -79,6 +82,7 @@ void main() {
     WidgetTester tester,
     CategoryArticlesBloc bloc, {
     String? knownName,
+    bool waitForResult = true,
   }) async {
     tester.view.physicalSize = const Size(1000, 2000);
     tester.view.devicePixelRatio = 1;
@@ -97,8 +101,37 @@ void main() {
         ),
       ),
     );
-    await settle(tester, bloc);
+    if (waitForResult) await settle(tester, bloc);
   }
+
+  testWidgets('initial loading shows compact skeleton, then articles', (
+    tester,
+  ) async {
+    final pending = Completer<Either<Failure, List<Blog>>>();
+    when(() => getArticlesByCategory(any())).thenAnswer((_) => pending.future);
+    final bloc = newBloc();
+    addTearDown(() {
+      if (!pending.isCompleted) pending.complete(right(const <Blog>[]));
+    });
+    final handle = tester.ensureSemantics();
+    addTearDown(handle.dispose);
+
+    await pumpPage(tester, bloc, waitForResult: false);
+    await tester.pump();
+    final skeleton = tester.widget<BlogFeedSkeleton>(
+      find.byType(BlogFeedSkeleton),
+    );
+    expect(skeleton.showFeatured, isFalse);
+    final l10n = lookupAppLocalizations(const Locale('zh'));
+    expect(find.bySemanticsLabel(l10n.loadingArticles), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    pending.complete(right([_blog('a', 'Loaded article')]));
+    await settle(tester, bloc);
+    expect(bloc.state, isA<CategoryArticlesSuccess>());
+    expect(find.byType(BlogFeedSkeleton), findsNothing);
+    expect(find.text('Loaded article'), findsOneWidget);
+  });
 
   testWidgets('a category lists its articles under its own name', (
     tester,

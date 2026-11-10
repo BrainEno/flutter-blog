@@ -9,6 +9,7 @@ import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
 import 'package:belog/features/blog/presentation/tag_navigation.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
+import 'package:belog/features/blog/presentation/widgets/blog_feed_skeleton.dart';
 import 'package:belog/router/shell_branch_location.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -89,8 +90,21 @@ class _TagArticlesPageState extends State<TagArticlesPage> {
         child: BlocBuilder<TagArticlesBloc, TagArticlesState>(
           builder: (context, state) {
             if (state is TagArticlesLoading || state is TagArticlesInitial) {
-              return Center(
-                child: NoWaveLoadingLabel(semanticLabel: l10n.loadingArticles),
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  NoWaveSpacing.page,
+                  NoWaveSpacing.large,
+                  NoWaveSpacing.page,
+                  NoWaveSpacing.section,
+                ),
+                children: [
+                  _contentWidth(
+                    BlogFeedSkeleton(
+                      showFeatured: false,
+                      semanticLabel: l10n.loadingArticles,
+                    ),
+                  ),
+                ],
               );
             }
             if (state is TagArticlesUnknown) {
