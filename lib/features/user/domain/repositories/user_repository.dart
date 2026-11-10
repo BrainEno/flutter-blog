@@ -31,6 +31,7 @@ abstract class UserRepository {
     required String userId,
     required String name,
     ImageUpload? avatar,
+    String? uploadedAvatarUrl,
     required String bio,
     required String website,
     required NowaveSessionFence sessionFence,

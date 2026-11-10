@@ -14,6 +14,8 @@ import 'package:belog/features/user/domain/usecases/get_user_media_library_page.
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+enum UserMediaPickerPurpose { cover, avatar }
+
 /// A read-only, cursor-paginated view of the signed-in user's media assets.
 ///
 /// The caller captures the session when opening the sheet. Every request uses
@@ -25,11 +27,13 @@ class UserMediaPickerSheet extends StatefulWidget {
     required this.getPage,
     required this.sessionFence,
     required this.sessionIdentity,
+    this.purpose = UserMediaPickerPurpose.cover,
   });
 
   final GetUserMediaLibraryPage getPage;
   final NowaveSessionFence sessionFence;
   final NowaveSessionIdentity sessionIdentity;
+  final UserMediaPickerPurpose purpose;
 
   @override
   State<UserMediaPickerSheet> createState() => _UserMediaPickerSheetState();
@@ -192,7 +196,9 @@ class _UserMediaPickerSheetState extends State<UserMediaPickerSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          context.l10n.userMediaPickerTitle,
+                          widget.purpose == UserMediaPickerPurpose.avatar
+                              ? context.l10n.userMediaPickerAvatarTitle
+                              : context.l10n.userMediaPickerTitle,
                           style: theme.textTheme.titleLarge,
                         ),
                         const SizedBox(height: NoWaveSpacing.small),

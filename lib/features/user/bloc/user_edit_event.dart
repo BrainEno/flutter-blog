@@ -15,14 +15,28 @@ class UserEditSubmitted extends UserEditEvent {
   final String? bio;
   final String? website;
   final ImageUpload? avatar;
+  final String? uploadedAvatarUrl;
+
+  /// The form's opening session, captured before the user edits anything.
+  final NowaveSessionFence? sessionFence;
 
   const UserEditSubmitted({
     required this.name,
     this.bio,
     this.website,
     this.avatar,
+    this.uploadedAvatarUrl,
+    this.sessionFence,
   });
 
   @override
-  List<Object> get props => [name, avatar ?? '', bio ?? '', website ?? ''];
+  List<Object> get props => [
+    name,
+    avatar ?? '',
+    uploadedAvatarUrl ?? '',
+    bio ?? '',
+    website ?? '',
+    sessionFence?.userId ?? '',
+    sessionFence?.generation ?? -1,
+  ];
 }

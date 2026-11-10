@@ -127,6 +127,53 @@ void main() {
       expect(captured.website, 'https://example.invalid');
     });
 
+    test('a media-library avatar is reused without another upload', () async {
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      const url =
+          'https://api.example.invalid/api/v1/media/64f7a2c6-42b6-4b7b-9f89-2d68b8c45a01';
+      final stored = UserModel(
+        id: 'u1',
+        email: 'u1@example.invalid',
+        name: 'Before',
+        bio: 'Original bio',
+        website: 'https://example.invalid',
+        updatedAt: DateTime.utc(2024),
+      );
+      when(() => remote.getUserById('u1')).thenAnswer((_) async => stored);
+      when(
+        () => remote.editUserInfo(
+          any(),
+          sessionFence: any(named: 'sessionFence'),
+        ),
+      ).thenAnswer(
+        (invocation) async => invocation.positionalArguments[0] as UserModel,
+      );
+
+      final result = await repository.editUserInfo(
+        userId: 'u1',
+        name: 'After',
+        bio: stored.bio,
+        website: stored.website,
+        uploadedAvatarUrl: url,
+        sessionFence: _fence,
+      );
+      expect(result.isRight(), isTrue);
+      final captured =
+          verify(
+                () => remote.editUserInfo(captureAny(), sessionFence: _fence),
+              ).captured.single
+              as UserModel;
+      expect(captured.avatarUrl, url);
+      expect(captured.bio, stored.bio);
+      expect(captured.website, stored.website);
+      verifyNever(
+        () => remote.uploadAvatar(
+          image: any(named: 'image'),
+          sessionFence: any(named: 'sessionFence'),
+        ),
+      );
+    });
+
     test('the stored bio survives an unrelated name edit', () async {
       when(() => connection.isConnected).thenAnswer((_) async => true);
       final stored = UserModel(

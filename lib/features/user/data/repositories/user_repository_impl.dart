@@ -42,6 +42,7 @@ class UserRepositoryImpl implements UserRepository {
     required String userId,
     required String name,
     ImageUpload? avatar,
+    String? uploadedAvatarUrl,
     required String bio,
     required String website,
     required NowaveSessionFence sessionFence,
@@ -55,11 +56,11 @@ class UserRepositoryImpl implements UserRepository {
       final current = await remoteDataSource.getUserById(userId);
       var userToUpdate = current;
 
-      if (avatar != null) {
-        // Media assets are immutable: the new avatar is a NEW asset, the
-        // profile row flips to it, and the old asset simply becomes
-        // unreferenced (the backend keeps no delete endpoint; see gap G1
-        // notes in docs/supabase-to-nowave-migration.md).
+      if (uploadedAvatarUrl != null && uploadedAvatarUrl.isNotEmpty) {
+        // A media-library selection already names an immutable server asset.
+        userToUpdate = userToUpdate.copyWith(avatarUrl: uploadedAvatarUrl);
+      } else if (avatar != null) {
+        // A picked file needs its own asset before the profile can point at it.
         final newAvatarUrl = await remoteDataSource.uploadAvatar(
           image: avatar,
           sessionFence: sessionFence,

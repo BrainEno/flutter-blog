@@ -57,10 +57,21 @@ class UserEditBloc extends Bloc<UserEditEvent, UserEditState> {
       return;
     }
 
+    final openingFence = event.sessionFence;
+    final userId = (appUserCubit.state as AppUserLoggedIn).user.id;
+    if (userId != fence.userId ||
+        (openingFence != null &&
+            (openingFence.userId != fence.userId ||
+                openingFence.generation != fence.generation))) {
+      emit(UserEditFailure(failure: _sessionChanged()));
+      return;
+    }
+
     final params = EditUserParams(
-      userId: (appUserCubit.state as AppUserLoggedIn).user.id,
+      userId: userId,
       name: event.name,
       avatar: event.avatar,
+      uploadedAvatarUrl: event.uploadedAvatarUrl,
       bio: event.bio ?? '',
       website: event.website ?? '',
       sessionFence: fence,
@@ -87,7 +98,10 @@ class UserEditBloc extends Bloc<UserEditEvent, UserEditState> {
   NowaveSessionFence? _currentFence() {
     final session = _session;
     final userId = session?.activeUserId ?? '';
-    if (session == null || userId.isEmpty) return null;
+    if (session == null ||
+        userId.isEmpty ||
+        (session.accessToken?.isEmpty ?? true))
+      return null;
     return NowaveSessionFence(
       userId: userId,
       generation: session.sessionGeneration,
@@ -97,8 +111,12 @@ class UserEditBloc extends Bloc<UserEditEvent, UserEditState> {
   bool _isCurrent(NowaveSessionFence fence) {
     final session = _session;
     if (session == null) return false;
+    final state = appUserCubit.state;
     return session.activeUserId == fence.userId &&
-        session.sessionGeneration == fence.generation;
+        session.sessionGeneration == fence.generation &&
+        !(session.accessToken?.isEmpty ?? true) &&
+        state is AppUserLoggedIn &&
+        state.user.id == fence.userId;
   }
 
   Failure _notSignedIn() =>
