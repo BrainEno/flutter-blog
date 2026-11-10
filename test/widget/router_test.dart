@@ -533,7 +533,10 @@ void main() {
     await harness.pump(tester);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('查看诊断信息'));
+    final diagnosticsEntry = find.text('查看诊断信息');
+    await tester.ensureVisible(diagnosticsEntry);
+    await tester.pumpAndSettle();
+    await tester.tap(diagnosticsEntry);
     await tester.pumpAndSettle();
 
     expect(find.byType(AboutPage), findsOneWidget);
