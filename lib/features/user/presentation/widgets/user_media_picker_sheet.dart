@@ -6,6 +6,8 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/core/design/design_tokens.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
+import 'package:belog/core/design/components/no_wave_skeleton.dart';
 import 'package:belog/features/user/domain/entities/user_media_asset.dart';
 import 'package:belog/features/user/domain/entities/user_media_page.dart';
 import 'package:belog/features/user/domain/usecases/get_user_media_library_page.dart';
@@ -226,14 +228,7 @@ class _UserMediaPickerSheetState extends State<UserMediaPickerSheet> {
     if (_items.isEmpty) {
       if (_loading) {
         return Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: NoWaveSpacing.medium),
-              Text(context.l10n.userMediaPickerLoading),
-            ],
-          ),
+          child: NoWaveLoadingLabel(label: context.l10n.userMediaPickerLoading),
         );
       }
       if (_failure != null) {
@@ -302,7 +297,12 @@ class _UserMediaPickerSheetState extends State<UserMediaPickerSheet> {
 
   Widget _pageFooter(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: NoWaveLoadingLabel(
+          label: context.l10n.userMediaPickerLoading,
+          compact: true,
+        ),
+      );
     }
     if (_failure != null) {
       return Column(
@@ -359,9 +359,7 @@ class _UserMediaPickerSheetState extends State<UserMediaPickerSheet> {
                 child: CachedNetworkImage(
                   imageUrl: asset.imageUrl,
                   fit: BoxFit.cover,
-                  placeholder: (context, url) => const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
+                  placeholder: (context, url) => const NoWaveSkeletonBlock(),
                   errorWidget: (context, url, error) =>
                       const Center(child: Icon(Icons.broken_image_outlined)),
                 ),

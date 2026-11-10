@@ -28,6 +28,7 @@ void main() {
   late UserRepositoryImpl repository;
 
   setUpAll(() {
+    registerFallbackValue(_fence);
     registerFallbackValue(
       ImageUpload(bytes: Uint8List(3), mimeType: 'image/jpeg'),
     );
