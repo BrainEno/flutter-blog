@@ -13,6 +13,10 @@ class AuthField extends StatelessWidget {
   final Color? borderColor;
   final Color? focusedBorderColor;
   final FormFieldValidator<String>? validator;
+  final TextInputType? keyboardType;
+  final bool autocorrect;
+  final bool enableSuggestions;
+  final bool enabled;
 
   const AuthField({
     super.key,
@@ -25,6 +29,10 @@ class AuthField extends StatelessWidget {
     this.borderColor,
     this.focusedBorderColor,
     this.validator,
+    this.keyboardType,
+    this.autocorrect = true,
+    this.enableSuggestions = true,
+    this.enabled = true,
   });
 
   @override
@@ -38,6 +46,10 @@ class AuthField extends StatelessWidget {
     return TextFormField(
       controller: controller,
       obscureText: isObscureText,
+      keyboardType: keyboardType,
+      autocorrect: autocorrect,
+      enableSuggestions: enableSuggestions,
+      enabled: enabled,
       style: style,
       decoration: InputDecoration(
         labelText: hintText,

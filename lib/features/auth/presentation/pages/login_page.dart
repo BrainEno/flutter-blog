@@ -57,6 +57,11 @@ class _LoginPageState extends State<LoginPage> {
     context.push('/signup?redirect=$target');
   }
 
+  void _openPasswordRecovery() {
+    final target = Uri.encodeComponent(widget.redirectTo ?? '/');
+    context.push('/forgot-password?redirect=$target');
+  }
+
   void _onAuthenticated() {
     // The router's redirect also re-runs on auth changes; going explicitly
     // keeps the return-to-location behaviour deterministic.
@@ -137,6 +142,13 @@ class _LoginPageState extends State<LoginPage> {
                         isObscureText: true,
                         prefixIcon: Icons.lock_outline,
                       ),
+                      Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: TextButton(
+                          onPressed: _openPasswordRecovery,
+                          child: Text(context.l10n.passwordRecoveryTitle),
+                        ),
+                      ),
                       const SizedBox(height: AuthRhythm.action),
                       AuthPrimaryButton(
                         buttonText: context.l10n.loginTitle,
@@ -154,9 +166,6 @@ class _LoginPageState extends State<LoginPage> {
                         },
                       ),
                       const SizedBox(height: AuthRhythm.action),
-                      // No "forgot password" entry: the backend has no
-                      // password-reset flow yet (gap G2, see
-                      // docs/supabase-to-nowave-migration.md).
                       Center(
                         child: TextButton(
                           onPressed: _openSignUp,

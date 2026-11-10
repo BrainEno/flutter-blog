@@ -8,12 +8,13 @@ import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/auth/data/models/user_model.dart';
 import 'package:belog/features/auth/domain/auth_intent_gate.dart';
 
-/// Authentication against the no-wave backend.
+/// Session authentication against the no-wave backend.
 ///
-/// The backend supports password reset and e-mail verification, but this
-/// client has not integrated those flows (see the migration document, G2).
-/// The current `GET /me` can also return an e-mail and verification status;
-/// this client reads only the id and uses the locally cached sign-in e-mail.
+/// Password recovery and e-mail verification use the separate account-security
+/// repositories; this data source owns sign-in, registration and session
+/// lifecycle only. The current `GET /me` can also return an e-mail and
+/// verification status; this source reads only the id and uses the locally
+/// cached sign-in e-mail.
 abstract interface class AuthRemoteDataSource {
   /// The locally persisted session, without any network traffic.
   NowaveSessionData? get currentSession;

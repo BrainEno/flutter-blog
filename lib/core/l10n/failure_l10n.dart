@@ -48,6 +48,26 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
       return l10n.errorPasswordInProgress;
     case 'auth.localSignOutIncomplete':
       return l10n.errorLocalSignOutIncomplete;
+    case 'auth.passwordRecoveryInvalidEmail':
+      return l10n.passwordRecoveryEmailInvalid;
+    case 'auth.passwordRecoveryMailDisabled':
+      return l10n.passwordRecoveryMailDisabled;
+    case 'auth.passwordRecoveryUnsupported':
+      return l10n.passwordRecoveryUnsupported;
+    case 'auth.passwordRecoveryRateLimited':
+      return l10n.passwordRecoveryRateLimited;
+    case 'auth.passwordRecoveryRequestRejected':
+      return l10n.passwordRecoveryRequestRejected;
+    case 'auth.passwordRecoveryRequestOutcomeUnknown':
+      return l10n.passwordRecoveryRequestOutcomeUnknown;
+    case 'auth.passwordRecoveryTokenMalformed':
+      return l10n.passwordRecoveryTokenMalformed;
+    case 'auth.passwordRecoveryInvalidInput':
+      return l10n.passwordRecoveryInvalidInput;
+    case 'auth.passwordRecoveryTokenRejected':
+      return l10n.passwordRecoveryTokenRejected;
+    case 'auth.passwordRecoveryResetOutcomeUnknown':
+      return l10n.passwordRecoveryResetOutcomeUnknown;
     // Account e-mail changes (see change_email_page.dart).
     case 'account.emailUnchanged':
       return l10n.accountEmailUnchanged;

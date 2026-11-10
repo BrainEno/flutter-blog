@@ -6,7 +6,11 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/utils/article_deep_link.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
+import 'package:belog/features/auth/domain/usecases/request_password_reset.dart';
+import 'package:belog/features/auth/domain/usecases/reset_password.dart';
 import 'package:belog/features/auth/presentation/pages/change_email_page.dart';
+import 'package:belog/features/auth/presentation/pages/password_recovery_page.dart';
+import 'package:belog/features/auth/presentation/pages/password_reset_page.dart';
 import 'package:belog/features/auth/presentation/pages/email_verification_page.dart';
 import 'package:belog/features/auth/presentation/pages/change_password_page.dart';
 import 'package:belog/features/auth/presentation/pages/login_page.dart';
@@ -150,7 +154,9 @@ GoRouter createAppRouter({
       final loggedIn = appUserCubit.state is AppUserLoggedIn;
       final inAuthFlow =
           state.matchedLocation == '/login' ||
-          state.matchedLocation == '/signup';
+          state.matchedLocation == '/signup' ||
+          state.matchedLocation == '/forgot-password' ||
+          state.matchedLocation == '/reset-password';
       final protected = _protectedPrefixes.any(
         (prefix) => state.matchedLocation.startsWith(prefix),
       );
@@ -184,6 +190,22 @@ GoRouter createAppRouter({
         path: '/signup',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => SignUpPage(
+          redirectTo: _sanitize(state.uri.queryParameters['redirect']),
+        ),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => PasswordRecoveryPage(
+          requestPasswordReset: serviceLocator<RequestPasswordReset>(),
+          redirectTo: _sanitize(state.uri.queryParameters['redirect']),
+        ),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => PasswordResetPage(
+          resetPassword: serviceLocator<ResetPassword>(),
           redirectTo: _sanitize(state.uri.queryParameters['redirect']),
         ),
       ),
@@ -549,7 +571,10 @@ String? _sanitize(String? target) {
   if (target == null || !target.startsWith('/')) {
     return null;
   }
-  if (target.startsWith('/login') || target.startsWith('/signup')) {
+  if (target.startsWith('/login') ||
+      target.startsWith('/signup') ||
+      target.startsWith('/forgot-password') ||
+      target.startsWith('/reset-password')) {
     return null;
   }
   return target;
