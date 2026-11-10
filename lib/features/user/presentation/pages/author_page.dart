@@ -300,9 +300,12 @@ class _AuthorPageState extends State<AuthorPage> {
                         builder: (context, articleState) {
                           if (articleState is GetBlogsByUserLoading ||
                               articleState is BlogByInitial) {
-                            return BlogFeedSkeleton(
-                              showFeatured: false,
-                              semanticLabel: context.l10n.loadingArticles,
+                            return Semantics(
+                              container: true,
+                              child: BlogFeedSkeleton(
+                                showFeatured: false,
+                                semanticLabel: context.l10n.loadingArticles,
+                              ),
                             );
                           }
                           if (articleState is GetBlogsByUserFailure) {

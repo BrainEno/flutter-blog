@@ -195,7 +195,6 @@ void main() {
     final blogByBloc = buildBlogByBloc();
     addTearDown(blogByBloc.close);
     final handle = tester.ensureSemantics();
-    addTearDown(handle.dispose);
 
     try {
       await _pumpPage(
@@ -223,6 +222,7 @@ void main() {
       // even if an assertion fails, before the bloc is closed by teardown.
       if (!pending.isCompleted) pending.complete(right(const <Blog>[]));
       await tester.pump();
+      handle.dispose();
     }
   });
 
