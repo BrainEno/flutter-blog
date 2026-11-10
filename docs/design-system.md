@@ -170,7 +170,7 @@
 | `NoWaveAvatar` | `common/widgets/no_wave_avatar.dart` | 方形头像，失败回退中性图 |
 | `NoWaveLoadingLabel` | `design/components/no_wave_loading_label.dart` | 加载态：一道短横线 + 一句文案，没有转圈 |
 | `NoWaveSkeleton` / `...List` / `...Line` / `...Block` / `...Divider` | `design/components/no_wave_skeleton.dart` | 内容形状的占位（列表、行、块、行间细线） |
-| `BlogFeedSkeleton` | `features/blog/presentation/widgets/blog_feed_skeleton.dart` | feed 首帧：一张头条卡片 + 若干行，与真卡片同节奏 |
+| `BlogFeedSkeleton` | `features/blog/presentation/widgets/blog_feed_skeleton.dart` | feed 首帧与紧凑文章列表的静态占位；头条可关闭 |
 | `BlogGridSkeleton` | `features/blog/presentation/widgets/blog_grid_skeleton.dart` | 网格首帧：与 `blogGridDelegate` 同列数、同高，封面沿用 4/3 |
 | `NoWaveFadeTransition` | `design/components/no_wave_fade_transition.dart` | 标签切换的淡入；少动时不构建转场 |
 | `NoWaveCoverPlate` | `design/cover/no_wave_cover_plate.dart` | 四张编辑式默认封面，按文章身份稳定选一张 |
@@ -190,7 +190,8 @@
   头条封面 + 两个标题行 + 作者行，再跟若干行「元信息 / 两行标题 / 作者」，行与行之间用
   `NoWaveSkeletonDivider`。数据落地时页面不跳。**不动**：没有 shimmer、没有渐变扫光——
   动效由 `NoWaveMotionPolicy` 统一决定要不要发生，加载态不该先花掉用户的注意力，
-  静态块在截图里也读得懂。
+  静态块在截图里也读得懂。作者、标签与分类文章列表复用紧凑行，关闭头条封面；
+  分页续载仍使用紧凑文案，不改变请求或分页。
 - 网格页（我的文章、收藏）借 `BlogGridSkeleton`：列数与 tile 高度直接来自
   `blogGridDelegate`，封面沿用 `NoWaveSizes.coverAspect`（4/3），padding 与真实网格一致
   （我的文章在 `SliverPadding` 里，收藏直接是 `GridView` 的默认值）。
@@ -300,9 +301,6 @@
 
 ## 七、已知缺口
 
-- **卡片列表页仍是文案加载态**：作者页、标签下的文章列表、分类下的文章列表都用
-  `BlogCard` 拼列表（不是网格），目前仍是 `NoWaveLoadingLabel`。它们的骨架只要把
-  `BlogFeedSkeleton` 的「头条卡片」关掉就能复用，是下一步。
 - **控件内部的忙碌指示仍是系统小转圈**（`NoWaveButton` 的加载态、回收站行内恢复、
   私信发送图标位）。它们的尺寸由控件自己的槽位决定，放不下一句文案；页面级与区块级
   已经全部换成 `NoWaveLoadingLabel` / 骨架。

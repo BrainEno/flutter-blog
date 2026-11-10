@@ -13,10 +13,18 @@ import 'package:flutter/material.dart';
 /// It contains no text of its own: the whole placeholder is decorative and the
 /// wrapper announces [semanticLabel] once (see [NoWaveSkeleton]).
 class BlogFeedSkeleton extends StatelessWidget {
-  const BlogFeedSkeleton({super.key, this.rows = 4, this.semanticLabel});
+  const BlogFeedSkeleton({
+    super.key,
+    this.rows = 4,
+    this.semanticLabel,
+    this.showFeatured = true,
+  });
 
-  /// How many compact rows follow the featured card.
+  /// How many compact rows to show.
   final int rows;
+
+  /// Whether this list has the feed's featured first card.
+  final bool showFeatured;
 
   /// What a screen reader hears once, in place of the shapes.
   final String? semanticLabel;
@@ -29,7 +37,7 @@ class BlogFeedSkeleton extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const _FeaturedCardSkeleton(),
+          if (showFeatured) const _FeaturedCardSkeleton(),
           for (var row = 0; row < rows; row++) const _CompactRowSkeleton(),
         ],
       ),

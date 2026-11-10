@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/tag_ref.dart';
@@ -5,6 +7,7 @@ import 'package:belog/features/blog/domain/usecase/get_articles_by_tag.dart';
 import 'package:belog/features/blog/domain/usecase/resolve_tag.dart';
 import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/tag_articles_page.dart';
+import 'package:belog/features/blog/presentation/widgets/blog_feed_skeleton.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -34,8 +37,8 @@ Blog _blog(String id, String title) => Blog(
 
 /// Pumps until the bloc leaves its loading states.
 ///
-/// `pumpAndSettle` cannot be used: the loading body is a spinner, which would
-/// keep scheduling frames and time the test out instead of failing it.
+/// The request may still be pending even when no frames are scheduled, so
+/// wait for a settled bloc state rather than only for animations to finish.
 Future<void> settle(WidgetTester tester, TagArticlesBloc bloc) async {
   for (var i = 0; i < 40; i++) {
     await tester.pump(const Duration(milliseconds: 20));
@@ -90,6 +93,7 @@ void main() {
     WidgetTester tester,
     TagArticlesBloc bloc, {
     String tag = '诗歌',
+    bool waitForResult = true,
   }) async {
     tester.view.physicalSize = const Size(1000, 2000);
     tester.view.devicePixelRatio = 1;
@@ -105,8 +109,41 @@ void main() {
         ),
       ),
     );
-    await settle(tester, bloc);
+    if (waitForResult) await settle(tester, bloc);
   }
+
+  testWidgets('initial loading shows compact skeleton, then articles', (
+    tester,
+  ) async {
+    final pending = Completer<Either<Failure, List<Blog>>>();
+    when(() => getArticlesByTag(any())).thenAnswer((_) => pending.future);
+    final bloc = newBloc();
+    final handle = tester.ensureSemantics();
+
+    try {
+      await pumpPage(tester, bloc, waitForResult: false);
+      await tester.pump();
+      final skeleton = tester.widget<BlogFeedSkeleton>(
+        find.byType(BlogFeedSkeleton),
+      );
+      expect(skeleton.showFeatured, isFalse);
+      final l10n = lookupAppLocalizations(const Locale('zh'));
+      expect(find.bySemanticsLabel(l10n.loadingArticles), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+
+      pending.complete(right([_blog('a', 'Loaded article')]));
+      await settle(tester, bloc);
+      expect(bloc.state, isA<TagArticlesSuccess>());
+      expect(find.byType(BlogFeedSkeleton), findsNothing);
+      expect(find.text('Loaded article'), findsOneWidget);
+    } finally {
+      // Complete the held request inside the widget test's fake-async zone,
+      // even if an assertion fails, before the bloc is closed by teardown.
+      if (!pending.isCompleted) pending.complete(right(const <Blog>[]));
+      await tester.pump();
+      handle.dispose();
+    }
+  });
 
   testWidgets('a tag lists its articles under its own name', (tester) async {
     final bloc = newBloc();
