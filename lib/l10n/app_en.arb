@@ -671,13 +671,21 @@
   "messagesParticipantsConflict": "The conversation changed. Close and reopen it to refresh the participant list before trying again.",
   "messagesParticipantsInProgress": "Another participant update is already in progress.",
   "messagesTitle": "Messages",
-  "messagesMenuHint": "Private messages from readers",
+  "messagesMenuHint": "Private messages from readers. The unread badge covers only the 50 most recent conversations.",
   "messagesEmptyTitle": "No messages yet",
   "messagesEmptyBody": "Start a conversation with \"Message\" on an author's page. This app does not push messages; open the page to read the latest state.",
   "messagesThreadTitle": "Conversation",
   "messagesMissing": "This conversation does not exist, or you are not part of it.",
   "messagesUnreadCount": "{count} unread",
   "@messagesUnreadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesUnreadRecentCount": "{count} unread messages across the 50 most recent conversations",
+  "@messagesUnreadRecentCount": {
     "placeholders": {
       "count": {
         "type": "int"

@@ -507,13 +507,21 @@
   "messagesParticipantsConflict": "会话状态已变化。请关闭并重新打开会话，刷新成员列表后再重试。",
   "messagesParticipantsInProgress": "另一个成员更新正在进行，请稍候。",
   "messagesTitle": "私信",
-  "messagesMenuHint": "读者发来的私信",
+  "messagesMenuHint": "读者发来的私信。未读角标仅统计最近 50 个会话。",
   "messagesEmptyTitle": "还没有私信",
   "messagesEmptyBody": "在作者主页点「发私信」即可开始一次会话。应用不推送私信，打开页面读取最新状态。",
   "messagesThreadTitle": "会话",
   "messagesMissing": "会话不存在，或你不属于这个会话。",
   "messagesUnreadCount": "{count} 条未读",
   "@messagesUnreadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesUnreadRecentCount": "最近 50 个会话中有 {count} 条未读消息",
+  "@messagesUnreadRecentCount": {
     "placeholders": {
       "count": {
         "type": "int"

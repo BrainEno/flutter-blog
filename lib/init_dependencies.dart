@@ -94,6 +94,7 @@ import 'package:belog/features/messages/domain/repositories/message_repository.d
 import 'package:belog/features/messages/domain/services/message_participant_names.dart';
 import 'package:belog/features/messages/presentation/bloc/message_inbox_cubit.dart';
 import 'package:belog/features/messages/presentation/bloc/message_thread_cubit_factory.dart';
+import 'package:belog/features/messages/presentation/bloc/message_unread_badge_cubit.dart';
 import 'package:belog/features/notifications/data/repositories/notification_repository_impl.dart';
 import 'package:belog/features/notifications/domain/repositories/notification_repository.dart';
 import 'package:belog/features/notifications/presentation/bloc/notification_badge_cubit.dart';
@@ -622,6 +623,12 @@ void _initUser(NowaveApiClient apiClient, NowaveSessionManager sessionManager) {
     )
     // Private conversations (#198 follow-up): read on open, never polled.
     ..registerFactory<MessageRepository>(() => MessageRepositoryImpl(apiClient))
+    ..registerFactory(
+      () => MessageUnreadBadgeCubit(
+        repository: serviceLocator<MessageRepository>(),
+        identity: sessionManager,
+      ),
+    )
     // Conversation ids are the only identities the API sends, so names come
     // from the public author profile - bounded per screen, cached across
     // sessions because they are public data either way.

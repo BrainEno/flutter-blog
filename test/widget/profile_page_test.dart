@@ -18,6 +18,7 @@ import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:belog/features/messages/presentation/bloc/message_unread_badge_cubit.dart';
 import 'package:belog/features/notifications/domain/entities/app_notification.dart';
 import 'package:belog/features/notifications/domain/entities/notification_page.dart';
 import 'package:belog/features/notifications/domain/repositories/notification_repository.dart';
@@ -32,6 +33,8 @@ import 'package:fpdart/fpdart.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
+
+import '../support/message_fakes.dart';
 
 class _MockAuthRepository extends Mock implements AuthRepository {}
 
@@ -104,6 +107,7 @@ class _Harness {
     this.user, {
     AppThemeMode mode = AppThemeMode.light,
     int unread = 3,
+    List<int> messageUnreadCounts = const [],
   }) {
     store = _ThemeStore(mode);
     theme = ThemeBloc(store);
@@ -124,12 +128,28 @@ class _Harness {
       repository: notifications,
       identity: _BadgeIdentity(),
     );
+    messages = FakeMessageRepository();
+    messages.conversationsResult = [
+      for (var index = 0; index < messageUnreadCounts.length; index++)
+        testConversation(
+          id: 'message-badge-$index',
+          participants: ['viewer', 'author-$index'],
+          unreadCount: messageUnreadCounts[index],
+        ),
+    ];
+    messageBadge = MessageUnreadBadgeCubit(
+      repository: messages,
+      identity: _BadgeIdentity(),
+    );
     router = GoRouter(
       initialLocation: '/profile',
       routes: [
         GoRoute(
           path: '/profile',
-          builder: (_, _) => ProfilePage(badgeCubit: badge),
+          builder: (_, _) => ProfilePage(
+            badgeCubit: badge,
+            messageBadgeCubit: messageBadge,
+          ),
           routes: [
             for (final path in [
               'edit',
@@ -160,6 +180,8 @@ class _Harness {
   late final AuthBloc auth;
   late final _BadgeRepository notifications;
   late final NotificationBadgeCubit badge;
+  late final FakeMessageRepository messages;
+  late final MessageUnreadBadgeCubit messageBadge;
   late final GoRouter router;
 
   Future<void> pump(
@@ -198,6 +220,7 @@ class _Harness {
 
   Future<void> dispose() async {
     router.dispose();
+    await messageBadge.close();
     await badge.close();
     await auth.close();
     await appUser.close();
@@ -338,6 +361,57 @@ void main() {
       semantics.dispose();
     }
   });
+
+  testWidgets(
+    'messages badge sums recent counts and refreshes on return',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      final harness = _Harness(_user(), messageUnreadCounts: [2, 3]);
+      addTearDown(harness.dispose);
+      try {
+        await harness.pump(tester);
+        final l10n = lookupAppLocalizations(const Locale('en'));
+        final messagesRow = find.widgetWithText(
+          NoWaveActionRow,
+          l10n.messagesTitle,
+        );
+        await tester.scrollUntilVisible(messagesRow, 100);
+        await tester.ensureVisible(messagesRow);
+        await tester.pumpAndSettle();
+
+        expect(harness.messages.calls, ['conversations']);
+        expect(find.text('5'), findsOneWidget);
+        expect(find.text(l10n.messagesMenuHint), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(
+            RegExp(RegExp.escape(l10n.messagesUnreadRecentCount(5))),
+          ),
+          findsOneWidget,
+        );
+
+        await tester.tap(messagesRow);
+        await tester.pumpAndSettle();
+        expect(find.text('destination: messages'), findsOneWidget);
+
+        harness.messages.conversationsResult = [
+          testConversation(
+            id: 'message-badge-updated',
+            participants: const ['viewer', 'author'],
+            unreadCount: 1,
+          ),
+        ];
+        harness.router.pop();
+        await tester.pumpAndSettle();
+
+        expect(harness.messages.calls, ['conversations', 'conversations']);
+        expect(find.text('5'), findsNothing);
+        expect(find.text('1'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      } finally {
+        semantics.dispose();
+      }
+    },
+  );
 
   testWidgets('a clear inbox shows no badge at all', (tester) async {
     final harness = _Harness(_user(), unread: 0);
