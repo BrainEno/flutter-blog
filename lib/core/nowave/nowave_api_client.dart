@@ -220,6 +220,22 @@ class NowaveApiClient {
     );
   }
 
+  /// PATCH a JSON body; private writes fail closed on redirects by default.
+  Future<dynamic> patchJson(
+    String path,
+    Object? body, {
+    bool authenticate = true,
+    bool followRedirects = false,
+    NowaveSessionFence? sessionFence,
+  }) => _request(
+    'PATCH',
+    path,
+    body: body,
+    authenticate: authenticate,
+    followRedirects: followRedirects,
+    sessionFence: sessionFence,
+  );
+
   /// Sends one sensitive, viewer-scoped PUT, with no 401 replay or redirect.
   ///
   /// A 401 can mean the submitted credential was rejected, not an expired

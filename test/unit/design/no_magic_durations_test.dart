@@ -37,6 +37,8 @@ void main() {
         'input debounce, and how long a failure notice stays',
     'features/user/presentation/pages/author_search_page.dart':
         'input debounce',
+    'features/messages/presentation/pages/message_participants_sheet.dart':
+        'public-author lookup debounce',
     'features/user/presentation/pages/about_page.dart': 'package info timeout',
   };
 

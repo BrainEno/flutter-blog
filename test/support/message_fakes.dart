@@ -45,13 +45,14 @@ Conversation testConversation({
   String id = 'conversation-1',
   List<String> participants = const ['user-a', 'user-b'],
   int unreadCount = 0,
+  String? createdBy,
   ConversationMessage? lastMessage,
   DateTime? lastActivityAt,
 }) => Conversation(
   id: id,
   participantIds: participants,
   unreadCount: unreadCount,
-  createdBy: participants.isEmpty ? null : participants.first,
+  createdBy: createdBy ?? (participants.isEmpty ? null : participants.first),
   createdAt: DateTime.utc(2026, 11, 5, 4),
   lastActivityAt: lastActivityAt ?? DateTime.utc(2026, 11, 5, 4, 30),
   lastMessage:
@@ -104,10 +105,12 @@ class FakeMessageRepository implements MessageRepository {
   Failure? deleteConversationFailure;
   Failure? startFailure;
   Failure? sendFailure;
+  Failure? participantUpdateFailure;
 
   bool markReadResult = true;
   bool deleteConversationResult = true;
   Conversation? startResult;
+  Conversation? participantUpdateResult;
   ConversationMessage? sendResult;
 
   /// Failures the page has to tell apart from "missing".
@@ -120,6 +123,8 @@ class FakeMessageRepository implements MessageRepository {
   final List<String> calls = [];
   final List<NowaveSessionFence> fences = [];
   final List<String> deletedConversationIds = [];
+  final List<({String id, List<String> addUserIds, List<String> removeUserIds})>
+  participantUpdateRequests = [];
   final List<({String recipient, String key})> startRequests = [];
   final List<({String body, String key})> sendRequests = [];
   final List<String?> beforeCursors = [];
@@ -128,6 +133,7 @@ class FakeMessageRepository implements MessageRepository {
   /// switch accounts while the request is in flight.
   Completer<void>? conversationsGate;
   Completer<void>? deleteConversationGate;
+  Completer<void>? participantUpdateGate;
 
   @override
   Future<Either<Failure, List<Conversation>>> conversations({
@@ -187,6 +193,48 @@ class FakeMessageRepository implements MessageRepository {
     final failure = markReadFailure;
     if (failure != null) return left(failure);
     return right(markReadResult);
+  }
+
+  @override
+  Future<Either<Failure, Conversation>> updateParticipants(
+    String conversationId, {
+    required NowaveSessionFence fence,
+    List<String> addUserIds = const [],
+    List<String> removeUserIds = const [],
+  }) async {
+    calls.add('updateParticipants:$conversationId');
+    fences.add(fence);
+    participantUpdateRequests.add((
+      id: conversationId,
+      addUserIds: List.unmodifiable(addUserIds),
+      removeUserIds: List.unmodifiable(removeUserIds),
+    ));
+    final gate = participantUpdateGate;
+    if (gate != null) await gate.future;
+    final failure = participantUpdateFailure;
+    if (failure != null) return left(failure);
+    final replacement = participantUpdateResult;
+    if (replacement != null) return right(replacement);
+    final current = conversationResult;
+    if (current == null) {
+      return left(
+        missingConversationFailure ??
+            const Failure('missing', kind: FailureKind.validation),
+      );
+    }
+    final members = current.participantIds.toSet()
+      ..addAll(addUserIds)
+      ..removeAll(removeUserIds);
+    return right(
+      testConversation(
+        id: current.id,
+        participants: members.toList(),
+        createdBy: current.createdBy,
+        unreadCount: current.unreadCount,
+        lastMessage: current.lastMessage,
+        lastActivityAt: current.lastActivityAt,
+      ),
+    );
   }
 
   @override

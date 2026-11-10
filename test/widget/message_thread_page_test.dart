@@ -1,15 +1,19 @@
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:belog/features/messages/presentation/bloc/message_thread_cubit.dart';
+import 'package:belog/features/messages/presentation/pages/message_participants_sheet.dart';
 import 'package:belog/features/messages/presentation/pages/message_thread_page.dart';
+import 'package:belog/features/user/domain/entities/author_search_result.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:go_router/go_router.dart';
 
 import '../support/message_fakes.dart';
 
 class _Harness {
-  _Harness({String conversationId = 'conversation-1'})
+  _Harness({String conversationId = 'conversation-1', this.participantSearch})
     : conversationId = conversationId {
     repository.conversationResult = testConversation(unreadCount: 2);
     repository.messagesResult = [
@@ -31,6 +35,7 @@ class _Harness {
           builder: (_, _) => MessageThreadPage(
             conversationId: this.conversationId,
             cubit: cubit,
+            participantSearch: participantSearch,
           ),
         ),
         GoRoute(
@@ -42,6 +47,7 @@ class _Harness {
   }
 
   final String conversationId;
+  final MessageParticipantAuthorSearch? participantSearch;
   final FakeMessageRepository repository = FakeMessageRepository();
   final FakeParticipantNames names = FakeParticipantNames();
   late final MessageTestIdentity identity;
@@ -85,6 +91,73 @@ class _Harness {
 }
 
 void main() {
+  testWidgets('only the creator sees the member-management action', (
+    tester,
+  ) async {
+    Future<Either<Failure, List<AuthorSearchResult>>> search(String _) async =>
+        right(<AuthorSearchResult>[]);
+    final owner = _Harness(participantSearch: search);
+    addTearDown(owner.dispose);
+    await owner.pump(tester);
+    final l10n = lookupAppLocalizations(const Locale('en'));
+
+    expect(
+      find.byTooltip(l10n.messagesParticipantsManageAction),
+      findsOneWidget,
+    );
+
+    final other = _Harness(participantSearch: search);
+    other.repository.conversationResult = testConversation(
+      createdBy: 'user-b',
+      unreadCount: 2,
+    );
+    addTearDown(other.dispose);
+    await other.pump(tester);
+
+    expect(find.byTooltip(l10n.messagesParticipantsManageAction), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the creator can add a member from the thread page', (
+    tester,
+  ) async {
+    Future<Either<Failure, List<AuthorSearchResult>>> search(String _) async =>
+        right(<AuthorSearchResult>[
+          const AuthorSearchResult(userId: 'user-c', displayName: 'New author'),
+        ]);
+    final harness = _Harness(participantSearch: search);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = lookupAppLocalizations(const Locale('en'));
+
+    await tester.tap(find.byTooltip(l10n.messagesParticipantsManageAction));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.messagesParticipantsAddAction));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.labelText == l10n.messagesParticipantsSearchHint,
+      ),
+      'New',
+    );
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('New author'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.messagesParticipantsAddSelected(1)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.messagesParticipantsConfirmAdd));
+    await tester.pumpAndSettle();
+
+    expect(harness.repository.participantUpdateRequests.single.addUserIds, [
+      'user-c',
+    ]);
+    expect(find.text(l10n.messagesParticipantsUpdated), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('shows both sides of the conversation oldest first', (
     tester,
   ) async {

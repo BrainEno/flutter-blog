@@ -105,6 +105,36 @@ void main() {
     );
   });
 
+  test('participant-management disclosures and failures are localized', () {
+    expect(zh.messagesParticipantsHistoryWarning, contains('全部历史消息'));
+    expect(zh.messagesParticipantsHistoryWarning, contains('不会因此标为未读'));
+    expect(en.messagesParticipantsHistoryWarning, contains('all messages'));
+    expect(
+      en.messagesParticipantsHistoryWarning,
+      contains('not be marked unread'),
+    );
+    expect(zh.messagesParticipantsRemoveBody, contains('不会被删除'));
+    expect(en.messagesParticipantsRemoveBody, contains('not deleted'));
+    for (final code in <String, String>{
+      'messages.participantsForbidden': 'messagesParticipantsForbidden',
+      'messages.participantsUnavailable': 'messagesParticipantsUnavailable',
+      'messages.participantsInvalid': 'messagesParticipantsInvalid',
+      'messages.participantsConflict': 'messagesParticipantsConflict',
+      'messages.participantsInProgress': 'messagesParticipantsInProgress',
+    }.entries) {
+      final failure = Failure('fallback', code: code.key);
+      final translated = switch (code.value) {
+        'messagesParticipantsForbidden' => zh.messagesParticipantsForbidden,
+        'messagesParticipantsUnavailable' => zh.messagesParticipantsUnavailable,
+        'messagesParticipantsInvalid' => zh.messagesParticipantsInvalid,
+        'messagesParticipantsConflict' => zh.messagesParticipantsConflict,
+        _ => zh.messagesParticipantsInProgress,
+      };
+      expect(localizedFailure(zh, failure), translated);
+      expect(localizedFailure(en, failure), isNot('fallback'));
+    }
+  });
+
   test(
     'locale resolution preserves English regions and uses Simplified Chinese',
     () {

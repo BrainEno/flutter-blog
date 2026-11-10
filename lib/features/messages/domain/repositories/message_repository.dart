@@ -54,6 +54,17 @@ abstract interface class MessageRepository {
     required NowaveSessionFence fence,
   });
 
+  /// Adds or removes conversation members; only the creator may manage them.
+  ///
+  /// A newly added or re-added member can read the complete message history.
+  /// The endpoint accepts at most 20 distinct IDs in either list.
+  Future<Either<Failure, Conversation>> updateParticipants(
+    String conversationId, {
+    required NowaveSessionFence fence,
+    List<String> addUserIds = const [],
+    List<String> removeUserIds = const [],
+  });
+
   /// Opens a conversation with [recipientId].
   ///
   /// Opening is not idempotent server-side - the same participants can be in

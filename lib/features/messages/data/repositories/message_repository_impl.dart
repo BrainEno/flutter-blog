@@ -155,6 +155,38 @@ class MessageRepositoryImpl implements MessageRepository {
   }
 
   @override
+  Future<Either<Failure, Conversation>> updateParticipants(
+    String conversationId, {
+    required NowaveSessionFence fence,
+    List<String> addUserIds = const [],
+    List<String> removeUserIds = const [],
+  }) async {
+    final invalid = _invalidConversationId(conversationId);
+    if (invalid != null) return left(invalid);
+    final removeIds = removeUserIds.toSet();
+    if (_invalidParticipantIds(addUserIds) ||
+        _invalidParticipantIds(removeUserIds) ||
+        addUserIds.any(removeIds.contains) ||
+        addUserIds.contains(fence.userId) ||
+        removeUserIds.contains(fence.userId)) {
+      return left(_invalidParticipantUpdate());
+    }
+    try {
+      final data = await client.patchJson(
+        '/conversations/${Uri.encodeComponent(conversationId)}/participants',
+        {'addUserIds': addUserIds, 'removeUserIds': removeUserIds},
+        sessionFence: fence,
+        followRedirects: false,
+      );
+      return right(conversationFromRow(data));
+    } catch (error) {
+      return left(
+        _failureOf(error, conversationScoped: true, managingParticipants: true),
+      );
+    }
+  }
+
+  @override
   Future<Either<Failure, Conversation>> startConversation({
     required NowaveSessionFence fence,
     required String recipientId,
@@ -263,6 +295,24 @@ class MessageRepositoryImpl implements MessageRepository {
     return null;
   }
 
+  bool _invalidParticipantIds(List<String> ids) {
+    if (ids.length > 20) return true;
+    final seen = <String>{};
+    for (final id in ids) {
+      if (id.isEmpty || id.trim() != id || id.length > maxUserIdLength) {
+        return true;
+      }
+      if (!seen.add(id)) return true;
+    }
+    return false;
+  }
+
+  Failure _invalidParticipantUpdate() => const Failure(
+    'Invalid participant update.',
+    kind: FailureKind.validation,
+    code: 'messages.participantsInvalid',
+  );
+
   /// Maps a failure to the one message the reader needs.
   ///
   /// [conversationScoped] separates "this conversation is not yours" (404 on a
@@ -273,6 +323,7 @@ class MessageRepositoryImpl implements MessageRepository {
     Object error, {
     bool conversationScoped = false,
     bool deletingConversation = false,
+    bool managingParticipants = false,
   }) {
     if (error is NowaveApiException) {
       if (error.code == 'SESSION_CHANGED') {
@@ -290,17 +341,25 @@ class MessageRepositoryImpl implements MessageRepository {
         );
       }
       if (error.statusCode == 403) {
-        return deletingConversation
-            ? const Failure(
-                '只有会话创建者可以删除这个会话',
-                kind: FailureKind.permission,
-                code: 'messages.deleteForbidden',
-              )
-            : const Failure(
-                '你没有权限查看这个会话',
-                kind: FailureKind.permission,
-                code: 'messages.forbidden',
-              );
+        if (deletingConversation) {
+          return const Failure(
+            '只有会话创建者可以删除这个会话',
+            kind: FailureKind.permission,
+            code: 'messages.deleteForbidden',
+          );
+        }
+        if (managingParticipants) {
+          return const Failure(
+            'Participant management is restricted to the conversation creator.',
+            kind: FailureKind.permission,
+            code: 'messages.participantsForbidden',
+          );
+        }
+        return const Failure(
+          '你没有权限查看这个会话',
+          kind: FailureKind.permission,
+          code: 'messages.forbidden',
+        );
       }
       if (error.statusCode == 404) {
         if (deletingConversation) {
@@ -310,6 +369,13 @@ class MessageRepositoryImpl implements MessageRepository {
             '此服务器暂不支持删除会话',
             kind: FailureKind.server,
             code: 'messages.deleteUnavailable',
+          );
+        }
+        if (managingParticipants) {
+          return const Failure(
+            'The conversation is missing or this server does not support participant management.',
+            kind: FailureKind.server,
+            code: 'messages.participantsUnavailable',
           );
         }
         return conversationScoped
@@ -327,17 +393,25 @@ class MessageRepositoryImpl implements MessageRepository {
       if (error.statusCode == 405) {
         // The method/route shape is not supported: an older deployment, not a
         // missing conversation.
-        return deletingConversation
-            ? const Failure(
-                '此服务器暂不支持删除会话',
-                kind: FailureKind.server,
-                code: 'messages.deleteUnavailable',
-              )
-            : const Failure(
-                '此服务器暂不提供私信',
-                kind: FailureKind.server,
-                code: 'messages.unavailable',
-              );
+        if (deletingConversation) {
+          return const Failure(
+            '此服务器暂不支持删除会话',
+            kind: FailureKind.server,
+            code: 'messages.deleteUnavailable',
+          );
+        }
+        if (managingParticipants) {
+          return const Failure(
+            'This server does not support participant management.',
+            kind: FailureKind.server,
+            code: 'messages.participantsUnavailable',
+          );
+        }
+        return const Failure(
+          '此服务器暂不提供私信',
+          kind: FailureKind.server,
+          code: 'messages.unavailable',
+        );
       }
       if (error.statusCode == 401) {
         return const Failure(
@@ -347,18 +421,26 @@ class MessageRepositoryImpl implements MessageRepository {
         );
       }
       if (error.statusCode == 409) {
-        return const Failure(
-          '该操作与当前会话状态冲突，请刷新后重试',
-          kind: FailureKind.validation,
-          code: 'server.CONFLICT',
-        );
+        return managingParticipants
+            ? const Failure(
+                'The conversation changed. Refresh and try again.',
+                kind: FailureKind.validation,
+                code: 'messages.participantsConflict',
+              )
+            : const Failure(
+                '该操作与当前会话状态冲突，请刷新后重试',
+                kind: FailureKind.validation,
+                code: 'server.CONFLICT',
+              );
       }
       if (error.statusCode == 400) {
-        return const Failure(
-          '会话内容不符合要求，请检查后重试',
-          kind: FailureKind.validation,
-          code: 'messages.invalid',
-        );
+        return managingParticipants
+            ? _invalidParticipantUpdate()
+            : const Failure(
+                '会话内容不符合要求，请检查后重试',
+                kind: FailureKind.validation,
+                code: 'messages.invalid',
+              );
       }
       if (error.statusCode == 429) {
         return const Failure(
