@@ -1066,15 +1066,22 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('删除'));
       await tester.pump();
+      Future<void>? closing;
       if (outcome == 'row unmounted') {
         await tester.pumpWidget(const SizedBox.shrink());
       } else {
-        await bloc.close();
+        closing = bloc.close();
+        await tester.pump();
+        expect(bloc.isClosed, isTrue);
       }
       confirmation.complete(true);
       await tester.pumpAndSettle();
       verifyNever(() => deleteComment(any()));
       expect(tester.takeException(), isNull);
+      if (closing != null) {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await closing;
+      }
     });
   }
 
