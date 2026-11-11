@@ -32,6 +32,7 @@ class NotificationBadgeCubit extends Cubit<int> {
   final NowaveSessionIdentity identity;
 
   StreamSubscription<void>? _identitySubscription;
+  int _refreshGeneration = 0;
 
   /// The fence of the account this badge belongs to, or null when nobody is
   /// signed in.
@@ -52,17 +53,24 @@ class NotificationBadgeCubit extends Cubit<int> {
   }
 
   /// Reads the count again. Safe to call as often as the caller likes; a
-  /// failure leaves the badge showing what it last knew.
+  /// failure leaves the badge showing what it last knew. Only the latest
+  /// started refresh may update it; a failed refresh also invalidates older
+  /// in-flight responses.
   Future<void> refresh() async {
+    final requestGeneration = ++_refreshGeneration;
     final fence = _fence;
     if (fence == null) {
       if (!isClosed) emit(0);
       return;
     }
     final result = await repository.unreadCount(fence: fence);
-    // A response that arrives after a sign-in switch belongs to the account
-    // that asked, not to the one looking at the screen now.
-    if (isClosed || !_stillCurrent(fence)) return;
+    // A superseded request or response for a previous session cannot overwrite
+    // the latest accepted count.
+    if (isClosed ||
+        requestGeneration != _refreshGeneration ||
+        !_stillCurrent(fence)) {
+      return;
+    }
     result.fold((_) {}, (count) {
       if (!isClosed) emit(count < 0 ? 0 : count);
     });
