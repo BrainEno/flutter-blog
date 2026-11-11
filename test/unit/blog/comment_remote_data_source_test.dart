@@ -102,6 +102,40 @@ void main() {
     );
 
     test(
+      'maps edit timestamps, including nested replies and legacy or malformed values',
+      () async {
+        final validRoot = _commentMap(
+          id: 'edited-root',
+          replies: [
+            _commentMap(id: 'edited-child', parentId: 'edited-root')
+              ..['editedAt'] = '2026-11-11T09:05:00.000Z',
+          ],
+        )..['editedAt'] = '2026-11-10T12:00:00.000Z';
+        final legacy = _commentMap(id: 'legacy');
+        final nullValue = _commentMap(id: 'null')..['editedAt'] = null;
+        final invalid = _commentMap(id: 'invalid')..['editedAt'] = 'not-a-date';
+        final wrongType = _commentMap(id: 'wrong-type')..['editedAt'] = 17;
+        when(
+          () => client.getJson(any(), query: any(named: 'query')),
+        ).thenAnswer(
+          (_) async => [validRoot, legacy, nullValue, invalid, wrongType],
+        );
+        final page = await dataSource.getComments(_kSlug);
+        expect(page.items[0].editedAt, DateTime.utc(2026, 11, 10, 12));
+        expect(
+          page.items[0].replies.single.editedAt,
+          DateTime.utc(2026, 11, 11, 9, 5),
+        );
+        expect(page.items[0].createdAt, DateTime.utc(2025, 6, 1));
+        expect(
+          page.items.skip(1).map((comment) => comment.editedAt),
+          everyElement(isNull),
+        );
+        expect(page.items[0].replies.single.parentCommentId, 'edited-root');
+      },
+    );
+
+    test(
       'builds the cursor from the exact timestamp of the last root',
       () async {
         const timestamp = '2026-06-01T00:00:00.123Z';

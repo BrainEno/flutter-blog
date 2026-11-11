@@ -126,6 +126,7 @@
   "commentsLoadingMore": "Loading more comments…",
   "commentsPaginationUnavailable": "This server cannot continue loading comments yet.",
   "commentsEmpty": "No comments yet — be the first to speak",
+  "commentEdited": "Edited",
   "commentDeleting": "Deleting…",
   "editorNewTitle": "Write a new article",
   "editorEditTitle": "Edit article",

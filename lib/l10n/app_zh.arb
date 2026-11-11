@@ -89,6 +89,7 @@
   "commentsLoadingMore": "正在加载更多评论…",
   "commentsPaginationUnavailable": "此服务器暂不支持继续加载评论。",
   "commentsEmpty": "还没有评论，来说第一句吧",
+  "commentEdited": "已编辑",
   "commentDeleting": "删除中…",
   "editorNewTitle": "撰写新文章",
   "editorEditTitle": "编辑文章",

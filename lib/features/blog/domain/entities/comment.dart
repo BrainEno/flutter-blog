@@ -2,7 +2,8 @@
 ///
 /// Pure Dart domain entity, mirroring [Blog]: free of persistence and UI
 /// framework annotations. The server nests replies under their direct
-/// parent (up to depth 10); this entity keeps that shape.
+/// parent, including legacy replies deeper than the current write limit; this
+/// entity keeps that shape.
 class Comment {
   final String id;
   final String articleId;
@@ -22,6 +23,9 @@ class Comment {
   final String authorAvatarUrl;
 
   final DateTime createdAt;
+
+  /// When the server last changed the comment, if the deployment supplies it.
+  final DateTime? editedAt;
   final List<Comment> replies;
 
   const Comment({
@@ -33,6 +37,7 @@ class Comment {
     this.authorName = '',
     this.authorAvatarUrl = '',
     required this.createdAt,
+    this.editedAt,
     this.replies = const [],
   });
 

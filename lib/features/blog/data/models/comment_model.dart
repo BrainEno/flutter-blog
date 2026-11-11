@@ -15,6 +15,7 @@ class CommentModel extends Comment {
     super.authorName = '',
     super.authorAvatarUrl = '',
     required super.createdAt,
+    super.editedAt,
     super.replies = const [],
   });
 
@@ -31,6 +32,10 @@ class CommentModel extends Comment {
       createdAt:
           DateTime.tryParse(map['createdAt'] as String? ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
+      editedAt: switch (map['editedAt']) {
+        final String value => DateTime.tryParse(value),
+        _ => null,
+      },
       replies: (map['replies'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map(CommentModel.fromMap)

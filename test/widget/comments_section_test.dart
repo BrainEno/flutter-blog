@@ -38,6 +38,7 @@ Comment _comment(
   String authorId = 'someone-else',
   String content = '写得真好',
   String? parentId,
+  DateTime? editedAt,
   List<Comment> replies = const [],
 }) => Comment(
   id: id,
@@ -46,6 +47,7 @@ Comment _comment(
   parentCommentId: parentId,
   content: content,
   createdAt: DateTime.utc(2025, 6, 1),
+  editedAt: editedAt,
   replies: replies,
 );
 
@@ -169,6 +171,98 @@ void main() {
     expect(find.text('已加载 3 条'), findsOneWidget);
     expect(find.byType(NoWaveAvatar), findsNWidgets(3));
   });
+
+  for (final locale in [const Locale('en'), const Locale('zh')]) {
+    testWidgets(
+      'edited markers survive reply insertion and deletion at 320dp 2x in $locale',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final semantics = tester.ensureSemantics();
+        try {
+          appUserCubit.updateUser(_user());
+          final rootEdited = DateTime.utc(2026, 11, 10, 12);
+          final childEdited = DateTime.utc(2026, 11, 11, 9, 5);
+          when(() => getComments('my-slug')).thenAnswer(
+            (_) async => right<Failure, CommentPage>(
+              _page([
+                _comment(
+                  'root',
+                  editedAt: rootEdited,
+                  replies: [
+                    _comment('child', parentId: 'root', editedAt: childEdited),
+                  ],
+                ),
+                _comment('legacy', content: 'legacy body'),
+              ]),
+            ),
+          );
+          when(
+            () => createComment(any(that: isA<CreateCommentParams>())),
+          ).thenAnswer(
+            (_) async => right<Failure, Comment>(
+              _comment('new', parentId: 'root', content: 'new reply'),
+            ),
+          );
+          when(
+            () => deleteComment('child'),
+          ).thenAnswer((_) async => right<Failure, void>(null));
+          final bloc = buildBloc();
+          addTearDown(bloc.close);
+          await _pumpSection(
+            tester,
+            appUserCubit: appUserCubit,
+            commentBloc: bloc,
+            locale: locale,
+            textScale: 2,
+            horizontalPadding: 16,
+          );
+          await tester.pumpAndSettle();
+          final l10n = lookupAppLocalizations(locale);
+          expect(find.text(l10n.commentEdited), findsNWidgets(2));
+          final legacy = find.byWidgetPredicate(
+            (widget) => widget is CommentTile && widget.comment.id == 'legacy',
+          );
+          expect(
+            find.descendant(
+              of: legacy,
+              matching: find.text(l10n.commentEdited),
+            ),
+            findsNothing,
+          );
+          await tester.ensureVisible(find.text(l10n.commentEdited).first);
+          await tester.pumpAndSettle();
+          final label = tester
+              .getSemantics(find.text(l10n.commentEdited).first)
+              .getSemanticsData()
+              .label;
+          expect(label, contains(l10n.commentEdited));
+          expect(tester.takeException(), isNull);
+          bloc.add(
+            const CommentSubmitted(
+              content: 'new reply',
+              parentCommentId: 'root',
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(find.text(l10n.commentEdited), findsNWidgets(2));
+          expect(bloc.state.comments.first.editedAt, rootEdited);
+          expect(bloc.state.comments.first.replies.first.editedAt, childEdited);
+          expect(bloc.state.comments.first.createdAt, DateTime.utc(2025, 6, 1));
+          bloc.add(const CommentDeleteRequested('child'));
+          await tester.pumpAndSettle();
+          expect(find.text(l10n.commentEdited), findsOneWidget);
+          expect(bloc.state.comments.first.editedAt, rootEdited);
+          expect(bloc.state.comments.first.replies.single.id, 'new');
+          expect(tester.takeException(), isNull);
+        } finally {
+          semantics.dispose();
+        }
+      },
+    );
+  }
 
   testWidgets('loads subsequent pages and stops after a short page', (
     tester,
