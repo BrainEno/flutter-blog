@@ -9,6 +9,7 @@ import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
+import 'package:belog/features/blog/domain/notion_export/notion_export.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
@@ -113,6 +114,25 @@ class _NotionRepository implements NotionImportRepository {
   }) async => right(NotionImportReport(applied: apply, pages: const []));
 }
 
+class _ExportRepository implements NotionExportRepository {
+  String? slug;
+  @override
+  Future<Either<Failure, NotionExportResult>> export({
+    required String slug,
+    required NowaveSessionFence sessionFence,
+  }) async {
+    this.slug = slug;
+    return right(
+      const NotionExportResult(
+        missing: true,
+        bundleJson: '',
+        issues: [],
+        editions: [],
+      ),
+    );
+  }
+}
+
 class _RecordingUploadBloc extends Mock implements BlogUploadBloc {
   _RecordingUploadBloc(this.states);
 
@@ -138,6 +158,7 @@ class _Harness {
     this.getCategories,
     this.getUserMediaLibraryPage,
     this.notionImportRepository,
+    this.notionExportRepository,
   }) : queue = FakePublishQueueStore(rows: rows, storedCover: cover),
        drafts = _FakeDraftStore() {
     identity = _Identity();
@@ -160,6 +181,7 @@ class _Harness {
   final GetCategories? getCategories;
   final GetUserMediaLibraryPage? getUserMediaLibraryPage;
   final NotionImportRepository? notionImportRepository;
+  final NotionExportRepository? notionExportRepository;
   final FakePublishQueueStore queue;
   final _FakeDraftStore drafts;
   late final _Identity identity;
@@ -189,6 +211,7 @@ class _Harness {
             getCategories: getCategories,
             getUserMediaLibraryPage: getUserMediaLibraryPage,
             notionImportRepository: notionImportRepository,
+            notionExportRepository: notionExportRepository,
           ),
         ),
       ),
@@ -466,6 +489,41 @@ void main() {
     expect(find.text(l10n.notionImportInput), findsNothing);
     expect(find.text(l10n.editorSessionChanged), findsOneWidget);
   });
+
+  testWidgets(
+    'Notion export is only offered for an existing work and closes on session change',
+    (tester) async {
+      final l10n = lookupAppLocalizations(const Locale('zh'));
+      final newHarness = _Harness();
+      addTearDown(newHarness.dispose);
+      await newHarness.pump(tester);
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.notionExportTitle), findsNothing);
+      await tester.tap(find.byType(ModalBarrier).last);
+      await tester.pumpAndSettle();
+      final repository = _ExportRepository();
+      final harness = _Harness(
+        blog: publishedBlog(),
+        notionExportRepository: repository,
+      );
+      addTearDown(harness.dispose);
+      await harness.pump(tester);
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.notionExportTitle));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.notionExportLoad));
+      await tester.pumpAndSettle();
+      expect(repository.slug, 'my-slug');
+      expect(find.text(l10n.notionExportMissing), findsOneWidget);
+      harness.identity.userId = null;
+      harness.identity.controller.add(null);
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.notionExportMissing), findsNothing);
+      expect(find.text(l10n.editorSessionChanged), findsOneWidget);
+    },
+  );
 
   testWidgets('a selected media-library cover is sent and retained when queued', (
     tester,
