@@ -11,6 +11,7 @@ import 'package:belog/features/blog/domain/entities/comment_page.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_event.dart';
+import 'package:belog/features/blog/presentation/blocs/comment/comment_state.dart';
 import 'package:belog/features/blog/presentation/widgets/comments_section.dart';
 import 'package:belog/features/blog/presentation/comments/comment_tile.dart';
 import 'package:belog/features/blog/presentation/comments/comment_composer.dart';
@@ -28,6 +29,8 @@ class MockGetComments extends Mock implements GetComments {}
 class MockCreateComment extends Mock implements CreateComment {}
 
 class MockDeleteComment extends Mock implements DeleteComment {}
+
+class MockCommentBloc extends Mock implements CommentBloc {}
 
 class MockUuid extends Mock implements Uuid {}
 
@@ -116,6 +119,7 @@ void main() {
     registerFallbackValue(
       CreateCommentParams(slug: '', content: '', idempotencyKey: ''),
     );
+    registerFallbackValue(const CommentDeleteRequested('fallback'));
   });
 
   setUp(() {
@@ -1030,60 +1034,91 @@ void main() {
     },
   );
 
-  for (final outcome in ['row unmounted', 'bloc closed']) {
-    testWidgets('a confirmed delete cannot dispatch after $outcome', (
-      tester,
-    ) async {
-      appUserCubit.updateUser(_user());
-      final bloc = buildBloc();
-      addTearDown(() async {
-        if (!bloc.isClosed) await bloc.close();
-      });
-      final confirmation = Completer<bool>();
-      await tester.pumpWidget(
-        MultiBlocProvider(
-          providers: [
-            BlocProvider<AppUserCubit>.value(value: appUserCubit),
-            BlocProvider<CommentBloc>.value(value: bloc),
-          ],
-          child: MaterialApp(
-            locale: const Locale('zh'),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Scaffold(
-              body: CommentTile(
-                comment: _comment('own', authorId: 'viewer-1'),
-                depth: 0,
-                onReply: (_) {},
-                replyRequiresLogin: false,
-                onOpenAuthor: _ignoreAuthor,
-                confirmDelete: () => confirmation.future,
-              ),
+  testWidgets('a confirmed delete cannot dispatch after its row is unmounted', (
+    tester,
+  ) async {
+    appUserCubit.updateUser(_user());
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+    final confirmation = Completer<bool>();
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<AppUserCubit>.value(value: appUserCubit),
+          BlocProvider<CommentBloc>.value(value: bloc),
+        ],
+        child: MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: CommentTile(
+              comment: _comment('own', authorId: 'viewer-1'),
+              depth: 0,
+              onReply: (_) {},
+              replyRequiresLogin: false,
+              onOpenAuthor: _ignoreAuthor,
+              confirmDelete: () => confirmation.future,
             ),
           ),
         ),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('删除'));
-      await tester.pump();
-      Future<void>? closing;
-      if (outcome == 'row unmounted') {
-        await tester.pumpWidget(const SizedBox.shrink());
-      } else {
-        closing = bloc.close();
-        await tester.pump();
-        expect(bloc.isClosed, isTrue);
-      }
-      confirmation.complete(true);
-      await tester.pumpAndSettle();
-      verifyNever(() => deleteComment(any()));
-      expect(tester.takeException(), isNull);
-      if (closing != null) {
-        await tester.pumpWidget(const SizedBox.shrink());
-        await closing;
-      }
-    });
-  }
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除'));
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox.shrink());
+    confirmation.complete(true);
+    await tester.pumpAndSettle();
+    verifyNever(() => deleteComment(any()));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a confirmed delete cannot dispatch to a closed bloc', (
+    tester,
+  ) async {
+    appUserCubit.updateUser(_user());
+    var closed = false;
+    final bloc = MockCommentBloc();
+    when(() => bloc.state).thenReturn(const CommentState());
+    when(
+      () => bloc.stream,
+    ).thenAnswer((_) => const Stream<CommentState>.empty());
+    when(() => bloc.isClosed).thenAnswer((_) => closed);
+    final confirmation = Completer<bool>();
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<AppUserCubit>.value(value: appUserCubit),
+          BlocProvider<CommentBloc>.value(value: bloc),
+        ],
+        child: MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: CommentTile(
+              comment: _comment('own', authorId: 'viewer-1'),
+              depth: 0,
+              onReply: (_) {},
+              replyRequiresLogin: false,
+              onOpenAuthor: _ignoreAuthor,
+              confirmDelete: () => confirmation.future,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除'));
+    await tester.pump();
+    closed = true;
+    confirmation.complete(true);
+    await tester.pumpAndSettle();
+    expect(bloc.isClosed, isTrue);
+    verifyNever(() => bloc.add(any()));
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('a failed load offers a retry', (tester) async {
     when(
