@@ -93,6 +93,7 @@ AppNotification _notification({
   AppNotificationKind kind = AppNotificationKind.articleDeleted,
   DateTime? readAt,
   String? articleSlug,
+  NotificationArticleLocale? articleLocale,
   String? followerId,
 }) => AppNotification(
   id: id,
@@ -108,6 +109,7 @@ AppNotification _notification({
       ? 'conversation-1'
       : null,
   articleSlug: articleSlug,
+  articleLocale: articleLocale,
   followerId: followerId,
 );
 
@@ -320,6 +322,73 @@ void main() {
       }
     },
   );
+
+  testWidgets('shows source edition and keeps it after marking read', (
+    tester,
+  ) async {
+    for (final locale in [const Locale('en'), const Locale('zh')]) {
+      for (final source in NotificationArticleLocale.values) {
+        final harness = _Harness(
+          rows: [
+            _notification(
+              kind: AppNotificationKind.commentReplied,
+              articleSlug: 'work-1',
+              articleLocale: source,
+            ),
+          ],
+        );
+        addTearDown(harness.dispose);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await harness.pump(tester, locale: locale);
+        harness.settle();
+        await tester.pumpAndSettle();
+        final l10n = lookupAppLocalizations(locale);
+        final text = switch (source) {
+          NotificationArticleLocale.english => l10n.notificationsSourceEnglish,
+          NotificationArticleLocale.simplifiedChinese =>
+            l10n.notificationsSourceSimplifiedChinese,
+          NotificationArticleLocale.traditionalChinese =>
+            l10n.notificationsSourceTraditionalChinese,
+        };
+        expect(find.text(text), findsOneWidget);
+        await tester.ensureVisible(find.text(l10n.notificationsMarkRead));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(l10n.notificationsMarkRead));
+        await tester.pumpAndSettle();
+        expect(find.text(text), findsOneWidget);
+        expect(harness.repository.rows.single.articleSourceLocale, source);
+        expect(tester.takeException(), isNull);
+      }
+    }
+  });
+
+  testWidgets('legacy and invalid article notices have no edition label', (
+    tester,
+  ) async {
+    final harness = _Harness(
+      rows: [
+        _notification(
+          kind: AppNotificationKind.articleCommented,
+          articleSlug: 'work-1',
+        ),
+        _notification(
+          id: 'bad',
+          kind: AppNotificationKind.commentReplied,
+          articleSlug: '../bad',
+          articleLocale: NotificationArticleLocale.english,
+        ),
+      ],
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.settle();
+    await tester.pumpAndSettle();
+    final l10n = lookupAppLocalizations(const Locale('en'));
+    expect(find.text(l10n.notificationsSourceEnglish), findsNothing);
+    expect(find.text(l10n.notificationsSourceSimplifiedChinese), findsNothing);
+    expect(find.text(l10n.notificationsSourceTraditionalChinese), findsNothing);
+    expect(find.text(l10n.notificationsOpenArticleAddress), findsOneWidget);
+  });
 
   testWidgets('invalid destinations stay readable and never become buttons', (
     tester,

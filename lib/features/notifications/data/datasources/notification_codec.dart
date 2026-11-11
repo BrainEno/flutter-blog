@@ -38,6 +38,7 @@ AppNotification notificationFromRow(Object? row) {
     purgesAt: decoded.purgesAt,
     conversationId: decoded.conversationId,
     articleSlug: decoded.articleSlug,
+    articleLocale: decoded.articleLocale,
     followerId: decoded.followerId,
   );
 }
@@ -50,6 +51,7 @@ class _DecodedPayload {
     this.purgesAt,
     this.conversationId,
     this.articleSlug,
+    this.articleLocale,
     this.followerId,
   });
 
@@ -58,6 +60,7 @@ class _DecodedPayload {
   final DateTime? purgesAt;
   final String? conversationId;
   final String? articleSlug;
+  final NotificationArticleLocale? articleLocale;
   final String? followerId;
 }
 
@@ -78,16 +81,19 @@ _DecodedPayload _decodePayload(String raw) {
       return _DecodedPayload(
         AppNotificationKind.articleCommented,
         articleSlug: AppNotification.validArticleSlug(value['slug']),
+        articleLocale: _articleLocale(value['locale']),
       );
     case 'article.comment_replied':
       return _DecodedPayload(
         AppNotificationKind.commentReplied,
         articleSlug: AppNotification.validArticleSlug(value['slug']),
+        articleLocale: _articleLocale(value['locale']),
       );
     case 'article.liked':
       return _DecodedPayload(
         AppNotificationKind.articleLiked,
         articleSlug: AppNotification.validArticleSlug(value['slug']),
+        articleLocale: _articleLocale(value['locale']),
       );
     case 'user.followed':
       return _DecodedPayload(
@@ -114,6 +120,14 @@ _DecodedPayload _decodePayload(String raw) {
   }
   return _unknownPayload;
 }
+
+// Only explicit, supported producer values are retained; never render raw payload.
+NotificationArticleLocale? _articleLocale(Object? value) => switch (value) {
+  'en' => NotificationArticleLocale.english,
+  'zh-CN' => NotificationArticleLocale.simplifiedChinese,
+  'zh-TW' => NotificationArticleLocale.traditionalChinese,
+  _ => null,
+};
 
 /// no-wave serializes instants with an offset (normally `Z`). A zone-less value
 /// is rejected instead of being read as this device's local time.
