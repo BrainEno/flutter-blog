@@ -263,6 +263,10 @@ class _NotificationRow extends StatelessWidget {
   IconData get _icon => switch (item.kind) {
     AppNotificationKind.articleDeleted => Icons.delete_outline,
     AppNotificationKind.messageReceived => Icons.mail_outline,
+    AppNotificationKind.articleCommented => Icons.chat_bubble_outline,
+    AppNotificationKind.commentReplied => Icons.reply,
+    AppNotificationKind.articleLiked => Icons.favorite_border,
+    AppNotificationKind.userFollowed => Icons.person_outline,
     AppNotificationKind.unknown => Icons.notifications_none,
   };
 
@@ -272,6 +276,10 @@ class _NotificationRow extends StatelessWidget {
     AppNotificationKind.articleDeleted => _deletionSentence(context),
     AppNotificationKind.messageReceived =>
       context.l10n.notificationMessageReceived,
+    AppNotificationKind.articleCommented => context.l10n.notificationCommented,
+    AppNotificationKind.commentReplied => context.l10n.notificationReply,
+    AppNotificationKind.articleLiked => context.l10n.notificationLiked,
+    AppNotificationKind.userFollowed => context.l10n.notificationFollowed,
     AppNotificationKind.unknown => context.l10n.notificationUnknown,
   };
 
