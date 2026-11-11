@@ -147,6 +147,11 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
       _busy = true;
       _error = null;
       _confirming = false;
+      if (!apply) {
+        // A new preview replaces the old plan, even while the request is pending.
+        _report = null;
+        _snapshot = null;
+      }
     });
     if (apply) widget.onApplyStarted?.call();
     final result = await widget.repository.submit(
@@ -405,6 +410,14 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
                               if (report.canApply && _snapshot != null) ...[
                                 const SizedBox(height: NoWaveSpacing.medium),
                                 Text(l10n.notionImportWarning),
+                                Semantics(
+                                  liveRegion: true,
+                                  child: Text(l10n.notionImportVersionWarning),
+                                ),
+                                TextButton(
+                                  onPressed: _busy ? null : _preview,
+                                  child: Text(l10n.notionImportRefreshPreview),
+                                ),
                                 if (!_confirming)
                                   OutlinedButton(
                                     onPressed: _busy

@@ -167,6 +167,8 @@
   "notionImportSkip": "跳过",
   "notionImportRefused": "拒绝",
   "notionImportFailed": "失败",
+  "notionImportVersionWarning": "预览不会锁定目标，也不会检查目标是否已改变。写入时会重新规划，结果可能与预览不同；其他窗口或设备的修改可能被覆盖。确认前请备份并暂停其他编辑。必要时重新预览，但并发修改仍可能被覆盖。",
+  "notionImportRefreshPreview": "重新预览当前选择",
   "notionImportWarning": "导入可能覆盖以前导入文章的修改，标记为已发布的页面可能发布。请先检查每个页面和问题。",
   "notionImportReviewConfirm": "检查并确认",
   "notionImportConfirmPrompt": "确定导入这个数据包？连接中断时，部分页面可能已经写入。",
