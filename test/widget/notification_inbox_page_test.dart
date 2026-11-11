@@ -508,6 +508,7 @@ void main() {
               _notification(
                 kind: kind,
                 articleSlug: 'work-1',
+                articleLocale: NotificationArticleLocale.traditionalChinese,
                 followerId: 'user-1',
               ),
             ],
@@ -518,6 +519,12 @@ void main() {
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
           final l10n = lookupAppLocalizations(locale);
+          if (kind == AppNotificationKind.articleLiked) {
+            expect(
+              find.text(l10n.notificationsSourceTraditionalChinese),
+              findsOneWidget,
+            );
+          }
           final openLabel = switch (kind) {
             AppNotificationKind.messageReceived =>
               l10n.notificationsOpenConversation,
