@@ -134,10 +134,17 @@ class _Harness {
   Future<void> pump(
     WidgetTester tester, {
     Locale locale = const Locale('en'),
+    double textScale = 1,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
         locale: locale,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: NotificationInboxPage(cubit: cubit),
@@ -412,6 +419,161 @@ void main() {
     expect(find.text('加载更早的通知'), findsOneWidget);
     expect(find.textContaining('暂不支持查看会话'), findsNothing);
   });
+
+  for (final locale in [const Locale('en'), const Locale('zh')]) {
+    for (final kind in [
+      AppNotificationKind.messageReceived,
+      AppNotificationKind.articleLiked,
+      AppNotificationKind.userFollowed,
+      AppNotificationKind.articleDeleted,
+    ]) {
+      testWidgets(
+        '320dp doubled text: $locale $kind keeps actions accessible',
+        (tester) async {
+          tester.view.physicalSize = const Size(320, 640);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          final harness = _Harness(
+            rows: [
+              _notification(
+                kind: kind,
+                articleSlug: 'work-1',
+                followerId: 'user-1',
+              ),
+            ],
+          );
+          addTearDown(harness.dispose);
+          await harness.pump(tester, locale: locale, textScale: 2);
+          harness.settle();
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          final l10n = lookupAppLocalizations(locale);
+          final openLabel = switch (kind) {
+            AppNotificationKind.messageReceived =>
+              l10n.notificationsOpenConversation,
+            AppNotificationKind.articleLiked =>
+              l10n.notificationsOpenArticleAddress,
+            AppNotificationKind.userFollowed => l10n.notificationsOpenFollower,
+            _ => null,
+          };
+          if (openLabel != null) {
+            final open = find.widgetWithText(TextButton, openLabel);
+            await tester.ensureVisible(open);
+            expect(tester.widget<TextButton>(open).onPressed, isNotNull);
+            expect(tester.takeException(), isNull);
+          }
+          final mark = find.widgetWithText(
+            TextButton,
+            l10n.notificationsMarkRead,
+          );
+          await tester.ensureVisible(mark);
+          await tester.tap(mark);
+          await tester.pumpAndSettle();
+          expect(harness.repository.calls, ['list', 'markRead:notification-1']);
+          expect(find.text(l10n.notificationsMarkRead), findsNothing);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+    for (final kind in [
+      AppNotificationKind.messageReceived,
+      AppNotificationKind.articleLiked,
+    ]) {
+      testWidgets('320dp doubled text: $locale $kind opens its route', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final harness = _Harness(
+          rows: [_notification(kind: kind, articleSlug: 'work-1')],
+        );
+        addTearDown(harness.dispose);
+        final router = GoRouter(
+          initialLocation: '/inbox',
+          routes: [
+            GoRoute(
+              path: '/inbox',
+              builder: (_, _) => NotificationInboxPage(cubit: harness.cubit),
+            ),
+            GoRoute(
+              path: '/profile/view/:id',
+              builder: (_, state) =>
+                  Scaffold(body: Text('work:${state.pathParameters['id']}')),
+            ),
+            GoRoute(
+              path: '/profile/messages/:id',
+              builder: (_, state) =>
+                  Scaffold(body: Text('message:${state.pathParameters['id']}')),
+            ),
+          ],
+        );
+        addTearDown(router.dispose);
+        await tester.pumpWidget(
+          MaterialApp.router(
+            routerConfig: router,
+            locale: locale,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(2)),
+              child: child!,
+            ),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+          ),
+        );
+        await tester.pump();
+        harness.settle();
+        await tester.pumpAndSettle();
+        final l10n = lookupAppLocalizations(locale);
+        final label = kind == AppNotificationKind.messageReceived
+            ? l10n.notificationsOpenConversation
+            : l10n.notificationsOpenArticleAddress;
+        final button = find.widgetWithText(TextButton, label);
+        await tester.ensureVisible(button);
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+        expect(
+          find.text(
+            kind == AppNotificationKind.messageReceived
+                ? 'message:conversation-1'
+                : 'work:work-1',
+          ),
+          findsOneWidget,
+        );
+        expect(harness.repository.calls, ['list']);
+        expect(tester.takeException(), isNull);
+      });
+    }
+    testWidgets('320dp doubled text: $locale mark-all works from the summary', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final harness = _Harness(rows: [_notification()]);
+      addTearDown(harness.dispose);
+      await harness.pump(tester, locale: locale, textScale: 2);
+      harness.settle();
+      await tester.pumpAndSettle();
+      final l10n = lookupAppLocalizations(locale);
+      expect(find.text(l10n.notificationsLoadedUnreadCount(1)), findsOneWidget);
+      final markAll = find.widgetWithText(
+        TextButton,
+        l10n.notificationsMarkAllRead,
+      );
+      await tester.ensureVisible(markAll);
+      await tester.tap(markAll);
+      await tester.pumpAndSettle();
+      expect(harness.repository.calls, ['list', 'markAllRead']);
+      expect(find.text(l10n.notificationsMarkAllRead), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('loads older pages and stops when the server returns empty', (
     tester,

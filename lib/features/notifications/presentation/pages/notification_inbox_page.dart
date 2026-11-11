@@ -70,22 +70,6 @@ class _NotificationInboxView extends StatelessWidget {
       appBar: AppBar(
         title: Text(context.l10n.notificationsTitle),
         centerTitle: true,
-        actions: [
-          BlocBuilder<NotificationInboxCubit, NotificationInboxState>(
-            builder: (context, state) {
-              if (state is! NotificationInboxLoaded) {
-                return const SizedBox.shrink();
-              }
-              if (state.unreadCount == 0) return const SizedBox.shrink();
-              final busy =
-                  state.markingAll || state.isLoadingMore || state.isRefreshing;
-              return TextButton(
-                onPressed: busy ? null : () => _markAllRead(context),
-                child: Text(context.l10n.notificationsMarkAllRead),
-              );
-            },
-          ),
-        ],
       ),
       body: BlocBuilder<NotificationInboxCubit, NotificationInboxState>(
         builder: (context, state) {
@@ -133,7 +117,15 @@ class _NotificationInboxView extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final row = index - (showSummary ? 1 : 0);
                       if (row < 0) {
-                        return _UnreadSummary(count: loaded.unreadCount);
+                        return _UnreadSummary(
+                          count: loaded.unreadCount,
+                          onMarkAll:
+                              loaded.markingAll ||
+                                  loaded.isLoadingMore ||
+                                  loaded.isRefreshing
+                              ? null
+                              : () => _markAllRead(context),
+                        );
                       }
                       if (row >= loaded.items.length) {
                         return _NotificationPaginationFooter(state: loaded);
@@ -190,9 +182,10 @@ class _NotificationInboxView extends StatelessWidget {
 }
 
 class _UnreadSummary extends StatelessWidget {
-  const _UnreadSummary({required this.count});
+  const _UnreadSummary({required this.count, required this.onMarkAll});
 
   final int count;
+  final VoidCallback? onMarkAll;
 
   @override
   Widget build(BuildContext context) {
@@ -203,9 +196,18 @@ class _UnreadSummary extends StatelessWidget {
         NoWaveSpacing.medium,
         NoWaveSpacing.small,
       ),
-      child: Text(
-        context.l10n.notificationsLoadedUnreadCount(count),
-        style: Theme.of(context).textTheme.bodySmall,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.notificationsLoadedUnreadCount(count),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          TextButton(
+            onPressed: onMarkAll,
+            child: Text(context.l10n.notificationsMarkAllRead),
+          ),
+        ],
       ),
     );
   }
@@ -360,28 +362,38 @@ class _NotificationRow extends StatelessWidget {
                     context.l10n.notificationsAddressMayChange,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
-                if (onOpenTarget != null)
-                  TextButton(
-                    onPressed: onOpenTarget,
-                    child: Text(
-                      item.articleTarget != null
-                          ? context.l10n.notificationsOpenArticleAddress
-                          : context.l10n.notificationsOpenFollower,
-                    ),
+                if (onOpenTarget != null ||
+                    onOpenConversation != null ||
+                    !item.isRead)
+                  Wrap(
+                    spacing: NoWaveSpacing.small,
+                    children: [
+                      if (onOpenTarget != null)
+                        TextButton(
+                          onPressed: onOpenTarget,
+                          child: Text(
+                            item.articleTarget != null
+                                ? context.l10n.notificationsOpenArticleAddress
+                                : context.l10n.notificationsOpenFollower,
+                          ),
+                        ),
+                      if (onOpenConversation != null)
+                        TextButton(
+                          onPressed: onOpenConversation,
+                          child: Text(
+                            context.l10n.notificationsOpenConversation,
+                          ),
+                        ),
+                      if (!item.isRead)
+                        TextButton(
+                          onPressed: marking ? null : onMarkRead,
+                          child: Text(context.l10n.notificationsMarkRead),
+                        ),
+                    ],
                   ),
               ],
             ),
           ),
-          if (onOpenConversation != null)
-            TextButton(
-              onPressed: onOpenConversation,
-              child: Text(context.l10n.notificationsOpenConversation),
-            ),
-          if (!item.isRead)
-            TextButton(
-              onPressed: marking ? null : onMarkRead,
-              child: Text(context.l10n.notificationsMarkRead),
-            ),
         ],
       ),
     );
