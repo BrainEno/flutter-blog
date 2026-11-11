@@ -828,6 +828,8 @@
   "notificationsOpenArticleAddress": "Open work address",
   "notificationsOpenFollower": "Open follower profile",
   "notificationsOpenConversation": "Open the conversation",
+  "notificationsOpenMessages": "Open message list",
+  "notificationsConversationUnavailable": "This notification cannot open a specific conversation. Check your message list.",
   "accountEmailTitle": "Change e-mail",
   "accountEmailInfo": "Changing your e-mail needs the current password: only someone who can sign in may move the address. The new address is marked unverified on the server and no verification mail is sent; other devices stay signed in.",
   "accountEmailCurrent": "Current e-mail",

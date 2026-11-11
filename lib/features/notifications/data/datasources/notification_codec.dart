@@ -8,7 +8,7 @@ import 'package:belog/features/notifications/domain/entities/app_notification.da
 /// event, not a nested object), so it is decoded here and never rendered raw.
 /// A row that breaks the *envelope* contract (id, payload kind, timestamps)
 /// throws [FormatException]. A payload this build cannot name - a new event
-/// type, a deletion or message without its key field, or text that is not JSON
+/// type, a deletion without its key field, or text that is not JSON
 /// is not an error: it becomes [AppNotificationKind.unknown] and is still listed, because
 /// "something happened" is true even when its details are not understood yet.
 AppNotification notificationFromRow(Object? row) {
@@ -110,9 +110,6 @@ _DecodedPayload _decodePayload(String raw) {
       );
     case 'message.created':
       final conversationId = value['conversationId'];
-      if (conversationId is! String || conversationId.isEmpty) {
-        return _unknownPayload;
-      }
       return _DecodedPayload(
         AppNotificationKind.messageReceived,
         conversationId: AppNotification.validConversationId(conversationId),

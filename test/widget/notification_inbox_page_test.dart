@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:belog/core/design/components/no_wave_skeleton.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
+import 'package:belog/features/notifications/data/datasources/notification_codec.dart';
 import 'package:belog/features/notifications/domain/entities/app_notification.dart';
 import 'package:belog/features/notifications/domain/entities/notification_page.dart';
 import 'package:belog/features/notifications/domain/repositories/notification_repository.dart';
@@ -477,23 +479,199 @@ void main() {
     },
   );
 
-  testWidgets('invalid message destinations remain readable without a route', (
+  testWidgets(
+    'invalid message destinations remain readable without a direct route',
+    (tester) async {
+      final harness = _Harness(
+        rows: [
+          _notification(
+            kind: AppNotificationKind.messageReceived,
+            conversationId: '../bad',
+          ),
+        ],
+      );
+      addTearDown(harness.dispose);
+      await harness.pump(tester, locale: const Locale('zh'));
+      harness.settle();
+      await tester.pumpAndSettle();
+      final labels = lookupAppLocalizations(const Locale('zh'));
+      expect(find.text(labels.notificationMessageReceived), findsOneWidget);
+      expect(find.text(labels.notificationsOpenConversation), findsNothing);
+      expect(find.text(labels.notificationsOpenMessages), findsOneWidget);
+      expect(
+        find.text(labels.notificationsConversationUnavailable),
+        findsOneWidget,
+      );
+      expect(find.text(labels.notificationsMarkRead), findsOneWidget);
+    },
+  );
+
+  for (final locale in [const Locale('en'), const Locale('zh')]) {
+    for (final payload in [
+      <String, Object?>{'type': 'message.created'},
+      <String, Object?>{
+        'type': 'message.created',
+        'conversationId': '../bad?target=other',
+      },
+    ]) {
+      testWidgets('message without safe target opens list: $locale $payload', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final notice = notificationFromRow({
+          'id': 'notification-1',
+          'eventKey': 'event-1',
+          'payload': jsonEncode(payload),
+          'createdAt': '2026-11-05T04:30:00.000Z',
+          'readAt': null,
+        });
+        final harness = _Harness(rows: [notice]);
+        addTearDown(harness.dispose);
+        final router = GoRouter(
+          initialLocation: '/profile/notifications',
+          routes: [
+            GoRoute(
+              path: '/profile/notifications',
+              builder: (_, _) => NotificationInboxPage(cubit: harness.cubit),
+            ),
+            GoRoute(
+              path: '/profile/messages',
+              builder: (_, _) => const Scaffold(body: Text('message list')),
+            ),
+          ],
+        );
+        addTearDown(router.dispose);
+        await tester.pumpWidget(
+          MaterialApp.router(
+            routerConfig: router,
+            locale: locale,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(2)),
+              child: child!,
+            ),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+          ),
+        );
+        harness.settle();
+        await tester.pumpAndSettle();
+        final l10n = lookupAppLocalizations(locale);
+        expect(find.text(l10n.notificationMessageReceived), findsOneWidget);
+        expect(
+          find.text(l10n.notificationsConversationUnavailable),
+          findsOneWidget,
+        );
+        expect(find.text(l10n.notificationsOpenConversation), findsNothing);
+        expect(find.textContaining('../bad'), findsNothing);
+        final button = find.widgetWithText(
+          TextButton,
+          l10n.notificationsOpenMessages,
+        );
+        await tester.ensureVisible(button);
+        await tester.pumpAndSettle();
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+        expect(find.text('message list'), findsOneWidget);
+        expect(
+          router.routerDelegate.currentConfiguration.last.matchedLocation,
+          '/profile/messages',
+        );
+        expect(harness.repository.calls, ['list']);
+        expect(harness.repository.rows.single.isRead, isFalse);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
+  for (final transition in ['switch account', 'replace row']) {
+    testWidgets('stale message-list fallback cannot open after $transition', (
+      tester,
+    ) async {
+      final harness = _Harness(
+        rows: [
+          _notification(
+            kind: AppNotificationKind.messageReceived,
+            conversationId: '../bad',
+          ),
+        ],
+      );
+      addTearDown(harness.dispose);
+      final router = GoRouter(
+        initialLocation: '/profile/notifications',
+        routes: [
+          GoRoute(
+            path: '/profile/notifications',
+            builder: (_, _) => NotificationInboxPage(cubit: harness.cubit),
+          ),
+          GoRoute(
+            path: '/profile/messages',
+            builder: (_, _) =>
+                const Scaffold(body: Text('unexpected message list')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: router,
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      );
+      harness.settle();
+      await tester.pumpAndSettle();
+      final labels = lookupAppLocalizations(const Locale('en'));
+      final stale = tester
+          .widget<TextButton>(
+            find.widgetWithText(TextButton, labels.notificationsOpenMessages),
+          )
+          .onPressed!;
+      if (transition == 'replace row') {
+        harness.repository.rows = [
+          _notification(
+            kind: AppNotificationKind.messageReceived,
+            conversationId: '../bad',
+          ),
+        ];
+        unawaited(harness.cubit.load(showLoading: false));
+        harness.settle();
+        await tester.pumpAndSettle();
+      } else {
+        harness.identity.userId = 'user-b';
+        harness.identity.generation++;
+        harness.identity.controller.add(null);
+      }
+      stale();
+      await tester.pump();
+      expect(
+        router.routerDelegate.currentConfiguration.last.matchedLocation,
+        '/profile/notifications',
+      );
+      expect(find.text('unexpected message list'), findsNothing);
+      expect(harness.repository.rows.single.isRead, isFalse);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('unknown event does not offer the message list fallback', (
     tester,
   ) async {
     final harness = _Harness(
-      rows: [
-        _notification(
-          kind: AppNotificationKind.messageReceived,
-          conversationId: '../bad',
-        ),
-      ],
+      rows: [_notification(kind: AppNotificationKind.unknown)],
     );
     addTearDown(harness.dispose);
-    await harness.pump(tester, locale: const Locale('zh'));
+    await harness.pump(tester);
     harness.settle();
     await tester.pumpAndSettle();
-    final labels = lookupAppLocalizations(const Locale('zh'));
-    expect(find.text(labels.notificationMessageReceived), findsOneWidget);
+    final labels = lookupAppLocalizations(const Locale('en'));
+    expect(find.text(labels.notificationUnknown), findsOneWidget);
+    expect(find.text(labels.notificationsOpenMessages), findsNothing);
     expect(find.text(labels.notificationsOpenConversation), findsNothing);
     expect(find.text(labels.notificationsMarkRead), findsOneWidget);
   });
@@ -711,6 +889,13 @@ void main() {
         final label = kind == AppNotificationKind.messageReceived
             ? l10n.notificationsOpenConversation
             : l10n.notificationsOpenArticleAddress;
+        if (kind == AppNotificationKind.messageReceived) {
+          expect(find.text(l10n.notificationsOpenMessages), findsNothing);
+          expect(
+            find.text(l10n.notificationsConversationUnavailable),
+            findsNothing,
+          );
+        }
         final button = find.widgetWithText(TextButton, label);
         await tester.ensureVisible(button);
         await tester.pumpAndSettle();
