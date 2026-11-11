@@ -362,6 +362,15 @@ class _NotificationRow extends StatelessWidget {
                     context.l10n.notificationsAddressMayChange,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
+                if (onOpenTarget != null && item.articleSourceLocale != null)
+                  Text(switch (item.articleSourceLocale!) {
+                    NotificationArticleLocale.english =>
+                      context.l10n.notificationsSourceEnglish,
+                    NotificationArticleLocale.simplifiedChinese =>
+                      context.l10n.notificationsSourceSimplifiedChinese,
+                    NotificationArticleLocale.traditionalChinese =>
+                      context.l10n.notificationsSourceTraditionalChinese,
+                  }, style: Theme.of(context).textTheme.bodySmall),
                 if (onOpenTarget != null ||
                     onOpenConversation != null ||
                     !item.isRead)

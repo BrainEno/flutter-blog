@@ -29,6 +29,13 @@ enum AppNotificationKind {
   unknown,
 }
 
+/// The upstream language of an article notification, when explicitly known.
+enum NotificationArticleLocale {
+  simplifiedChinese,
+  traditionalChinese,
+  english,
+}
+
 /// One notification from the account's inbox.
 ///
 /// The inbox is read-only server state: the list is the only source, the unread
@@ -45,6 +52,7 @@ class AppNotification {
     this.purgesAt,
     this.conversationId,
     this.articleSlug,
+    this.articleLocale,
     this.followerId,
   });
 
@@ -72,6 +80,9 @@ class AppNotification {
   /// An address, not a stable article identity: it may later be reassigned.
   final String? articleSlug;
 
+  /// The edition the producer described, not the app's current content language.
+  final NotificationArticleLocale? articleLocale;
+
   /// The stable user id of the follower, when supplied by the server.
   final String? followerId;
 
@@ -98,6 +109,11 @@ class AppNotification {
     AppNotificationKind.articleLiked => validArticleSlug(articleSlug),
     _ => null,
   };
+
+  /// Only article notices with a safe address can disclose an edition.
+  NotificationArticleLocale? get articleSourceLocale =>
+      articleTarget == null ? null : articleLocale;
+
   String? get followerTarget => kind == AppNotificationKind.userFollowed
       ? validFollowerId(followerId)
       : null;
@@ -116,6 +132,7 @@ class AppNotification {
     purgesAt: purgesAt,
     conversationId: conversationId,
     articleSlug: articleSlug,
+    articleLocale: articleLocale,
     followerId: followerId,
   );
 }

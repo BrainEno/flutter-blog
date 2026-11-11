@@ -192,6 +192,60 @@ void main() {
     });
   });
 
+  test('article source locale is allowlisted and survives marking read', () {
+    final languages = <String, NotificationArticleLocale>{
+      'en': NotificationArticleLocale.english,
+      'zh-CN': NotificationArticleLocale.simplifiedChinese,
+      'zh-TW': NotificationArticleLocale.traditionalChinese,
+    };
+    for (final type in [
+      'article.commented',
+      'article.comment_replied',
+      'article.liked',
+    ]) {
+      for (final entry in languages.entries) {
+        final notice = notificationFromRow(
+          _row(payload: {'type': type, 'slug': 'work-1', 'locale': entry.key}),
+        );
+        expect(notice.articleSourceLocale, entry.value);
+        expect(
+          notice.markedRead(DateTime.utc(2026)).articleSourceLocale,
+          entry.value,
+        );
+      }
+      for (final value in [
+        null,
+        '',
+        'en-US',
+        'zh',
+        '../en',
+        1,
+        ['en'],
+      ]) {
+        expect(
+          notificationFromRow(
+            _row(payload: {'type': type, 'slug': 'work-1', 'locale': value}),
+          ).articleSourceLocale,
+          isNull,
+        );
+      }
+      expect(
+        notificationFromRow(
+          _row(payload: {'type': type, 'slug': '../bad', 'locale': 'en'}),
+        ).articleSourceLocale,
+        isNull,
+      );
+    }
+    expect(
+      notificationFromRow(
+        _row(
+          payload: {'type': 'user.followed', 'slug': 'work-1', 'locale': 'en'},
+        ),
+      ).articleSourceLocale,
+      isNull,
+    );
+  });
+
   test('an article deletion without a purge date is still understood', () {
     final notification = notificationFromRow(
       _row(
