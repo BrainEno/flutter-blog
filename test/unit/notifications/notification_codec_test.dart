@@ -57,6 +57,43 @@ void main() {
     expect(notification.conversationId, isNull);
   });
 
+  group(
+    'recognizes notification producer types without exposing payload details',
+    () {
+      final cases = <String, AppNotificationKind>{
+        'article.commented': AppNotificationKind.articleCommented,
+        'article.comment_replied': AppNotificationKind.commentReplied,
+        'article.liked': AppNotificationKind.articleLiked,
+        'user.followed': AppNotificationKind.userFollowed,
+      };
+      for (final entry in cases.entries) {
+        test(entry.key, () {
+          for (final payload in [
+            {'type': entry.key},
+            {
+              'type': entry.key,
+              'slug': 'work',
+              'articleId': 'article',
+              'commentId': 'comment',
+              'followerId': 'follower',
+              'url': 'https://example.invalid/private',
+            },
+          ]) {
+            final notice = notificationFromRow(_row(payload: payload));
+            expect(notice.kind, entry.value);
+            expect(notice.articleId, isNull);
+            expect(notice.conversationId, isNull);
+            expect(notice.purgesAt, isNull);
+            expect(
+              notice.markedRead(DateTime.utc(2026, 11, 6)).kind,
+              entry.value,
+            );
+          }
+        });
+      }
+    },
+  );
+
   test('an article deletion without a purge date is still understood', () {
     final notification = notificationFromRow(
       _row(

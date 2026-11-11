@@ -13,6 +13,18 @@ enum AppNotificationKind {
   /// the conversation when the notification includes its id.
   messageReceived,
 
+  /// Someone commented on the recipient's work.
+  articleCommented,
+
+  /// Someone replied to the recipient's comment.
+  commentReplied,
+
+  /// Someone liked the recipient's work.
+  articleLiked,
+
+  /// Someone followed the recipient.
+  userFollowed,
+
   /// An event type this build does not know (or a payload it cannot read).
   unknown,
 }

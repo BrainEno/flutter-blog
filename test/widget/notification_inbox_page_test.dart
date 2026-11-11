@@ -192,6 +192,47 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'new event types have localized descriptions and stay individually markable',
+    (tester) async {
+      for (final locale in [const Locale('en'), const Locale('zh')]) {
+        final harness = _Harness(
+          rows: [
+            _notification(
+              id: 'comment',
+              kind: AppNotificationKind.articleCommented,
+            ),
+            _notification(
+              id: 'reply',
+              kind: AppNotificationKind.commentReplied,
+            ),
+            _notification(id: 'like', kind: AppNotificationKind.articleLiked),
+            _notification(id: 'follow', kind: AppNotificationKind.userFollowed),
+          ],
+        );
+        addTearDown(harness.dispose);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await harness.pump(tester, locale: locale);
+        harness.settle();
+        await tester.pumpAndSettle();
+        final labels = lookupAppLocalizations(locale);
+        expect(find.text(labels.notificationCommented), findsOneWidget);
+        expect(find.text(labels.notificationReply), findsOneWidget);
+        expect(find.text(labels.notificationLiked), findsOneWidget);
+        expect(find.text(labels.notificationFollowed), findsOneWidget);
+        expect(find.text(labels.notificationUnknown), findsNothing);
+        expect(find.text(labels.notificationsOpenConversation), findsNothing);
+        expect(find.text(labels.notificationsMarkRead), findsNWidgets(4));
+        await tester.tap(find.text(labels.notificationsMarkRead).first);
+        await tester.pumpAndSettle();
+        expect(harness.repository.calls, ['list', 'markRead:comment']);
+        expect(find.text(labels.notificationsMarkRead), findsNWidgets(3));
+        expect(find.text(labels.notificationCommented), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+    },
+  );
+
   testWidgets('Chinese private-message notification offers its conversation', (
     tester,
   ) async {

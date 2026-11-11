@@ -8,8 +8,8 @@ import 'package:belog/features/notifications/domain/entities/app_notification.da
 /// event, not a nested object), so it is decoded here and never rendered raw.
 /// A row that breaks the *envelope* contract (id, payload kind, timestamps)
 /// throws [FormatException]. A payload this build cannot name - a new event
-/// type, a shape that lost its key field, or text that is not JSON - is not an
-/// error: it becomes [AppNotificationKind.unknown] and is still listed, because
+/// type, a deletion or message without its key field, or text that is not JSON
+/// is not an error: it becomes [AppNotificationKind.unknown] and is still listed, because
 /// "something happened" is true even when its details are not understood yet.
 AppNotification notificationFromRow(Object? row) {
   if (row is! Map<String, dynamic>) {
@@ -66,6 +66,16 @@ _DecodedPayload _decodePayload(String raw) {
   }
   if (value is! Map<String, dynamic>) return _unknownPayload;
   switch (value['type']) {
+    // These producers describe the recipient's event. Historical rows may
+    // lack routing fields; never expose their untrusted payload as a URL.
+    case 'article.commented':
+      return const _DecodedPayload(AppNotificationKind.articleCommented);
+    case 'article.comment_replied':
+      return const _DecodedPayload(AppNotificationKind.commentReplied);
+    case 'article.liked':
+      return const _DecodedPayload(AppNotificationKind.articleLiked);
+    case 'user.followed':
+      return const _DecodedPayload(AppNotificationKind.userFollowed);
     case 'article.deleted':
       final articleId = value['articleId'];
       if (articleId is! String || articleId.isEmpty) return _unknownPayload;
