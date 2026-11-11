@@ -293,6 +293,7 @@ class NowaveApiClient {
     Object? body, {
     required String expectedUserId,
     required int expectedSessionGeneration,
+    Duration? timeout,
   }) async {
     final auth = _authenticator;
     bool matches() =>
@@ -320,6 +321,11 @@ class NowaveApiClient {
         body: body,
         allowRefresh: false,
         followRedirects: false,
+        timeout: timeout,
+        sessionFence: NowaveSessionFence(
+          userId: expectedUserId,
+          generation: expectedSessionGeneration,
+        ),
       );
     } finally {
       // The request may have reached the server even on a transport error.

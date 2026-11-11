@@ -13,6 +13,8 @@ import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/pick_image.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
+import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
+import 'package:belog/features/blog/presentation/editor/notion_import_sheet.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
@@ -60,6 +62,7 @@ class BlogEditorPage extends StatefulWidget {
 
   /// The private media-library read. Injectable so picker tests can stay local.
   final GetUserMediaLibraryPage? getUserMediaLibraryPage;
+  final NotionImportRepository? notionImportRepository;
   const BlogEditorPage({
     super.key,
     this.blog,
@@ -70,6 +73,7 @@ class BlogEditorPage extends StatefulWidget {
     this.publishQueueDrainer,
     this.getCategories,
     this.getUserMediaLibraryPage,
+    this.notionImportRepository,
   });
 
   @override
@@ -140,6 +144,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
   NavigatorState? _mediaPickerNavigator;
   Route<dynamic>? _mediaPickerRoute;
   bool _mediaPickerOpen = false;
+  NavigatorState? _notionNavigator;
+  Route<dynamic>? _notionRoute;
+  bool _notionOpen = false;
+  bool _notionApplyStarted = false;
 
   /// One key per publish intent (issue #23): a queued retry reuses it so the
   /// server replays the article instead of creating a second one. It is only
@@ -209,6 +217,63 @@ class _BlogEditorState extends State<BlogEditorPage> {
     }
   }
 
+  Future<void> _openNotionImport() async {
+    if (!_isCurrentEditor || _notionOpen) return;
+    final repository =
+        widget.notionImportRepository ??
+        (GetIt.instance.isRegistered<NotionImportRepository>()
+            ? GetIt.instance<NotionImportRepository>()
+            : null);
+    if (repository == null) {
+      showSnackBar(context, context.l10n.notionImportUnavailable);
+      return;
+    }
+    _notionNavigator = Navigator.of(context, rootNavigator: true);
+    _notionOpen = true;
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        useRootNavigator: true,
+        isScrollControlled: true,
+        isDismissible: false,
+        enableDrag: false,
+        builder: (sheetContext) {
+          _notionRoute = ModalRoute.of(sheetContext);
+          return NotionImportSheet(
+            repository: repository,
+            identity: _session,
+            userCubit: _userCubit,
+            onApplyStarted: () => _notionApplyStarted = true,
+            fence: NowaveSessionFence(
+              userId: _draftOwnerId!,
+              generation: _editorGeneration,
+            ),
+          );
+        },
+      );
+    } finally {
+      _notionOpen = false;
+      _notionNavigator = null;
+      _notionRoute = null;
+    }
+  }
+
+  void _dismissNotionImport() {
+    if (!_notionOpen) return;
+    final navigator = _notionNavigator;
+    final route = _notionRoute;
+    _notionOpen = false;
+    _notionNavigator = null;
+    if (navigator == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final activeRoute = route ?? _notionRoute;
+      if (navigator.mounted && activeRoute != null && activeRoute.isActive) {
+        navigator.removeRoute(activeRoute);
+      }
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
   bool get _matchesSession {
     final owner = _draftOwnerId;
     final state = _userCubit.state;
@@ -234,6 +299,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     _draftRequestVersion++;
     _dismissRecoveryDialog();
     _dismissMediaPicker();
+    _dismissNotionImport();
     if (mounted) setState(() {});
   }
 
@@ -759,6 +825,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     if (userSubscription != null) unawaited(userSubscription.cancel());
     _dismissRecoveryDialog();
     _dismissMediaPicker();
+    _dismissNotionImport();
     titleController.dispose();
     contentController.dispose();
     super.dispose();
@@ -772,7 +839,11 @@ class _BlogEditorState extends State<BlogEditorPage> {
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(NoWaveSpacing.large),
-            child: Text(context.l10n.editorSessionChanged),
+            child: Text(
+              _notionApplyStarted
+                  ? context.l10n.notionImportSessionChanged
+                  : context.l10n.editorSessionChanged,
+            ),
           ),
         ),
       );
@@ -785,6 +856,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
         onPublish: saveBlog,
         onSaveDraft: saveDraft,
         onCancel: () => Navigator.of(context).pop(),
+        onImportNotion: () => unawaited(_openNotionImport()),
       ),
       body: BlocConsumer<BlogUploadBloc, BlogUploadState>(
         listener: (context, state) {
