@@ -80,6 +80,23 @@ class _Repository implements NotificationRepository {
   }) async => throw UnimplementedError('the badge never marks rows read');
 }
 
+/// Gives each count request an independent completion, so response order is
+/// under test control rather than tied to a shared account gate.
+class _ControlledRepository extends _Repository {
+  final pending = <Completer<Either<Failure, int>>>[];
+
+  @override
+  Future<Either<Failure, int>> unreadCount({
+    required NowaveSessionFence fence,
+  }) {
+    calls++;
+    fences.add(fence);
+    final response = Completer<Either<Failure, int>>();
+    pending.add(response);
+    return response.future;
+  }
+}
+
 const _offline = Failure(
   '无法连接到网络，请检查网络设置',
   kind: FailureKind.network,
@@ -229,5 +246,101 @@ void main() {
 
     expect(cubit.state, 0);
     expect(repository.calls, 2);
+  });
+  test('a late earlier count cannot overwrite a newer refresh', () async {
+    final repository = _ControlledRepository();
+    final cubit = NotificationBadgeCubit(
+      repository: repository,
+      identity: _Identity(),
+    );
+    addTearDown(cubit.close);
+    expect(repository.pending, hasLength(1));
+
+    final newer = cubit.refresh();
+    expect(repository.pending, hasLength(2));
+    repository.pending[1].complete(right(0));
+    await newer;
+    expect(cubit.state, 0);
+    repository.pending[0].complete(right(3));
+    await _settle();
+    expect(cubit.state, 0);
+  });
+
+  test(
+    'an older response is discarded even while the newer request is pending',
+    () async {
+      final repository = _ControlledRepository();
+      final cubit = NotificationBadgeCubit(
+        repository: repository,
+        identity: _Identity(),
+      );
+      addTearDown(cubit.close);
+      final newer = cubit.refresh();
+
+      repository.pending[0].complete(right(3));
+      await _settle();
+      expect(cubit.state, 0);
+      repository.pending[1].complete(right(2));
+      await newer;
+      expect(cubit.state, 2);
+    },
+  );
+
+  test(
+    'a newer failed refresh preserves the last accepted count, not an older response',
+    () async {
+      final repository = _ControlledRepository();
+      final cubit = NotificationBadgeCubit(
+        repository: repository,
+        identity: _Identity(),
+      );
+      addTearDown(cubit.close);
+      repository.pending[0].complete(right(4));
+      await _settle();
+      expect(cubit.state, 4);
+
+      final older = cubit.refresh();
+      final newer = cubit.refresh();
+      repository.pending[2].complete(left(_offline));
+      await newer;
+      repository.pending[1].complete(right(7));
+      await older;
+      expect(cubit.state, 4);
+    },
+  );
+
+  test(
+    'a sign-out invalidates in-flight requests without issuing another',
+    () async {
+      final repository = _ControlledRepository();
+      final identity = _Identity();
+      final cubit = NotificationBadgeCubit(
+        repository: repository,
+        identity: identity,
+      );
+      addTearDown(cubit.close);
+      identity.replace(null);
+      expect(repository.pending, hasLength(1));
+      expect(cubit.state, 0);
+      repository.pending[0].complete(right(3));
+      await _settle();
+      expect(cubit.state, 0);
+    },
+  );
+
+  test('a response after close cannot emit', () async {
+    final repository = _ControlledRepository();
+    final cubit = NotificationBadgeCubit(
+      repository: repository,
+      identity: _Identity(),
+    );
+    final emitted = <int>[];
+    final subscription = cubit.stream.listen(emitted.add);
+    await cubit.close();
+    repository.pending[0].complete(right(3));
+    await _settle();
+    expect(emitted, isEmpty);
+    expect(cubit.state, 0);
+    await subscription.cancel();
   });
 }
