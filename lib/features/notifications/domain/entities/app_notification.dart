@@ -87,7 +87,7 @@ class AppNotification {
   final String? followerId;
 
   static final _slugPattern = RegExp(r'^[a-z0-9]+(?:-[a-z0-9]+)*$');
-  static final _userIdPattern = RegExp(r'^[a-zA-Z0-9_-]{1,300}$');
+  static final _localIdentifierPattern = RegExp(r'^[a-zA-Z0-9_-]{1,300}$');
 
   /// Same bounded identifier contracts used by the upstream notification UI.
   static String? validArticleSlug(Object? value) {
@@ -96,9 +96,15 @@ class AppNotification {
     return match != null && match.end == value.length ? value : null;
   }
 
-  static String? validFollowerId(Object? value) {
+  static String? validFollowerId(Object? value) => _localIdentifier(value);
+
+  /// The upstream notification UI uses this conservative local-route subset,
+  /// even though the API accepts a wider range of opaque identifiers.
+  static String? validConversationId(Object? value) => _localIdentifier(value);
+
+  static String? _localIdentifier(Object? value) {
     if (value is! String || value.length > 300) return null;
-    final match = _userIdPattern.firstMatch(value);
+    final match = _localIdentifierPattern.firstMatch(value);
     return match != null && match.end == value.length ? value : null;
   }
 
@@ -113,6 +119,11 @@ class AppNotification {
   /// Only article notices with a safe address can disclose an edition.
   NotificationArticleLocale? get articleSourceLocale =>
       articleTarget == null ? null : articleLocale;
+
+  /// Revalidate at the UI boundary as well as when decoding server payloads.
+  String? get conversationTarget => kind == AppNotificationKind.messageReceived
+      ? validConversationId(conversationId)
+      : null;
 
   String? get followerTarget => kind == AppNotificationKind.userFollowed
       ? validFollowerId(followerId)

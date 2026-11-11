@@ -99,6 +99,7 @@ AppNotification _notification({
   String? articleSlug,
   NotificationArticleLocale? articleLocale,
   String? followerId,
+  String conversationId = 'conversation-1',
 }) => AppNotification(
   id: id,
   eventKey: 'event:$id',
@@ -110,7 +111,7 @@ AppNotification _notification({
       ? DateTime.utc(2026, 12, 5)
       : null,
   conversationId: kind == AppNotificationKind.messageReceived
-      ? 'conversation-1'
+      ? conversationId
       : null,
   articleSlug: articleSlug,
   articleLocale: articleLocale,
@@ -475,6 +476,102 @@ void main() {
       expect(harness.repository.calls, ['list', 'list']);
     },
   );
+
+  testWidgets('invalid message destinations remain readable without a route', (
+    tester,
+  ) async {
+    final harness = _Harness(
+      rows: [
+        _notification(
+          kind: AppNotificationKind.messageReceived,
+          conversationId: '../bad',
+        ),
+      ],
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester, locale: const Locale('zh'));
+    harness.settle();
+    await tester.pumpAndSettle();
+    final labels = lookupAppLocalizations(const Locale('zh'));
+    expect(find.text(labels.notificationMessageReceived), findsOneWidget);
+    expect(find.text(labels.notificationsOpenConversation), findsNothing);
+    expect(find.text(labels.notificationsMarkRead), findsOneWidget);
+  });
+
+  for (final transition in [
+    'switch account',
+    'sign out',
+    'same account new session',
+    'replace row',
+    'missing token',
+  ]) {
+    testWidgets('stale message callback cannot open after $transition', (
+      tester,
+    ) async {
+      final harness = _Harness(
+        rows: [_notification(kind: AppNotificationKind.messageReceived)],
+      );
+      addTearDown(harness.dispose);
+      final router = GoRouter(
+        initialLocation: '/profile/notifications',
+        routes: [
+          GoRoute(
+            path: '/profile/notifications',
+            builder: (_, _) => NotificationInboxPage(cubit: harness.cubit),
+          ),
+          GoRoute(
+            path: '/profile/messages/:id',
+            builder: (_, _) =>
+                const Scaffold(body: Text('unexpected conversation')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: router,
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      );
+      harness.settle();
+      await tester.pumpAndSettle();
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      final stale = tester
+          .widget<TextButton>(
+            find.widgetWithText(TextButton, l10n.notificationsOpenConversation),
+          )
+          .onPressed!;
+      if (transition == 'replace row') {
+        harness.repository.rows = [
+          _notification(kind: AppNotificationKind.messageReceived),
+        ];
+        unawaited(harness.cubit.load(showLoading: false));
+        harness.settle();
+        await tester.pumpAndSettle();
+      } else if (transition == 'missing token') {
+        harness.identity.token = null;
+      } else {
+        if (transition == 'switch account') harness.identity.userId = 'user-b';
+        if (transition == 'sign out') {
+          harness.identity.userId = null;
+          harness.identity.token = null;
+        }
+        harness.identity.generation++;
+        harness.identity.controller.add(null);
+      }
+      stale();
+      await tester.pump();
+      expect(
+        router.routerDelegate.currentConfiguration.last.matchedLocation,
+        '/profile/notifications',
+      );
+      expect(find.text('unexpected conversation'), findsNothing);
+      expect(harness.repository.rows.single.isRead, isFalse);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('Chinese private-message notification offers its conversation', (
     tester,

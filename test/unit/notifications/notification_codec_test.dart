@@ -145,6 +145,60 @@ void main() {
         },
       );
     }
+    test('conversation destinations use the bounded local route subset', () {
+      for (final id in ['conversation-1', 'UUID_A-z09', 'x' * 300]) {
+        final notice = notificationFromRow(
+          _row(payload: {'type': 'message.created', 'conversationId': id}),
+        );
+        expect(notice.kind, AppNotificationKind.messageReceived);
+        expect(notice.conversationTarget, id);
+        expect(notice.markedRead(DateTime.utc(2026)).conversationTarget, id);
+      }
+      for (final invalid in [
+        '../x',
+        'a/b',
+        'https://bad.invalid',
+        'a?x=1',
+        'a#b',
+        'bad\n',
+        '%2f',
+        ' a',
+        'a ',
+        'x' * 301,
+      ]) {
+        final notice = notificationFromRow(
+          _row(payload: {'type': 'message.created', 'conversationId': invalid}),
+        );
+        expect(notice.kind, AppNotificationKind.messageReceived);
+        expect(notice.conversationId, isNull);
+        expect(notice.conversationTarget, isNull);
+      }
+      for (final missing in [null, '', 3]) {
+        final notice = notificationFromRow(
+          _row(payload: {'type': 'message.created', 'conversationId': missing}),
+        );
+        expect(notice.kind, AppNotificationKind.unknown);
+        expect(notice.conversationTarget, isNull);
+      }
+      final manual = AppNotification(
+        id: 'id',
+        eventKey: '',
+        kind: AppNotificationKind.messageReceived,
+        createdAt: DateTime.utc(2026),
+        readAt: null,
+        conversationId: '../bad',
+      );
+      expect(manual.conversationTarget, isNull);
+      final wrongType = AppNotification(
+        id: 'id',
+        eventKey: '',
+        kind: AppNotificationKind.articleLiked,
+        createdAt: DateTime.utc(2026),
+        readAt: null,
+        conversationId: 'valid-id',
+      );
+      expect(wrongType.conversationTarget, isNull);
+    });
     test(
       'follower identifier is bounded, safe and preserved after marking',
       () {

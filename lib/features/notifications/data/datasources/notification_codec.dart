@@ -115,7 +115,7 @@ _DecodedPayload _decodePayload(String raw) {
       }
       return _DecodedPayload(
         AppNotificationKind.messageReceived,
-        conversationId: conversationId,
+        conversationId: AppNotification.validConversationId(conversationId),
       );
   }
   return _unknownPayload;
