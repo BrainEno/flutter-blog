@@ -213,6 +213,8 @@ String localizedFailure(AppLocalizations l10n, Failure failure) {
       return l10n.errorCommentsDelete;
     case 'comments.deleteOffline':
       return l10n.errorCommentsDeleteOffline;
+    case 'comments.depthExceeded':
+      return l10n.errorCommentDepthExceeded;
     case 'comments.tooLong':
       return l10n.errorCommentTooLong;
     case 'likes.sync':

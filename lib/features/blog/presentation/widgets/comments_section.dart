@@ -103,7 +103,7 @@ class _CommentsSectionState extends State<CommentsSection> {
 
     return BlocConsumer<CommentBloc, CommentState>(
       listenWhen: (previous, current) =>
-          previous.error != current.error ||
+          (current.error.isNotEmpty && previous.error != current.error) ||
           (previous.submitting && !current.submitting),
       listener: (context, state) {
         if (state.error.isNotEmpty) {

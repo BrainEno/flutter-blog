@@ -1,6 +1,9 @@
 import 'dart:convert';
 
 import 'package:belog/core/error/exceptions.dart';
+import 'package:belog/core/error/failures.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -241,6 +244,100 @@ void main() {
         ),
       ).called(1);
     });
+
+    test(
+      'maps the documented depth rejection from the HTTP envelope safely',
+      () async {
+        final requests = <http.Request>[];
+        final transport = MockClient((request) async {
+          requests.add(request);
+          return http.Response(
+            jsonEncode({
+              'error': {
+                'code': 'COMMENT_DEPTH_EXCEEDED',
+                'message': 'private backend detail',
+              },
+            }),
+            400,
+            headers: {'content-type': 'application/json'},
+          );
+        });
+        addTearDown(transport.close);
+        final realClient = NowaveApiClient(
+          baseUrl: Uri.parse('https://example.invalid'),
+          httpClient: transport,
+        );
+        final remote = CommentRemoteDataSourceImpl(realClient);
+        await expectLater(
+          () => remote.createComment(
+            slug: _kSlug,
+            content: 'draft',
+            parentCommentId: 'parent',
+            idempotencyKey: 'key-1',
+          ),
+          throwsA(
+            isA<ServerException>()
+                .having((e) => e.code, 'code', 'comments.depthExceeded')
+                .having((e) => e.kind, 'kind', FailureKind.validation)
+                .having(
+                  (e) => e.message,
+                  'safe message',
+                  isNot(contains('private backend detail')),
+                )
+                .having((e) => e.cause, 'cause', isA<NowaveApiException>()),
+          ),
+        );
+        expect(requests, hasLength(1));
+        expect(requests.single.method, 'POST');
+        expect(requests.single.url.path, '/api/v1/articles/my-slug/comments');
+        expect(jsonDecode(requests.single.body), {
+          'content': 'draft',
+          'parentCommentId': 'parent',
+        });
+        expect(requests.single.headers['idempotency-key'], 'key-1');
+      },
+    );
+
+    for (final scenario in [
+      (400, 'BAD_USER_INPUT', 'server.BAD_USER_INPUT'),
+      (500, 'COMMENT_DEPTH_EXCEEDED', 'server.error'),
+    ]) {
+      test(
+        'other status/code ${scenario.$1}/${scenario.$2} keeps generic mapping',
+        () async {
+          when(
+            () => client.postJson(
+              any(),
+              any(),
+              query: any(named: 'query'),
+              extraHeaders: any(named: 'extraHeaders'),
+            ),
+          ).thenThrow(
+            NowaveApiException(
+              statusCode: scenario.$1,
+              code: scenario.$2,
+              message: 'private backend detail',
+            ),
+          );
+          await expectLater(
+            () => dataSource.createComment(
+              slug: _kSlug,
+              content: 'draft',
+              idempotencyKey: 'key-1',
+            ),
+            throwsA(
+              isA<ServerException>()
+                  .having((e) => e.code, 'code', scenario.$3)
+                  .having(
+                    (e) => e.message,
+                    'safe message',
+                    isNot(contains('private backend detail')),
+                  ),
+            ),
+          );
+        },
+      );
+    }
 
     test('a reply carries the parent comment id', () async {
       when(
