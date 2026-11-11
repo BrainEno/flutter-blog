@@ -113,12 +113,18 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> selectAll(WidgetTester tester) async {
+    await tap(tester, l10n.notionImportReadBundle);
+    await tap(tester, l10n.notionImportSelectAll);
+  }
+
   testWidgets(
     'previews first, requires explicit confirmation, and applies the same snapshot',
     (tester) async {
       await pumpSheet(tester);
       await tester.enterText(find.byType(TextField), _input);
-      await tap(tester, l10n.notionImportPreview);
+      await selectAll(tester);
+      await tap(tester, l10n.notionImportPreviewSelected);
       expect(repo.calls, [false]);
       expect(find.text(l10n.notionImportPlan), findsOneWidget);
       await tap(tester, l10n.notionImportReviewConfirm);
@@ -136,12 +142,13 @@ void main() {
   ) async {
     await pumpSheet(tester);
     await tester.enterText(find.byType(TextField), _input);
-    await tap(tester, l10n.notionImportPreview);
+    await selectAll(tester);
+    await tap(tester, l10n.notionImportPreviewSelected);
     await tap(tester, l10n.notionImportReviewConfirm);
     await tester.enterText(find.byType(TextField), 'bad');
     await tester.pumpAndSettle();
     expect(find.text(l10n.notionImportConfirm), findsNothing);
-    await tap(tester, l10n.notionImportPreview);
+    await tap(tester, l10n.notionImportReadBundle);
     expect(find.text(l10n.notionImportInvalid), findsOneWidget);
     expect(repo.calls, [false]);
   });
@@ -152,12 +159,60 @@ void main() {
     repo.failApply = true;
     await pumpSheet(tester);
     await tester.enterText(find.byType(TextField), _input);
-    await tap(tester, l10n.notionImportPreview);
+    await selectAll(tester);
+    await tap(tester, l10n.notionImportPreviewSelected);
     await tap(tester, l10n.notionImportReviewConfirm);
     await tap(tester, l10n.notionImportConfirm);
     expect(find.text(l10n.notionImportOutcomeUnknown), findsOneWidget);
     expect(find.text(l10n.notionImportConfirm), findsNothing);
     expect(repo.calls, [false, true]);
+  });
+
+  testWidgets(
+    'only selected source pages are previewed and changing selection invalidates the plan',
+    (tester) async {
+      const input =
+          '{"version":1,"database":{"id":"db"},"pages":['
+          '{"id":"a","properties":{"Page":{"type":"title","title":[{"plain_text":"First"}]},"English":{"relation":[{"id":"b"}]}},"blocks":[]},'
+          '{"id":"b","properties":{"Page":{"type":"title","title":[{"plain_text":"Second"}]}},"blocks":[]},'
+          '{"id":"c","properties":{},"blocks":[]}]}';
+      await pumpSheet(tester);
+      await tester.enterText(find.byType(TextField), input);
+      await tap(tester, l10n.notionImportReadBundle);
+      expect(find.text('First'), findsOneWidget);
+      expect(find.text('Second'), findsOneWidget);
+      expect(find.text(l10n.notionImportUntitledPage(3)), findsOneWidget);
+      expect(find.text(l10n.notionImportSelectionCount(0, 3)), findsOneWidget);
+      await tap(tester, 'First');
+      await tap(tester, l10n.notionImportUntitledPage(3));
+      await tap(tester, l10n.notionImportPreviewSelected);
+      final pages = repo.bundles.single.json['pages'] as List;
+      expect(pages.map((page) => page['id']).toList(), ['a', 'c']);
+      expect(pages.first['properties']['English']['relation'][0]['id'], 'b');
+      await tap(tester, l10n.notionImportReviewConfirm);
+      await tap(tester, 'Second');
+      expect(find.text(l10n.notionImportConfirm), findsNothing);
+      expect(find.text(l10n.notionImportPlan), findsNothing);
+      await tap(tester, l10n.notionImportPreviewSelected);
+      expect((repo.bundles.last.json['pages'] as List).length, 3);
+      expect(repo.calls, [false, false]);
+    },
+  );
+
+  testWidgets('empty selection and empty bundles do not issue a request', (
+    tester,
+  ) async {
+    await pumpSheet(tester);
+    await tester.enterText(find.byType(TextField), _input);
+    await tap(tester, l10n.notionImportReadBundle);
+    final button = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, l10n.notionImportPreviewSelected),
+    );
+    expect(button.onPressed, isNull);
+    await tester.enterText(find.byType(TextField), '{"version":1,"pages":[]}');
+    await tap(tester, l10n.notionImportReadBundle);
+    expect(find.text(l10n.notionImportNoPages), findsOneWidget);
+    expect(repo.calls, isEmpty);
   });
 
   testWidgets('session replacement hides input and drops a late preview', (
@@ -166,7 +221,9 @@ void main() {
     repo.pending = Completer<Either<Failure, NotionImportReport>>();
     await pumpSheet(tester);
     await tester.enterText(find.byType(TextField), _input);
-    await tester.tap(find.text(l10n.notionImportPreview));
+    await selectAll(tester);
+    await tester.ensureVisible(find.text(l10n.notionImportPreviewSelected));
+    await tester.tap(find.text(l10n.notionImportPreviewSelected));
     await tester.pump();
     identity.generation++;
     identity.changes.add(null);

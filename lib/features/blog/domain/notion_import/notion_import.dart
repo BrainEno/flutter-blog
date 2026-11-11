@@ -42,6 +42,48 @@ class NotionBundle {
     }
     return NotionBundle._(decoded);
   }
+
+  /// Positions are used rather than server report IDs: the server may omit an
+  /// invalid translation or scope a filename ID to the signed-in account.
+  int get pageCount => (json['pages'] as List).length;
+
+  String pageTitle(int index) {
+    final page = (json['pages'] as List)[index] as Map<String, dynamic>;
+    final properties = page['properties'] as Map<String, dynamic>;
+    for (final property in properties.values) {
+      if (property is Map<String, dynamic> && property['type'] == 'title') {
+        final parts = property['title'];
+        if (parts is! List) return '';
+        return parts
+            .whereType<Map<String, dynamic>>()
+            .map(
+              (part) => part['plain_text'] is String
+                  ? part['plain_text'] as String
+                  : '',
+            )
+            .join()
+            .trim();
+      }
+    }
+    return '';
+  }
+
+  /// Retain the source page order, metadata, and relationships unchanged.
+  /// Selection is local only; the server still decides whether it is valid.
+  NotionBundle selectPages(Set<int> indices) {
+    if (indices.isEmpty ||
+        indices.any((index) => index < 0 || index >= pageCount)) {
+      throw const FormatException('selection');
+    }
+    final pages = json['pages'] as List;
+    return NotionBundle._({
+      ...json,
+      'pages': [
+        for (var i = 0; i < pages.length; i++)
+          if (indices.contains(i)) pages[i],
+      ],
+    });
+  }
 }
 
 enum NotionImportAction { create, update, skip, refused, failed }

@@ -35,6 +35,8 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
   final _input = TextEditingController();
   StreamSubscription<void>? _subscription;
   StreamSubscription<AppUserState>? _userSubscription;
+  NotionBundle? _source;
+  final Set<int> _selected = {};
   NotionBundle? _snapshot;
   NotionImportReport? _report;
   String? _error;
@@ -67,6 +69,8 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
       _input.clear();
       if (mounted) {
         setState(() {
+          _source = null;
+          _selected.clear();
           _snapshot = null;
           _report = null;
           _error = null;
@@ -85,6 +89,45 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
 
   void _changed(String _) {
     setState(() {
+      _source = null;
+      _selected.clear();
+      _snapshot = null;
+      _report = null;
+      _error = null;
+      _confirming = false;
+    });
+  }
+
+  void _readBundle() {
+    if (!_current || _busy) return;
+    try {
+      final bundle = NotionBundle.parse(_input.text);
+      setState(() {
+        _source = bundle;
+        _selected.clear();
+        _snapshot = null;
+        _report = null;
+        _error = null;
+        _confirming = false;
+      });
+    } on FormatException {
+      setState(() {
+        _source = null;
+        _selected.clear();
+        _error = context.l10n.notionImportInvalid;
+        _report = null;
+        _snapshot = null;
+        _confirming = false;
+      });
+    }
+  }
+
+  void _setSelection(Set<int> selection) {
+    if (!_current || _busy) return;
+    setState(() {
+      _selected
+        ..clear()
+        ..addAll(selection);
       _snapshot = null;
       _report = null;
       _error = null;
@@ -93,19 +136,9 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
   }
 
   Future<void> _preview() async {
-    if (!_current || _busy) return;
-    NotionBundle bundle;
-    try {
-      bundle = NotionBundle.parse(_input.text);
-    } on FormatException {
-      setState(() {
-        _error = context.l10n.notionImportInvalid;
-        _report = null;
-        _snapshot = null;
-      });
-      return;
-    }
-    await _submit(bundle, apply: false);
+    final source = _source;
+    if (!_current || _busy || source == null || _selected.isEmpty) return;
+    await _submit(source.selectPages(_selected), apply: false);
   }
 
   Future<void> _submit(NotionBundle bundle, {required bool apply}) async {
@@ -162,6 +195,7 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final report = _report;
+    final source = _source;
     return PopScope(
       canPop: !_busy || !_current,
       child: SizedBox(
@@ -219,10 +253,96 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
                               ),
                             ),
                             const SizedBox(height: NoWaveSpacing.medium),
-                            FilledButton(
-                              onPressed: _busy ? null : _preview,
-                              child: Text(l10n.notionImportPreview),
+                            OutlinedButton(
+                              onPressed: _busy ? null : _readBundle,
+                              child: Text(l10n.notionImportReadBundle),
                             ),
+                            if (source != null) ...[
+                              const SizedBox(height: NoWaveSpacing.medium),
+                              Text(
+                                l10n.notionImportSelectionTitle,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              Text(l10n.notionImportSelectionHint),
+                              Text(
+                                l10n.notionImportSelectionCount(
+                                  _selected.length,
+                                  source.pageCount,
+                                ),
+                              ),
+                              if (source.pageCount == 0)
+                                Text(l10n.notionImportNoPages),
+                              if (source.pageCount > 0) ...[
+                                Wrap(
+                                  spacing: NoWaveSpacing.small,
+                                  children: [
+                                    TextButton(
+                                      onPressed:
+                                          _busy ||
+                                              _selected.length ==
+                                                  source.pageCount
+                                          ? null
+                                          : () => _setSelection({
+                                              for (
+                                                var i = 0;
+                                                i < source.pageCount;
+                                                i++
+                                              )
+                                                i,
+                                            }),
+                                      child: Text(l10n.notionImportSelectAll),
+                                    ),
+                                    TextButton(
+                                      onPressed: _busy || _selected.isEmpty
+                                          ? null
+                                          : () => _setSelection({}),
+                                      child: Text(
+                                        l10n.notionImportClearSelection,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                for (
+                                  var index = 0;
+                                  index < source.pageCount;
+                                  index++
+                                )
+                                  CheckboxListTile(
+                                    value: _selected.contains(index),
+                                    onChanged: _busy
+                                        ? null
+                                        : (value) {
+                                            final next = Set<int>.of(_selected);
+                                            if (value == true) {
+                                              next.add(index);
+                                            } else {
+                                              next.remove(index);
+                                            }
+                                            _setSelection(next);
+                                          },
+                                    title: Text(
+                                      source.pageTitle(index).isEmpty
+                                          ? l10n.notionImportUntitledPage(
+                                              index + 1,
+                                            )
+                                          : source.pageTitle(index),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    subtitle: Text(
+                                      l10n.notionImportPageNumber(index + 1),
+                                    ),
+                                    controlAffinity:
+                                        ListTileControlAffinity.leading,
+                                  ),
+                              ],
+                              FilledButton(
+                                onPressed: _busy || _selected.isEmpty
+                                    ? null
+                                    : _preview,
+                                child: Text(l10n.notionImportPreviewSelected),
+                              ),
+                            ],
                             if (_busy) ...[
                               const SizedBox(height: NoWaveSpacing.small),
                               NoWaveLoadingLabel(
