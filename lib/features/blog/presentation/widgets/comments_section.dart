@@ -65,6 +65,13 @@ class _CommentsSectionState extends State<CommentsSection> {
   }
 
   void _startReply(Comment comment) {
+    // Check again at activation time: the session may have changed since the
+    // row was built. A guest never selects a reply target or focuses a hidden
+    // composer; login remains the host's existing flow.
+    if (context.read<AppUserCubit>().state is! AppUserLoggedIn) {
+      widget.onRequestLogin?.call();
+      return;
+    }
     setState(() => _replyTo = comment);
     _focusNode.requestFocus();
   }
@@ -164,14 +171,14 @@ class _CommentsSectionState extends State<CommentsSection> {
                 onSubmit: _submit,
               ),
             const SizedBox(height: NoWaveSpacing.medium),
-            _buildList(state),
+            _buildList(state, signedIn: signedIn),
           ],
         );
       },
     );
   }
 
-  Widget _buildList(CommentState state) {
+  Widget _buildList(CommentState state, {required bool signedIn}) {
     switch (state.status) {
       case CommentListStatus.initial:
       case CommentListStatus.loading:
@@ -230,7 +237,10 @@ class _CommentsSectionState extends State<CommentsSection> {
               (comment) => CommentTile(
                 comment: comment,
                 depth: 0,
-                onReply: _startReply,
+                onReply: signedIn || widget.onRequestLogin != null
+                    ? _startReply
+                    : null,
+                replyRequiresLogin: !signedIn,
                 onOpenAuthor: widget.onOpenAuthor,
                 confirmDelete: () => _confirmDelete(context),
               ),

@@ -17,7 +17,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 class CommentTile extends StatelessWidget {
   final Comment comment;
   final int depth;
-  final void Function(Comment) onReply;
+  final void Function(Comment)? onReply;
+  final bool replyRequiresLogin;
   final ValueChanged<String> onOpenAuthor;
   final Future<bool> Function() confirmDelete;
 
@@ -26,6 +27,7 @@ class CommentTile extends StatelessWidget {
     required this.comment,
     required this.depth,
     required this.onReply,
+    required this.replyRequiresLogin,
     required this.onOpenAuthor,
     required this.confirmDelete,
   });
@@ -111,8 +113,12 @@ class CommentTile extends StatelessWidget {
                       spacing: NoWaveSpacing.medium,
                       children: [
                         _ActionText(
-                          label: context.l10n.actionReply,
-                          onPressed: () => onReply(comment),
+                          label: replyRequiresLogin
+                              ? context.l10n.signInToReply
+                              : context.l10n.actionReply,
+                          onPressed: onReply == null
+                              ? null
+                              : () => onReply!(comment),
                         ),
                         if (isOwn) ...[
                           _ActionText(
@@ -152,6 +158,7 @@ class CommentTile extends StatelessWidget {
                         comment: reply,
                         depth: depth + 1,
                         onReply: onReply,
+                        replyRequiresLogin: replyRequiresLogin,
                         onOpenAuthor: onOpenAuthor,
                         confirmDelete: confirmDelete,
                       ),

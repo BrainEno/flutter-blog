@@ -15,6 +15,8 @@ import 'package:belog/features/blog/presentation/widgets/comments_section.dart';
 import 'package:belog/features/blog/presentation/comments/comment_tile.dart';
 import 'package:belog/features/blog/presentation/comments/comment_composer.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
@@ -64,6 +66,7 @@ Future<void> _pumpSection(
   Locale locale = const Locale('zh'),
   double textScale = 1,
   double horizontalPadding = 0,
+  VoidCallback? onRequestLogin,
 }) {
   return tester.pumpWidget(
     MultiBlocProvider(
@@ -87,9 +90,10 @@ Future<void> _pumpSection(
           body: SingleChildScrollView(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-              child: const CommentsSection(
+              child: CommentsSection(
                 slug: 'my-slug',
                 onOpenAuthor: _ignoreAuthor,
+                onRequestLogin: onRequestLogin,
               ),
             ),
           ),
@@ -381,6 +385,161 @@ void main() {
     expect(find.byType(TextField), findsNothing);
     expect(find.text('还没有评论，来说第一句吧'), findsOneWidget);
   });
+
+  for (final locale in [const Locale('en'), const Locale('zh')]) {
+    testWidgets(
+      'guest reply opens login and never preselects a target in $locale',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final semantics = tester.ensureSemantics();
+        addTearDown(semantics.dispose);
+        when(() => getComments('my-slug')).thenAnswer(
+          (_) async => right<Failure, CommentPage>(
+            _page([
+              _comment('root', replies: [_comment('child', parentId: 'root')]),
+            ]),
+          ),
+        );
+        var loginRequests = 0;
+        final bloc = buildBloc();
+        addTearDown(bloc.close);
+        await _pumpSection(
+          tester,
+          appUserCubit: appUserCubit,
+          commentBloc: bloc,
+          locale: locale,
+          textScale: 2,
+          horizontalPadding: 16,
+          onRequestLogin: () => loginRequests++,
+        );
+        await tester.pumpAndSettle();
+        final l10n = lookupAppLocalizations(locale);
+        final leaf = find.byWidgetPredicate(
+          (widget) => widget is CommentTile && widget.comment.id == 'child',
+        );
+        final button = find.descendant(
+          of: leaf,
+          matching: find.widgetWithText(TextButton, l10n.signInToReply),
+        );
+        expect(find.text(l10n.signInToReply), findsNWidgets(2));
+        expect(find.text(l10n.actionReply), findsNothing);
+        await tester.ensureVisible(button);
+        await tester.pumpAndSettle();
+        expect(tester.getSize(button).width, greaterThanOrEqualTo(48));
+        expect(tester.getSize(button).height, greaterThanOrEqualTo(48));
+        final data = tester.getSemantics(button).getSemanticsData();
+        expect(data.label, contains(l10n.signInToReply));
+        expect(data.hasAction(SemanticsAction.tap), isTrue);
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+        expect(loginRequests, 1);
+        expect(find.byType(CommentComposer), findsNothing);
+        verifyNever(() => createComment(any(that: isA<CreateCommentParams>())));
+
+        // Traverse from the first focusable element using only Tab, then Enter.
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pump();
+        final text = find.descendant(
+          of: button,
+          matching: find.text(l10n.signInToReply),
+        );
+        for (var step = 0; step < 12; step++) {
+          if (Focus.of(tester.element(text)).hasPrimaryFocus) break;
+          await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+          await tester.pumpAndSettle();
+        }
+        expect(Focus.of(tester.element(text)).hasPrimaryFocus, isTrue);
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pumpAndSettle();
+        expect(loginRequests, 2);
+        expect(tester.takeException(), isNull);
+
+        appUserCubit.updateUser(_user());
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<CommentComposer>(find.byType(CommentComposer)).replyTo,
+          isNull,
+        );
+        final loggedInReply = find.descendant(
+          of: leaf,
+          matching: find.widgetWithText(TextButton, l10n.actionReply),
+        );
+        await tester.ensureVisible(loggedInReply);
+        await tester.pumpAndSettle();
+        await tester.tap(loggedInReply);
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<CommentComposer>(find.byType(CommentComposer))
+              .replyTo
+              ?.id,
+          'child',
+        );
+        expect(loginRequests, 2);
+        expect(tester.takeException(), isNull);
+      },
+    );
+    testWidgets('guest reply is disabled without a login handler in $locale', (
+      tester,
+    ) async {
+      when(() => getComments('my-slug')).thenAnswer(
+        (_) async => right<Failure, CommentPage>(_page([_comment('root')])),
+      );
+      final bloc = buildBloc();
+      addTearDown(bloc.close);
+      await _pumpSection(
+        tester,
+        appUserCubit: appUserCubit,
+        commentBloc: bloc,
+        locale: locale,
+      );
+      await tester.pumpAndSettle();
+      final l10n = lookupAppLocalizations(locale);
+      final reply = find.widgetWithText(TextButton, l10n.signInToReply);
+      expect(tester.widget<TextButton>(reply).onPressed, isNull);
+      expect(find.byType(CommentComposer), findsNothing);
+      verifyNever(() => createComment(any(that: isA<CreateCommentParams>())));
+    });
+  }
+
+  testWidgets(
+    'stale signed-in reply callback checks current identity before acting',
+    (tester) async {
+      appUserCubit.updateUser(_user());
+      when(() => getComments('my-slug')).thenAnswer(
+        (_) async => right<Failure, CommentPage>(_page([_comment('root')])),
+      );
+      var loginRequests = 0;
+      final bloc = buildBloc();
+      addTearDown(bloc.close);
+      await _pumpSection(
+        tester,
+        appUserCubit: appUserCubit,
+        commentBloc: bloc,
+        onRequestLogin: () => loginRequests++,
+      );
+      await tester.pumpAndSettle();
+      final l10n = lookupAppLocalizations(const Locale('zh'));
+      final oldCallback = tester
+          .widget<TextButton>(find.widgetWithText(TextButton, l10n.actionReply))
+          .onPressed!;
+      appUserCubit.updateUser(null);
+      oldCallback();
+      await tester.pumpAndSettle();
+      expect(loginRequests, 1);
+      expect(find.byType(CommentComposer), findsNothing);
+      appUserCubit.updateUser(_user());
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<CommentComposer>(find.byType(CommentComposer)).replyTo,
+        isNull,
+      );
+      verifyNever(() => createComment(any(that: isA<CreateCommentParams>())));
+    },
+  );
 
   testWidgets('the login prompt routes through onRequestLogin', (tester) async {
     when(

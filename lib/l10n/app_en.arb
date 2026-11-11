@@ -107,6 +107,7 @@
   "commentDeleteTitle": "Delete comment",
   "commentDeleteBody": "Deleting is permanent. Replies under this comment will be deleted too.",
   "loginToComment": "Sign in to join the conversation",
+  "signInToReply": "Sign in to reply",
   "goSignIn": "Sign in",
   "cancelReplyTooltip": "Cancel reply",
   "replyToLabel": "Reply to {name}",
