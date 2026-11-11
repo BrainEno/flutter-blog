@@ -20,6 +20,8 @@ import 'package:belog/core/theme/sqlite_theme_store.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
 import 'package:belog/core/utils/app_logger.dart';
+import 'package:belog/features/blog/data/notion_export/notion_export_repository_impl.dart';
+import 'package:belog/features/blog/domain/notion_export/notion_export.dart';
 import 'package:belog/features/blog/data/notion_import/notion_import_repository_impl.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
 import 'package:belog/features/auth/auth_session_sync.dart';
@@ -202,6 +204,9 @@ Future<void> initDependencies() async {
   );
   await sessionManager.restore();
 
+  serviceLocator.registerLazySingleton<NotionExportRepository>(
+    () => NotionExportRepositoryImpl(apiClient),
+  );
   serviceLocator.registerLazySingleton<NotionImportRepository>(
     () => NotionImportRepositoryImpl(apiClient),
   );

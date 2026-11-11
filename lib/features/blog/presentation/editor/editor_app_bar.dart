@@ -4,7 +4,7 @@ import 'package:belog/core/theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 /// The popup menu entries of [EditorAppBar].
-enum EditorMenuAction { publish, saveDraft, importNotion, cancel }
+enum EditorMenuAction { publish, saveDraft, importNotion, exportNotion, cancel }
 
 /// The editor's app bar: publish, save draft, and cancel when editing.
 ///
@@ -18,6 +18,7 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onSaveDraft,
     required this.onCancel,
     required this.onImportNotion,
+    this.onExportNotion,
   });
 
   /// True when an existing article is being edited, false for a new one.
@@ -27,6 +28,7 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onSaveDraft;
   final VoidCallback onCancel;
   final VoidCallback onImportNotion;
+  final VoidCallback? onExportNotion;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -70,6 +72,8 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
         onSaveDraft();
       case EditorMenuAction.importNotion:
         onImportNotion();
+      case EditorMenuAction.exportNotion:
+        onExportNotion?.call();
       case EditorMenuAction.cancel:
         onCancel();
     }
@@ -95,6 +99,11 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
         value: EditorMenuAction.importNotion,
         child: Center(child: Text(context.l10n.notionImportTitle)),
       ),
+      if (onExportNotion != null)
+        PopupMenuItem<EditorMenuAction>(
+          value: EditorMenuAction.exportNotion,
+          child: Center(child: Text(context.l10n.notionExportTitle)),
+        ),
       if (isEditing)
         PopupMenuItem<EditorMenuAction>(
           value: EditorMenuAction.cancel,

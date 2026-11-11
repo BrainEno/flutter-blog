@@ -14,6 +14,8 @@ import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/utils/pick_image.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
+import 'package:belog/features/blog/domain/notion_export/notion_export.dart';
+import 'package:belog/features/blog/presentation/editor/notion_export_sheet.dart';
 import 'package:belog/features/blog/presentation/editor/notion_import_sheet.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.dart';
@@ -63,6 +65,7 @@ class BlogEditorPage extends StatefulWidget {
   /// The private media-library read. Injectable so picker tests can stay local.
   final GetUserMediaLibraryPage? getUserMediaLibraryPage;
   final NotionImportRepository? notionImportRepository;
+  final NotionExportRepository? notionExportRepository;
   const BlogEditorPage({
     super.key,
     this.blog,
@@ -74,6 +77,7 @@ class BlogEditorPage extends StatefulWidget {
     this.getCategories,
     this.getUserMediaLibraryPage,
     this.notionImportRepository,
+    this.notionExportRepository,
   });
 
   @override
@@ -244,6 +248,50 @@ class _BlogEditorState extends State<BlogEditorPage> {
             identity: _session,
             userCubit: _userCubit,
             onApplyStarted: () => _notionApplyStarted = true,
+            fence: NowaveSessionFence(
+              userId: _draftOwnerId!,
+              generation: _editorGeneration,
+            ),
+          );
+        },
+      );
+    } finally {
+      _notionOpen = false;
+      _notionNavigator = null;
+      _notionRoute = null;
+    }
+  }
+
+  Future<void> _openNotionExport() async {
+    final slug = _target?.id;
+    if (!_isCurrentEditor || _notionOpen || slug == null || slug.isEmpty) {
+      return;
+    }
+    final repository =
+        widget.notionExportRepository ??
+        (GetIt.instance.isRegistered<NotionExportRepository>()
+            ? GetIt.instance<NotionExportRepository>()
+            : null);
+    if (repository == null) {
+      showSnackBar(context, context.l10n.notionExportUnavailable);
+      return;
+    }
+    _notionNavigator = Navigator.of(context, rootNavigator: true);
+    _notionOpen = true;
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        useRootNavigator: true,
+        isScrollControlled: true,
+        isDismissible: false,
+        enableDrag: false,
+        builder: (sheetContext) {
+          _notionRoute = ModalRoute.of(sheetContext);
+          return NotionExportSheet(
+            repository: repository,
+            identity: _session,
+            userCubit: _userCubit,
+            slug: slug,
             fence: NowaveSessionFence(
               userId: _draftOwnerId!,
               generation: _editorGeneration,
@@ -857,6 +905,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
         onSaveDraft: saveDraft,
         onCancel: () => Navigator.of(context).pop(),
         onImportNotion: () => unawaited(_openNotionImport()),
+        onExportNotion: _target == null
+            ? null
+            : () => unawaited(_openNotionExport()),
       ),
       body: BlocConsumer<BlogUploadBloc, BlogUploadState>(
         listener: (context, state) {
