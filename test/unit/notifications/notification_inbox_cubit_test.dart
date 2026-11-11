@@ -50,6 +50,8 @@ class _Repository implements NotificationRepository {
   Failure? listFailure;
   Failure? markFailure;
   Failure? markAllFailure;
+  Completer<Either<Failure, AppNotification>>? markGate;
+  Completer<Either<Failure, int>>? markAllGate;
 
   /// When set, a list call for this account waits until [gate] completes.
   String? gateUser;
@@ -90,6 +92,7 @@ class _Repository implements NotificationRepository {
   }) async {
     fences.add(fence);
     calls.add('markRead:$id');
+    if (markGate case final gate?) return gate.future;
     final failure = markFailure;
     if (failure != null) return left(failure);
     final rows = rowsByUser[fence.userId] ?? const <AppNotification>[];
@@ -109,6 +112,7 @@ class _Repository implements NotificationRepository {
   }) async {
     fences.add(fence);
     calls.add('markAllRead');
+    if (markAllGate case final gate?) return gate.future;
     final failure = markAllFailure;
     if (failure != null) return left(failure);
     return right(1);
@@ -469,6 +473,154 @@ void main() {
     expect(state.markingAll, isFalse);
     expect(state.unreadCount, 2);
   });
+
+  test('a pending single mark excludes other marks and refreshes', () async {
+    await pumpCubit(
+      rows: {
+        'user-a': [_notification(), _notification(id: 'second')],
+      },
+    );
+    final gate = repository.markGate =
+        Completer<Either<Failure, AppNotification>>();
+    final pending = cubit.markRead('notification-1');
+    expect(_loaded(cubit).markingId, 'notification-1');
+    await cubit.markRead('notification-1');
+    await cubit.markRead('second');
+    await cubit.markAllRead();
+    await cubit.load();
+    await cubit.load(showLoading: false);
+    expect(repository.calls, ['list', 'markRead:notification-1']);
+
+    gate.complete(right(_notification().markedRead(DateTime.utc(2026))));
+    expect(await pending, isNull);
+    expect(_loaded(cubit).items.first.isRead, isTrue);
+    expect(_loaded(cubit).items.last.isRead, isFalse);
+    expect(_loaded(cubit).markingId, isNull);
+    repository.markGate = null;
+    await cubit.markRead('second');
+    expect(_loaded(cubit).unreadCount, 0);
+  });
+
+  test('an older page can append while a single mark is in flight', () async {
+    await pumpCubit(
+      configure: (repository) {
+        repository.pagesByCursor['user-a'] = {
+          null: NotificationPage(
+            items: [_notification()],
+            nextCursor: 'cursor-first',
+          ),
+          'cursor-first': NotificationPage(
+            items: [_notification(id: 'older')],
+            nextCursor: 'cursor-older',
+          ),
+        };
+      },
+    );
+    final gate = repository.markGate =
+        Completer<Either<Failure, AppNotification>>();
+    final pending = cubit.markRead('notification-1');
+    await cubit.loadMore();
+    expect(_loaded(cubit).items.map((item) => item.id), [
+      'notification-1',
+      'older',
+    ]);
+    gate.complete(right(_notification().markedRead(DateTime.utc(2026))));
+    await pending;
+    expect(_loaded(cubit).items.first.isRead, isTrue);
+    expect(_loaded(cubit).items.last.isRead, isFalse);
+    expect(_loaded(cubit).markingId, isNull);
+  });
+
+  test(
+    'mark-all excludes individual marks and refreshes until it finishes',
+    () async {
+      await pumpCubit(
+        rows: {
+          'user-a': [_notification()],
+        },
+      );
+      final gate = repository.markAllGate = Completer<Either<Failure, int>>();
+      final pending = cubit.markAllRead();
+      expect(_loaded(cubit).markingAll, isTrue);
+      await cubit.markRead('notification-1');
+      await cubit.markAllRead();
+      await cubit.load();
+      await cubit.load(showLoading: false);
+      expect(repository.calls, ['list', 'markAllRead']);
+      gate.complete(right(1));
+      await pending;
+      expect(_loaded(cubit).unreadCount, 0);
+      expect(_loaded(cubit).markingAll, isFalse);
+    },
+  );
+
+  test('a refresh blocks marks until its new page is available', () async {
+    await pumpCubit(
+      rows: {
+        'user-a': [_notification()],
+      },
+    );
+    repository.gateUser = 'user-a';
+    final refresh = cubit.load(showLoading: false);
+    expect(_loaded(cubit).isRefreshing, isTrue);
+    await cubit.markRead('notification-1');
+    await cubit.markAllRead();
+    expect(repository.calls, ['list', 'list']);
+    repository.gate.complete();
+    await refresh;
+    expect(_loaded(cubit).isRefreshing, isFalse);
+    await cubit.markRead('notification-1');
+    expect(_loaded(cubit).unreadCount, 0);
+  });
+
+  test(
+    'identity change reloads even while a previous mark is pending',
+    () async {
+      await pumpCubit(
+        rows: {
+          'user-a': [_notification()],
+          'user-b': [_notification(id: 'second')],
+        },
+      );
+      final gate = repository.markGate =
+          Completer<Either<Failure, AppNotification>>();
+      final pending = cubit.markRead('notification-1');
+      identity.replace('user-b');
+      await Future<void>.delayed(Duration.zero);
+      expect(_loaded(cubit).items.single.id, 'second');
+      expect(_loaded(cubit).markingId, isNull);
+      gate.complete(left(_offline));
+      await pending;
+      expect(_loaded(cubit).items.single.id, 'second');
+      expect(_loaded(cubit).items.single.isRead, isFalse);
+    },
+  );
+
+  test(
+    'failed marks release the lock and stale or read ids are not sent',
+    () async {
+      await pumpCubit(
+        rows: {
+          'user-a': [_notification()],
+        },
+      );
+      await cubit.markRead('missing');
+      expect(repository.calls, ['list']);
+      repository.markFailure = _offline;
+      expect(
+        (await cubit.markRead('notification-1'))?.code,
+        'network.unavailable',
+      );
+      expect(_loaded(cubit).markingId, isNull);
+      repository.markFailure = null;
+      await cubit.markRead('notification-1');
+      await cubit.markRead('notification-1');
+      expect(
+        repository.calls.where((call) => call.startsWith('markRead:')),
+        hasLength(2),
+      );
+    },
+  );
 
   test('a read that lands after an account switch is dropped', () async {
     await pumpCubit(

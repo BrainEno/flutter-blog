@@ -112,7 +112,7 @@ class NotificationInboxCubit extends Cubit<NotificationInboxState> {
   NotificationInboxCubit({required this.repository, required this.identity})
     : super(const NotificationInboxLoading()) {
     _identitySubscription = identity.identityChanges.listen((_) {
-      unawaited(load());
+      unawaited(_load(showLoading: true, identityChanged: true));
     });
     unawaited(load());
   }
@@ -148,10 +148,20 @@ class NotificationInboxCubit extends Cubit<NotificationInboxState> {
   /// Reloads the newest page and resets any older pages already appended.
   /// [showLoading] is false for pull-to-refresh, which keeps the current rows on
   /// screen while the first page is fetched again.
-  Future<void> load({bool showLoading = true}) async {
-    if (!showLoading) {
-      final current = state;
-      if (current is NotificationInboxLoaded && current.markingAll) return;
+  Future<void> load({bool showLoading = true}) =>
+      _load(showLoading: showLoading, identityChanged: false);
+
+  Future<void> _load({
+    required bool showLoading,
+    required bool identityChanged,
+  }) async {
+    final current = state;
+    // Session changes must always discard the previous account's view, even
+    // if an earlier write is still in flight. User refreshes wait for writes.
+    if (!identityChanged &&
+        current is NotificationInboxLoaded &&
+        (current.markingAll || current.markingId != null)) {
+      return;
     }
     final generation = ++_pageGeneration;
     _nextCursor = null;
@@ -310,7 +320,13 @@ class NotificationInboxCubit extends Cubit<NotificationInboxState> {
       return null;
     }
     final current = state;
-    if (current is! NotificationInboxLoaded) return null;
+    if (current is! NotificationInboxLoaded ||
+        current.markingId != null ||
+        current.markingAll ||
+        current.isRefreshing ||
+        !current.items.any((item) => item.id == id && !item.isRead)) {
+      return null;
+    }
     emit(current.copyWith(markingId: id));
     final result = await repository.markRead(id, fence: fence);
     if (isClosed || !_stillCurrent(fence)) return null;
@@ -345,6 +361,7 @@ class NotificationInboxCubit extends Cubit<NotificationInboxState> {
     if (current is! NotificationInboxLoaded ||
         current.unreadCount == 0 ||
         current.markingAll ||
+        current.markingId != null ||
         current.isLoadingMore ||
         current.isRefreshing) {
       return null;

@@ -45,18 +45,50 @@ class NotificationInboxPage extends StatelessWidget {
 class _NotificationInboxView extends StatelessWidget {
   const _NotificationInboxView();
 
-  Future<void> _markRead(BuildContext context, String id) async {
-    final failure = await context.read<NotificationInboxCubit>().markRead(id);
-    if (!context.mounted) return;
+  bool _sameSession(
+    NotificationInboxCubit inbox,
+    String? userId,
+    int generation,
+  ) =>
+      !inbox.isClosed &&
+      userId != null &&
+      inbox.identity.activeUserId == userId &&
+      inbox.identity.sessionGeneration == generation &&
+      (inbox.identity.accessToken?.isNotEmpty ?? false);
+
+  Future<void> _markRead(
+    BuildContext context,
+    NotificationInboxLoaded expected,
+    String id,
+    String? userId,
+    int generation,
+  ) async {
+    final inbox = context.read<NotificationInboxCubit>();
+    if (!_sameSession(inbox, userId, generation) ||
+        !identical(inbox.state, expected)) {
+      return;
+    }
+    final failure = await inbox.markRead(id);
+    if (!context.mounted || !_sameSession(inbox, userId, generation)) return;
     final message = failure == null
         ? context.l10n.notificationsMarkedRead
         : localizedFailure(context.l10n, failure);
     showSnackBar(context, message);
   }
 
-  Future<void> _markAllRead(BuildContext context) async {
-    final failure = await context.read<NotificationInboxCubit>().markAllRead();
-    if (!context.mounted) return;
+  Future<void> _markAllRead(
+    BuildContext context,
+    NotificationInboxLoaded expected,
+    String? userId,
+    int generation,
+  ) async {
+    final inbox = context.read<NotificationInboxCubit>();
+    if (!_sameSession(inbox, userId, generation) ||
+        !identical(inbox.state, expected)) {
+      return;
+    }
+    final failure = await inbox.markAllRead();
+    if (!context.mounted || !_sameSession(inbox, userId, generation)) return;
     if (failure != null) {
       showSnackBar(context, localizedFailure(context.l10n, failure));
       return;
@@ -117,14 +149,25 @@ class _NotificationInboxView extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final row = index - (showSummary ? 1 : 0);
                       if (row < 0) {
+                        final identity = context
+                            .read<NotificationInboxCubit>()
+                            .identity;
+                        final userId = identity.activeUserId;
+                        final generation = identity.sessionGeneration;
                         return _UnreadSummary(
                           count: loaded.unreadCount,
                           onMarkAll:
                               loaded.markingAll ||
+                                  loaded.markingId != null ||
                                   loaded.isLoadingMore ||
                                   loaded.isRefreshing
                               ? null
-                              : () => _markAllRead(context),
+                              : () => _markAllRead(
+                                  context,
+                                  loaded,
+                                  userId,
+                                  generation,
+                                ),
                         );
                       }
                       if (row >= loaded.items.length) {
@@ -154,8 +197,17 @@ class _NotificationInboxView extends StatelessWidget {
 
                       return _NotificationRow(
                         item: item,
-                        marking: loaded.markingId == item.id,
-                        onMarkRead: () => _markRead(context, item.id),
+                        marking:
+                            loaded.markingId != null ||
+                            loaded.markingAll ||
+                            loaded.isRefreshing,
+                        onMarkRead: () => _markRead(
+                          context,
+                          loaded,
+                          item.id,
+                          userId,
+                          generation,
+                        ),
                         onOpenTarget: articleTarget != null
                             ? () => open(
                                 '/profile/view/${Uri.encodeComponent(articleTarget)}',
