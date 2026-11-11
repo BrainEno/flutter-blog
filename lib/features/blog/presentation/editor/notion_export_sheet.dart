@@ -138,6 +138,26 @@ class _NotionExportSheetState extends State<NotionExportSheet> {
     }
   }
 
+  // Issue details can contain article text, tags or URLs. Show only bounded,
+  // code-shaped identifiers and app-owned descriptions, never server details.
+  Widget _issue(String code) {
+    final l10n = context.l10n;
+    final description = switch (code) {
+      'translation-locale-not-carried' => l10n.notionExportIssueTranslation,
+      'work-type-not-carried' => l10n.notionExportIssueWorkType,
+      'unsupported-block' => l10n.notionExportIssueBlock,
+      _ => l10n.notionExportIssueUnknown,
+    };
+    final isSafeCode = RegExp(r'^[a-z][a-z0-9-]{0,63}$').hasMatch(code);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(isSafeCode ? code : l10n.notionExportIssueUnrecognizedCode),
+        Text(description),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -210,7 +230,12 @@ class _NotionExportSheetState extends State<NotionExportSheet> {
                               l10n.notionExportReport,
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
-                            for (final issue in result.issues) Text(issue),
+                            if (result.issues.isEmpty &&
+                                result.editions.every(
+                                  (edition) => edition.issues.isEmpty,
+                                ))
+                              Text(l10n.notionExportNoIssues),
+                            for (final issue in result.issues) _issue(issue),
                             for (final edition in result.editions) ...[
                               const Divider(),
                               Text(
@@ -221,7 +246,7 @@ class _NotionExportSheetState extends State<NotionExportSheet> {
                                       : l10n.notionExportSiteOrigin,
                                 ),
                               ),
-                              for (final issue in edition.issues) Text(issue),
+                              for (final issue in edition.issues) _issue(issue),
                             ],
                             const SizedBox(height: NoWaveSpacing.medium),
                             Text(l10n.notionExportClipboardWarning),
