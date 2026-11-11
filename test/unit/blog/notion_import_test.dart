@@ -132,6 +132,65 @@ void main() {
     },
   );
 
+  test(
+    'selection retains source order, metadata and relations without mutation',
+    () {
+      final source = NotionBundle.parse(
+        jsonEncode({
+          'version': 1,
+          'database': {'id': 'db'},
+          'extra': 'keep',
+          'pages': [
+            {
+              'id': 'a',
+              'properties': {
+                'Page': {
+                  'type': 'title',
+                  'title': [
+                    {'plain_text': ' First '},
+                  ],
+                },
+                'English': {
+                  'relation': [
+                    {'id': 'b'},
+                  ],
+                },
+              },
+              'blocks': [],
+            },
+            {'id': 'b', 'properties': {}, 'blocks': []},
+            {
+              'id': 'c',
+              'properties': {
+                'Name': {
+                  'type': 'title',
+                  'title': [
+                    {'plain_text': 'Third'},
+                  ],
+                },
+              },
+              'blocks': [],
+            },
+          ],
+        }),
+      );
+      expect(source.pageCount, 3);
+      expect(source.pageTitle(0), 'First');
+      expect(source.pageTitle(1), '');
+      expect(source.pageTitle(2), 'Third');
+      final selection = source.selectPages({2, 0});
+      final pages = selection.json['pages'] as List;
+      expect(pages.map((page) => page['id']).toList(), ['a', 'c']);
+      expect(pages.first['properties']['English']['relation'][0]['id'], 'b');
+      expect(selection.json['extra'], 'keep');
+      expect(selection.json['database']['id'], 'db');
+      expect(source.pageCount, 3);
+      expect(() => source.selectPages({}), throwsFormatException);
+      expect(() => source.selectPages({-1}), throwsFormatException);
+      expect(() => source.selectPages({3}), throwsFormatException);
+    },
+  );
+
   test('valid linked editions omitted by the server are disclosed', () async {
     final auth = _Auth();
     final client = NowaveApiClient(
