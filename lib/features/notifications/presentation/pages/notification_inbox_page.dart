@@ -217,11 +217,13 @@ class _NotificationInboxView extends StatelessWidget {
                                 '/profile/author/${Uri.encodeComponent(followerTarget)}',
                               )
                             : null,
-                        onOpenConversation: conversationId == null
+                        onOpenConversation:
+                            item.kind != AppNotificationKind.messageReceived
                             ? null
                             : () => open(
-                                '/profile/messages/'
-                                '${Uri.encodeComponent(conversationId)}',
+                                conversationId == null
+                                    ? '/profile/messages'
+                                    : '/profile/messages/${Uri.encodeComponent(conversationId)}',
                               ),
                       );
                     },
@@ -341,7 +343,7 @@ class _NotificationRow extends StatelessWidget {
   final bool marking;
   final VoidCallback onMarkRead;
 
-  /// Set when this notification points at a conversation the app can open.
+  /// Opens the safe conversation target or, if absent, the message list.
   final VoidCallback? onOpenConversation;
   final VoidCallback? onOpenTarget;
 
@@ -423,6 +425,12 @@ class _NotificationRow extends StatelessWidget {
                     NotificationArticleLocale.traditionalChinese =>
                       context.l10n.notificationsSourceTraditionalChinese,
                   }, style: Theme.of(context).textTheme.bodySmall),
+                if (onOpenConversation != null &&
+                    item.conversationTarget == null)
+                  Text(
+                    context.l10n.notificationsConversationUnavailable,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 if (onOpenTarget != null ||
                     onOpenConversation != null ||
                     !item.isRead)
@@ -442,7 +450,9 @@ class _NotificationRow extends StatelessWidget {
                         TextButton(
                           onPressed: onOpenConversation,
                           child: Text(
-                            context.l10n.notificationsOpenConversation,
+                            item.conversationTarget == null
+                                ? context.l10n.notificationsOpenMessages
+                                : context.l10n.notificationsOpenConversation,
                           ),
                         ),
                       if (!item.isRead)

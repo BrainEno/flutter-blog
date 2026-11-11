@@ -659,6 +659,8 @@
   "notificationsOpenArticleAddress": "打开作品地址",
   "notificationsOpenFollower": "打开关注者主页",
   "notificationsOpenConversation": "打开会话",
+  "notificationsOpenMessages": "打开私信列表",
+  "notificationsConversationUnavailable": "此通知无法打开具体会话，请在私信列表中查看。",
   "accountEmailTitle": "修改邮箱",
   "accountEmailInfo": "修改邮箱需要输入当前密码：能登录的人才能改。新地址在服务端会被标记为「未验证」，应用不会发送验证邮件；其他设备的登录状态不受影响。",
   "accountEmailCurrent": "当前邮箱",

@@ -173,11 +173,18 @@ void main() {
         expect(notice.conversationId, isNull);
         expect(notice.conversationTarget, isNull);
       }
-      for (final missing in [null, '', 3]) {
+      for (final missing in [
+        null,
+        '',
+        3,
+        true,
+        ['conversation-1'],
+      ]) {
         final notice = notificationFromRow(
           _row(payload: {'type': 'message.created', 'conversationId': missing}),
         );
-        expect(notice.kind, AppNotificationKind.unknown);
+        expect(notice.kind, AppNotificationKind.messageReceived);
+        expect(notice.conversationId, isNull);
         expect(notice.conversationTarget, isNull);
       }
       final manual = AppNotification(
@@ -324,7 +331,7 @@ void main() {
     expect(notification.markedRead(DateTime.utc(2026, 11, 6)).readAt, readAt);
   });
 
-  group('a payload this build cannot name is listed, not dropped', () {
+  group('unknown or incomplete payloads remain listed', () {
     for (final entry in <String, String>{
       'an unknown event type': '{"type":"comment.replied","commentId":"c-1"}',
       'no type at all': '{"messageId":"m-1"}',
@@ -336,7 +343,12 @@ void main() {
       test(entry.key, () {
         final notification = notificationFromRow(_row(payload: entry.value));
 
-        expect(notification.kind, AppNotificationKind.unknown);
+        expect(
+          notification.kind,
+          entry.key == 'a message without a conversation'
+              ? AppNotificationKind.messageReceived
+              : AppNotificationKind.unknown,
+        );
         expect(notification.isRead, isFalse);
         expect(notification.conversationId, isNull);
         expect(notification.articleId, isNull);
