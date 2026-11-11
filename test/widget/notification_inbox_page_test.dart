@@ -13,6 +13,7 @@ import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:go_router/go_router.dart';
 
 class _Identity implements NowaveSessionIdentity {
   String? userId = 'user-a';
@@ -91,6 +92,8 @@ AppNotification _notification({
   String id = 'notification-1',
   AppNotificationKind kind = AppNotificationKind.articleDeleted,
   DateTime? readAt,
+  String? articleSlug,
+  String? followerId,
 }) => AppNotification(
   id: id,
   eventKey: 'event:$id',
@@ -104,6 +107,8 @@ AppNotification _notification({
   conversationId: kind == AppNotificationKind.messageReceived
       ? 'conversation-1'
       : null,
+  articleSlug: articleSlug,
+  followerId: followerId,
 );
 
 class _Harness {
@@ -230,6 +235,159 @@ void main() {
         expect(find.text(labels.notificationCommented), findsOneWidget);
         expect(tester.takeException(), isNull);
       }
+    },
+  );
+
+  testWidgets(
+    'safe notification links open existing local routes without marking read',
+    (tester) async {
+      for (final entry in <AppNotificationKind, String>{
+        AppNotificationKind.articleCommented: '/profile/view/work-1',
+        AppNotificationKind.commentReplied: '/profile/view/work-1',
+        AppNotificationKind.articleLiked: '/profile/view/work-1',
+        AppNotificationKind.userFollowed: '/profile/author/user-1',
+      }.entries) {
+        final harness = _Harness(
+          rows: [
+            _notification(
+              kind: entry.key,
+              articleSlug: 'work-1',
+              followerId: 'user-1',
+            ),
+          ],
+        );
+        addTearDown(harness.dispose);
+        final router = GoRouter(
+          initialLocation: '/profile/notifications',
+          routes: [
+            GoRoute(
+              path: '/profile/notifications',
+              builder: (_, _) => NotificationInboxPage(cubit: harness.cubit),
+            ),
+            GoRoute(
+              path: '/profile/view/:id',
+              builder: (_, state) =>
+                  Scaffold(body: Text('work:${state.pathParameters['id']}')),
+            ),
+            GoRoute(
+              path: '/profile/author/:id',
+              builder: (_, state) =>
+                  Scaffold(body: Text('author:${state.pathParameters['id']}')),
+            ),
+          ],
+        );
+        addTearDown(router.dispose);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpWidget(
+          MaterialApp.router(
+            routerConfig: router,
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+          ),
+        );
+        harness.settle();
+        await tester.pumpAndSettle();
+        final l10n = lookupAppLocalizations(const Locale('en'));
+        final label = entry.key == AppNotificationKind.userFollowed
+            ? l10n.notificationsOpenFollower
+            : l10n.notificationsOpenArticleAddress;
+        expect(
+          find.text(l10n.notificationsAddressMayChange),
+          entry.key == AppNotificationKind.userFollowed
+              ? findsNothing
+              : findsOneWidget,
+        );
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+        expect(
+          router.routerDelegate.currentConfiguration.uri.path,
+          entry.value,
+        );
+        expect(harness.repository.calls, ['list']);
+        expect(harness.repository.rows.single.isRead, isFalse);
+      }
+    },
+  );
+
+  testWidgets('invalid destinations stay readable and never become buttons', (
+    tester,
+  ) async {
+    final harness = _Harness(
+      rows: [
+        _notification(
+          kind: AppNotificationKind.articleLiked,
+          articleSlug: '../bad',
+        ),
+        _notification(
+          id: 'follow',
+          kind: AppNotificationKind.userFollowed,
+          followerId: 'evil/route',
+        ),
+      ],
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester, locale: const Locale('zh'));
+    harness.settle();
+    await tester.pumpAndSettle();
+    final l10n = lookupAppLocalizations(const Locale('zh'));
+    expect(find.text(l10n.notificationLiked), findsOneWidget);
+    expect(find.text(l10n.notificationFollowed), findsOneWidget);
+    expect(find.text(l10n.notificationsOpenArticleAddress), findsNothing);
+    expect(find.text(l10n.notificationsOpenFollower), findsNothing);
+    expect(find.text(l10n.notificationsMarkRead), findsNWidgets(2));
+  });
+
+  testWidgets(
+    'old notification callback cannot open after account replacement',
+    (tester) async {
+      final harness = _Harness(
+        rows: [
+          _notification(
+            kind: AppNotificationKind.articleLiked,
+            articleSlug: 'work-1',
+          ),
+        ],
+      );
+      addTearDown(harness.dispose);
+      final router = GoRouter(
+        initialLocation: '/profile/notifications',
+        routes: [
+          GoRoute(
+            path: '/profile/notifications',
+            builder: (_, _) => NotificationInboxPage(cubit: harness.cubit),
+          ),
+          GoRoute(
+            path: '/profile/view/:id',
+            builder: (_, _) => const Scaffold(),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: router,
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      );
+      harness.settle();
+      await tester.pumpAndSettle();
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      final button = tester.widget<TextButton>(
+        find.widgetWithText(TextButton, l10n.notificationsOpenArticleAddress),
+      );
+      harness.identity.userId = 'user-b';
+      harness.identity.generation++;
+      harness.identity.controller.add(null);
+      button.onPressed!();
+      await tester.pump();
+      expect(
+        router.routerDelegate.currentConfiguration.uri.path,
+        '/profile/notifications',
+      );
+      expect(harness.repository.calls, ['list', 'list']);
     },
   );
 
