@@ -500,7 +500,7 @@ void main() {
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
       expect(find.text(l10n.notionExportTitle), findsNothing);
-      await tester.tap(find.byType(ModalBarrier).last);
+      await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
       final repository = _ExportRepository();
       final harness = _Harness(
