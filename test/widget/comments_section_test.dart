@@ -395,91 +395,101 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
         final semantics = tester.ensureSemantics();
-        addTearDown(semantics.dispose);
-        when(() => getComments('my-slug')).thenAnswer(
-          (_) async => right<Failure, CommentPage>(
-            _page([
-              _comment('root', replies: [_comment('child', parentId: 'root')]),
-            ]),
-          ),
-        );
-        var loginRequests = 0;
-        final bloc = buildBloc();
-        addTearDown(bloc.close);
-        await _pumpSection(
-          tester,
-          appUserCubit: appUserCubit,
-          commentBloc: bloc,
-          locale: locale,
-          textScale: 2,
-          horizontalPadding: 16,
-          onRequestLogin: () => loginRequests++,
-        );
-        await tester.pumpAndSettle();
-        final l10n = lookupAppLocalizations(locale);
-        final leaf = find.byWidgetPredicate(
-          (widget) => widget is CommentTile && widget.comment.id == 'child',
-        );
-        final button = find.descendant(
-          of: leaf,
-          matching: find.widgetWithText(TextButton, l10n.signInToReply),
-        );
-        expect(find.text(l10n.signInToReply), findsNWidgets(2));
-        expect(find.text(l10n.actionReply), findsNothing);
-        await tester.ensureVisible(button);
-        await tester.pumpAndSettle();
-        expect(tester.getSize(button).width, greaterThanOrEqualTo(48));
-        expect(tester.getSize(button).height, greaterThanOrEqualTo(48));
-        final data = tester.getSemantics(button).getSemanticsData();
-        expect(data.label, contains(l10n.signInToReply));
-        expect(data.hasAction(SemanticsAction.tap), isTrue);
-        await tester.tap(button);
-        await tester.pumpAndSettle();
-        expect(loginRequests, 1);
-        expect(find.byType(CommentComposer), findsNothing);
-        verifyNever(() => createComment(any(that: isA<CreateCommentParams>())));
-
-        // Traverse from the first focusable element using only Tab, then Enter.
-        FocusManager.instance.primaryFocus?.unfocus();
-        await tester.pump();
-        final text = find.descendant(
-          of: button,
-          matching: find.text(l10n.signInToReply),
-        );
-        for (var step = 0; step < 12; step++) {
-          if (Focus.of(tester.element(text)).hasPrimaryFocus) break;
-          await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        try {
+          when(() => getComments('my-slug')).thenAnswer(
+            (_) async => right<Failure, CommentPage>(
+              _page([
+                _comment(
+                  'root',
+                  replies: [_comment('child', parentId: 'root')],
+                ),
+              ]),
+            ),
+          );
+          var loginRequests = 0;
+          final bloc = buildBloc();
+          addTearDown(bloc.close);
+          await _pumpSection(
+            tester,
+            appUserCubit: appUserCubit,
+            commentBloc: bloc,
+            locale: locale,
+            textScale: 2,
+            horizontalPadding: 16,
+            onRequestLogin: () => loginRequests++,
+          );
           await tester.pumpAndSettle();
-        }
-        expect(Focus.of(tester.element(text)).hasPrimaryFocus, isTrue);
-        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-        await tester.pumpAndSettle();
-        expect(loginRequests, 2);
-        expect(tester.takeException(), isNull);
+          final l10n = lookupAppLocalizations(locale);
+          final leaf = find.byWidgetPredicate(
+            (widget) => widget is CommentTile && widget.comment.id == 'child',
+          );
+          final button = find.descendant(
+            of: leaf,
+            matching: find.widgetWithText(TextButton, l10n.signInToReply),
+          );
+          expect(find.text(l10n.signInToReply), findsNWidgets(2));
+          expect(find.text(l10n.actionReply), findsNothing);
+          await tester.ensureVisible(button);
+          await tester.pumpAndSettle();
+          expect(tester.getSize(button).width, greaterThanOrEqualTo(48));
+          expect(tester.getSize(button).height, greaterThanOrEqualTo(48));
+          final data = tester.getSemantics(button).getSemanticsData();
+          expect(data.label, contains(l10n.signInToReply));
+          expect(data.hasAction(SemanticsAction.tap), isTrue);
+          await tester.tap(button);
+          await tester.pumpAndSettle();
+          expect(loginRequests, 1);
+          expect(find.byType(CommentComposer), findsNothing);
+          verifyNever(
+            () => createComment(any(that: isA<CreateCommentParams>())),
+          );
 
-        appUserCubit.updateUser(_user());
-        await tester.pumpAndSettle();
-        expect(
-          tester.widget<CommentComposer>(find.byType(CommentComposer)).replyTo,
-          isNull,
-        );
-        final loggedInReply = find.descendant(
-          of: leaf,
-          matching: find.widgetWithText(TextButton, l10n.actionReply),
-        );
-        await tester.ensureVisible(loggedInReply);
-        await tester.pumpAndSettle();
-        await tester.tap(loggedInReply);
-        await tester.pumpAndSettle();
-        expect(
-          tester
-              .widget<CommentComposer>(find.byType(CommentComposer))
-              .replyTo
-              ?.id,
-          'child',
-        );
-        expect(loginRequests, 2);
-        expect(tester.takeException(), isNull);
+          // Traverse from the first focusable element using only Tab, then Enter.
+          FocusManager.instance.primaryFocus?.unfocus();
+          await tester.pump();
+          final text = find.descendant(
+            of: button,
+            matching: find.text(l10n.signInToReply),
+          );
+          for (var step = 0; step < 12; step++) {
+            if (Focus.of(tester.element(text)).hasPrimaryFocus) break;
+            await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+            await tester.pumpAndSettle();
+          }
+          expect(Focus.of(tester.element(text)).hasPrimaryFocus, isTrue);
+          await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+          await tester.pumpAndSettle();
+          expect(loginRequests, 2);
+          expect(tester.takeException(), isNull);
+
+          appUserCubit.updateUser(_user());
+          await tester.pumpAndSettle();
+          expect(
+            tester
+                .widget<CommentComposer>(find.byType(CommentComposer))
+                .replyTo,
+            isNull,
+          );
+          final loggedInReply = find.descendant(
+            of: leaf,
+            matching: find.widgetWithText(TextButton, l10n.actionReply),
+          );
+          await tester.ensureVisible(loggedInReply);
+          await tester.pumpAndSettle();
+          await tester.tap(loggedInReply);
+          await tester.pumpAndSettle();
+          expect(
+            tester
+                .widget<CommentComposer>(find.byType(CommentComposer))
+                .replyTo
+                ?.id,
+            'child',
+          );
+          expect(loginRequests, 2);
+          expect(tester.takeException(), isNull);
+        } finally {
+          semantics.dispose();
+        }
       },
     );
     testWidgets('guest reply is disabled without a login handler in $locale', (
