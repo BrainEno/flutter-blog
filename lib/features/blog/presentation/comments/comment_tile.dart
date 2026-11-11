@@ -45,6 +45,7 @@ class CommentTile extends StatelessWidget {
       (bloc) => bloc.state.deletingIds.contains(comment.id),
     );
 
+    final indent = depth == 0 ? 42.0 : 36.0; // design-token-ok: avatar column
     return Padding(
       padding: const EdgeInsets.only(bottom: NoWaveSpacing.medium),
       child: Column(
@@ -106,14 +107,14 @@ class CommentTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: NoWaveSpacing.xs),
-                    Row(
+                    Wrap(
+                      spacing: NoWaveSpacing.medium,
                       children: [
                         _ActionText(
                           label: context.l10n.actionReply,
                           onPressed: () => onReply(comment),
                         ),
                         if (isOwn) ...[
-                          const SizedBox(width: NoWaveSpacing.medium),
                           _ActionText(
                             label: deleting
                                 ? context.l10n.commentDeleting
@@ -139,10 +140,10 @@ class CommentTile extends StatelessWidget {
           ),
           if (comment.replies.isNotEmpty)
             Padding(
-              padding: EdgeInsets.only(
-                // Lines the reply up under the 48pt avatar column.
-                left: depth == 0 ? 42 : 36, // design-token-ok: avatar column
-              ),
+              // Limit indentation for deep (including legacy) threads.
+              padding: depth < 2
+                  ? EdgeInsets.only(left: indent)
+                  : EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: comment.replies
