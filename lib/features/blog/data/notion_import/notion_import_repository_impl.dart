@@ -21,7 +21,7 @@ class NotionImportRepositoryImpl implements NotionImportRepository {
         {'bundle': bundle.json, 'apply': apply},
         expectedUserId: sessionFence.userId,
         expectedSessionGeneration: sessionFence.generation,
-        timeout: const Duration(minutes: 2),
+        timeout: NowaveApiClient.notionImportTimeout,
       );
       return right(_report(data, apply, (bundle.json['pages'] as List).length));
     } catch (error) {

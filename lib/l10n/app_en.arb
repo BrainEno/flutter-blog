@@ -158,6 +158,7 @@
   "notionImportSlug": "Work address",
   "notionImportArticleId": "Article ID",
   "notionImportSessionChanged": "Your session changed. An import may already have written some pages to the previous account; check its articles before retrying.",
+  "notionImportLoading": "Import request in progress…",
   "notionImportTitle": "Import Notion bundle",
   "notionImportDescription": "Paste a no-wave Notion JSON bundle. ZIP, Markdown exports and direct Notion connections are not supported here. The preview does not write anything.",
   "notionImportInput": "JSON bundle",

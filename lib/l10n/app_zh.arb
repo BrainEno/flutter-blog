@@ -118,6 +118,7 @@
   "notionImportSlug": "作品地址",
   "notionImportArticleId": "文章 ID",
   "notionImportSessionChanged": "登录账户已变更。导入可能已向原账户写入部分页面；重试前请检查原账户文章。",
+  "notionImportLoading": "正在处理导入请求…",
   "notionImportTitle": "导入 Notion 数据包",
   "notionImportDescription": "粘贴 no-wave Notion JSON 数据包。此处不支持 ZIP、Markdown 导出或直接连接 Notion。预览不会写入任何内容。",
   "notionImportInput": "JSON 数据包",

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 
 import 'package:belog/core/design/design_tokens.dart';
+import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
@@ -224,7 +225,10 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
                             ),
                             if (_busy) ...[
                               const SizedBox(height: NoWaveSpacing.small),
-                              const LinearProgressIndicator(),
+                              NoWaveLoadingLabel(
+                                label: l10n.notionImportLoading,
+                                compact: true,
+                              ),
                             ],
                             if (_error != null) ...[
                               const SizedBox(height: NoWaveSpacing.medium),
