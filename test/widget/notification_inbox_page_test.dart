@@ -300,8 +300,12 @@ void main() {
         );
         await tester.tap(find.text(label));
         await tester.pumpAndSettle();
+        final destination = entry.key == AppNotificationKind.userFollowed
+            ? 'author:user-1'
+            : 'work:work-1';
+        expect(find.text(destination), findsOneWidget);
         expect(
-          router.routerDelegate.currentConfiguration.uri.path,
+          router.routerDelegate.currentConfiguration.last.matchedLocation,
           entry.value,
         );
         expect(harness.repository.calls, ['list']);
@@ -359,7 +363,7 @@ void main() {
           ),
           GoRoute(
             path: '/profile/view/:id',
-            builder: (_, _) => const Scaffold(),
+            builder: (_, _) => const Scaffold(body: Text('unexpected work')),
           ),
         ],
       );
@@ -387,6 +391,7 @@ void main() {
         router.routerDelegate.currentConfiguration.uri.path,
         '/profile/notifications',
       );
+      expect(find.text('unexpected work'), findsNothing);
       expect(harness.repository.calls, ['list', 'list']);
     },
   );
