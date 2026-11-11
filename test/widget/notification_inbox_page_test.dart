@@ -460,6 +460,7 @@ void main() {
           if (openLabel != null) {
             final open = find.widgetWithText(TextButton, openLabel);
             await tester.ensureVisible(open);
+            await tester.pumpAndSettle();
             expect(tester.widget<TextButton>(open).onPressed, isNotNull);
             expect(tester.takeException(), isNull);
           }
@@ -468,6 +469,7 @@ void main() {
             l10n.notificationsMarkRead,
           );
           await tester.ensureVisible(mark);
+          await tester.pumpAndSettle();
           await tester.tap(mark);
           await tester.pumpAndSettle();
           expect(harness.repository.calls, ['list', 'markRead:notification-1']);
@@ -534,6 +536,7 @@ void main() {
             : l10n.notificationsOpenArticleAddress;
         final button = find.widgetWithText(TextButton, label);
         await tester.ensureVisible(button);
+        await tester.pumpAndSettle();
         await tester.tap(button);
         await tester.pumpAndSettle();
         expect(
@@ -567,6 +570,7 @@ void main() {
         l10n.notificationsMarkAllRead,
       );
       await tester.ensureVisible(markAll);
+      await tester.pumpAndSettle();
       await tester.tap(markAll);
       await tester.pumpAndSettle();
       expect(harness.repository.calls, ['list', 'markAllRead']);
