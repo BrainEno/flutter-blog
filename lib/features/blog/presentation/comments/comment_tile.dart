@@ -92,11 +92,18 @@ class CommentTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Text(
-                      formatDate(
-                        Localizations.localeOf(context),
-                        comment.createdAt,
-                      ),
+                    Wrap(
+                      spacing: NoWaveSpacing.small,
+                      children: [
+                        Text(
+                          formatDate(
+                            Localizations.localeOf(context),
+                            comment.createdAt,
+                          ),
+                        ),
+                        if (comment.editedAt != null)
+                          Text(context.l10n.commentEdited),
+                      ],
                     ),
                     const SizedBox(height: NoWaveSpacing.xs),
                     // Plain-text rendering (content version 0): no markup

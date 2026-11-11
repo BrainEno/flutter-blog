@@ -366,6 +366,7 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
       authorName: comment.authorName,
       authorAvatarUrl: comment.authorAvatarUrl,
       createdAt: comment.createdAt,
+      editedAt: comment.editedAt,
       replies: replies,
     );
   }
