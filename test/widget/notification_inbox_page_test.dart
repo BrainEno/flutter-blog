@@ -852,7 +852,11 @@ void main() {
     );
     final staleRow = tester.widget<TextButton>(rowFinder).onPressed!;
     final refreshing = harness.cubit.load(showLoading: false);
-    await tester.pump();
+    expect(
+      (harness.cubit.state as NotificationInboxLoaded).isRefreshing,
+      isTrue,
+    );
+    await tester.pumpAndSettle();
     expect(tester.widget<TextButton>(rowFinder).onPressed, isNull);
     staleRow();
     await tester.pump();
