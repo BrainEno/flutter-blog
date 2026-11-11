@@ -256,6 +256,10 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
                                   report.count(NotionImportAction.failed),
                                 ),
                               ),
+                              if (report.omittedPages > 0)
+                                Text(
+                                  l10n.notionImportOmitted(report.omittedPages),
+                                ),
                               for (final page in report.pages) ...[
                                 const Divider(),
                                 Text(

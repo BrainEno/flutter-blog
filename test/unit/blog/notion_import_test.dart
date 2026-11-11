@@ -132,6 +132,35 @@ void main() {
     },
   );
 
+  test('valid linked editions omitted by the server are disclosed', () async {
+    final auth = _Auth();
+    final client = NowaveApiClient(
+      baseUrl: Uri.parse('https://example.invalid'),
+      authenticator: auth,
+      httpClient: MockClient(
+        (_) async => http.Response(
+          jsonEncode(_report(false)),
+          200,
+          headers: {'content-type': 'application/json'},
+        ),
+      ),
+    );
+    final bundle = NotionBundle.parse(
+      jsonEncode({
+        'version': 1,
+        'pages': [
+          {'id': 'p', 'properties': {}, 'blocks': []},
+          {'id': 'translation', 'properties': {}, 'blocks': []},
+        ],
+      }),
+    );
+    final result = await NotionImportRepositoryImpl(
+      client,
+    ).submit(bundle: bundle, apply: false, sessionFence: _fence);
+    expect(result.getRight().toNullable()!.omittedPages, 1);
+    expect(result.getRight().toNullable()!.canApply, isTrue);
+  });
+
   test('never replays a 401 or submits under a replacement session', () async {
     final auth = _Auth();
     var calls = 0;

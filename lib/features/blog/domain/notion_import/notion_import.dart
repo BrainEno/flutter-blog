@@ -74,8 +74,15 @@ class NotionImportPage {
 }
 
 class NotionImportReport {
-  const NotionImportReport({required this.applied, required this.pages});
+  const NotionImportReport({
+    required this.applied,
+    required this.pages,
+    this.omittedPages = 0,
+  });
   final bool applied;
+
+  /// The server can omit invalid linked editions from the page report.
+  final int omittedPages;
   final List<NotionImportPage> pages;
   int count(NotionImportAction action) =>
       pages.where((p) => p.action == action).length;

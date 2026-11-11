@@ -33,7 +33,7 @@ class NotionImportRepositoryImpl implements NotionImportRepository {
     if (data is! Map<String, dynamic> ||
         data['applied'] != apply ||
         data['pages'] is! List ||
-        (data['pages'] as List).length != expectedPages) {
+        (data['pages'] as List).length > expectedPages) {
       throw const FormatException('Invalid import report');
     }
     final pages = <NotionImportPage>[];
@@ -83,6 +83,10 @@ class NotionImportRepositoryImpl implements NotionImportRepository {
         ),
       );
     }
-    return NotionImportReport(applied: apply, pages: List.unmodifiable(pages));
+    return NotionImportReport(
+      applied: apply,
+      pages: List.unmodifiable(pages),
+      omittedPages: expectedPages - pages.length,
+    );
   }
 }
