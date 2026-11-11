@@ -483,6 +483,147 @@ void main() {
     expect(find.textContaining('回复 @'), findsNothing);
   });
 
+  for (final locale in [const Locale('en'), const Locale('zh')]) {
+    testWidgets(
+      'depth rejection preserves draft and supports another parent in $locale',
+      (tester) async {
+        appUserCubit.updateUser(_user());
+        when(() => getComments('my-slug')).thenAnswer(
+          (_) async => right<Failure, CommentPage>(
+            _page([
+              _comment(
+                'root',
+                content: 'root comment',
+                replies: [
+                  _comment('deep', content: 'deep comment', parentId: 'root'),
+                ],
+              ),
+            ]),
+          ),
+        );
+        var sequence = 0;
+        when(() => uuid.v4()).thenAnswer((_) => 'key-${sequence++}');
+        final requests = <CreateCommentParams>[];
+        when(
+          () => createComment(any(that: isA<CreateCommentParams>())),
+        ).thenAnswer((invocation) async {
+          final params =
+              invocation.positionalArguments.single as CreateCommentParams;
+          requests.add(params);
+          if (params.parentCommentId == 'deep') {
+            return left<Failure, Comment>(
+              Failure(
+                'safe fallback',
+                kind: FailureKind.validation,
+                code: 'comments.depthExceeded',
+                cause: StateError('private backend detail'),
+              ),
+            );
+          }
+          return right<Failure, Comment>(
+            _comment(
+              'new',
+              authorId: 'viewer-1',
+              content: params.content,
+              parentId: params.parentCommentId,
+            ),
+          );
+        });
+        final bloc = buildBloc();
+        addTearDown(bloc.close);
+        await _pumpSection(
+          tester,
+          appUserCubit: appUserCubit,
+          commentBloc: bloc,
+          locale: locale,
+        );
+        await tester.pumpAndSettle();
+        final l10n = lookupAppLocalizations(locale);
+        final deep = find.byWidgetPredicate(
+          (widget) => widget is CommentTile && widget.comment.id == 'deep',
+        );
+        final deepReply = find.descendant(
+          of: deep,
+          matching: find.widgetWithText(TextButton, l10n.actionReply),
+        );
+        await tester.ensureVisible(deepReply);
+        await tester.pumpAndSettle();
+        await tester.tap(deepReply);
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byType(TextField));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), 'my preserved draft');
+        final send = find.text(l10n.actionSend);
+        await tester.ensureVisible(send);
+        await tester.pumpAndSettle();
+        await tester.tap(send);
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.errorCommentDepthExceeded), findsOneWidget);
+        expect(find.textContaining('private backend detail'), findsNothing);
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          'my preserved draft',
+        );
+        expect(
+          tester
+              .widget<CommentComposer>(find.byType(CommentComposer))
+              .replyTo
+              ?.id,
+          'deep',
+        );
+        expect(bloc.state.failure?.cause, isNull);
+        await tester.tap(send);
+        await tester.pumpAndSettle();
+        expect(requests.map((request) => request.idempotencyKey), [
+          'key-0',
+          'key-0',
+        ]);
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          'my preserved draft',
+        );
+        final rootReply = find
+            .widgetWithText(TextButton, l10n.actionReply)
+            .first;
+        await tester.ensureVisible(rootReply);
+        await tester.pumpAndSettle();
+        await tester.tap(rootReply);
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<CommentComposer>(find.byType(CommentComposer))
+              .replyTo
+              ?.id,
+          'root',
+        );
+        await tester.ensureVisible(send);
+        await tester.pumpAndSettle();
+        await tester.tap(send);
+        await tester.pumpAndSettle();
+        expect(requests.map((request) => request.parentCommentId), [
+          'deep',
+          'deep',
+          'root',
+        ]);
+        expect(requests.map((request) => request.idempotencyKey), [
+          'key-0',
+          'key-0',
+          'key-1',
+        ]);
+        expect(
+          requests.map((request) => request.content),
+          everyElement('my preserved draft'),
+        );
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          isEmpty,
+        );
+        expect(bloc.state.comments.single.replies.last.id, 'new');
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('deleting an own comment asks for confirmation first', (
     tester,
   ) async {

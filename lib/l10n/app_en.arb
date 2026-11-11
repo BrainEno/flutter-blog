@@ -600,6 +600,7 @@
   "errorCommentsSendOffline": "Offline — the comment was not sent",
   "errorCommentsDelete": "Failed to delete the comment — try again later",
   "errorCommentsDeleteOffline": "Offline — the delete was not synced",
+  "errorCommentDepthExceeded": "This thread has reached its reply limit. Reply to an earlier comment in the thread instead.",
   "errorCommentTooLong": "The comment is too long (2000 characters max)",
   "errorLikesSync": "Offline — the save was not synced",
   "errorLikesToggle": "The save failed — try again later",

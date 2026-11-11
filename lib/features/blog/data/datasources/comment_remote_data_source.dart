@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/error_mapper.dart';
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/features/blog/data/models/comment_model.dart';
@@ -96,6 +97,16 @@ class CommentRemoteDataSourceImpl implements CommentRemoteDataSource {
       }
       return CommentModel.fromMap(data);
     } catch (e) {
+      if (e is NowaveApiException &&
+          e.statusCode == 400 &&
+          e.code == 'COMMENT_DEPTH_EXCEEDED') {
+        throw ServerException(
+          '回复层级已达上限，请回复此讨论中较早的评论',
+          kind: FailureKind.validation,
+          code: 'comments.depthExceeded',
+          cause: e,
+        );
+      }
       throw mapToServerException(e);
     }
   }
