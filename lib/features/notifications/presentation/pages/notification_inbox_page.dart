@@ -174,7 +174,7 @@ class _NotificationInboxView extends StatelessWidget {
                         return _NotificationPaginationFooter(state: loaded);
                       }
                       final item = loaded.items[row];
-                      final conversationId = item.conversationId;
+                      final conversationId = item.conversationTarget;
                       final articleTarget = item.articleTarget;
                       final followerTarget = item.followerTarget;
                       final inbox = context.read<NotificationInboxCubit>();
@@ -219,7 +219,7 @@ class _NotificationInboxView extends StatelessWidget {
                             : null,
                         onOpenConversation: conversationId == null
                             ? null
-                            : () => context.push(
+                            : () => open(
                                 '/profile/messages/'
                                 '${Uri.encodeComponent(conversationId)}',
                               ),
