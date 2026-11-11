@@ -32,9 +32,39 @@ class CommentTile extends StatelessWidget {
     required this.confirmDelete,
   });
 
+  Future<void> _confirmCurrentDelete(
+    BuildContext context,
+    AppUserCubit users,
+    int revision,
+  ) async {
+    bool stillOwner() {
+      if (users.isClosed || users.identityRevision.value != revision) {
+        return false;
+      }
+      final state = users.state;
+      return state is AppUserLoggedIn && state.user.id == comment.authorId;
+    }
+
+    if (!context.mounted || !stillOwner()) return;
+    if (!identical(context.read<AppUserCubit>(), users)) return;
+    final comments = context.read<CommentBloc>();
+    if (comments.isClosed) return;
+    final confirmed = await confirmDelete();
+    if (!confirmed || !context.mounted || comments.isClosed || !stillOwner()) {
+      return;
+    }
+    if (!identical(context.read<AppUserCubit>(), users) ||
+        !identical(context.read<CommentBloc>(), comments)) {
+      return;
+    }
+    comments.add(CommentDeleteRequested(comment.id));
+  }
+
   @override
   Widget build(BuildContext context) {
-    final appUserState = context.watch<AppUserCubit>().state;
+    final users = context.watch<AppUserCubit>();
+    final revision = users.identityRevision.value;
+    final appUserState = users.state;
     final viewerId = appUserState is AppUserLoggedIn
         ? appUserState.user.id
         : null;
@@ -134,14 +164,11 @@ class CommentTile extends StatelessWidget {
                                 : context.l10n.actionDelete,
                             onPressed: deleting
                                 ? null
-                                : () async {
-                                    if (await confirmDelete()) {
-                                      // ignore: use_build_context_synchronously
-                                      context.read<CommentBloc>().add(
-                                        CommentDeleteRequested(comment.id),
-                                      );
-                                    }
-                                  },
+                                : () => _confirmCurrentDelete(
+                                    context,
+                                    users,
+                                    revision,
+                                  ),
                           ),
                         ],
                       ],

@@ -11,6 +11,7 @@ import 'package:belog/features/blog/domain/entities/comment_page.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_event.dart';
+import 'package:belog/features/blog/presentation/blocs/comment/comment_state.dart';
 import 'package:belog/features/blog/presentation/widgets/comments_section.dart';
 import 'package:belog/features/blog/presentation/comments/comment_tile.dart';
 import 'package:belog/features/blog/presentation/comments/comment_composer.dart';
@@ -28,6 +29,8 @@ class MockGetComments extends Mock implements GetComments {}
 class MockCreateComment extends Mock implements CreateComment {}
 
 class MockDeleteComment extends Mock implements DeleteComment {}
+
+class MockCommentBloc extends Mock implements CommentBloc {}
 
 class MockUuid extends Mock implements Uuid {}
 
@@ -116,6 +119,7 @@ void main() {
     registerFallbackValue(
       CreateCommentParams(slug: '', content: '', idempotencyKey: ''),
     );
+    registerFallbackValue(const CommentDeleteRequested('fallback'));
   });
 
   setUp(() {
@@ -919,6 +923,201 @@ void main() {
 
     verify(() => deleteComment('c1')).called(1);
     expect(find.text('我自己说的'), findsNothing);
+  });
+
+  testWidgets('cancelling delete keeps the comment', (tester) async {
+    appUserCubit.updateUser(_user());
+    when(() => getComments('my-slug')).thenAnswer(
+      (_) async => right<Failure, CommentPage>(
+        _page([_comment('own', authorId: 'viewer-1', content: 'own comment')]),
+      ),
+    );
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+    await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(find.text('own comment'), findsOneWidget);
+    verifyNever(() => deleteComment(any()));
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final scenario in [
+    'sign out',
+    'different account',
+    'same account refreshed',
+    'switch away and back',
+  ]) {
+    testWidgets('delete confirmation is invalidated by $scenario', (
+      tester,
+    ) async {
+      appUserCubit.updateUser(_user());
+      when(() => getComments('my-slug')).thenAnswer(
+        (_) async => right<Failure, CommentPage>(
+          _page([
+            _comment('own', authorId: 'viewer-1', content: 'own comment'),
+          ]),
+        ),
+      );
+      when(
+        () => deleteComment('own'),
+      ).thenAnswer((_) async => right<Failure, void>(null));
+      final bloc = buildBloc();
+      addTearDown(bloc.close);
+      await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('删除'));
+      await tester.pumpAndSettle();
+      expect(find.text('删除评论'), findsOneWidget);
+      final other = User(
+        id: 'viewer-2',
+        email: 'other@example.invalid',
+        name: 'Other',
+        updatedAt: DateTime.utc(2024),
+      );
+      switch (scenario) {
+        case 'sign out':
+          appUserCubit.updateUser(null);
+        case 'different account':
+          appUserCubit.updateUser(other);
+        case 'same account refreshed':
+          appUserCubit.updateUser(_user());
+        case 'switch away and back':
+          appUserCubit.updateUser(other);
+          appUserCubit.updateUser(_user());
+      }
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, '删除').last);
+      await tester.pumpAndSettle();
+      verifyNever(() => deleteComment(any()));
+      expect(find.text('own comment'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      // A fresh confirmation by the owner remains effective.
+      appUserCubit.updateUser(_user());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('删除'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, '删除').last);
+      await tester.pumpAndSettle();
+      verify(() => deleteComment('own')).called(1);
+      expect(find.text('own comment'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+    'a stale delete callback cannot open a confirmation after identity changes',
+    (tester) async {
+      appUserCubit.updateUser(_user());
+      when(() => getComments('my-slug')).thenAnswer(
+        (_) async => right<Failure, CommentPage>(
+          _page([_comment('own', authorId: 'viewer-1')]),
+        ),
+      );
+      final bloc = buildBloc();
+      addTearDown(bloc.close);
+      await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
+      await tester.pumpAndSettle();
+      final old = tester
+          .widget<TextButton>(find.widgetWithText(TextButton, '删除'))
+          .onPressed!;
+      appUserCubit.updateUser(_user());
+      old();
+      await tester.pumpAndSettle();
+      expect(find.text('删除评论'), findsNothing);
+      verifyNever(() => deleteComment(any()));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('a confirmed delete cannot dispatch after its row is unmounted', (
+    tester,
+  ) async {
+    appUserCubit.updateUser(_user());
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+    final confirmation = Completer<bool>();
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<AppUserCubit>.value(value: appUserCubit),
+          BlocProvider<CommentBloc>.value(value: bloc),
+        ],
+        child: MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: CommentTile(
+              comment: _comment('own', authorId: 'viewer-1'),
+              depth: 0,
+              onReply: (_) {},
+              replyRequiresLogin: false,
+              onOpenAuthor: _ignoreAuthor,
+              confirmDelete: () => confirmation.future,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除'));
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox.shrink());
+    confirmation.complete(true);
+    await tester.pumpAndSettle();
+    verifyNever(() => deleteComment(any()));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a confirmed delete cannot dispatch to a closed bloc', (
+    tester,
+  ) async {
+    appUserCubit.updateUser(_user());
+    var closed = false;
+    final bloc = MockCommentBloc();
+    when(() => bloc.state).thenReturn(const CommentState());
+    when(
+      () => bloc.stream,
+    ).thenAnswer((_) => const Stream<CommentState>.empty());
+    when(() => bloc.isClosed).thenAnswer((_) => closed);
+    final confirmation = Completer<bool>();
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<AppUserCubit>.value(value: appUserCubit),
+          BlocProvider<CommentBloc>.value(value: bloc),
+        ],
+        child: MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: CommentTile(
+              comment: _comment('own', authorId: 'viewer-1'),
+              depth: 0,
+              onReply: (_) {},
+              replyRequiresLogin: false,
+              onOpenAuthor: _ignoreAuthor,
+              confirmDelete: () => confirmation.future,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除'));
+    await tester.pump();
+    closed = true;
+    confirmation.complete(true);
+    await tester.pumpAndSettle();
+    expect(bloc.isClosed, isTrue);
+    verifyNever(() => bloc.add(any()));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('a failed load offers a retry', (tester) async {
