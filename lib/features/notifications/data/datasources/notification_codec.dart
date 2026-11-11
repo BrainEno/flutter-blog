@@ -37,6 +37,8 @@ AppNotification notificationFromRow(Object? row) {
     articleId: decoded.articleId,
     purgesAt: decoded.purgesAt,
     conversationId: decoded.conversationId,
+    articleSlug: decoded.articleSlug,
+    followerId: decoded.followerId,
   );
 }
 
@@ -47,12 +49,16 @@ class _DecodedPayload {
     this.articleId,
     this.purgesAt,
     this.conversationId,
+    this.articleSlug,
+    this.followerId,
   });
 
   final AppNotificationKind kind;
   final String? articleId;
   final DateTime? purgesAt;
   final String? conversationId;
+  final String? articleSlug;
+  final String? followerId;
 }
 
 const _unknownPayload = _DecodedPayload(AppNotificationKind.unknown);
@@ -67,15 +73,27 @@ _DecodedPayload _decodePayload(String raw) {
   if (value is! Map<String, dynamic>) return _unknownPayload;
   switch (value['type']) {
     // These producers describe the recipient's event. Historical rows may
-    // lack routing fields; never expose their untrusted payload as a URL.
+    // lack routing fields; never use an unvalidated payload as a URL.
     case 'article.commented':
-      return const _DecodedPayload(AppNotificationKind.articleCommented);
+      return _DecodedPayload(
+        AppNotificationKind.articleCommented,
+        articleSlug: AppNotification.validArticleSlug(value['slug']),
+      );
     case 'article.comment_replied':
-      return const _DecodedPayload(AppNotificationKind.commentReplied);
+      return _DecodedPayload(
+        AppNotificationKind.commentReplied,
+        articleSlug: AppNotification.validArticleSlug(value['slug']),
+      );
     case 'article.liked':
-      return const _DecodedPayload(AppNotificationKind.articleLiked);
+      return _DecodedPayload(
+        AppNotificationKind.articleLiked,
+        articleSlug: AppNotification.validArticleSlug(value['slug']),
+      );
     case 'user.followed':
-      return const _DecodedPayload(AppNotificationKind.userFollowed);
+      return _DecodedPayload(
+        AppNotificationKind.userFollowed,
+        followerId: AppNotification.validFollowerId(value['followerId']),
+      );
     case 'article.deleted':
       final articleId = value['articleId'];
       if (articleId is! String || articleId.isEmpty) return _unknownPayload;

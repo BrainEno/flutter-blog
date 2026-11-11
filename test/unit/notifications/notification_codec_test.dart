@@ -94,6 +94,104 @@ void main() {
     },
   );
 
+  group('safe optional local destinations', () {
+    for (final type in [
+      'article.commented',
+      'article.comment_replied',
+      'article.liked',
+    ]) {
+      test(
+        '$type validates work addresses and preserves them after marking',
+        () {
+          final notice = notificationFromRow(
+            _row(
+              payload: {
+                'type': type,
+                'slug': 'work-123',
+                'url': 'https://evil.invalid',
+              },
+            ),
+          );
+          expect(notice.articleTarget, 'work-123');
+          expect(
+            notice.markedRead(DateTime.utc(2026)).articleTarget,
+            'work-123',
+          );
+          for (final invalid in [
+            null,
+            '',
+            'bad/route',
+            '../x',
+            'https://evil.invalid',
+            'bad?x=1',
+            'bad\n',
+            'Upper',
+            'a--b',
+            'a' * 161,
+            4,
+          ]) {
+            final bad = notificationFromRow(
+              _row(payload: {'type': type, 'slug': invalid}),
+            );
+            expect(bad.articleTarget, isNull);
+            expect(bad.kind, notice.kind);
+          }
+          expect(
+            notificationFromRow(
+              _row(payload: {'type': type, 'slug': 'a' * 160}),
+            ).articleTarget,
+            'a' * 160,
+          );
+        },
+      );
+    }
+    test(
+      'follower identifier is bounded, safe and preserved after marking',
+      () {
+        final notice = notificationFromRow(
+          _row(
+            payload: {'type': 'user.followed', 'followerId': 'user_123-ABC'},
+          ),
+        );
+        expect(notice.followerTarget, 'user_123-ABC');
+        expect(
+          notice.markedRead(DateTime.utc(2026)).followerTarget,
+          'user_123-ABC',
+        );
+        for (final invalid in [
+          null,
+          '',
+          '../user',
+          'user/other',
+          'https://evil.invalid',
+          'user?x',
+          'user\n',
+          'x' * 301,
+          3,
+        ]) {
+          final bad = notificationFromRow(
+            _row(payload: {'type': 'user.followed', 'followerId': invalid}),
+          );
+          expect(bad.kind, AppNotificationKind.userFollowed);
+          expect(bad.followerTarget, isNull);
+        }
+        expect(
+          notificationFromRow(
+            _row(payload: {'type': 'user.followed', 'followerId': 'x' * 300}),
+          ).followerTarget,
+          'x' * 300,
+        );
+      },
+    );
+    test('unrelated types never acquire destinations', () {
+      final unknown = notificationFromRow(
+        _row(payload: {'type': 'future', 'slug': 'good', 'followerId': 'good'}),
+      );
+      expect(unknown.articleTarget, isNull);
+      expect(unknown.followerTarget, isNull);
+    });
+  });
+
   test('an article deletion without a purge date is still understood', () {
     final notification = notificationFromRow(
       _row(

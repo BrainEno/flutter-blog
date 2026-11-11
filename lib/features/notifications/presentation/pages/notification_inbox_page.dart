@@ -140,10 +140,39 @@ class _NotificationInboxView extends StatelessWidget {
                       }
                       final item = loaded.items[row];
                       final conversationId = item.conversationId;
+                      final articleTarget = item.articleTarget;
+                      final followerTarget = item.followerTarget;
+                      final inbox = context.read<NotificationInboxCubit>();
+                      final userId = inbox.identity.activeUserId;
+                      final generation = inbox.identity.sessionGeneration;
+                      void open(String route) {
+                        final state = inbox.state;
+                        if (!context.mounted ||
+                            inbox.isClosed ||
+                            userId == null ||
+                            inbox.identity.activeUserId != userId ||
+                            inbox.identity.sessionGeneration != generation ||
+                            (inbox.identity.accessToken?.isEmpty ?? true) ||
+                            state is! NotificationInboxLoaded ||
+                            !state.items.any((row) => identical(row, item))) {
+                          return;
+                        }
+                        context.push(route);
+                      }
+
                       return _NotificationRow(
                         item: item,
                         marking: loaded.markingId == item.id,
                         onMarkRead: () => _markRead(context, item.id),
+                        onOpenTarget: articleTarget != null
+                            ? () => open(
+                                '/profile/view/${Uri.encodeComponent(articleTarget)}',
+                              )
+                            : followerTarget != null
+                            ? () => open(
+                                '/profile/author/${Uri.encodeComponent(followerTarget)}',
+                              )
+                            : null,
                         onOpenConversation: conversationId == null
                             ? null
                             : () => context.push(
@@ -251,6 +280,7 @@ class _NotificationRow extends StatelessWidget {
     required this.marking,
     required this.onMarkRead,
     this.onOpenConversation,
+    this.onOpenTarget,
   });
 
   final AppNotification item;
@@ -259,6 +289,7 @@ class _NotificationRow extends StatelessWidget {
 
   /// Set when this notification points at a conversation the app can open.
   final VoidCallback? onOpenConversation;
+  final VoidCallback? onOpenTarget;
 
   IconData get _icon => switch (item.kind) {
     AppNotificationKind.articleDeleted => Icons.delete_outline,
@@ -324,6 +355,20 @@ class _NotificationRow extends StatelessWidget {
                   formatDate(locale, item.createdAt),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+                if (onOpenTarget != null && item.articleTarget != null)
+                  Text(
+                    context.l10n.notificationsAddressMayChange,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                if (onOpenTarget != null)
+                  TextButton(
+                    onPressed: onOpenTarget,
+                    child: Text(
+                      item.articleTarget != null
+                          ? context.l10n.notificationsOpenArticleAddress
+                          : context.l10n.notificationsOpenFollower,
+                    ),
+                  ),
               ],
             ),
           ),
