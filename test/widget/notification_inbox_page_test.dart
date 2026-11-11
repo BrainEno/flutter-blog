@@ -40,6 +40,8 @@ class _Repository implements NotificationRepository {
   final cursors = <String?>[];
   List<AppNotification> rows = [];
   Failure? failure;
+  Completer<void>? markGate;
+  Completer<void>? markAllGate;
 
   @override
   Future<Either<Failure, NotificationPage>> list({
@@ -60,6 +62,7 @@ class _Repository implements NotificationRepository {
     required NowaveSessionFence fence,
   }) async {
     calls.add('markRead:$id');
+    if (markGate case final gate?) await gate.future;
     final updated = rows
         .firstWhere((row) => row.id == id)
         .markedRead(DateTime.utc(2026, 11, 5, 7));
@@ -75,6 +78,7 @@ class _Repository implements NotificationRepository {
     required NowaveSessionFence fence,
   }) async {
     calls.add('markAllRead');
+    if (markAllGate case final gate?) await gate.future;
     return right(rows.where((row) => !row.isRead).length);
   }
 
@@ -750,6 +754,149 @@ void main() {
       'cursor-newest',
     ]);
   });
+
+  testWidgets(
+    'pending single mark disables conflicting actions and stale callbacks',
+    (tester) async {
+      final harness = _Harness(
+        rows: [
+          _notification(),
+          _notification(id: 'notification-2'),
+        ],
+      );
+      addTearDown(harness.dispose);
+      await harness.pump(tester);
+      harness.settle();
+      await tester.pumpAndSettle();
+      final labels = lookupAppLocalizations(const Locale('en'));
+      final allFinder = find.widgetWithText(
+        TextButton,
+        labels.notificationsMarkAllRead,
+      );
+      final rowFinder = find.widgetWithText(
+        TextButton,
+        labels.notificationsMarkRead,
+      );
+      final staleAll = tester.widget<TextButton>(allFinder).onPressed!;
+      final staleSecond = tester
+          .widgetList<TextButton>(rowFinder)
+          .last
+          .onPressed!;
+      final gate = harness.repository.markGate = Completer<void>();
+      await tester.tap(rowFinder.first);
+      await tester.pump();
+      expect(tester.widget<TextButton>(allFinder).onPressed, isNull);
+      expect(
+        tester
+            .widgetList<TextButton>(rowFinder)
+            .every((button) => button.onPressed == null),
+        isTrue,
+      );
+      staleAll();
+      staleSecond();
+      await tester.pump();
+      expect(harness.repository.calls, ['list', 'markRead:notification-1']);
+      expect(find.text(labels.notificationsAllRead), findsNothing);
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(find.text(labels.notificationsMarkedRead), findsOneWidget);
+      expect(tester.widget<TextButton>(allFinder).onPressed, isNotNull);
+      expect(tester.widget<TextButton>(rowFinder).onPressed, isNotNull);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'pending mark-all disables single actions and rejects stale callbacks',
+    (tester) async {
+      final harness = _Harness(rows: [_notification()]);
+      addTearDown(harness.dispose);
+      await harness.pump(tester);
+      harness.settle();
+      await tester.pumpAndSettle();
+      final labels = lookupAppLocalizations(const Locale('en'));
+      final rowFinder = find.widgetWithText(
+        TextButton,
+        labels.notificationsMarkRead,
+      );
+      final staleRow = tester.widget<TextButton>(rowFinder).onPressed!;
+      final gate = harness.repository.markAllGate = Completer<void>();
+      await tester.tap(
+        find.widgetWithText(TextButton, labels.notificationsMarkAllRead),
+      );
+      await tester.pump();
+      expect(tester.widget<TextButton>(rowFinder).onPressed, isNull);
+      staleRow();
+      await tester.pump();
+      expect(harness.repository.calls, ['list', 'markAllRead']);
+      expect(find.text(labels.notificationsMarkedRead), findsNothing);
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(find.text(labels.notificationsAllRead), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('refresh disables row marking until it completes', (
+    tester,
+  ) async {
+    final harness = _Harness(rows: [_notification()]);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.settle();
+    await tester.pumpAndSettle();
+    final labels = lookupAppLocalizations(const Locale('en'));
+    final rowFinder = find.widgetWithText(
+      TextButton,
+      labels.notificationsMarkRead,
+    );
+    final staleRow = tester.widget<TextButton>(rowFinder).onPressed!;
+    final refreshing = harness.cubit.load(showLoading: false);
+    expect(
+      (harness.cubit.state as NotificationInboxLoaded).isRefreshing,
+      isTrue,
+    );
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextButton>(rowFinder).onPressed, isNull);
+    staleRow();
+    await tester.pump();
+    expect(harness.repository.calls, ['list', 'list']);
+    expect(find.text(labels.notificationsMarkedRead), findsNothing);
+    harness.settle();
+    await tester.pump();
+    await refreshing;
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextButton>(rowFinder).onPressed, isNotNull);
+  });
+
+  testWidgets(
+    'old mark completion cannot show success after an account switch',
+    (tester) async {
+      final harness = _Harness(rows: [_notification()]);
+      addTearDown(harness.dispose);
+      await harness.pump(tester);
+      harness.settle();
+      await tester.pumpAndSettle();
+      final gate = harness.repository.markGate = Completer<void>();
+      final labels = lookupAppLocalizations(const Locale('en'));
+      await tester.tap(
+        find.widgetWithText(TextButton, labels.notificationsMarkRead),
+      );
+      await tester.pump();
+      harness.identity.userId = 'user-b';
+      harness.identity.generation++;
+      harness.identity.controller.add(null);
+      await tester.pump();
+      harness.settle(
+        right(const NotificationPage(items: [], nextCursor: null)),
+      );
+      await tester.pumpAndSettle();
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(find.text(labels.notificationsMarkedRead), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('marks one row read and says so', (tester) async {
     final harness = _Harness(
