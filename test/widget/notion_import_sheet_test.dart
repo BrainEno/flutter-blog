@@ -31,6 +31,7 @@ class _Repo implements NotionImportRepository {
   final bundles = <NotionBundle>[];
   Completer<Either<Failure, NotionImportReport>>? pending;
   bool failApply = false;
+  NotionImportAction action = NotionImportAction.create;
   @override
   Future<Either<Failure, NotionImportReport>> submit({
     required NotionBundle bundle,
@@ -44,11 +45,11 @@ class _Repo implements NotionImportRepository {
     return right(
       NotionImportReport(
         applied: apply,
-        pages: const [
+        pages: [
           NotionImportPage(
             title: 'My page',
             locale: 'en',
-            action: NotionImportAction.create,
+            action: action,
             detail: 'detail',
             issues: [],
           ),
@@ -85,13 +86,17 @@ void main() {
     await identity.changes.close();
   });
 
-  Future<void> pumpSheet(WidgetTester tester) async {
+  Future<void> pumpSheet(
+    WidgetTester tester, {
+    Locale locale = const Locale('en'),
+  }) async {
     tester.view.physicalSize = const Size(1000, 2000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       MaterialApp(
+        locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
@@ -136,6 +141,105 @@ void main() {
       expect(find.text(l10n.notionImportConfirm), findsNothing);
     },
   );
+
+  testWidgets(
+    'version risk stays visible through confirmation in both languages',
+    (tester) async {
+      for (final locale in [const Locale('en'), const Locale('zh')]) {
+        await tester.pumpWidget(const SizedBox.shrink());
+        repo.calls.clear();
+        repo.action = locale.languageCode == 'en'
+            ? NotionImportAction.create
+            : NotionImportAction.update;
+        final labels = lookupAppLocalizations(locale);
+        await pumpSheet(tester, locale: locale);
+        await tester.enterText(find.byType(TextField), _input);
+        await tap(tester, labels.notionImportReadBundle);
+        await tap(tester, labels.notionImportSelectAll);
+        await tap(tester, labels.notionImportPreviewSelected);
+        expect(find.text(labels.notionImportVersionWarning), findsOneWidget);
+        expect(repo.calls, [false]);
+        await tap(tester, labels.notionImportReviewConfirm);
+        expect(find.text(labels.notionImportVersionWarning), findsOneWidget);
+        expect(find.text(labels.notionImportConfirm), findsOneWidget);
+        expect(repo.calls, [false]);
+        await tap(tester, labels.actionCancel);
+        expect(find.text(labels.notionImportVersionWarning), findsOneWidget);
+        expect(find.text(labels.notionImportConfirm), findsNothing);
+      }
+    },
+  );
+
+  testWidgets(
+    'refreshing a preview discards the old confirmation before the response',
+    (tester) async {
+      await pumpSheet(tester);
+      await tester.enterText(find.byType(TextField), _input);
+      await selectAll(tester);
+      await tap(tester, l10n.notionImportPreviewSelected);
+      await tap(tester, l10n.notionImportReviewConfirm);
+      repo.pending = Completer<Either<Failure, NotionImportReport>>();
+      await tester.ensureVisible(find.text(l10n.notionImportRefreshPreview));
+      await tester.tap(find.text(l10n.notionImportRefreshPreview));
+      await tester.pump();
+      expect(repo.calls, [false, false]);
+      expect(find.text(l10n.notionImportPlan), findsNothing);
+      expect(find.text(l10n.notionImportConfirm), findsNothing);
+      repo.pending!.complete(
+        right(
+          const NotionImportReport(
+            applied: false,
+            pages: [
+              NotionImportPage(
+                title: 'Changed plan',
+                locale: 'en',
+                action: NotionImportAction.update,
+                detail: '',
+                issues: [],
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.notionImportVersionWarning), findsOneWidget);
+      expect(find.text(l10n.notionImportConfirm), findsNothing);
+      expect(find.text(l10n.notionImportReviewConfirm), findsOneWidget);
+      expect(repo.calls, [false, false]);
+      await tap(tester, l10n.notionImportReviewConfirm);
+      expect(find.text(l10n.notionImportConfirm), findsOneWidget);
+    },
+  );
+
+  testWidgets('failed refresh never restores the old plan', (tester) async {
+    await pumpSheet(tester);
+    await tester.enterText(find.byType(TextField), _input);
+    await selectAll(tester);
+    await tap(tester, l10n.notionImportPreviewSelected);
+    await tap(tester, l10n.notionImportReviewConfirm);
+    repo.pending = Completer<Either<Failure, NotionImportReport>>();
+    await tester.ensureVisible(find.text(l10n.notionImportRefreshPreview));
+    await tester.tap(find.text(l10n.notionImportRefreshPreview));
+    await tester.pump();
+    repo.pending!.complete(left(Failure.timeout()));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.notionImportPlan), findsNothing);
+    expect(find.text(l10n.notionImportReviewConfirm), findsNothing);
+    expect(find.text(l10n.notionImportConfirm), findsNothing);
+    expect(repo.calls, [false, false]);
+  });
+
+  testWidgets('non-writable preview offers no confirmation', (tester) async {
+    repo.action = NotionImportAction.skip;
+    await pumpSheet(tester);
+    await tester.enterText(find.byType(TextField), _input);
+    await selectAll(tester);
+    await tap(tester, l10n.notionImportPreviewSelected);
+    expect(find.text(l10n.notionImportPlan), findsOneWidget);
+    expect(find.text(l10n.notionImportReviewConfirm), findsNothing);
+    expect(find.text(l10n.notionImportConfirm), findsNothing);
+    expect(repo.calls, [false]);
+  });
 
   testWidgets('editing the bundle invalidates its preview and confirmation', (
     tester,

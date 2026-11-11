@@ -211,6 +211,8 @@
   "notionImportSkip": "Skip",
   "notionImportRefused": "Refused",
   "notionImportFailed": "Failed",
+  "notionImportVersionWarning": "Preview does not lock targets or check whether they changed. Apply is planned again and can differ from this preview; edits made in other windows or devices may be overwritten. Back up and pause other editing before confirming. Preview again if needed, but concurrent changes can still be overwritten.",
+  "notionImportRefreshPreview": "Preview this selection again",
   "notionImportWarning": "Import may replace edits to previously imported articles. Published pages may be published. Check each page and its issues before continuing.",
   "notionImportReviewConfirm": "Review confirmation",
   "notionImportConfirmPrompt": "Import this exact bundle? A connection failure may leave some pages already written.",
