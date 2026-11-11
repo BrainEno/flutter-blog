@@ -12,6 +12,8 @@ import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_event.dart';
 import 'package:belog/features/blog/presentation/widgets/comments_section.dart';
+import 'package:belog/features/blog/presentation/comments/comment_tile.dart';
+import 'package:belog/features/blog/presentation/comments/comment_composer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -61,6 +63,7 @@ Future<void> _pumpSection(
   required CommentBloc commentBloc,
   Locale locale = const Locale('zh'),
   double textScale = 1,
+  double horizontalPadding = 0,
 }) {
   return tester.pumpWidget(
     MultiBlocProvider(
@@ -80,11 +83,14 @@ Future<void> _pumpSection(
                 ).copyWith(textScaler: TextScaler.linear(textScale)),
                 child: child!,
               ),
-        home: const Scaffold(
+        home: Scaffold(
           body: SingleChildScrollView(
-            child: CommentsSection(
-              slug: 'my-slug',
-              onOpenAuthor: _ignoreAuthor,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              child: const CommentsSection(
+                slug: 'my-slug',
+                onOpenAuthor: _ignoreAuthor,
+              ),
             ),
           ),
         ),
@@ -603,4 +609,94 @@ void main() {
     expect(find.text('同感'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+  for (final locale in [const Locale('en'), const Locale('zh')]) {
+    testWidgets(
+      'deep and legacy replies remain usable at 320dp and 2x in $locale',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        appUserCubit.updateUser(_user());
+
+        // Depth 12 also exercises threads created before the current write cap.
+        var thread = _comment(
+          'c12',
+          authorId: 'viewer-1',
+          content: 'deepest body',
+          parentId: 'c11',
+        );
+        for (var depth = 11; depth >= 0; depth--) {
+          thread = _comment(
+            'c$depth',
+            content: 'body $depth',
+            parentId: depth == 0 ? null : 'c${depth - 1}',
+            replies: [thread],
+          );
+        }
+        when(
+          () => getComments('my-slug'),
+        ).thenAnswer((_) async => right<Failure, CommentPage>(_page([thread])));
+        when(
+          () => deleteComment('c12'),
+        ).thenAnswer((_) async => right<Failure, void>(null));
+        final bloc = buildBloc();
+        addTearDown(bloc.close);
+        await _pumpSection(
+          tester,
+          appUserCubit: appUserCubit,
+          commentBloc: bloc,
+          locale: locale,
+          textScale: 2,
+          horizontalPadding: 16,
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.byType(CommentTile), findsNWidgets(13));
+        expect(find.text('deepest body'), findsOneWidget);
+        final leaf = find.byWidgetPredicate(
+          (widget) => widget is CommentTile && widget.comment.id == 'c12',
+        );
+        expect(tester.getSize(leaf).width, greaterThan(150));
+        final l10n = lookupAppLocalizations(locale);
+        final reply = find.descendant(
+          of: leaf,
+          matching: find.widgetWithText(TextButton, l10n.actionReply),
+        );
+        await tester.ensureVisible(reply);
+        await tester.pumpAndSettle();
+        expect(reply.hitTestable(), findsOneWidget);
+        await tester.tap(reply);
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<CommentComposer>(find.byType(CommentComposer))
+              .replyTo
+              ?.id,
+          'c12',
+        );
+        expect(tester.takeException(), isNull);
+
+        final delete = find.descendant(
+          of: leaf,
+          matching: find.widgetWithText(TextButton, l10n.actionDelete),
+        );
+        await tester.ensureVisible(delete);
+        await tester.pumpAndSettle();
+        expect(delete.hitTestable(), findsOneWidget);
+        await tester.tap(delete);
+        await tester.pumpAndSettle();
+        verifyNever(() => deleteComment(any()));
+        expect(find.text(l10n.commentDeleteTitle), findsOneWidget);
+        await tester.tap(
+          find.widgetWithText(TextButton, l10n.actionDelete).last,
+        );
+        await tester.pumpAndSettle();
+        verify(() => deleteComment('c12')).called(1);
+        expect(find.text('deepest body'), findsNothing);
+        expect(find.byType(CommentTile), findsNWidgets(12));
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 }
