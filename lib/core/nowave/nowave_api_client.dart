@@ -78,6 +78,9 @@ abstract interface class NowaveViewerAuthenticator
 /// Endpoint details verified against the no-wave `apps/api` source:
 /// see docs/supabase-to-nowave-migration.md.
 class NowaveApiClient {
+  /// Notion imports can copy remote images and need longer than ordinary JSON.
+  static const notionImportTimeout = Duration(minutes: 2);
+
   NowaveApiClient({
     required Uri baseUrl,
     NowaveAuthenticator? authenticator,
@@ -293,6 +296,7 @@ class NowaveApiClient {
     Object? body, {
     required String expectedUserId,
     required int expectedSessionGeneration,
+    Duration? timeout,
   }) async {
     final auth = _authenticator;
     bool matches() =>
@@ -320,6 +324,11 @@ class NowaveApiClient {
         body: body,
         allowRefresh: false,
         followRedirects: false,
+        timeout: timeout,
+        sessionFence: NowaveSessionFence(
+          userId: expectedUserId,
+          generation: expectedSessionGeneration,
+        ),
       );
     } finally {
       // The request may have reached the server even on a transport error.

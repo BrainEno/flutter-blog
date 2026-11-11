@@ -8,6 +8,7 @@ import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
@@ -103,6 +104,15 @@ class _Catalog implements CategoryRepository {
 
 class _MockMediaUserRepository extends Mock implements UserRepository {}
 
+class _NotionRepository implements NotionImportRepository {
+  @override
+  Future<Either<Failure, NotionImportReport>> submit({
+    required NotionBundle bundle,
+    required bool apply,
+    required NowaveSessionFence sessionFence,
+  }) async => right(NotionImportReport(applied: apply, pages: const []));
+}
+
 class _RecordingUploadBloc extends Mock implements BlogUploadBloc {
   _RecordingUploadBloc(this.states);
 
@@ -127,6 +137,7 @@ class _Harness {
     ImageUpload? cover,
     this.getCategories,
     this.getUserMediaLibraryPage,
+    this.notionImportRepository,
   }) : queue = FakePublishQueueStore(rows: rows, storedCover: cover),
        drafts = _FakeDraftStore() {
     identity = _Identity();
@@ -148,6 +159,7 @@ class _Harness {
   final Blog? blog;
   final GetCategories? getCategories;
   final GetUserMediaLibraryPage? getUserMediaLibraryPage;
+  final NotionImportRepository? notionImportRepository;
   final FakePublishQueueStore queue;
   final _FakeDraftStore drafts;
   late final _Identity identity;
@@ -176,6 +188,7 @@ class _Harness {
             publishQueueDrainer: drainer,
             getCategories: getCategories,
             getUserMediaLibraryPage: getUserMediaLibraryPage,
+            notionImportRepository: notionImportRepository,
           ),
         ),
       ),
@@ -413,6 +426,45 @@ void main() {
       'cat-1',
       'cat-2',
     ]);
+  });
+
+  testWidgets('Notion import is reachable without changing the editor draft', (
+    tester,
+  ) async {
+    final harness = _Harness(notionImportRepository: _NotionRepository());
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.enterText(find.byType(TextFormField).first, 'Existing draft');
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    final l10n = lookupAppLocalizations(const Locale('zh'));
+    await tester.tap(find.text(l10n.notionImportTitle));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.notionImportInput), findsOneWidget);
+    await tester.tap(find.byTooltip('关闭'));
+    await tester.pumpAndSettle();
+    expect(find.text('Existing draft'), findsOneWidget);
+    expect(harness.bloc.events, isEmpty);
+  });
+
+  testWidgets('a session change dismisses an open Notion import sheet', (
+    tester,
+  ) async {
+    final harness = _Harness(notionImportRepository: _NotionRepository());
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    final l10n = lookupAppLocalizations(const Locale('zh'));
+    await tester.tap(find.text(l10n.notionImportTitle));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.notionImportInput), findsOneWidget);
+    harness.identity.userId = null;
+    harness.identity.controller.add(null);
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.notionImportInput), findsNothing);
+    expect(find.text(l10n.editorSessionChanged), findsOneWidget);
   });
 
   testWidgets('a selected media-library cover is sent and retained when queued', (
