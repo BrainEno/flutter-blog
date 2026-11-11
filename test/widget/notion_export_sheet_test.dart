@@ -77,13 +77,17 @@ void main() {
     await userCubit.close();
     await identity.changes.close();
   });
-  Future<void> pumpSheet(WidgetTester tester) async {
+  Future<void> pumpSheet(
+    WidgetTester tester, {
+    Locale locale = const Locale('en'),
+  }) async {
     tester.view.physicalSize = const Size(1000, 2000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       MaterialApp(
+        locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
@@ -130,6 +134,66 @@ void main() {
       expect(find.text(l10n.notionExportCopied), findsOneWidget);
     },
   );
+  testWidgets(
+    'explains known losses and handles unknown codes safely in both languages',
+    (tester) async {
+      repo.result = const NotionExportResult(
+        missing: false,
+        bundleJson: 'private bundle',
+        issues: [
+          'translation-locale-not-carried',
+          'work-type-not-carried',
+          'future-issue',
+          'https://example.invalid/private?token=secret',
+        ],
+        editions: [
+          NotionExportEdition(
+            locale: 'en',
+            fromNotion: false,
+            issues: ['unsupported-block'],
+          ),
+        ],
+      );
+      for (final locale in [const Locale('en'), const Locale('zh')]) {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpSheet(tester, locale: locale);
+        final labels = lookupAppLocalizations(locale);
+        await tap(tester, labels.notionExportLoad);
+        expect(find.text(labels.notionExportIssueTranslation), findsOneWidget);
+        expect(find.text(labels.notionExportIssueWorkType), findsOneWidget);
+        expect(find.text(labels.notionExportIssueBlock), findsOneWidget);
+        expect(find.text(labels.notionExportIssueUnknown), findsNWidgets(2));
+        expect(find.text('future-issue'), findsOneWidget);
+        expect(
+          find.text(labels.notionExportIssueUnrecognizedCode),
+          findsOneWidget,
+        );
+        expect(
+          find.text('https://example.invalid/private?token=secret'),
+          findsNothing,
+        );
+        expect(copies, isEmpty);
+      }
+    },
+  );
+
+  testWidgets('no reported issues is not presented as a lossless guarantee', (
+    tester,
+  ) async {
+    repo.result = const NotionExportResult(
+      missing: false,
+      bundleJson: 'private bundle',
+      issues: [],
+      editions: [
+        NotionExportEdition(locale: 'en', fromNotion: true, issues: []),
+      ],
+    );
+    await pumpSheet(tester);
+    await tap(tester, l10n.notionExportLoad);
+    expect(find.text(l10n.notionExportNoIssues), findsOneWidget);
+    expect(copies, isEmpty);
+  });
+
   testWidgets('missing work offers no copy', (tester) async {
     repo.result = const NotionExportResult(
       missing: true,
