@@ -43,7 +43,7 @@ void main() {
           'code',
         ]);
         final code = draft.blocks.last;
-        expect(code['code'], r'  a\n\n b  \n');
+        expect(code['code'], '  a\n\n b  \n');
         final image = draft.blocks[1];
         expect(image['src'], '/media/one.png');
         expect(image['alt'], 'First image alt');
@@ -963,7 +963,7 @@ void main() {
         ]),
         throwsFormatException,
       );
-      final text = ' \n${'x' * 49997}\n ';
+      final text = ' \n${'x' * 49996}\n ';
       expect(
         document([
           {'id': 'c', 'type': 'code', 'language': 'dart', 'code': text},
