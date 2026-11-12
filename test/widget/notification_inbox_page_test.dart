@@ -222,7 +222,9 @@ void main() {
           addTearDown(harness.dispose);
           await harness.pump(tester, locale: locale);
           final label = lookupAppLocalizations(locale).notificationsRefresh;
-          final refresh = find.byTooltip(label);
+          final refresh = find.byWidgetPredicate(
+            (widget) => widget is IconButton && widget.tooltip == label,
+          );
           expect(tester.widget<IconButton>(refresh).onPressed, isNull);
           harness.settle();
           await tester.pumpAndSettle();
@@ -267,8 +269,11 @@ void main() {
     await harness.pump(tester);
     harness.settle();
     await tester.pumpAndSettle();
-    final refresh = find.byTooltip(
-      lookupAppLocalizations(const Locale('en')).notificationsRefresh,
+    final label = lookupAppLocalizations(
+      const Locale('en'),
+    ).notificationsRefresh;
+    final refresh = find.byWidgetPredicate(
+      (widget) => widget is IconButton && widget.tooltip == label,
     );
     final stale = tester.widget<IconButton>(refresh).onPressed!;
     harness.identity.userId = 'user-b';
