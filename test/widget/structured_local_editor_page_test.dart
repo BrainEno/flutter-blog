@@ -614,23 +614,18 @@ void main() {
   ) async {
     h.store.createGate = Completer<void>();
     await _open(tester, h);
-    debugPrint('BG opened');
     await _tapVisible(tester, find.byTooltip('Move block down').first);
-    debugPrint('BG tapped started=${h.store.createStarted.isCompleted}');
     await h.store.createStarted.future;
-    debugPrint('BG started');
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
-    debugPrint('BG inactive');
     h.store.createGate!.complete();
-    debugPrint('BG released');
+    // Inactive disables scheduled frames, so resume before asking the widget
+    // binding to settle. The admitted save remains pending across the switch.
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     // Drive the fake clock before awaiting the writer: its continuation was
     // admitted from a widget callback in the fake-async zone.
     await tester.pumpAndSettle();
-    debugPrint('BG pumped');
     expect(await h.session.flush(), LocalStructuredFlushResult.saved);
-    debugPrint('BG flushed');
     expect((await h.inner.load(_key))!.body.blocks.first['id'], 'image-one');
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
   });
 
   testWidgets('single remaining block cannot be removed', (tester) async {
