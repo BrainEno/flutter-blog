@@ -183,6 +183,18 @@ class _Harness {
   }
 
   Future<void> dispose() async {
+    // Release controlled operations even when an assertion fails. Otherwise
+    // teardown can wait forever for a gate the failed test never reached.
+    final createGate = store.createGate;
+    if (createGate != null && !createGate.isCompleted) createGate.complete();
+    final pendingRead = reader.pending;
+    if (pendingRead != null && !pendingRead.isCompleted) {
+      pendingRead.complete(
+        const StructuredEditionReadResult.failed(
+          StructuredEditionReadStatus.unavailable,
+        ),
+      );
+    }
     await session.close(abandonUnsaved: true);
     await identity.events.close();
     await db.close();
