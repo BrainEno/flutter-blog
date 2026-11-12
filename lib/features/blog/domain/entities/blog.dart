@@ -13,6 +13,12 @@ class Blog {
   /// is only needed for update requests.
   final String id;
 
+  /// Stable server work ID when the source can prove it. This is not the
+  /// public slug and is never an authorization claim. Older/unknown sources
+  /// leave it null; authoring must additionally validate owner and locale and
+  /// fetch the exact edition under the current session fence.
+  String? get authoringArticleId => null;
+
   final String title;
   final String content;
 

@@ -83,13 +83,14 @@ read is not a server-side compare-and-swap or concurrency guarantee.
 
 ## Local-only session coordinator
 
-`LocalStructuredSession` is an isolated domain component, not an editor screen
-or a remote-write path. The existing author list's domain `Blog.id` is a slug,
-not the stable article ID (the latter currently lives in the data model), and
-its content is a lossy reading projection. A future UI needs a domain-level
-exact edition identity before it can safely open this coordinator; it must not
-import the data model or use a slug as a recovery key. Existing Markdown editor,
-router, write guards and publish queue are unchanged.
+`LocalStructuredSession` is a domain component, not a remote-write path. The
+“My articles” list now exposes a distinct optional stable article ID through
+its domain model; the public `Blog.id` remains the slug. A structured row opens
+a limited local-only screen only when owner, live session, stable ID and exact
+locale agree. It re-reads the edition with the account fence rather than using
+the list's flattened body. Missing identity is refused, never replaced with a
+slug or current content language. Existing Markdown editor, router, write guards
+and publish queue are unchanged.
 
 The coordinator opens the exact owner/edition and requires an explicit choice
 when a local recovery exists. Cancel does not delete it; confirmed discard uses
@@ -127,3 +128,30 @@ limits each locale to 100 without an offset, and article writes still have no
 atomic compare-and-swap precondition. No schema migration or server write is
 introduced here. Widget accessibility, real devices, production server and
 signing remain unverified until a user-facing editor exists and is tested.
+
+
+## First local-only screen
+
+The first screen can move or explicitly remove a validated block and toggle
+bold on the first run of v1 text/list blocks. Actions save only to local
+recovery; all other content and fields remain intact, including image alt and
+caption, other runs, links and block IDs. It offers no publishing, text entry,
+image editing or general formatting controls. The restriction is deliberate:
+the validated document rejects empty and other intermediate input, and the
+current recovery schema has no durable place for that in-progress text. A
+future text editor must preserve such buffers safely across failure and account
+changes rather than silently discarding them.
+
+Recovery requires a choice and discard confirmation. A stale discard or local
+CAS conflict never overwrites another editor. Failed in-memory edits block an
+ordinary back action, with an explicit warning before abandonment. A session
+identity change hides the old article and prevents new operations. The author
+list itself still requires a network read, so recovery is available offline only
+when an appropriate author-list entry is already reachable; there is not yet a
+standalone offline recovery browser. Forced route disposal, process death or a
+storage failure can still lose edits that have not reached SQLite. True device,
+screen-reader and deployed-backend validation remain outstanding.
+
+Upstream was re-audited at `e6ee92cfe2492e7fa254ace444396c894fdbdf6b`:
+the authenticated author list is still limited per locale and article writes
+still do not offer an atomic compare-and-swap precondition.

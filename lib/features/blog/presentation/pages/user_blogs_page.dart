@@ -9,6 +9,12 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/article_editions.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/features/blog/domain/editing/local_structured_session.dart';
+import 'package:belog/features/blog/domain/editing/structured_authoring_key.dart';
+import 'package:belog/features/blog/domain/usecase/open_structured_editing_session.dart';
+import 'package:belog/features/blog/presentation/editor/structured_local_editor_page.dart';
+import 'package:get_it/get_it.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_grid_item.dart';
@@ -18,7 +24,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 class UserBlogsPage extends StatefulWidget {
-  const UserBlogsPage({super.key});
+  const UserBlogsPage({super.key, this.structuredOpener});
+
+  /// Override only for tests; production uses the shared backend/session.
+  final OpenStructuredEditingSession? structuredOpener;
 
   @override
   State<UserBlogsPage> createState() => _UserBlogsPageState();
@@ -32,6 +41,7 @@ class _UserBlogsPageState extends State<UserBlogsPage>
   /// what most readers of their own archive expect. Turning it on is how an
   /// author finds the `en` or legacy `zh-TW` edition they meant to edit.
   bool _allEditions = false;
+  bool _structuredOpen = false;
 
   @override
   void initState() {
@@ -74,8 +84,44 @@ class _UserBlogsPageState extends State<UserBlogsPage>
   }
 
   Future<void> _editBlog(Blog blog) async {
-    // The editor pops with `true` when the article was changed; refresh the
-    // list only in that case.
+    if (blog.document != null) {
+      if (_structuredOpen) return;
+      final opener =
+          widget.structuredOpener ?? GetIt.I<OpenStructuredEditingSession>();
+      final user = context.read<AppUserCubit>().state;
+      final key = user is AppUserLoggedIn
+          ? structuredAuthoringKey(
+              blog: blog,
+              signedInUserId: user.user.id,
+              identity: opener.identity,
+            )
+          : null;
+      if (key == null) {
+        showSnackBar(context, context.l10n.structuredMissingIdentity);
+        return;
+      }
+      final session = LocalStructuredSession(
+        key: key,
+        fence: NowaveSessionFence(
+          userId: key.userId,
+          generation: opener.identity.sessionGeneration,
+        ),
+        opener: opener,
+      );
+      _structuredOpen = true;
+      try {
+        await Navigator.of(context).push<void>(
+          MaterialPageRoute<void>(
+            builder: (_) => StructuredLocalEditorPage(session: session),
+          ),
+        );
+      } finally {
+        _structuredOpen = false;
+      }
+      // Local changes were not published and do not change the server list.
+      return;
+    }
+    // The ordinary Markdown path and its publish safeguards stay unchanged.
     final changed = await context.push<bool>('/profile/editor', extra: blog);
     if (changed == true && mounted) {
       _fetchUserBlogs();
