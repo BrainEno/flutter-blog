@@ -1,0 +1,41 @@
+name: Temporary structured test diagnostics
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    name: diagnostic / ${{ matrix.suite }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [unit/blog/structured_authoring_key_test.dart, widget/structured_authoring_entry_test.dart, widget/structured_local_editor_page_test.dart]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          channel: stable
+          flutter-version: '3.47.8'
+          cache: true
+          pub-cache: true
+      - run: flutter pub get
+      - name: Run targeted test with bounded diagnostics
+        shell: bash
+        env:
+          TEST_SUITE: ${{ matrix.suite }}
+          BELOG_QA_BUILD: 'true'
+        run: |
+          set +e
+          timeout --kill-after=5s 150s flutter test "test/$TEST_SUITE" --reporter expanded > /tmp/diagnostic.log 2>&1
+          code=$?
+          cat /tmp/diagnostic.log
+          python3 - "$code" <<'PY'
+          import sys
+          lines = open('/tmp/diagnostic.log', errors='replace').read().splitlines()
+          text = ('exit=' + sys.argv[1] + '\n' + '\n'.join(lines[-35:]))[-3500:]
+          text = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print('::error::' + text)
+          PY
+          exit "$code"
