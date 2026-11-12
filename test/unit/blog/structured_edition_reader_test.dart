@@ -372,6 +372,7 @@ void main() {
               'data': [_article()],
             }),
             200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
           );
         });
         expect(
@@ -445,6 +446,7 @@ void main() {
             'data': [_article()],
           }),
           200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
         ),
       );
       expect((await result).status, StructuredEditionReadStatus.sessionChanged);
