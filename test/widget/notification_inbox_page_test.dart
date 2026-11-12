@@ -13,6 +13,7 @@ import 'package:belog/features/notifications/presentation/bloc/notification_inbo
 import 'package:belog/features/notifications/presentation/pages/notification_inbox_page.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:go_router/go_router.dart';
@@ -228,7 +229,12 @@ void main() {
           expect(tester.widget<IconButton>(refresh).onPressed, isNull);
           harness.settle();
           await tester.pumpAndSettle();
-          expect(find.bySemanticsLabel(label), findsOneWidget);
+          final semantics = tester
+              .getSemantics(find.byTooltip(label))
+              .getSemanticsData();
+          expect(semantics.tooltip, label);
+          expect(semantics.flagsCollection.isButton, isTrue);
+          expect(semantics.hasAction(SemanticsAction.tap), isTrue);
           final stale = tester.widget<IconButton>(refresh).onPressed!;
 
           final gate = harness.repository.markGate = Completer<void>();
