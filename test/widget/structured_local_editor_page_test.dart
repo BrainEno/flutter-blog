@@ -356,13 +356,8 @@ void main() {
     await tester.pumpAndSettle();
     final saved = (await h.inner.load(_key))!;
     expect(saved.body.blocks[1]['id'], 'image-two');
-    for (
-      var i = 0;
-      i < 20 && find.text('Open test editor').evaluate().isEmpty;
-      i++
-    ) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pumpAndSettle();
     debugPrint(
       'DIAG cancel phase=${h.session.state.phase} editor=${find.byType(StructuredLocalEditorPage).evaluate().length}',
     );
@@ -578,7 +573,13 @@ void main() {
       debugPrint('DIAG conflict seed complete');
       h.store.createGate!.complete();
       debugPrint('DIAG conflict gate released');
-      expect(await h.session.flush(), LocalStructuredFlushResult.conflict);
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump();
+      debugPrint('DIAG conflict pump done phase=${h.session.state.phase}');
+      final result = await tester.runAsync(
+        () => h.session.flush().timeout(const Duration(seconds: 3)),
+      );
+      expect(result, LocalStructuredFlushResult.conflict);
       debugPrint('DIAG conflict flushed');
       await tester.pumpAndSettle();
       expect(
