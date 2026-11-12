@@ -80,3 +80,50 @@ The caller must fence its own route/edit generation when applying results, and
 use the local revision token when subsequently saving or discarding. Local read
 failure blocks automatic initialization from a remote response. A successful
 read is not a server-side compare-and-swap or concurrency guarantee.
+
+## Local-only session coordinator
+
+`LocalStructuredSession` is an isolated domain component, not an editor screen
+or a remote-write path. The existing author list's domain `Blog.id` is a slug,
+not the stable article ID (the latter currently lives in the data model), and
+its content is a lossy reading projection. A future UI needs a domain-level
+exact edition identity before it can safely open this coordinator; it must not
+import the data model or use a slug as a recovery key. Existing Markdown editor,
+router, write guards and publish queue are unchanged.
+
+The coordinator opens the exact owner/edition and requires an explicit choice
+when a local recovery exists. Cancel does not delete it; confirmed discard uses
+its exact local CAS token. A stale or failed discard never replaces another
+editor's row. Offline, unsupported and incomplete remote responses can still
+leave an existing local session recoverable; they never become a blank article.
+Base comparisons are advisory, including when represented fields match. Unknown
+metadata, an unknown cover, future fields and unobserved changes cannot prove
+that the server did not change.
+
+Each accepted edit is an immutable validated structured snapshot. Saves are
+serialized, coalescing later edits behind an in-flight write, and retain the
+original base; first creation and subsequent updates use the store's atomic
+create-or-CAS operations. A storage error retains the latest pending edit in
+memory for an explicit retry; a CAS conflict stops writes rather than rebasing
+or overwriting another editor. Consumers must surface these states and keep the
+session open, not claim a successful save. `flush` reports durability only when
+the local operation completed; `close` waits for admitted writes and refuses
+unsaved failure unless the caller explicitly acknowledges abandonment. That
+acknowledgement never deletes the previously persisted row.
+
+An identity or generation change invalidates the public state immediately.
+Writes admitted before the change may complete only in the captured original
+backend/account/article/locale namespace, including edits queued behind an
+in-flight save; new edits are rejected. A failed write during sign-out remains
+pending and `close` refuses silent abandonment. Already delivered snapshots
+cannot be revoked: UI consumers must clear their own references on identity
+changes. A process kill, database failure or explicitly abandoned in-memory
+edit can still lose changes that did not reach SQLite. Existing recovery data
+is not encrypted by this component.
+
+Upstream no-wave main was re-audited at
+`e54e10930f2999fad8fe65aadcdeea435278ded7`: the authoring REST list still
+limits each locale to 100 without an offset, and article writes still have no
+atomic compare-and-swap precondition. No schema migration or server write is
+introduced here. Widget accessibility, real devices, production server and
+signing remain unverified until a user-facing editor exists and is tested.
