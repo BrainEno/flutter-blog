@@ -42,6 +42,8 @@ class _Repository implements NotificationRepository {
   final cursors = <String?>[];
   List<AppNotification> rows = [];
   Failure? failure;
+  Failure? markFailure;
+  Failure? markAllFailure;
   Completer<void>? markGate;
   Completer<void>? markAllGate;
 
@@ -65,6 +67,7 @@ class _Repository implements NotificationRepository {
   }) async {
     calls.add('markRead:$id');
     if (markGate case final gate?) await gate.future;
+    if (markFailure case final failure?) return left(failure);
     final updated = rows
         .firstWhere((row) => row.id == id)
         .markedRead(DateTime.utc(2026, 11, 5, 7));
@@ -81,6 +84,7 @@ class _Repository implements NotificationRepository {
   }) async {
     calls.add('markAllRead');
     if (markAllGate case final gate?) await gate.future;
+    if (markAllFailure case final failure?) return left(failure);
     return right(rows.where((row) => !row.isRead).length);
   }
 
@@ -1179,6 +1183,263 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  for (final locale in [const Locale('en'), const Locale('zh')]) {
+    for (final all in [false, true]) {
+      for (final failure in [
+        const Failure(
+          'private detail',
+          kind: FailureKind.network,
+          code: 'network.unavailable',
+        ),
+        const Failure(
+          'private detail',
+          kind: FailureKind.timeout,
+          code: 'network.timeout',
+        ),
+        const Failure(
+          'private detail',
+          kind: FailureKind.validation,
+          code: 'client.parse',
+        ),
+        const Failure(
+          'private detail',
+          kind: FailureKind.auth,
+          code: 'auth.sessionChanged',
+        ),
+        const Failure(
+          'private detail',
+          kind: FailureKind.validation,
+          code: 'server.parse',
+        ),
+        const Failure(
+          'private detail',
+          kind: FailureKind.server,
+          code: 'server.error',
+        ),
+        const Failure(
+          'private detail',
+          kind: FailureKind.server,
+          code: 'server.SERVICE_UNAVAILABLE',
+        ),
+        const Failure(
+          'private detail',
+          kind: FailureKind.unknown,
+          code: 'unknown',
+        ),
+      ]) {
+        testWidgets('unconfirmed mark ($all) ${failure.code} in $locale', (
+          tester,
+        ) async {
+          final harness = _Harness(rows: [_notification()]);
+          harness.repository.markFailure = failure;
+          harness.repository.markAllFailure = failure;
+          addTearDown(harness.dispose);
+          await harness.pump(tester, locale: locale);
+          harness.settle();
+          await tester.pumpAndSettle();
+          final l10n = lookupAppLocalizations(locale);
+          await tester.tap(
+            find.widgetWithText(
+              TextButton,
+              all ? l10n.notificationsMarkAllRead : l10n.notificationsMarkRead,
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(
+            find.text(l10n.notificationsReadOutcomeUnknown),
+            findsOneWidget,
+          );
+          expect(find.text(l10n.notificationsMarkedRead), findsNothing);
+          expect(find.text(l10n.notificationsAllRead), findsNothing);
+          expect(find.text('private detail'), findsNothing);
+          expect(harness.repository.rows.single.isRead, isFalse);
+          expect(
+            (harness.cubit.state as NotificationInboxLoaded).unreadCount,
+            1,
+          );
+          expect(harness.repository.calls, [
+            'list',
+            all ? 'markAllRead' : 'markRead:notification-1',
+          ]);
+          expect(tester.takeException(), isNull);
+        });
+      }
+      for (final failure in [
+        const Failure(
+          'private detail',
+          kind: FailureKind.auth,
+          code: 'server.UNAUTHENTICATED',
+        ),
+        const Failure(
+          'private detail',
+          kind: FailureKind.server,
+          code: 'server.RATE_LIMITED',
+        ),
+        const Failure(
+          'private detail',
+          kind: FailureKind.permission,
+          code: 'server.FORBIDDEN',
+        ),
+      ]) {
+        testWidgets('definitive mark error ($all) ${failure.code} in $locale', (
+          tester,
+        ) async {
+          final harness = _Harness(rows: [_notification()]);
+          harness.repository.markFailure = failure;
+          harness.repository.markAllFailure = failure;
+          addTearDown(harness.dispose);
+          await harness.pump(tester, locale: locale);
+          harness.settle();
+          await tester.pumpAndSettle();
+          final l10n = lookupAppLocalizations(locale);
+          await tester.tap(
+            find.widgetWithText(
+              TextButton,
+              all ? l10n.notificationsMarkAllRead : l10n.notificationsMarkRead,
+            ),
+          );
+          await tester.pumpAndSettle();
+          final expected = switch (failure.code) {
+            'server.UNAUTHENTICATED' => l10n.errorAuthExpired,
+            'server.RATE_LIMITED' => l10n.errorRateLimited,
+            _ => l10n.errorPermission,
+          };
+          expect(find.text(expected), findsOneWidget);
+          expect(find.text(l10n.notificationsReadOutcomeUnknown), findsNothing);
+          expect(find.text('private detail'), findsNothing);
+          expect(
+            (harness.cubit.state as NotificationInboxLoaded).unreadCount,
+            1,
+          );
+        });
+      }
+    }
+  }
+
+  for (final locale in [const Locale('en'), const Locale('zh')]) {
+    testWidgets(
+      'unconfirmed result is readable at 320dp with 2x text: $locale',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final harness = _Harness(rows: [_notification()]);
+        harness.repository.markFailure = const Failure(
+          'offline',
+          kind: FailureKind.network,
+          code: 'network.unavailable',
+        );
+        addTearDown(harness.dispose);
+        await harness.pump(tester, locale: locale, textScale: 2);
+        harness.settle();
+        await tester.pumpAndSettle();
+        final labels = lookupAppLocalizations(locale);
+        final mark = find.widgetWithText(
+          TextButton,
+          labels.notificationsMarkRead,
+        );
+        await tester.ensureVisible(mark);
+        await tester.pumpAndSettle();
+        await tester.tap(mark);
+        await tester.pumpAndSettle();
+        expect(
+          find.text(labels.notificationsReadOutcomeUnknown),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets('a later list refresh can confirm an uncertain mark', (
+    tester,
+  ) async {
+    final harness = _Harness(rows: [_notification()]);
+    harness.repository.markFailure = const Failure(
+      'offline',
+      kind: FailureKind.network,
+      code: 'network.unavailable',
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.settle();
+    await tester.pumpAndSettle();
+    final labels = lookupAppLocalizations(const Locale('en'));
+    await tester.tap(
+      find.widgetWithText(TextButton, labels.notificationsMarkRead),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(labels.notificationsReadOutcomeUnknown), findsOneWidget);
+    expect((harness.cubit.state as NotificationInboxLoaded).unreadCount, 1);
+
+    // The server may have committed even though the write response was lost.
+    harness.repository.rows = [
+      harness.repository.rows.single.markedRead(DateTime.utc(2026)),
+    ];
+    unawaited(harness.cubit.load(showLoading: false));
+    harness.settle();
+    await tester.pumpAndSettle();
+    expect((harness.cubit.state as NotificationInboxLoaded).unreadCount, 0);
+    expect(find.text(labels.notificationsMarkRead), findsNothing);
+    expect(harness.repository.calls, [
+      'list',
+      'markRead:notification-1',
+      'list',
+    ]);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final all in [false, true]) {
+    testWidgets(
+      'an unconfirmed mark ($all) cannot notify a replacement account',
+      (tester) async {
+        final harness = _Harness(rows: [_notification()]);
+        final gate = Completer<void>();
+        final failure = const Failure(
+          'offline',
+          kind: FailureKind.network,
+          code: 'network.unavailable',
+        );
+        if (all) {
+          harness.repository.markAllGate = gate;
+          harness.repository.markAllFailure = failure;
+        } else {
+          harness.repository.markGate = gate;
+          harness.repository.markFailure = failure;
+        }
+        addTearDown(harness.dispose);
+        await harness.pump(tester);
+        harness.settle();
+        await tester.pumpAndSettle();
+        final labels = lookupAppLocalizations(const Locale('en'));
+        await tester.tap(
+          find.widgetWithText(
+            TextButton,
+            all
+                ? labels.notificationsMarkAllRead
+                : labels.notificationsMarkRead,
+          ),
+        );
+        await tester.pump();
+        harness.identity.userId = 'user-b';
+        harness.identity.generation++;
+        harness.identity.controller.add(null);
+        await tester.pump();
+        harness.settle(
+          right(const NotificationPage(items: [], nextCursor: null)),
+        );
+        await tester.pumpAndSettle();
+        gate.complete();
+        await tester.pumpAndSettle();
+        expect(find.text(labels.notificationsReadOutcomeUnknown), findsNothing);
+        expect(find.text(labels.notificationsMarkedRead), findsNothing);
+        expect(find.text(labels.notificationsAllRead), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   testWidgets('marks one row read and says so', (tester) async {
     final harness = _Harness(
