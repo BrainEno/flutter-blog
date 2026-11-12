@@ -28,14 +28,15 @@ jobs:
           BELOG_QA_BUILD: 'true'
         run: |
           set +e
-          timeout --kill-after=5s 150s flutter test "test/$TEST_SUITE" --reporter expanded > /tmp/diagnostic.log 2>&1
+          timeout --kill-after=5s 35s flutter test "test/$TEST_SUITE" --reporter expanded > /tmp/diagnostic.log 2>&1
           code=$?
           cat /tmp/diagnostic.log
           python3 - "$code" <<'PY'
           import sys
-          lines = open('/tmp/diagnostic.log', errors='replace').read().splitlines()
-          text = ('exit=' + sys.argv[1] + '\n' + '\n'.join(lines[-35:]))[-3500:]
-          text = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-          print('::error::' + text)
+          log = open('/tmp/diagnostic.log', errors='replace').read()
+          print('::notice::exit=' + sys.argv[1])
+          for start in range(0, len(log), 3000):
+              text = log[start:start+3000].replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print('::warning::chunk ' + str(start // 3000) + ' ' + text)
           PY
           exit "$code"
