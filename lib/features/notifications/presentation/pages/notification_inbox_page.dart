@@ -56,6 +56,25 @@ class _NotificationInboxView extends StatelessWidget {
       inbox.identity.sessionGeneration == generation &&
       (inbox.identity.accessToken?.isNotEmpty ?? false);
 
+  String _markFailureText(BuildContext context, Failure failure) {
+    // A write may have reached the server even when its response is lost,
+    // malformed, or a server error. Avoid presenting that as a definite undo.
+    const uncertainCodes = {
+      'auth.sessionChanged',
+      'client.parse',
+      'server.parse',
+      'server.error',
+      'server.SERVICE_UNAVAILABLE',
+    };
+    if (failure.kind == FailureKind.network ||
+        failure.kind == FailureKind.timeout ||
+        failure.kind == FailureKind.unknown ||
+        uncertainCodes.contains(failure.code)) {
+      return context.l10n.notificationsReadOutcomeUnknown;
+    }
+    return localizedFailure(context.l10n, failure);
+  }
+
   Future<void> _markRead(
     BuildContext context,
     NotificationInboxLoaded expected,
@@ -72,7 +91,7 @@ class _NotificationInboxView extends StatelessWidget {
     if (!context.mounted || !_sameSession(inbox, userId, generation)) return;
     final message = failure == null
         ? context.l10n.notificationsMarkedRead
-        : localizedFailure(context.l10n, failure);
+        : _markFailureText(context, failure);
     showSnackBar(context, message);
   }
 
@@ -90,7 +109,7 @@ class _NotificationInboxView extends StatelessWidget {
     final failure = await inbox.markAllRead();
     if (!context.mounted || !_sameSession(inbox, userId, generation)) return;
     if (failure != null) {
-      showSnackBar(context, localizedFailure(context.l10n, failure));
+      showSnackBar(context, _markFailureText(context, failure));
       return;
     }
     showSnackBar(context, context.l10n.notificationsAllRead);

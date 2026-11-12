@@ -73,7 +73,11 @@ class NotificationRepositoryImpl implements NotificationRepository {
         null,
         sessionFence: fence,
       );
-      return right(notificationFromRow(data));
+      final updated = notificationFromRow(data);
+      if (updated.id != id || !updated.isRead) {
+        throw const FormatException('Invalid mark-read response');
+      }
+      return right(updated);
     } catch (error) {
       return left(_failureOf(error));
     }
@@ -89,7 +93,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
         null,
         sessionFence: fence,
       );
-      if (data is! int) {
+      if (data is! int || data < 0) {
         throw const FormatException('Invalid read-all response');
       }
       return right(data);

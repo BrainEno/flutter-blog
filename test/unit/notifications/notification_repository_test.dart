@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:belog/core/error/failures.dart';
@@ -411,6 +412,30 @@ void main() {
     expect(_failure(second), isNull);
   });
 
+  test('rejects a mismatched or unread mark-read response', () async {
+    for (final data in [
+      _row(id: 'another-notification', readAt: '2026-11-05T06:00:00.000Z'),
+      _row(),
+      {..._row(), 'readAt': 'not-a-date'},
+      null,
+    ]) {
+      final requests = <http.Request>[];
+      final repository = _repository(
+        _Auth(),
+        MockClient((request) async {
+          requests.add(request);
+          return _data(data);
+        }),
+      );
+      final failure = _failure(
+        await repository.markRead('notification-1', fence: _fence),
+      );
+      expect(requests, hasLength(1));
+      expect(failure?.code, 'client.parse');
+      expect(failure?.cause, isNull);
+    }
+  });
+
   test('rejects an empty notification id without a request', () async {
     var requests = 0;
     final repository = _repository(
@@ -454,6 +479,79 @@ void main() {
 
     expect(failure?.code, 'client.parse');
   });
+
+  test(
+    'read-all accepts zero but rejects negative and non-integer counts',
+    () async {
+      for (final data in [-1, 1.5, null, '1']) {
+        final repository = _repository(
+          _Auth(),
+          MockClient((_) async => _data(data)),
+        );
+        expect(
+          _failure(await repository.markAllRead(fence: _fence))?.code,
+          'client.parse',
+        );
+      }
+      final repository = _repository(
+        _Auth(),
+        MockClient((_) async => _data(0)),
+      );
+      final result = await repository.markAllRead(fence: _fence);
+      expect(result.fold<int?>((_) => null, (value) => value), 0);
+    },
+  );
+
+  test(
+    'mark failures retain safe classifications for UI outcome handling',
+    () async {
+      for (final entry in <int, String>{
+        401: 'server.UNAUTHENTICATED',
+        429: 'server.RATE_LIMITED',
+        500: 'server.error',
+      }.entries) {
+        final repository = _repository(
+          _Auth(),
+          MockClient((_) async => http.Response('secret body', entry.key)),
+        );
+        for (final failure in [
+          _failure(await repository.markRead('notification-1', fence: _fence)),
+          _failure(await repository.markAllRead(fence: _fence)),
+        ]) {
+          expect(failure?.code, entry.value);
+          expect(failure?.message, isNot(contains('secret body')));
+          expect(failure?.cause, isNull);
+        }
+      }
+    },
+  );
+
+  test(
+    'write transport failures are classified without exposing details',
+    () async {
+      for (final entry in <Object, String>{
+        http.ClientException('private transport details'):
+            'network.unavailable',
+        TimeoutException('private transport details'): 'network.timeout',
+      }.entries) {
+        final repository = _repository(
+          _Auth(),
+          MockClient((_) async => throw entry.key),
+        );
+        for (final failure in [
+          _failure(await repository.markRead('notification-1', fence: _fence)),
+          _failure(await repository.markAllRead(fence: _fence)),
+        ]) {
+          expect(failure?.code, entry.value);
+          expect(
+            failure?.message,
+            isNot(contains('private transport details')),
+          );
+          expect(failure?.cause, isNull);
+        }
+      }
+    },
+  );
 
   test('writes are classified like reads', () async {
     final repository = _repository(

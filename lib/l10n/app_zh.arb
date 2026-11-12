@@ -537,6 +537,7 @@
   },
   "notificationsAllRead": "已全部标为已读",
   "notificationsMarkedRead": "已标为已读",
+  "notificationsReadOutcomeUnknown": "无法确认操作结果，通知可能已标为已读。请重新打开通知页，必要时加载更早的通知核对。",
   "notificationsRetry": "重试",
   "notificationsLoadOlder": "加载更早的通知",
   "notificationsLoadingOlder": "正在加载更早的通知",

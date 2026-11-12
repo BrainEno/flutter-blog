@@ -706,6 +706,7 @@
   },
   "notificationsAllRead": "All marked as read",
   "notificationsMarkedRead": "Marked as read",
+  "notificationsReadOutcomeUnknown": "The update could not be confirmed; notifications may already be read. Reopen notifications and, if needed, load older items to check.",
   "notificationsRetry": "Retry",
   "notificationsLoadOlder": "Load older notifications",
   "notificationsLoadingOlder": "Loading older notifications",
