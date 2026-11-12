@@ -648,7 +648,11 @@ void main() {
     await _open(tester, h);
     await tester.tap(find.text('Resume local changes'));
     await tester.pumpAndSettle();
-    final remove = tester.widget<IconButton>(find.byTooltip('Remove block'));
+    final remove = tester.widget<IconButton>(
+      find.byWidgetPredicate(
+        (widget) => widget is IconButton && widget.tooltip == 'Remove block',
+      ),
+    );
     expect(remove.onPressed, isNull);
     expect(find.byTooltip('Toggle bold on first text run'), findsNothing);
     expect(h.session.state.body!.version, 0);
