@@ -15,7 +15,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -202,6 +202,23 @@ class AppDatabase extends GeneratedDatabase {
         // not infer owners, editions or source bodies from old text drafts.
         await _createStructuredBodyDrafts();
       }
+      if (from < 15) {
+        // v14 only retained bodies. NULL records that metadata was never saved;
+        // it must not be reconstructed from a flat draft or assumed empty.
+        if (!await _columnExists('structured_body_drafts', 'base_metadata')) {
+          await customStatement(
+            'ALTER TABLE structured_body_drafts ADD COLUMN base_metadata TEXT',
+          );
+        }
+        if (!await _columnExists(
+          'structured_body_drafts',
+          'session_metadata',
+        )) {
+          await customStatement(
+            'ALTER TABLE structured_body_drafts ADD COLUMN session_metadata TEXT',
+          );
+        }
+      }
     },
   );
 
@@ -248,6 +265,7 @@ class AppDatabase extends GeneratedDatabase {
     'revision INTEGER NOT NULL, base_version INTEGER NOT NULL, '
     'base_blocks TEXT NOT NULL, body_version INTEGER NOT NULL, '
     'body_blocks TEXT NOT NULL, updated_at INTEGER NOT NULL, '
+    'base_metadata TEXT, session_metadata TEXT, '
     'UNIQUE(backend, user_id, article_id, locale))',
   );
 
