@@ -124,25 +124,29 @@ StructuredEditionReadResult decodeStructuredEditionWindow(
       mismatch = true;
       continue;
     }
-    if (selected != null)
+    if (selected != null) {
       return const StructuredEditionReadResult.failed(
         StructuredEditionReadStatus.invalidResponse,
       );
+    }
     selected = row.cast<String, dynamic>();
   }
-  if (mismatch)
+  if (mismatch) {
     return const StructuredEditionReadResult.failed(
       StructuredEditionReadStatus.editionMismatch,
     );
-  if (selected == null)
+  }
+  if (selected == null) {
     return const StructuredEditionReadResult.failed(
       StructuredEditionReadStatus.notInAuthorWindow,
     );
+  }
   try {
     final raw = jsonEncode(selected);
     // Bound one article projection, including its author and taxonomy fields.
-    if (raw.length > 2000000)
+    if (raw.length > 2000000) {
       throw const FormatException('Article projection too large');
+    }
     final detached = jsonDecode(raw) as Map<String, dynamic>;
     final StructuredArticleDraft document;
     try {
@@ -162,8 +166,9 @@ StructuredEditionReadResult decodeStructuredEditionWindow(
         issues.add(missing);
         return null;
       }
-      if (item is! String)
+      if (item is! String) {
         throw const FormatException('Invalid metadata field');
+      }
       return item;
     }
 
@@ -188,19 +193,22 @@ StructuredEditionReadResult decodeStructuredEditionWindow(
         issues.add(missing);
         return null;
       }
-      if (raw is! List || raw.length > 100)
+      if (raw is! List || raw.length > 100) {
         throw const FormatException('Invalid taxonomy');
+      }
       final values = <String>[];
       for (final item in raw) {
-        if (item is! Map || item[property] is! String)
+        if (item is! Map || item[property] is! String) {
           throw const FormatException('Invalid taxonomy row');
+        }
         values.add(item[property] as String);
       }
       return StructuredTaxonomySelection(values: values, touched: false);
     }
 
-    if (detached.keys.any((field) => !_knownFields.contains(field)))
+    if (detached.keys.any((field) => !_knownFields.contains(field))) {
       issues.add(StructuredMetadataIssue.unknownArticleFields);
+    }
     final metadata = StructuredSessionMetadata(
       slug: text('slug', StructuredMetadataIssue.missingSlug),
       title: text('title', StructuredMetadataIssue.missingTitle),
