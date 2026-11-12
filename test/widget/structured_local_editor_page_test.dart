@@ -416,15 +416,18 @@ void main() {
     tester,
   ) async {
     final semantics = tester.ensureSemantics();
-    await _open(tester, h);
-    final control = find.byTooltip('Move block down').first;
-    await tester.ensureVisible(control);
-    await tester.pumpAndSettle();
-    final node = tester.getSemantics(control).getSemanticsData();
-    expect(node.tooltip, 'Move block down');
-    expect(node.flagsCollection.isButton, isTrue);
-    expect(node.hasAction(SemanticsAction.tap), isTrue);
-    semantics.dispose();
+    try {
+      await _open(tester, h);
+      final control = find.byTooltip('Move block down').first;
+      await tester.ensureVisible(control);
+      await tester.pumpAndSettle();
+      final node = tester.getSemantics(control).getSemanticsData();
+      expect(node.tooltip, 'Move block down');
+      expect(node.flagsCollection.isButton, isTrue);
+      expect(node.hasAction(SemanticsAction.tap), isTrue);
+    } finally {
+      semantics.dispose();
+    }
   });
 
   testWidgets(
