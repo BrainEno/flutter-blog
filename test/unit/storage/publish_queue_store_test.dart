@@ -522,7 +522,7 @@ void main() {
     final version = await upgraded
         .customSelect('PRAGMA user_version')
         .getSingle();
-    expect(version.read<int>('user_version'), 13);
+    expect(version.read<int>('user_version'), 14);
   });
 
   test('a pre-v8 database gains the queue with cover_url', () async {

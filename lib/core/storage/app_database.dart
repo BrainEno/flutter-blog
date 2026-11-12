@@ -15,7 +15,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -34,6 +34,7 @@ class AppDatabase extends GeneratedDatabase {
       );
       await customStatement('CREATE INDEX drafts_blog_id ON drafts(blog_id)');
       await _createAccountDrafts();
+      await _createStructuredBodyDrafts();
       await _createBlogCache();
       await _createBlogCacheFeedIndex();
       await _createReadingHistory();
@@ -196,6 +197,11 @@ class AppDatabase extends GeneratedDatabase {
           );
         }
       }
+      if (from < 14) {
+        // Rich-body recovery is separate from the existing plain editor. Do
+        // not infer owners, editions or source bodies from old text drafts.
+        await _createStructuredBodyDrafts();
+      }
     },
   );
 
@@ -231,6 +237,19 @@ class AppDatabase extends GeneratedDatabase {
       'ON account_drafts(backend, user_id, blog_id) WHERE blog_id IS NOT NULL',
     );
   }
+
+  /// A body recovery snapshot is keyed by backend, account, server article
+  /// identity and edition. The row id and revision are local compare-and-swap
+  /// tokens; they are not server versions and never authorize a remote write.
+  Future<void> _createStructuredBodyDrafts() => customStatement(
+    'CREATE TABLE structured_body_drafts ('
+    'id INTEGER PRIMARY KEY AUTOINCREMENT, backend TEXT NOT NULL, '
+    'user_id TEXT NOT NULL, article_id TEXT NOT NULL, locale TEXT NOT NULL, '
+    'revision INTEGER NOT NULL, base_version INTEGER NOT NULL, '
+    'base_blocks TEXT NOT NULL, body_version INTEGER NOT NULL, '
+    'body_blocks TEXT NOT NULL, updated_at INTEGER NOT NULL, '
+    'UNIQUE(backend, user_id, article_id, locale))',
+  );
 
   /// Publishes waiting for the server (issue #23).
   ///
