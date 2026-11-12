@@ -614,16 +614,21 @@ void main() {
   ) async {
     h.store.createGate = Completer<void>();
     await _open(tester, h);
-    await _tapVisible(tester, find.byTooltip('Move block down').first);
-    await h.store.createStarted.future;
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
-    h.store.createGate!.complete();
-    // Advance one frame to drive the admitted writer. Do not wait for every
-    // animation to settle while testing a lifecycle transition.
+    // This test controls real SQLite completion while the lifecycle observer
+    // requests a flush. The widget fake clock alone cannot progress real I/O.
+    await tester.runAsync(() async {
+      expect(h.session.edit((body) => body.move('heading', 1)), isTrue);
+      await h.store.createStarted.future.timeout(const Duration(seconds: 5));
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      expect(h.session.state.hasUnsavedChanges, isTrue);
+      h.store.createGate!.complete();
+      expect(
+        await h.session.flush().timeout(const Duration(seconds: 5)),
+        LocalStructuredFlushResult.saved,
+      );
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    });
     await tester.pump();
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    await tester.pump();
-    expect(await h.session.flush(), LocalStructuredFlushResult.saved);
     expect((await h.inner.load(_key))!.body.blocks.first['id'], 'image-one');
   });
 
