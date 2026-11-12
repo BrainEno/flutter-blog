@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/components/no_wave_skeleton.dart';
 import 'package:belog/core/error/failures.dart';
@@ -17,7 +19,7 @@ import 'package:go_router/go_router.dart';
 /// The signed-in account's notification inbox.
 ///
 /// The server has no push channel and this app does not poll: the newest page is
-/// read when the page opens, on pull-to-refresh, and when the session changes;
+/// read when the page opens, on user refresh, and when the session changes;
 /// older pages are fetched only when requested. The only write is marking read -
 /// one row or all of them.
 class NotificationInboxPage extends StatelessWidget {
@@ -121,6 +123,34 @@ class _NotificationInboxView extends StatelessWidget {
       appBar: AppBar(
         title: Text(context.l10n.notificationsTitle),
         centerTitle: true,
+        actions: [
+          BlocBuilder<NotificationInboxCubit, NotificationInboxState>(
+            builder: (context, state) {
+              final inbox = context.read<NotificationInboxCubit>();
+              final userId = inbox.identity.activeUserId;
+              final generation = inbox.identity.sessionGeneration;
+              final canRefresh =
+                  state is NotificationInboxLoaded &&
+                  !state.isRefreshing &&
+                  !state.markingAll &&
+                  state.markingId == null;
+              return IconButton(
+                tooltip: context.l10n.notificationsRefresh,
+                icon: const Icon(Icons.refresh),
+                onPressed: !canRefresh
+                    ? null
+                    : () {
+                        if (!context.mounted ||
+                            !_sameSession(inbox, userId, generation) ||
+                            !identical(inbox.state, state)) {
+                          return;
+                        }
+                        unawaited(inbox.load(showLoading: false));
+                      },
+              );
+            },
+          ),
+        ],
       ),
       body: BlocBuilder<NotificationInboxCubit, NotificationInboxState>(
         builder: (context, state) {
@@ -151,6 +181,7 @@ class _NotificationInboxView extends StatelessWidget {
                 context.read<NotificationInboxCubit>().load(showLoading: false),
             child: loaded.isEmpty
                 ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     children: [
                       const SizedBox(height: NoWaveSizes.emptyStateOffset),
                       _EmptyInbox(
@@ -160,6 +191,7 @@ class _NotificationInboxView extends StatelessWidget {
                     ],
                   )
                 : ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.symmetric(
                       vertical: NoWaveSpacing.small,
                     ),

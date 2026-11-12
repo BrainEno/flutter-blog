@@ -186,6 +186,101 @@ class _Harness {
 }
 
 void main() {
+  for (final locale in [const Locale('en'), const Locale('zh')]) {
+    for (final hasRows in [false, true]) {
+      testWidgets(
+        'pull refresh works on a short inbox: $locale, rows=$hasRows',
+        (tester) async {
+          final harness = _Harness(rows: hasRows ? [_notification()] : []);
+          addTearDown(harness.dispose);
+          await harness.pump(tester, locale: locale);
+          harness.settle();
+          await tester.pumpAndSettle();
+
+          await tester.drag(find.byType(ListView), const Offset(0, 300));
+          await tester.pump();
+          await tester.pump(const Duration(seconds: 1));
+          expect(harness.repository.calls, ['list', 'list']);
+          expect(harness.repository.cursors, [null, null]);
+          expect(
+            (harness.cubit.state as NotificationInboxLoaded).isRefreshing,
+            isTrue,
+          );
+          harness.settle();
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+
+    testWidgets(
+      'refresh button is localized and guards concurrent writes: $locale',
+      (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          final harness = _Harness(rows: [_notification()]);
+          addTearDown(harness.dispose);
+          await harness.pump(tester, locale: locale);
+          final label = lookupAppLocalizations(locale).notificationsRefresh;
+          final refresh = find.byTooltip(label);
+          expect(tester.widget<IconButton>(refresh).onPressed, isNull);
+          harness.settle();
+          await tester.pumpAndSettle();
+          expect(find.bySemanticsLabel(label), findsOneWidget);
+          final stale = tester.widget<IconButton>(refresh).onPressed!;
+
+          final gate = harness.repository.markGate = Completer<void>();
+          final mark = harness.cubit.markRead('notification-1');
+          await tester.pump();
+          expect(tester.widget<IconButton>(refresh).onPressed, isNull);
+          stale();
+          expect(harness.repository.calls, ['list', 'markRead:notification-1']);
+          gate.complete();
+          await mark;
+          await tester.pumpAndSettle();
+
+          await tester.tap(refresh);
+          await tester.pump();
+          expect(harness.repository.calls, [
+            'list',
+            'markRead:notification-1',
+            'list',
+          ]);
+          expect(harness.repository.cursors, [null, null]);
+          expect(tester.widget<IconButton>(refresh).onPressed, isNull);
+          harness.settle();
+          await tester.pumpAndSettle();
+          expect(tester.widget<IconButton>(refresh).onPressed, isNotNull);
+          expect(tester.takeException(), isNull);
+        } finally {
+          handle.dispose();
+        }
+      },
+    );
+  }
+
+  testWidgets('stale refresh button cannot reload a different session', (
+    tester,
+  ) async {
+    final harness = _Harness(rows: [_notification()]);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    harness.settle();
+    await tester.pumpAndSettle();
+    final refresh = find.byTooltip(
+      lookupAppLocalizations(const Locale('en')).notificationsRefresh,
+    );
+    final stale = tester.widget<IconButton>(refresh).onPressed!;
+    harness.identity.userId = 'user-b';
+    harness.identity.generation++;
+    harness.identity.controller.add(null);
+    expect(harness.repository.calls, ['list', 'list']);
+    stale();
+    expect(harness.repository.calls, ['list', 'list']);
+    harness.settle();
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('reads once, then lists what happened newest first', (
     tester,
   ) async {
