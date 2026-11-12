@@ -34,6 +34,10 @@ class BlogModel extends Blog {
   /// this is the address used by `PUT /articles/:articleId`.
   final String articleId;
 
+  @override
+  String? get authoringArticleId =>
+      articleId.isNotEmpty && articleId == articleId.trim() ? articleId : null;
+
   /// Exact UTC millisecond timestamp returned by the server. It is only
   /// used for a live feed continuation and is not stored in the cache.
   final String? publishedAt;
