@@ -411,9 +411,6 @@ class LocalStructuredSession {
     _writer = done.future;
     unawaited(
       _drain().whenComplete(() {
-        print(
-          'TRACE writer complete pending=${_pending != null} halted=$_writeHalted',
-        );
         _writer = null;
         if (_pending != null && !_writeHalted) _startWriter();
         done.complete();
@@ -427,7 +424,6 @@ class LocalStructuredSession {
       _pending = null;
       try {
         final expected = _recovery;
-        print('TRACE drain starting create');
         final saved = expected == null
             ? await store.create(
                 key: key,
@@ -449,7 +445,6 @@ class LocalStructuredSession {
                 sessionMetadata: edit.metadata!,
                 updatedAt: _now().toUtc(),
               );
-        print('TRACE drain saved=${saved != null}');
         if (saved == null) {
           _pending ??= edit;
           _writeHalted = true;
@@ -526,11 +521,8 @@ class LocalStructuredSession {
           ? LocalStructuredFlushResult.closed
           : LocalStructuredFlushResult.obsolete;
     }
-    var loops = 0;
     while (_writer != null) {
-      if (loops++ < 5) print('TRACE flush waiting iteration=$loops');
       await _writer;
-      if (loops < 5) print('TRACE flush woke writer=${_writer != null}');
     }
     if (!_checkIdentity()) return LocalStructuredFlushResult.obsolete;
     return switch (_state.phase) {

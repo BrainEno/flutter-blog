@@ -614,25 +614,16 @@ void main() {
   ) async {
     h.store.createGate = Completer<void>();
     await _open(tester, h);
-    debugPrint('BG open');
     await _tapVisible(tester, find.byTooltip('Move block down').first);
-    debugPrint('BG tap');
     await h.store.createStarted.future;
-    debugPrint('BG started');
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
-    debugPrint('BG inactive');
     h.store.createGate!.complete();
-    debugPrint('BG gate');
-    // Inactive disables scheduled frames, so resume before asking the widget
-    // binding to settle. The admitted save remains pending across the switch.
+    // Advance one frame to drive the admitted writer. Do not wait for every
+    // animation to settle while testing a lifecycle transition.
+    await tester.pump();
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    debugPrint('BG resumed');
-    // Drive the fake clock before awaiting the writer: its continuation was
-    // admitted from a widget callback in the fake-async zone.
-    await tester.pumpAndSettle();
-    debugPrint('BG settled');
+    await tester.pump();
     expect(await h.session.flush(), LocalStructuredFlushResult.saved);
-    debugPrint('BG flushed');
     expect((await h.inner.load(_key))!.body.blocks.first['id'], 'image-one');
   });
 
