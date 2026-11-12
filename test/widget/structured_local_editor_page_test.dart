@@ -582,6 +582,8 @@ void main() {
       expect(find.text('Leave with unsaved changes?'), findsOneWidget);
       await tester.tap(find.text('Leave and lose unsaved changes'));
       await tester.pumpAndSettle();
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pumpAndSettle();
       expect(find.text('Open test editor'), findsOneWidget);
       expect((await h.inner.load(_key))!.body.blocks[1]['id'], 'image-two');
     },
@@ -590,12 +592,18 @@ void main() {
   testWidgets('system back waits for an admitted local write', (tester) async {
     h.store.createGate = Completer<void>();
     await _open(tester, h);
+    debugPrint('DIAG back opened');
     await _tapVisible(tester, find.byTooltip('Move block down').first);
+    debugPrint('DIAG back tapped');
     await h.store.createStarted.future;
+    debugPrint('DIAG back create started');
     await tester.binding.handlePopRoute();
+    debugPrint('DIAG back popped');
     await tester.pump();
+    debugPrint('DIAG back pumped');
     expect(find.byType(StructuredLocalEditorPage), findsOneWidget);
     h.store.createGate!.complete();
+    debugPrint('DIAG back gate released');
     await tester.pumpAndSettle();
     expect(find.text('Open test editor'), findsOneWidget);
     expect((await h.inner.load(_key))!.body.blocks.first['id'], 'image-one');
