@@ -541,7 +541,6 @@ class LocalStructuredSession {
   Future<bool> close({bool abandonUnsaved = false}) async {
     if (_state.phase == LocalStructuredPhase.closed) return true;
     if (_closing || _discarding) return false;
-    print('DIAG close started phase=${_state.phase}');
     _closing = true;
     _openGeneration++;
     while (_writer != null) {
@@ -551,18 +550,14 @@ class LocalStructuredSession {
       _closing = false;
       return false;
     }
-    print('DIAG close cancelling identity');
     await _identitySubscription.cancel();
-    print('DIAG close identity cancelled');
     _remote = null;
     _recovery = null;
     _base = null;
     _baseMetadata = null;
     _pending = null;
     _set(const LocalStructuredState(phase: LocalStructuredPhase.closed));
-    print('DIAG close closing changes');
     await _changes.close();
-    print('DIAG close changes closed');
     return true;
   }
 }
