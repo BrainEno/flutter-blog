@@ -55,3 +55,28 @@ row while its original base metadata remains unknown. Rolling a v15 database
 back to an older app has not been validated and requires a backup/migration
 plan. Storage is not newly encrypted, and base64 covers increase database size
 and copy/memory cost; no real-device performance or durability run is claimed.
+
+## Authoring read boundary
+
+At no-wave revision `8a4fd1fb28fbc42d6e9105ee799dbda8d36e3d65`, REST
+`GET /articles/:slug` reads published work only; it cannot retrieve an author's
+server draft. `GET /me/articles?locale=...&limit=100` is authenticated, includes
+published and draft editions, filters the requested locale and returns at most
+100 records without an offset. The underlying persistence has `getMyArticle`,
+but there is no corresponding owner-detail REST route. An article absent from
+the window must therefore be reported as unavailable in the window, not as
+deleted, non-existent, or published. Older deployments and network failures
+also cannot establish absence. The client never substitutes a public detail
+read or another locale for this private read.
+
+The authoring reader validates account, article ID and returned locale, keeps
+full raw response fields and reports metadata gaps or future top-level fields
+explicitly. Unknown or malformed block structures are not flattened. `status`
+is unknown when absent or unrecognized, rather than inferred from a boolean;
+nullable metadata and untouched taxonomy selections remain distinct. The
+returned response is **not** a valid write request. Local recovery and the
+remote edition are returned separately, and reads never overwrite local edits.
+The caller must fence its own route/edit generation when applying results, and
+use the local revision token when subsequently saving or discarding. Local read
+failure blocks automatic initialization from a remote response. A successful
+read is not a server-side compare-and-swap or concurrency guarantee.

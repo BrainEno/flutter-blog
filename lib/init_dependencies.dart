@@ -47,6 +47,8 @@ import 'package:belog/features/blog/data/datasources/category_remote_data_source
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_blog_cache.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_draft_store.dart';
+import 'package:belog/features/blog/data/datasources/sqlite_structured_body_recovery_store.dart';
+import 'package:belog/features/blog/data/datasources/nowave_structured_edition_reader.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_publish_queue_store.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_reading_history_store.dart';
 import 'package:belog/features/blog/data/publish/publish_queue_runner.dart';
@@ -58,6 +60,9 @@ import 'package:belog/features/blog/data/repositories/category_repository_impl.d
 import 'package:belog/features/blog/data/repositories/comment_repository_impl.dart';
 import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
+import 'package:belog/features/blog/domain/repositories/structured_body_recovery_store.dart';
+import 'package:belog/features/blog/domain/repositories/structured_edition_reader.dart';
+import 'package:belog/features/blog/domain/usecase/open_structured_editing_session.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/repositories/category_repository.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
@@ -220,6 +225,19 @@ Future<void> initDependencies() async {
   serviceLocator.registerLazySingleton(() => database);
   serviceLocator.registerLazySingleton<BlogDraftStore>(
     () => SqliteBlogDraftStore(database, apiBaseUrl: uri),
+  );
+  serviceLocator.registerLazySingleton<StructuredBodyRecoveryStore>(
+    () => SqliteStructuredBodyRecoveryStore(database, apiBaseUrl: uri),
+  );
+  serviceLocator.registerLazySingleton<StructuredEditionReader>(
+    () => NowaveStructuredEditionReader(apiClient),
+  );
+  serviceLocator.registerFactory(
+    () => OpenStructuredEditingSession(
+      reader: serviceLocator<StructuredEditionReader>(),
+      store: serviceLocator<StructuredBodyRecoveryStore>(),
+      identity: sessionManager,
+    ),
   );
   // The publish queue (issue #23): what the server has not accepted yet.
   // Covers are copied into the app's own folder because a picker's temporary
