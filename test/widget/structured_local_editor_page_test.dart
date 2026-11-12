@@ -245,6 +245,11 @@ Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _scrollToStatus(WidgetTester tester) async {
+  await tester.drag(find.byType(ListView), const Offset(0, 2000));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   late _Harness h;
   setUp(() => h = _Harness());
@@ -312,6 +317,7 @@ void main() {
       expect(blocks.first['alt'], 'First image alt');
       expect(blocks.first['caption'], 'First caption');
       expect(stored.base.toJsonBlocks(), _body().toJsonBlocks());
+      await _scrollToStatus(tester);
       expect(find.text('Saved on this device'), findsOneWidget);
     },
   );
@@ -338,21 +344,23 @@ void main() {
     },
   );
 
-  testWidgets(
-    'recovery waits for an explicit choice, cancel leaves local data',
-    (tester) async {
-      await h.seed();
-      await _open(tester, h);
-      expect(find.text('Local recovery found'), findsOneWidget);
-      expect(find.text('Resume local changes'), findsOneWidget);
-      expect(find.byTooltip('Move block down'), findsNothing);
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      final saved = (await h.inner.load(_key))!;
-      expect(saved.body.blocks[1]['id'], 'image-two');
-      expect(find.text('Open test editor'), findsOneWidget);
-    },
-  );
+  testWidgets('recovery waits for an explicit choice, cancel leaves local data', (
+    tester,
+  ) async {
+    await h.seed();
+    await _open(tester, h);
+    expect(find.text('Local recovery found'), findsOneWidget);
+    expect(find.text('Resume local changes'), findsOneWidget);
+    expect(find.byTooltip('Move block down'), findsNothing);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    final saved = (await h.inner.load(_key))!;
+    expect(saved.body.blocks[1]['id'], 'image-two');
+    debugPrint(
+      'DIAG cancel phase=${h.session.state.phase} editor=${find.byType(StructuredLocalEditorPage).evaluate().length}',
+    );
+    expect(find.text('Open test editor'), findsOneWidget);
+  });
 
   testWidgets('recovery resumes offline and reports remote uncertainty', (
     tester,
@@ -395,7 +403,6 @@ void main() {
     tester,
   ) async {
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
     await _open(tester, h);
     final control = find.byTooltip('Move block down').first;
     await tester.ensureVisible(control);
@@ -404,6 +411,7 @@ void main() {
     expect(node.tooltip, 'Move block down');
     expect(node.flagsCollection.isButton, isTrue);
     expect(node.hasAction(SemanticsAction.tap), isTrue);
+    semantics.dispose();
   });
 
   testWidgets(
@@ -526,6 +534,7 @@ void main() {
       await _tapVisible(tester, find.byTooltip('Move block down').first);
       expect(await h.session.flush(), LocalStructuredFlushResult.failed);
       await tester.pumpAndSettle();
+      await _scrollToStatus(tester);
       expect(find.textContaining('Local save failed'), findsOneWidget);
       expect(h.session.state.hasUnsavedChanges, isTrue);
       await tester.tap(find.byTooltip('Back'));
@@ -550,11 +559,19 @@ void main() {
     (tester) async {
       h.store.createGate = Completer<void>();
       await _open(tester, h);
+      debugPrint('DIAG conflict opened');
       await _tapVisible(tester, find.byTooltip('Move block down').first);
+      debugPrint(
+        'DIAG conflict tapped started=${h.store.createStarted.isCompleted}',
+      );
       await h.store.createStarted.future;
+      debugPrint('DIAG conflict start reached');
       await h.seed();
+      debugPrint('DIAG conflict seed complete');
       h.store.createGate!.complete();
+      debugPrint('DIAG conflict gate released');
       expect(await h.session.flush(), LocalStructuredFlushResult.conflict);
+      debugPrint('DIAG conflict flushed');
       await tester.pumpAndSettle();
       expect(
         find.textContaining('Another local session changed'),
