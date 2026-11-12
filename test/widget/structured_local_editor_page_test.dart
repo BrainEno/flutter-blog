@@ -618,8 +618,10 @@ void main() {
     await h.store.createStarted.future;
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     h.store.createGate!.complete();
-    expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+    // Drive the fake clock before awaiting the writer: its continuation was
+    // admitted from a widget callback in the fake-async zone.
     await tester.pumpAndSettle();
+    expect(await h.session.flush(), LocalStructuredFlushResult.saved);
     expect((await h.inner.load(_key))!.body.blocks.first['id'], 'image-one');
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
   });
