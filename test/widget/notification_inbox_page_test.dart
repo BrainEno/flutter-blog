@@ -239,7 +239,11 @@ void main() {
 
           final gate = harness.repository.markGate = Completer<void>();
           final mark = harness.cubit.markRead('notification-1');
-          await tester.pump();
+          expect(
+            (harness.cubit.state as NotificationInboxLoaded).markingId,
+            'notification-1',
+          );
+          await tester.pumpAndSettle();
           expect(tester.widget<IconButton>(refresh).onPressed, isNull);
           stale();
           expect(harness.repository.calls, ['list', 'markRead:notification-1']);
@@ -248,7 +252,11 @@ void main() {
           await tester.pumpAndSettle();
 
           await tester.tap(refresh);
-          await tester.pump();
+          await tester.pumpAndSettle();
+          expect(
+            (harness.cubit.state as NotificationInboxLoaded).isRefreshing,
+            isTrue,
+          );
           expect(harness.repository.calls, [
             'list',
             'markRead:notification-1',
