@@ -4,6 +4,7 @@ import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/core/storage/backend_key.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
 import 'package:belog/features/blog/domain/entities/structured_body_recovery.dart';
+import 'package:belog/features/blog/domain/entities/structured_session_metadata.dart';
 import 'package:belog/features/blog/domain/repositories/structured_body_recovery_store.dart';
 import 'package:drift/drift.dart';
 
@@ -24,7 +25,7 @@ class SqliteStructuredBodyRecoveryStore implements StructuredBodyRecoveryStore {
     final row = await database
         .customSelect(
           'SELECT id, revision, base_version, base_blocks, body_version, '
-          'body_blocks, updated_at FROM structured_body_drafts '
+          'body_blocks, updated_at, base_metadata, session_metadata FROM structured_body_drafts '
           'WHERE backend = ? AND user_id = ? AND article_id = ? AND locale = ?',
           variables: _keyVariables(key),
         )
@@ -32,6 +33,8 @@ class SqliteStructuredBodyRecoveryStore implements StructuredBodyRecoveryStore {
     if (row == null) return null;
     final baseJson = row.read<String>('base_blocks');
     final bodyJson = row.read<String>('body_blocks');
+    final baseMetadataJson = row.readNullable<String>('base_metadata');
+    final sessionMetadataJson = row.readNullable<String>('session_metadata');
     final baseVersion = row.read<int>('base_version');
     final bodyVersion = row.read<int>('body_version');
     final rowId = row.read<int>('id');
@@ -52,6 +55,14 @@ class SqliteStructuredBodyRecoveryStore implements StructuredBodyRecoveryStore {
       ),
       baseStorageJson: baseJson,
       bodyStorageJson: bodyJson,
+      baseMetadata: baseMetadataJson == null
+          ? null
+          : StructuredSessionMetadata.decode(baseMetadataJson),
+      sessionMetadata: sessionMetadataJson == null
+          ? null
+          : StructuredSessionMetadata.decode(sessionMetadataJson),
+      baseMetadataStorageJson: baseMetadataJson,
+      sessionMetadataStorageJson: sessionMetadataJson,
     );
   }
 
@@ -79,15 +90,23 @@ class SqliteStructuredBodyRecoveryStore implements StructuredBodyRecoveryStore {
     required StructuredArticleDraft base,
     required StructuredArticleDraft body,
     required DateTime updatedAt,
+    StructuredSessionMetadata? baseMetadata,
+    StructuredSessionMetadata? sessionMetadata,
   }) async {
+    final baseMetadataJson = baseMetadata == null
+        ? null
+        : jsonEncode(baseMetadata.toJson());
+    final sessionMetadataJson = sessionMetadata == null
+        ? null
+        : jsonEncode(sessionMetadata.toJson());
     final baseJson = jsonEncode(base.blocks);
     final bodyJson = jsonEncode(body.blocks);
     return database.transaction(() async {
       final inserted = await database.customUpdate(
         'INSERT INTO structured_body_drafts '
         '(backend, user_id, article_id, locale, revision, base_version, '
-        'base_blocks, body_version, body_blocks, updated_at) '
-        'VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?) '
+        'base_blocks, body_version, body_blocks, updated_at, base_metadata, session_metadata) '
+        'VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?) '
         'ON CONFLICT(backend, user_id, article_id, locale) DO NOTHING',
         variables: [
           ..._keyVariables(key),
@@ -96,6 +115,8 @@ class SqliteStructuredBodyRecoveryStore implements StructuredBodyRecoveryStore {
           Variable<int>(body.version),
           Variable<String>(bodyJson),
           Variable<int>(updatedAt.microsecondsSinceEpoch),
+          Variable<String>(baseMetadataJson),
+          Variable<String>(sessionMetadataJson),
         ],
       );
       return inserted == 1 ? _load(key) : null;
@@ -107,20 +128,47 @@ class SqliteStructuredBodyRecoveryStore implements StructuredBodyRecoveryStore {
     required StructuredBodyRecovery expected,
     required StructuredArticleDraft body,
     required DateTime updatedAt,
+  }) => _replace(
+    expected: expected,
+    body: body,
+    metadataJson: expected.sessionMetadataStorageJson,
+    updatedAt: updatedAt,
+  );
+
+  @override
+  Future<StructuredBodyRecovery?> replaceSession({
+    required StructuredBodyRecovery expected,
+    required StructuredArticleDraft body,
+    required StructuredSessionMetadata sessionMetadata,
+    required DateTime updatedAt,
+  }) => _replace(
+    expected: expected,
+    body: body,
+    metadataJson: jsonEncode(sessionMetadata.toJson()),
+    updatedAt: updatedAt,
+  );
+
+  Future<StructuredBodyRecovery?> _replace({
+    required StructuredBodyRecovery expected,
+    required StructuredArticleDraft body,
+    required String? metadataJson,
+    required DateTime updatedAt,
   }) async {
     final bodyJson = jsonEncode(body.blocks);
     return database.transaction(() async {
       final changed = await database.customUpdate(
         'UPDATE structured_body_drafts SET body_version = ?, body_blocks = ?, '
-        'updated_at = ?, revision = revision + 1 '
+        'updated_at = ?, session_metadata = ?, revision = revision + 1 '
         'WHERE backend = ? AND user_id = ? AND article_id = ? AND locale = ? '
         'AND backend = ? AND id = ? AND revision = ? AND base_version = ? AND base_blocks = ? '
         'AND body_version = ? AND body_blocks = ? AND updated_at = ? '
+        'AND base_metadata IS ? AND session_metadata IS ? '
         'AND revision < 9223372036854775807',
         variables: [
           Variable<int>(body.version),
           Variable<String>(bodyJson),
           Variable<int>(updatedAt.microsecondsSinceEpoch),
+          Variable<String>(metadataJson),
           ..._snapshotVariables(expected),
         ],
       );
@@ -134,7 +182,8 @@ class SqliteStructuredBodyRecoveryStore implements StructuredBodyRecoveryStore {
       'DELETE FROM structured_body_drafts '
       'WHERE backend = ? AND user_id = ? AND article_id = ? AND locale = ? '
       'AND backend = ? AND id = ? AND revision = ? AND base_version = ? AND base_blocks = ? '
-      'AND body_version = ? AND body_blocks = ? AND updated_at = ?',
+      'AND body_version = ? AND body_blocks = ? AND updated_at = ? '
+      'AND base_metadata IS ? AND session_metadata IS ?',
       variables: _snapshotVariables(expected),
     );
     return deleted == 1;
@@ -150,5 +199,7 @@ class SqliteStructuredBodyRecoveryStore implements StructuredBodyRecoveryStore {
     Variable<int>(expected.body.version),
     Variable<String>(expected.bodyStorageJson),
     Variable<int>(expected.updatedAt.microsecondsSinceEpoch),
+    Variable<String>(expected.baseMetadataStorageJson),
+    Variable<String>(expected.sessionMetadataStorageJson),
   ];
 }
