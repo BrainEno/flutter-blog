@@ -616,19 +616,28 @@ void main() {
     await _open(tester, h);
     // This test controls real SQLite completion while the lifecycle observer
     // requests a flush. The widget fake clock alone cannot progress real I/O.
+    debugPrint('BG before runAsync');
     await tester.runAsync(() async {
+      debugPrint('BG entered');
       expect(h.session.edit((body) => body.move('heading', 1)), isTrue);
+      debugPrint('BG edit admitted');
       await h.store.createStarted.future.timeout(const Duration(seconds: 5));
+      debugPrint('BG started');
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      debugPrint('BG inactive');
       expect(h.session.state.hasUnsavedChanges, isTrue);
       h.store.createGate!.complete();
+      debugPrint('BG released');
       expect(
         await h.session.flush().timeout(const Duration(seconds: 5)),
         LocalStructuredFlushResult.saved,
       );
+      debugPrint('BG flushed');
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     });
+    debugPrint('BG runAsync complete');
     await tester.pump();
+    debugPrint('BG pump complete');
     expect((await h.inner.load(_key))!.body.blocks.first['id'], 'image-one');
   });
 
