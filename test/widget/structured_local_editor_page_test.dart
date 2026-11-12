@@ -592,18 +592,18 @@ void main() {
   testWidgets('system back waits for an admitted local write', (tester) async {
     h.store.createGate = Completer<void>();
     await _open(tester, h);
-    debugPrint('DIAG back opened');
     await _tapVisible(tester, find.byTooltip('Move block down').first);
-    debugPrint('DIAG back tapped');
-    await h.store.createStarted.future;
-    debugPrint('DIAG back create started');
-    await tester.binding.handlePopRoute();
-    debugPrint('DIAG back popped');
+    expect(h.store.createStarted.isCompleted, isTrue);
+    // Dispatching a system pop is asynchronous under WidgetTester. Pump its
+    // observers rather than blocking the fake clock awaiting the dispatch.
+    bool? handled;
+    tester.binding.handlePopRoute().then((value) => handled = value);
     await tester.pump();
-    debugPrint('DIAG back pumped');
+    expect(handled, isTrue);
     expect(find.byType(StructuredLocalEditorPage), findsOneWidget);
     h.store.createGate!.complete();
-    debugPrint('DIAG back gate released');
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
     await tester.pumpAndSettle();
     expect(find.text('Open test editor'), findsOneWidget);
     expect((await h.inner.load(_key))!.body.blocks.first['id'], 'image-one');
