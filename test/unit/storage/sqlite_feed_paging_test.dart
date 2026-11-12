@@ -139,11 +139,13 @@ void main() {
     await db.close();
 
     // Recreate the v3 shape: no feed index, no v5 document column and no v8
-    // publish queue, so the upgrade has to add all three back.
+    // publish queue or v14 structured recovery table, so the upgrade must
+    // recreate them along with the index.
     final old = raw.sqlite3.open(file.path);
     old.execute('DROP INDEX blog_cache_feed_order');
     old.execute('DROP TABLE account_drafts');
     old.execute('DROP TABLE publish_queue');
+    old.execute('DROP TABLE structured_body_drafts');
     old.execute('ALTER TABLE blog_cache DROP COLUMN document_json');
     old.execute('PRAGMA user_version = 3');
     old.close();
@@ -162,6 +164,16 @@ void main() {
       'draft body',
     );
     expect(await db.readMetadata('test-marker'), 'preserved');
+    expect(
+      (await db
+              .customSelect(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'structured_body_drafts'",
+              )
+              .get())
+          .length,
+      1,
+    );
+
     expect(
       (await SqliteBlogCache(db).loadBlogs(limit: 10)).single.id,
       'cached',
