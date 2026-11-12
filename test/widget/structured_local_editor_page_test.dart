@@ -57,6 +57,7 @@ class _Store implements StructuredBodyRecoveryStore {
   bool failCreate = false;
   bool failLoad = false;
   bool hideNextLoad = false;
+  bool gateAfterCreate = false;
   Completer<void>? createGate;
   final createStarted = Completer<void>();
 
@@ -79,10 +80,12 @@ class _Store implements StructuredBodyRecoveryStore {
     StructuredSessionMetadata? baseMetadata,
     StructuredSessionMetadata? sessionMetadata,
   }) async {
-    if (!createStarted.isCompleted) createStarted.complete();
-    if (createGate != null) await createGate!.future;
+    if (!gateAfterCreate) {
+      if (!createStarted.isCompleted) createStarted.complete();
+      if (createGate != null) await createGate!.future;
+    }
     if (failCreate) throw StateError('disk failure');
-    return inner.create(
+    final saved = await inner.create(
       key: key,
       base: base,
       body: body,
@@ -90,6 +93,11 @@ class _Store implements StructuredBodyRecoveryStore {
       baseMetadata: baseMetadata,
       sessionMetadata: sessionMetadata,
     );
+    if (gateAfterCreate) {
+      if (!createStarted.isCompleted) createStarted.complete();
+      if (createGate != null) await createGate!.future;
+    }
+    return saved;
   }
 
   @override
@@ -612,32 +620,20 @@ void main() {
   testWidgets('background transition does not drop an admitted save', (
     tester,
   ) async {
+    // Delay the acknowledgement after the real SQLite transaction commits.
+    // Lifecycle flush must still wait for the writer and retain its result.
+    h.store.gateAfterCreate = true;
     h.store.createGate = Completer<void>();
     await _open(tester, h);
-    // This test controls real SQLite completion while the lifecycle observer
-    // requests a flush. The widget fake clock alone cannot progress real I/O.
-    debugPrint('BG before runAsync');
-    await tester.runAsync(() async {
-      debugPrint('BG entered');
-      expect(h.session.edit((body) => body.move('heading', 1)), isTrue);
-      debugPrint('BG edit admitted');
-      await h.store.createStarted.future.timeout(const Duration(seconds: 5));
-      debugPrint('BG started');
-      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
-      debugPrint('BG inactive');
-      expect(h.session.state.hasUnsavedChanges, isTrue);
-      h.store.createGate!.complete();
-      debugPrint('BG released');
-      expect(
-        await h.session.flush().timeout(const Duration(seconds: 5)),
-        LocalStructuredFlushResult.saved,
-      );
-      debugPrint('BG flushed');
-      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    });
-    debugPrint('BG runAsync complete');
+    await _tapVisible(tester, find.byTooltip('Move block down').first);
+    expect(h.store.createStarted.isCompleted, isTrue);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    expect(h.session.state.hasUnsavedChanges, isTrue);
+    h.store.createGate!.complete();
     await tester.pump();
-    debugPrint('BG pump complete');
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(await h.session.flush(), LocalStructuredFlushResult.saved);
     expect((await h.inner.load(_key))!.body.blocks.first['id'], 'image-one');
   });
 
