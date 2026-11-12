@@ -550,6 +550,7 @@ void main() {
       expect(await h.session.flush(), LocalStructuredFlushResult.saved);
       await tester.pumpAndSettle();
       expect((await h.inner.load(_key))!.body.blocks.first['id'], 'image-one');
+      await _scrollToStatus(tester);
       expect(find.text('Saved on this device'), findsOneWidget);
     },
   );
@@ -566,7 +567,10 @@ void main() {
       );
       await h.store.createStarted.future;
       debugPrint('DIAG conflict start reached');
-      await h.seed();
+      final seed = h.seed();
+      await tester.pump();
+      debugPrint('DIAG conflict pumped');
+      await seed;
       debugPrint('DIAG conflict seed complete');
       h.store.createGate!.complete();
       debugPrint('DIAG conflict gate released');
