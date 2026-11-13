@@ -377,7 +377,7 @@ class SqliteStructuredBodyRecoveryStore
   Future<StructuredBodyRecovery?> discardTextBuffer({
     required StructuredTextBufferRecovery expected,
     required DateTime updatedAt,
-  }) {
+  }) async {
     _validateExpectedBuffer(expected);
     return _finishTextBuffer(
       expected: expected,
