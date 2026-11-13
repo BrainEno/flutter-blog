@@ -760,6 +760,14 @@
     }
   },
 
+  "structuredCatalogTitle": "本地恢复记录",
+  "structuredCatalogIntro": "仅显示此设备上当前账号和服务器的恢复记录。打开后可选择是否继续；此处不会检查服务器，也不会发布。",
+  "structuredCatalogLoading": "正在读取本地恢复记录…",
+  "structuredCatalogEmpty": "当前账号和服务器没有本地恢复记录。",
+  "structuredCatalogFailure": "无法读取本地恢复记录，已有记录未被更改。",
+  "structuredCatalogDamaged": "无法识别的本地记录",
+  "structuredCatalogDamagedHint": "无法在此打开此记录，记录未被删除。",
+  "structuredCatalogMore": "加载更多",
   "structuredEdition": "内容语言版本",
   "structuredLocalTitle": "本地结构编辑",
   "structuredLocalIntro": "更改仅保存在此设备，不会发布或发送到服务器。",

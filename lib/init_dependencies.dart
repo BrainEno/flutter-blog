@@ -62,6 +62,8 @@ import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/structured_body_recovery_store.dart';
 import 'package:belog/features/blog/domain/repositories/structured_edition_reader.dart';
+import 'package:belog/features/blog/domain/repositories/structured_recovery_catalog.dart';
+import 'package:belog/features/blog/domain/usecase/list_structured_recoveries.dart';
 import 'package:belog/features/blog/domain/usecase/open_structured_editing_session.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/repositories/category_repository.dart';
@@ -228,6 +230,15 @@ Future<void> initDependencies() async {
   );
   serviceLocator.registerLazySingleton<StructuredBodyRecoveryStore>(
     () => SqliteStructuredBodyRecoveryStore(database, apiBaseUrl: uri),
+  );
+  serviceLocator.registerLazySingleton<StructuredRecoveryCatalog>(
+    () => SqliteStructuredBodyRecoveryStore(database, apiBaseUrl: uri),
+  );
+  serviceLocator.registerFactory(
+    () => ListStructuredRecoveries(
+      catalog: serviceLocator<StructuredRecoveryCatalog>(),
+      identity: sessionManager,
+    ),
   );
   serviceLocator.registerLazySingleton<StructuredEditionReader>(
     () => NowaveStructuredEditionReader(apiClient),
