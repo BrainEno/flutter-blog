@@ -189,3 +189,29 @@ Upstream was checked again at `a04dfe12988007fcde6b190e27b6199807c4abdf`:
 the author endpoint remains limited to 100 per locale; this index does not
 attempt to infer whether absent remote articles exist. Real devices, screen
 readers, production backend and signed builds have not been validated.
+
+## Isolated intermediate text buffer (schema v16)
+
+The isolated store can persist one intermediate plain-text value in the same
+row as a validated recovery. Empty text and whitespace remain exact input, not a
+valid structured body. Only unformatted paragraph, heading and quote targets are
+accepted; runs, links, lists and images cannot be flattened through this API.
+The strict body validator is still required to apply the value. Applying or
+explicitly discarding uses the exact body, metadata, buffer bytes, row identity
+and local revision in one transaction. A failed validation, storage error or
+stale token leaves the earlier value in place. Ordinary body load and mutation
+refuse rows containing any buffer, including corrupt or unknown data; the
+catalog may still list the identity. This component is not wired into the local
+editor, so such rows cannot currently be opened there. It is not a publish
+payload, a background queue or a remote concurrency check.
+
+A v15 database upgrades without changing existing body or metadata data; old
+rows receive a null buffer. Application downgrade and use of an older client on
+a v16 database have not been validated and must not be assumed safe: an older
+store is unaware of this column. Back up local data before downgrade. Values
+that were only in memory when a process is terminated or a write fails are not
+durable. The existing account/session identity fence and save coordinator do
+not yet manage these buffers; a future UI integration must provide those fences,
+explicit recovery and discard, asynchronous edit ordering, and error handling
+before exposing text input. Storage remains unencrypted; devices and screen
+readers have not been tested.

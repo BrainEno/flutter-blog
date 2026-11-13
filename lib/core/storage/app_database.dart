@@ -15,7 +15,7 @@ class AppDatabase extends GeneratedDatabase {
       AppDatabase(NativeDatabase.createInBackground(file));
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -219,6 +219,14 @@ class AppDatabase extends GeneratedDatabase {
           );
         }
       }
+      if (from < 16) {
+        // An in-progress text buffer is nullable and is never inferred.
+        if (!await _columnExists('structured_body_drafts', 'text_buffer')) {
+          await customStatement(
+            'ALTER TABLE structured_body_drafts ADD COLUMN text_buffer TEXT',
+          );
+        }
+      }
     },
   );
 
@@ -265,7 +273,7 @@ class AppDatabase extends GeneratedDatabase {
     'revision INTEGER NOT NULL, base_version INTEGER NOT NULL, '
     'base_blocks TEXT NOT NULL, body_version INTEGER NOT NULL, '
     'body_blocks TEXT NOT NULL, updated_at INTEGER NOT NULL, '
-    'base_metadata TEXT, session_metadata TEXT, '
+    'base_metadata TEXT, session_metadata TEXT, text_buffer TEXT, '
     'UNIQUE(backend, user_id, article_id, locale))',
   );
 
