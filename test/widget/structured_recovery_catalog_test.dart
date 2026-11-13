@@ -350,12 +350,12 @@ void main() {
     await h.pump(tester);
     expect(find.text('article-0'), findsOneWidget);
     final more = find.text('Load more');
-    await tester.ensureVisible(more);
+    await tester.scrollUntilVisible(more, 400);
     await tester.pumpAndSettle();
     await tester.tap(more);
     await tester.pumpAndSettle();
     expect(h.catalog.calls, 2);
-    await tester.ensureVisible(find.text('article-27'));
+    await tester.scrollUntilVisible(find.text('article-27'), 400);
     await tester.pumpAndSettle();
     expect(find.text('article-27'), findsOneWidget);
     expect(find.text('Load more'), findsNothing);
