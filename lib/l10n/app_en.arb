@@ -940,6 +940,14 @@
     }
   },
 
+  "structuredCatalogTitle": "Local recoveries",
+  "structuredCatalogIntro": "Stored only on this device for this account and server. Open a record to choose whether to resume it. The server is not checked here; nothing is published.",
+  "structuredCatalogLoading": "Loading local recoveries…",
+  "structuredCatalogEmpty": "No local recoveries for this account and server.",
+  "structuredCatalogFailure": "Could not read local recoveries. Existing records were not changed.",
+  "structuredCatalogDamaged": "Unrecognized local record",
+  "structuredCatalogDamagedHint": "This record cannot be opened here and has not been deleted.",
+  "structuredCatalogMore": "Load more",
   "structuredEdition": "Content edition",
   "structuredLocalTitle": "Local structure editor",
   "structuredLocalIntro": "Changes are saved only on this device. Nothing is published or sent to the server.",

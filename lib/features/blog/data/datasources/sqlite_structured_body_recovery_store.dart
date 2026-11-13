@@ -6,17 +6,70 @@ import 'package:belog/features/blog/domain/editing/structured_article_draft.dart
 import 'package:belog/features/blog/domain/entities/structured_body_recovery.dart';
 import 'package:belog/features/blog/domain/entities/structured_session_metadata.dart';
 import 'package:belog/features/blog/domain/repositories/structured_body_recovery_store.dart';
+import 'package:belog/features/blog/domain/repositories/structured_recovery_catalog.dart';
 import 'package:drift/drift.dart';
 
 /// SQLite body recovery for existing article editions. Atomic local revision
 /// comparisons protect multiple store instances/editors; they are not a
 /// server-side version check and do not make remote publication safe.
-class SqliteStructuredBodyRecoveryStore implements StructuredBodyRecoveryStore {
+class SqliteStructuredBodyRecoveryStore
+    implements StructuredBodyRecoveryStore, StructuredRecoveryCatalog {
   SqliteStructuredBodyRecoveryStore(this.database, {required Uri apiBaseUrl})
     : _backend = backendKeyOf(apiBaseUrl);
 
   final AppDatabase database;
   final String _backend;
+
+  /// Bounded keyset pagination, scoped before reading any identity values.
+  /// Only short key columns are read; bodies and metadata are decoded on open.
+  @override
+  Future<StructuredRecoveryIndexPage> page({
+    required String userId,
+    int? afterRowId,
+  }) async {
+    if (userId.isEmpty ||
+        userId != userId.trim() ||
+        (afterRowId != null && afterRowId <= 0)) {
+      throw ArgumentError('Invalid catalog identity or cursor');
+    }
+    const pageSize = 25;
+    final rows = await database
+        .customSelect(
+          'SELECT id, substr(article_id, 1, 4097) AS article, '
+          'substr(locale, 1, 17) AS edition FROM structured_body_drafts '
+          'WHERE backend = ? AND user_id = ? AND id > ? ORDER BY id LIMIT ?',
+          variables: [
+            Variable<String>(_backend),
+            Variable<String>(userId),
+            Variable<int>(afterRowId ?? 0),
+            Variable<int>(pageSize + 1),
+          ],
+        )
+        .get();
+    final entries = <StructuredRecoveryIndexEntry>[];
+    for (final row in rows.take(pageSize)) {
+      final id = row.read<int>('id');
+      final article = row.read<String>('article');
+      final locale = row.read<String>('edition');
+      StructuredBodyKey? key;
+      try {
+        if (id > 0 && article.length <= 4096) {
+          key = StructuredBodyKey(
+            userId: userId,
+            articleId: article,
+            locale: locale,
+          );
+        }
+      } on ArgumentError {
+        // Keep damaged identity visible without trying to read or repair it.
+      }
+      entries.add(StructuredRecoveryIndexEntry(rowId: id, key: key));
+    }
+    return StructuredRecoveryIndexPage(
+      entries: entries,
+      nextCursor: rows.length > pageSize ? entries.last.rowId : null,
+    );
+  }
 
   @override
   Future<StructuredBodyRecovery?> load(StructuredBodyKey key) => _load(key);

@@ -1,7 +1,7 @@
 # Structured editing session recovery
 
 The recovery store is local infrastructure, **not a publishing path**. It is
-not currently connected to the editor or publish queue. It only addresses an
+connected to a limited local editor but not the publish queue. It only addresses an
 existing article by backend namespace, signed-in account, stable server article
 ID and explicit content locale. It cannot recover a new article without a
 server ID. Its base/body and base/session metadata snapshots are committed in
@@ -146,12 +146,46 @@ Recovery requires a choice and discard confirmation. A stale discard or local
 CAS conflict never overwrites another editor. Failed in-memory edits block an
 ordinary back action, with an explicit warning before abandonment. A session
 identity change hides the old article and prevents new operations. The author
-list itself still requires a network read, so recovery is available offline only
-when an appropriate author-list entry is already reachable; there is not yet a
-standalone offline recovery browser. Forced route disposal, process death or a
-storage failure can still lose edits that have not reached SQLite. True device,
+list itself still requires a network read. The local recovery index described
+below is available from that screen even when the list fails. Forced route
+disposal, process death or a storage failure can still lose edits that have not
+reached SQLite. True device,
 screen-reader and deployed-backend validation remain outstanding.
 
 Upstream was re-audited at `e6ee92cfe2492e7fa254ace444396c894fdbdf6b`:
 the authenticated author list is still limited per locale and article writes
 still do not offer an atomic compare-and-swap precondition.
+
+
+## Offline local recovery index
+
+The My Articles toolbar exposes a local index independently of the author-list
+request. It requires the current UI account and live session identity to match;
+a sign-out, account replacement or identity-generation change invalidates the
+index and any editor it opened. It queries only the current backend namespace
+and account, across the explicitly stored `en`, `zh-CN` and `zh-TW` editions.
+It does not read, parse or display bodies or metadata during listing. The UI
+shows the stable article ID and edition rather than inventing a title or slug.
+Listing uses keyset pagination by local row ID, 25 entries per query; rows inserted
+or deleted during browsing may change what a later page contains, and the list
+is not a transactional snapshot. Malformed or overlong keys appear unopenable;
+they are not deleted. A database error is shown as an error, never an empty list.
+SQLite may scan/sort the account's rows for ordering; there is no schema migration
+or added index in this increment, and device performance has not been measured.
+
+Selecting an entry opens the existing local session with an explicitly offline
+reader: no network request occurs, the server base cannot be compared, and the
+user still must choose whether to resume or discard. The initial row is reread
+and its local row ID checked; a deleted/recreated row fails closed. Subsequent
+edits and discard continue using the complete existing CAS token. Unknown or
+corrupt content fails closed and is never repaired or removed by listing. An
+index entry's local identity is not authorization or proof of server existence,
+and no remote publish, sync, or cross-device protection is introduced. The
+index is accessible only while a matching authenticated account is present in
+the app; this is not anonymous access to local drafts. Local storage is not
+newly encrypted. Text-entry intermediate buffers remain unsupported.
+
+Upstream was checked again at `a04dfe12988007fcde6b190e27b6199807c4abdf`:
+the author endpoint remains limited to 100 per locale; this index does not
+attempt to infer whether absent remote articles exist. Real devices, screen
+readers, production backend and signed builds have not been validated.

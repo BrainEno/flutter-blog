@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/core/storage/app_database.dart';
@@ -9,12 +10,15 @@ import 'package:belog/features/blog/data/datasources/sqlite_structured_body_reco
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/structured_body_recovery.dart';
+import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
+import 'package:belog/features/blog/domain/usecase/list_structured_recoveries.dart';
 import 'package:belog/features/blog/domain/entities/structured_edition_read.dart';
 import 'package:belog/features/blog/domain/repositories/structured_edition_reader.dart';
 import 'package:belog/features/blog/domain/usecase/open_structured_editing_session.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_editor_page.dart';
+import 'package:belog/features/blog/presentation/editor/structured_recovery_catalog_page.dart';
 import 'package:belog/features/blog/presentation/pages/user_blogs_page.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:drift/native.dart';
@@ -57,9 +61,11 @@ class _Reader implements StructuredEditionReader {
 class _Blogs extends Mock implements BlogByBloc {
   _Blogs(this.blog);
   final Blog blog;
+  BlogByState? overrideState;
   final events = <BlogByEvent>[];
   @override
-  BlogByState get state => GetBlogsByUserSuccess(blogs: [blog]);
+  BlogByState get state =>
+      overrideState ?? GetBlogsByUserSuccess(blogs: [blog]);
   @override
   Stream<BlogByState> get stream => const Stream.empty();
   @override
@@ -103,14 +109,16 @@ class _EntryHarness {
           updatedAt: DateTime.utc(2026),
         ),
       );
+    store = SqliteStructuredBodyRecoveryStore(
+      db,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    );
     opener = OpenStructuredEditingSession(
       reader: reader,
-      store: SqliteStructuredBodyRecoveryStore(
-        db,
-        apiBaseUrl: Uri.parse('https://api.example.invalid'),
-      ),
+      store: store,
       identity: identity,
     );
+    list = ListStructuredRecoveries(catalog: store, identity: identity);
   }
   late final AppDatabase db;
   late final _Identity identity;
@@ -119,6 +127,8 @@ class _EntryHarness {
   late final _Uploads uploads;
   late final AppUserCubit user;
   late final OpenStructuredEditingSession opener;
+  late final SqliteStructuredBodyRecoveryStore store;
+  late final ListStructuredRecoveries list;
 
   Future<void> pump(WidgetTester tester) async {
     await tester.pumpWidget(
@@ -132,7 +142,7 @@ class _EntryHarness {
             BlocProvider<BlogByBloc>.value(value: blogs),
             BlocProvider<BlogUploadBloc>.value(value: uploads),
           ],
-          child: UserBlogsPage(structuredOpener: opener),
+          child: UserBlogsPage(structuredOpener: opener, recoveryList: list),
         ),
       ),
     );
@@ -167,6 +177,41 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'offline archive failure still exposes local recovery navigation',
+    (tester) async {
+      final h = _EntryHarness(_blog());
+      addTearDown(h.close);
+      h.blogs.overrideState = GetBlogsByUserFailure(
+        failure: Failure.networkOffline(),
+      );
+      final key = StructuredBodyKey(
+        userId: 'author',
+        articleId: 'offline-work',
+        locale: 'en',
+      );
+      final body = StructuredArticleDraft.parse(
+        version: 0,
+        blocks: [
+          {'id': 'p', 'type': 'paragraph', 'text': 'offline text'},
+        ],
+      );
+      await h.store.create(
+        key: key,
+        base: body,
+        body: body,
+        updatedAt: DateTime.utc(2026),
+      );
+      await h.pump(tester);
+      await tester.tap(find.byTooltip('Local recoveries'));
+      await tester.pumpAndSettle();
+      expect(find.byType(StructuredRecoveryCatalogPage), findsOneWidget);
+      expect(find.text('offline-work'), findsOneWidget);
+      expect(h.reader.calls, 0);
+      expect(h.uploads.events, isEmpty);
+    },
+  );
 
   testWidgets('missing stable ID refuses to open rather than using slug', (
     tester,

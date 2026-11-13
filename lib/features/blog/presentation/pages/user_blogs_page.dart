@@ -13,6 +13,8 @@ import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_authoring_key.dart';
 import 'package:belog/features/blog/domain/usecase/open_structured_editing_session.dart';
+import 'package:belog/features/blog/domain/usecase/list_structured_recoveries.dart';
+import 'package:belog/features/blog/presentation/editor/structured_recovery_catalog_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_editor_page.dart';
 import 'package:get_it/get_it.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
@@ -24,10 +26,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 class UserBlogsPage extends StatefulWidget {
-  const UserBlogsPage({super.key, this.structuredOpener});
+  const UserBlogsPage({super.key, this.structuredOpener, this.recoveryList});
 
   /// Override only for tests; production uses the shared backend/session.
   final OpenStructuredEditingSession? structuredOpener;
+  final ListStructuredRecoveries? recoveryList;
 
   @override
   State<UserBlogsPage> createState() => _UserBlogsPageState();
@@ -128,6 +131,41 @@ class _UserBlogsPageState extends State<UserBlogsPage>
     }
   }
 
+  Future<void> _openLocalRecoveries() async {
+    if (_structuredOpen) return;
+    final opener =
+        widget.structuredOpener ?? GetIt.I<OpenStructuredEditingSession>();
+    final list = widget.recoveryList ?? GetIt.I<ListStructuredRecoveries>();
+    final user = context.read<AppUserCubit>();
+    final state = user.state;
+    if (state is! AppUserLoggedIn ||
+        state.user.id != opener.identity.activeUserId ||
+        !(opener.identity.accessToken?.isNotEmpty ?? false) ||
+        !identical(list.identity, opener.identity)) {
+      showSnackBar(context, context.l10n.structuredMissingIdentity);
+      return;
+    }
+    final fence = NowaveSessionFence(
+      userId: state.user.id,
+      generation: opener.identity.sessionGeneration,
+    );
+    _structuredOpen = true;
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => StructuredRecoveryCatalogPage(
+            list: list,
+            opener: opener,
+            user: user,
+            fence: fence,
+          ),
+        ),
+      );
+    } finally {
+      _structuredOpen = false;
+    }
+  }
+
   Future<void> _openRecycleBin() async {
     await context.push('/profile/my-articles/recycle-bin');
     if (mounted) _fetchUserBlogs();
@@ -164,6 +202,11 @@ class _UserBlogsPageState extends State<UserBlogsPage>
             isSelected: _allEditions,
             icon: const Icon(Icons.translate),
             onPressed: _toggleEditions,
+          ),
+          IconButton(
+            tooltip: context.l10n.structuredCatalogTitle,
+            icon: const Icon(Icons.offline_bolt_outlined),
+            onPressed: _openLocalRecoveries,
           ),
           IconButton(
             tooltip: context.l10n.recycleBinTooltip,
