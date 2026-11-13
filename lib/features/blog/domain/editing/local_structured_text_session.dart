@@ -483,7 +483,7 @@ class LocalStructuredTextSession {
     } finally {
       _finishing = false;
       _finishingDone = null;
-      if (_checkIdentity() && !_closing && _state.finishing) {
+      if (_checkIdentity() && _state.finishing) {
         _set(
           LocalTextState(
             phase: _state.phase,

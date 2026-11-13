@@ -978,6 +978,32 @@ void main() {
       },
     );
 
+    test(
+      'failed finish during close clears busy state and permits retry',
+      () async {
+        final session = await h.editing();
+        session.edit('keep');
+        expect(await session.flush(), LocalTextFlushResult.saved);
+        final gate = h.controlled.finishGate = Completer<void>();
+        h.controlled.finishError = StateError('failed');
+        final applying = session.apply(confirmed: true);
+        await h.controlled.finishStarted.future;
+        final closing = session.close();
+        gate.complete();
+        expect(await applying, LocalTextFinishResult.failed);
+        expect(await closing, isFalse);
+        expect(session.state.phase, LocalTextPhase.actionFailed);
+        expect(session.state.finishing, isFalse);
+        expect(session.state.hasUnsavedChanges, isTrue);
+        h.controlled.finishError = null;
+        expect(
+          await session.apply(confirmed: true),
+          LocalTextFinishResult.finished,
+        );
+        expect((await h.inner.load(_key))!.body.blocks[2]['text'], 'keep');
+      },
+    );
+
     test('close waits for an already admitted apply action', () async {
       final session = await h.editing();
       session.edit('to apply');
