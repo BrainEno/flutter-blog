@@ -384,9 +384,9 @@ class LocalStructuredTextSession {
     }
     if (!_checkIdentity()) return LocalTextFlushResult.obsolete;
     return switch (_state.phase) {
-      LocalTextPhase.editing ||
-      LocalTextPhase.actionFailed => LocalTextFlushResult.saved,
-      LocalTextPhase.saveFailed => LocalTextFlushResult.failed,
+      LocalTextPhase.editing => LocalTextFlushResult.saved,
+      LocalTextPhase.saveFailed ||
+      LocalTextPhase.actionFailed => LocalTextFlushResult.failed,
       LocalTextPhase.conflict => LocalTextFlushResult.conflict,
       _ => LocalTextFlushResult.notReady,
     };
@@ -429,7 +429,15 @@ class LocalStructuredTextSession {
       if (flushed == LocalTextFlushResult.conflict) {
         return LocalTextFinishResult.conflict;
       }
-      if (flushed != LocalTextFlushResult.saved) {
+      // An earlier finish may have committed before reporting an error. A
+      // deliberate action retry is safe only with its original CAS token;
+      // flush must not claim that this uncertain outcome was saved.
+      final retryingAction =
+          _state.phase == LocalTextPhase.actionFailed &&
+          _uncertainFinish &&
+          _pending == null &&
+          _writer == null;
+      if (flushed != LocalTextFlushResult.saved && !retryingAction) {
         return LocalTextFinishResult.failed;
       }
       final saved = _saved;

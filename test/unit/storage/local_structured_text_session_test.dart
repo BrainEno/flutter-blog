@@ -73,6 +73,7 @@ class _ControlledStore implements StructuredTextSessionStore {
   Object? writeError;
   Object? finishError;
   bool failAfterWrite = false;
+  bool failAfterFinish = false;
   int loads = 0;
   int creates = 0;
   int replacements = 0;
@@ -152,7 +153,12 @@ class _ControlledStore implements StructuredTextSessionStore {
   }) async {
     applies++;
     await _beforeFinish();
-    return inner.applyTextBuffer(expected: expected, updatedAt: updatedAt);
+    final result = await inner.applyTextBuffer(
+      expected: expected,
+      updatedAt: updatedAt,
+    );
+    if (failAfterFinish) throw StateError('ambiguous finish');
+    return result;
   }
 
   @override
@@ -736,6 +742,33 @@ void main() {
     );
 
     test(
+      'ambiguous committed apply is not reported as a successful flush',
+      () async {
+        final session = await h.editing();
+        session.edit('applied once');
+        expect(await session.flush(), LocalTextFlushResult.saved);
+        h.controlled.failAfterFinish = true;
+        expect(
+          await session.apply(confirmed: true),
+          LocalTextFinishResult.failed,
+        );
+        expect(await session.flush(), LocalTextFlushResult.failed);
+        expect(session.state.hasUnsavedChanges, isTrue);
+        expect(await session.close(), isFalse);
+        h.controlled.failAfterFinish = false;
+        expect(
+          await session.apply(confirmed: true),
+          LocalTextFinishResult.conflict,
+        );
+        expect(await session.close(), isFalse);
+        expect(
+          (await h.inner.load(_key))!.body.blocks[2]['text'],
+          'applied once',
+        );
+      },
+    );
+
+    test(
       'editing after a failed action can establish durability again',
       () async {
         final session = await h.editing();
@@ -973,8 +1006,9 @@ void main() {
         final phases = <LocalTextPhase>[];
         final subscription = session.changes.listen((state) {
           phases.add(state.phase);
-          if (state.phase == LocalTextPhase.recoveryChoice)
+          if (state.phase == LocalTextPhase.recoveryChoice) {
             h.identity.change('other');
+          }
         });
         await session.open();
         expect(session.state.phase, LocalTextPhase.invalidated);
