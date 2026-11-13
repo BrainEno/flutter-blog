@@ -6,19 +6,16 @@ import 'package:belog/features/blog/domain/editing/structured_article_draft.dart
 import 'package:belog/features/blog/domain/editing/structured_text_buffer.dart';
 import 'package:belog/features/blog/domain/entities/structured_body_recovery.dart';
 import 'package:belog/features/blog/domain/entities/structured_session_metadata.dart';
-import 'package:belog/features/blog/domain/repositories/structured_body_recovery_store.dart';
 import 'package:belog/features/blog/domain/repositories/structured_recovery_catalog.dart';
 import 'package:belog/features/blog/domain/repositories/structured_text_buffer_store.dart';
+import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
 import 'package:drift/drift.dart';
 
 /// SQLite body recovery for existing article editions. Atomic local revision
 /// comparisons protect multiple store instances/editors; they are not a
 /// server-side version check and do not make remote publication safe.
 class SqliteStructuredBodyRecoveryStore
-    implements
-        StructuredBodyRecoveryStore,
-        StructuredRecoveryCatalog,
-        StructuredTextBufferStore {
+    implements StructuredTextSessionStore, StructuredRecoveryCatalog {
   SqliteStructuredBodyRecoveryStore(this.database, {required Uri apiBaseUrl})
     : _backend = backendKeyOf(apiBaseUrl);
 

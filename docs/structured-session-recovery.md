@@ -215,3 +215,33 @@ not yet manage these buffers; a future UI integration must provide those fences,
 explicit recovery and discard, asynchronous edit ordering, and error handling
 before exposing text input. Storage remains unencrypted; devices and screen
 readers have not been tested.
+
+## Isolated text session coordination
+
+`LocalStructuredTextSession` coordinates one selected existing recovery row and
+one unformatted text block. It uses a single backend-scoped store for both the
+parent and buffer, checks the selected row incarnation, and always asks its
+caller for an explicit recovery decision. A mismatched block, corrupt row,
+missing row or identity change cannot start a blank remote-derived session.
+This component does not yet connect to the existing editor, create a recovery
+from a remote snapshot, or expose input controls. Integrators must close or
+flush the other editing session and reopen the latest local revision before
+handing ownership between coordinators; stale tokens conflict, not rebase.
+
+The writer serializes and coalesces rapid input, including empty intermediate
+text, using the full local buffer CAS. It keeps pending input in memory on
+storage failure or conflict. Only storage errors may be retried, and an
+ambiguous committed write conflicts on retry. Explicit apply first flushes and
+then requires the strict body validator; explicit discard removes only the
+buffer. Both require confirmation and compare the exact stored token. A failed
+or conflicting finish is treated as uncertain when closing; the caller must
+acknowledge possible abandonment rather than silently discard the in-memory
+value. Neither operation sends to the backend. An identity-generation change
+clears public state immediately, while already admitted work may complete only
+under the original account and backend key. Consumers must clear any copies
+previously delivered to them. Process termination or storage failure can still
+lose input not yet persisted; the database is not newly encrypted.
+
+The v16 schema and older-client downgrade caveat from the previous section are
+unchanged. This adds no schema migration or dependency. Real devices, screen
+readers, production networking, and rollback remain unverified.
