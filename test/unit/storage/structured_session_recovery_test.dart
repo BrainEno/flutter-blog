@@ -696,6 +696,9 @@ void main() {
         old.execute(
           'ALTER TABLE structured_body_drafts DROP COLUMN session_metadata',
         );
+        old.execute(
+          'ALTER TABLE structured_body_drafts DROP COLUMN text_buffer',
+        );
         old.execute('PRAGMA user_version = 14');
         old.close();
         db = AppDatabase(NativeDatabase(file));
@@ -713,7 +716,7 @@ void main() {
           (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
             'user_version',
           ),
-          15,
+          16,
         );
         final next = (await target.replaceSession(
           expected: restored,
