@@ -363,6 +363,14 @@ Future<void> _handoffFromBody(WidgetTester tester, _Harness h) async {
   await _visibleTap(tester, find.byTooltip('Edit unformatted text'));
   // pumpAndSettle only waits for scheduled frames; the SQLite handoff can
   // still be finishing without a frame. Wait for the admitted write first.
+  for (var i = 0; i < 50 && !h.body.completed.isCompleted; i++) {
+    await tester.pump(const Duration(milliseconds: 20));
+  }
+  expect(
+    h.body.completed.isCompleted,
+    isTrue,
+    reason: 'handoff did not finish; body phase: ${h.body.state.phase}',
+  );
   final result = await h.body.completed.future;
   expect(result.status, LocalTextHandoffStatus.ready);
   await tester.pumpAndSettle();
