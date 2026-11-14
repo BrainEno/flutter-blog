@@ -506,3 +506,47 @@ splitting a surrogate pair but do not promise grapheme-cluster correctness.
 Unpaired target or inserted text is refused without repairing original data.
 The upstream article validator was rechecked at
 `21195c264c5a7a359e0f72916cc4d724f2b14063`.
+
+## Isolated rich intermediate buffer and shared-slot CAS
+
+`StructuredRichTextBuffer` is a versioned local intermediate representation
+for an existing v1 formatted paragraph, heading, quote or explicitly indexed
+formatted list item. It stores runs including empty strings, mark order,
+absent versus explicitly empty marks, links, directional selection and
+composing offsets. It accepts temporarily empty and unmatched UTF-16 text.
+Strings are encoded as numeric UTF-16 units rather than passed through SQLite
+as potentially lossy UTF-8. The buffer is bounded to 1,000 runs, 20,000 text
+units and 1,500,000 encoded characters. Invalid attributes, offsets, unknown
+fields, oversized input and unknown versions are refused rather than repaired.
+These bounds can refuse a large otherwise valid document; rejection never
+truncates or deletes the existing recovery.
+
+SQLite uses the existing v16 `text_buffer` slot, with a distinct v2 envelope;
+there is no schema migration. Plain and rich buffers cannot coexist in a row.
+The existing ordinary editor and v16 plain buffer reader fail closed when a rich
+buffer is present, rather than treating it as absent. They cannot resume it.
+The rich reader also refuses a plain buffer. Clients older than v16 and actual
+application downgrade behavior are not verified; no downgrade guarantee is made.
+The recovery catalog remains unchanged and has no rich-buffer recovery UI.
+
+An envelope stores the exact parent body storage JSON as UTF-16-unit hex and
+its body version. Loading fails if the parent was modified even without a
+revision increment; this prevents a list reorder from redirecting a saved item
+index after restart. The envelope is capped at 5,600,000 characters. Each write
+also compares backend, account, article, locale, row ID, revision, versions,
+raw body/base JSON, timestamps, metadata and exact prior buffer bytes in one
+SQLite transaction. Caller-supplied parsed parent and buffer values are checked
+against their raw snapshots. This is a local CAS, not authorization, encryption
+or a server version; callers still need an account/route-fenced coordinator.
+
+Apply is explicit at the store API and accepts only a finished composition and
+runs that the existing v1 document validator accepts; unrenderable unmatched
+surrogates are refused without rewriting the buffer. Discard removes only the
+buffer with the same CAS. Neither action is connected to a UI or remote write.
+The stored composing range is preserved as data, not a promise that a platform
+IME session can be restored after process death. A fenced coordinator,
+confirmation UI, lifecycle/identity integration and real-device IME, screen
+reader and accessibility validation remain necessary before exposing formatted
+text input. Process death can still lose input not yet durably written, and the
+existing storage remains unencrypted. Upstream was checked at
+`b511936f400a38e56367a82dbcfefa35223fa4f3`.

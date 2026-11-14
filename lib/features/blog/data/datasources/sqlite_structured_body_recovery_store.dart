@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/core/storage/backend_key.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
+import 'package:belog/features/blog/domain/editing/structured_rich_text_buffer.dart';
 import 'package:belog/features/blog/domain/editing/structured_text_buffer.dart';
 import 'package:belog/features/blog/domain/entities/structured_body_recovery.dart';
 import 'package:belog/features/blog/domain/entities/structured_session_metadata.dart';
 import 'package:belog/features/blog/domain/repositories/structured_recovery_catalog.dart';
+import 'package:belog/features/blog/domain/repositories/structured_rich_text_buffer_store.dart';
 import 'package:belog/features/blog/domain/repositories/structured_text_buffer_store.dart';
 import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
 import 'package:drift/drift.dart';
@@ -15,7 +17,10 @@ import 'package:drift/drift.dart';
 /// comparisons protect multiple store instances/editors; they are not a
 /// server-side version check and do not make remote publication safe.
 class SqliteStructuredBodyRecoveryStore
-    implements StructuredTextSessionStore, StructuredRecoveryCatalog {
+    implements
+        StructuredTextSessionStore,
+        StructuredRecoveryCatalog,
+        StructuredRichTextBufferStore {
   SqliteStructuredBodyRecoveryStore(this.database, {required Uri apiBaseUrl})
     : _backend = backendKeyOf(apiBaseUrl);
 
@@ -395,6 +400,226 @@ class SqliteStructuredBodyRecoveryStore
 
   Future<StructuredBodyRecovery?> _finishTextBuffer({
     required StructuredTextBufferRecovery expected,
+    required StructuredArticleDraft body,
+    required String bodyJson,
+    required DateTime updatedAt,
+  }) async {
+    return database.transaction(() async {
+      final changed = await database.customUpdate(
+        'UPDATE structured_body_drafts SET text_buffer = NULL, body_version = ?, body_blocks = ?, '
+        'updated_at = ?, revision = revision + 1 '
+        'WHERE backend = ? AND user_id = ? AND article_id = ? AND locale = ? '
+        'AND backend = ? AND id = ? AND revision = ? AND base_version = ? AND base_blocks = ? '
+        'AND body_version = ? AND body_blocks = ? AND updated_at = ? '
+        'AND base_metadata IS ? AND session_metadata IS ? AND text_buffer IS ? '
+        'AND revision < 9223372036854775807',
+        variables: [
+          Variable<int>(body.version),
+          Variable<String>(bodyJson),
+          Variable<int>(updatedAt.toUtc().microsecondsSinceEpoch),
+          ..._snapshotVariables(expected.parent),
+          Variable<String>(expected.storageJson),
+        ],
+      );
+      return changed == 1 ? _load(expected.parent.key) : null;
+    });
+  }
+
+  @override
+  Future<StructuredRichTextBufferRecovery?> loadRichTextBuffer(
+    StructuredBodyKey key,
+  ) async {
+    return database.transaction(() async {
+      final row = await database
+          .customSelect(
+            'SELECT substr(text_buffer, 1, 5600001) AS text_buffer FROM structured_body_drafts '
+            'WHERE backend = ? AND user_id = ? AND article_id = ? AND locale = ?',
+            variables: _keyVariables(key),
+          )
+          .getSingleOrNull();
+      if (row == null) return null;
+      final raw = row.readNullable<String>('text_buffer');
+      if (raw == null) return null;
+      final parent = await _load(key, allowBuffered: true);
+      if (parent == null) {
+        throw const FormatException('Missing parent recovery');
+      }
+      final buffer = _decodeRichEnvelope(raw, parent);
+      buffer.validateTarget(parent.body);
+      return StructuredRichTextBufferRecovery(
+        parent: parent,
+        buffer: buffer,
+        storageJson: raw,
+      );
+    });
+  }
+
+  // Bind the buffer to the exact original body bytes, not just an item index.
+  // Hex encodes each UTF-16 unit without UTF-8 replacement of lone surrogates.
+  String _bodyHex(String text) {
+    final output = StringBuffer();
+    for (final unit in text.codeUnits) {
+      output.write(unit.toRadixString(16).padLeft(4, '0'));
+    }
+    return output.toString();
+  }
+
+  String _encodeRichEnvelope(
+    StructuredBodyRecovery parent,
+    StructuredRichTextBuffer buffer,
+  ) {
+    final raw = jsonEncode({
+      'schema': 2,
+      'sourceVersion': parent.body.version,
+      'sourceHex': _bodyHex(parent.bodyStorageJson),
+      'buffer': buffer.toJson(),
+    });
+    if (raw.length > 5600000) {
+      throw const FormatException('Rich buffer envelope too large');
+    }
+    return raw;
+  }
+
+  StructuredRichTextBuffer _decodeRichEnvelope(
+    String raw,
+    StructuredBodyRecovery parent,
+  ) {
+    if (raw.length > 5600000) {
+      throw const FormatException('Rich buffer envelope too large');
+    }
+    final value = jsonDecode(raw);
+    const fields = {'schema', 'sourceVersion', 'sourceHex', 'buffer'};
+    if (value is! Map ||
+        value.length != fields.length ||
+        value.keys.any((key) => !fields.contains(key)) ||
+        value['schema'] is! int ||
+        value['schema'] != 2 ||
+        value['sourceVersion'] is! int ||
+        value['sourceVersion'] != parent.body.version ||
+        value['sourceHex'] is! String ||
+        value['sourceHex'] != _bodyHex(parent.bodyStorageJson)) {
+      throw const FormatException('Rich buffer parent snapshot changed');
+    }
+    return StructuredRichTextBuffer.decode(jsonEncode(value['buffer']));
+  }
+
+  void _validateRichParent(StructuredBodyRecovery parent) {
+    // A caller-supplied parsed body must correspond to the exact CAS JSON.
+    // Otherwise a forged token could supply a different body for application.
+    final stored = _decode(parent.body.version, parent.bodyStorageJson);
+    if (jsonEncode(stored.blocks) != jsonEncode(parent.body.blocks)) {
+      throw const FormatException('Parent body snapshot mismatch');
+    }
+  }
+
+  void _validateRichExpected(StructuredRichTextBufferRecovery expected) {
+    _validateRichParent(expected.parent);
+    final decoded = _decodeRichEnvelope(expected.storageJson, expected.parent);
+    if (decoded.encode() != expected.buffer.encode()) {
+      throw const FormatException('Rich buffer snapshot mismatch');
+    }
+    decoded.validateTarget(expected.parent.body);
+  }
+
+  @override
+  Future<StructuredRichTextBufferRecovery?> createRichTextBuffer({
+    required StructuredBodyRecovery expected,
+    required StructuredRichTextBuffer buffer,
+    required DateTime updatedAt,
+  }) async {
+    _validateRichParent(expected);
+    buffer.validateTarget(expected.body);
+    return _writeRichBuffer(
+      expected: expected,
+      previous: null,
+      buffer: buffer,
+      updatedAt: updatedAt,
+    );
+  }
+
+  @override
+  Future<StructuredRichTextBufferRecovery?> replaceRichTextBuffer({
+    required StructuredRichTextBufferRecovery expected,
+    required StructuredRichTextBuffer buffer,
+    required DateTime updatedAt,
+  }) async {
+    _validateRichExpected(expected);
+    if (buffer.blockId != expected.buffer.blockId ||
+        buffer.itemIndex != expected.buffer.itemIndex) {
+      throw ArgumentError('Rich buffer target changed');
+    }
+    buffer.validateTarget(expected.parent.body);
+    return _writeRichBuffer(
+      expected: expected.parent,
+      previous: expected.storageJson,
+      buffer: buffer,
+      updatedAt: updatedAt,
+    );
+  }
+
+  Future<StructuredRichTextBufferRecovery?> _writeRichBuffer({
+    required StructuredBodyRecovery expected,
+    required String? previous,
+    required StructuredRichTextBuffer buffer,
+    required DateTime updatedAt,
+  }) async {
+    final encoded = _encodeRichEnvelope(expected, buffer);
+    return database.transaction(() async {
+      final changed = await database.customUpdate(
+        'UPDATE structured_body_drafts SET text_buffer = ?, updated_at = ?, revision = revision + 1 '
+        'WHERE backend = ? AND user_id = ? AND article_id = ? AND locale = ? '
+        'AND backend = ? AND id = ? AND revision = ? AND base_version = ? AND base_blocks = ? '
+        'AND body_version = ? AND body_blocks = ? AND updated_at = ? '
+        'AND base_metadata IS ? AND session_metadata IS ? AND text_buffer IS ? '
+        'AND revision < 9223372036854775807',
+        variables: [
+          Variable<String>(encoded),
+          Variable<int>(updatedAt.toUtc().microsecondsSinceEpoch),
+          ..._snapshotVariables(expected),
+          Variable<String>(previous),
+        ],
+      );
+      if (changed != 1) return null;
+      final parent = (await _load(expected.key, allowBuffered: true))!;
+      return StructuredRichTextBufferRecovery(
+        parent: parent,
+        buffer: buffer,
+        storageJson: encoded,
+      );
+    });
+  }
+
+  @override
+  Future<StructuredBodyRecovery?> applyRichTextBuffer({
+    required StructuredRichTextBufferRecovery expected,
+    required DateTime updatedAt,
+  }) async {
+    _validateRichExpected(expected);
+    final body = expected.buffer.applyTo(expected.parent.body);
+    return _finishRichBuffer(
+      expected: expected,
+      body: body,
+      bodyJson: jsonEncode(body.blocks),
+      updatedAt: updatedAt,
+    );
+  }
+
+  @override
+  Future<StructuredBodyRecovery?> discardRichTextBuffer({
+    required StructuredRichTextBufferRecovery expected,
+    required DateTime updatedAt,
+  }) async {
+    _validateRichExpected(expected);
+    return _finishRichBuffer(
+      expected: expected,
+      body: expected.parent.body,
+      bodyJson: expected.parent.bodyStorageJson,
+      updatedAt: updatedAt,
+    );
+  }
+
+  Future<StructuredBodyRecovery?> _finishRichBuffer({
+    required StructuredRichTextBufferRecovery expected,
     required StructuredArticleDraft body,
     required String bodyJson,
     required DateTime updatedAt,
