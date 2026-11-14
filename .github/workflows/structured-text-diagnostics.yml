@@ -17,7 +17,7 @@ jobs:
           cache: true
           pub-cache: true
       - run: flutter pub get
-      - run: flutter test test/widget/structured_local_text_page_test.dart --reporter expanded > /tmp/focused.txt 2>&1
+      - run: timeout 75s flutter test test/widget/structured_local_text_page_test.dart --reporter expanded > /tmp/focused.txt 2>&1
       - if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
