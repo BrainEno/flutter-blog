@@ -31,8 +31,12 @@ the account changes while a response is in flight. Login/registration cannot
 adopt a fake redirect body, and a redirected refresh retires the token as an
 unknown outcome rather than resending it. Password recovery also reports an
 unknown outcome: a server or proxy may have committed the original write
-before returning 3xx. Consumers must not infer that a redirected write failed,
-nor automatically retry a non-idempotent operation.
+before returning 3xx. Consumers must not infer that a redirected write failed.
+The existing publish queue can retry generic server failures (including a
+redirect mapped to `server.error`) against the original endpoint; this change
+does not alter that queue. Its existing idempotency and reconciliation limits
+still apply, particularly for uploads and edits. It must not be interpreted
+as exactly-once delivery.
 
 Tests include simulated redirects across methods and authentication paths,
 stalled response bodies, token rotation and identity changes, plus real local
