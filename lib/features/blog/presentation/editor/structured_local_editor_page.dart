@@ -7,11 +7,12 @@ import 'package:belog/core/l10n/edition_l10n.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
 import 'package:belog/features/blog/domain/entities/structured_edition_read.dart';
+import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
+import 'package:belog/features/blog/presentation/editor/structured_local_text_page.dart';
 import 'package:flutter/material.dart';
 
 /// A deliberately limited local-only editor. It never constructs a server
-/// request. Text input is intentionally absent until invalid intermediate
-/// input can be recovered independently of the validated body snapshot.
+/// request. Plain text uses a separate local session with explicit recovery.
 class StructuredLocalEditorPage extends StatefulWidget {
   const StructuredLocalEditorPage({super.key, required this.session});
   final LocalStructuredSession session;
@@ -121,6 +122,37 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
     );
     if (!mounted || !confirmed) return;
     _edit((body) => body.remove(id));
+  }
+
+  Future<void> _openText(String blockId) async {
+    if (_busy || _exiting) return;
+    setState(() => _busy = true);
+    final result = await widget.session.handoffPlainText(blockId);
+    if (!mounted) {
+      await result.session?.close();
+      return;
+    }
+    final text = result.session;
+    if (result.status != LocalTextHandoffStatus.ready || text == null) {
+      setState(() => _busy = false);
+      if (result.status == LocalTextHandoffStatus.invalidTarget ||
+          result.status == LocalTextHandoffStatus.unsupportedStore) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.structuredLocalFailure)),
+        );
+      }
+      return;
+    }
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => StructuredLocalTextPage(session: text),
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    // The body coordinator was closed before handoff. Never resurrect its
+    // stale revision; return to the caller, which can reopen the recovery.
+    await _leave();
   }
 
   void _edit(
@@ -279,6 +311,8 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
             canMoveDown: index < body.blocks.length - 1,
             canRemove: body.blocks.length > 1,
             canBold: body.version == 1,
+            canEditText: widget.session.store is StructuredTextSessionStore,
+            onText: () => _openText(body.blocks[index]['id'] as String),
             onMoveUp: () => _move(body.blocks[index]['id'] as String, -1),
             onMoveDown: () => _move(body.blocks[index]['id'] as String, 1),
             onRemove: () => _remove(body.blocks[index]['id'] as String),
@@ -373,6 +407,8 @@ class _StructuredBlockCard extends StatelessWidget {
     required this.canMoveDown,
     required this.canRemove,
     required this.canBold,
+    required this.canEditText,
+    required this.onText,
     required this.onMoveUp,
     required this.onMoveDown,
     required this.onRemove,
@@ -385,6 +421,8 @@ class _StructuredBlockCard extends StatelessWidget {
   final bool canMoveDown;
   final bool canRemove;
   final bool canBold;
+  final bool canEditText;
+  final VoidCallback onText;
   final VoidCallback onMoveUp;
   final VoidCallback onMoveDown;
   final VoidCallback onRemove;
@@ -437,6 +475,14 @@ class _StructuredBlockCard extends StatelessWidget {
                   onPressed: editable && canRemove ? onRemove : null,
                   icon: const Icon(Icons.delete_outline),
                 ),
+                if (canEditText &&
+                    const {'paragraph', 'heading', 'quote'}.contains(type) &&
+                    !block.containsKey('inlines'))
+                  IconButton(
+                    tooltip: l10n.structuredTextOpen,
+                    onPressed: editable ? onText : null,
+                    icon: const Icon(Icons.edit_outlined),
+                  ),
                 if (formatable && canBold)
                   IconButton(
                     tooltip: l10n.structuredBold,

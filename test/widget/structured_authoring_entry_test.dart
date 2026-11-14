@@ -13,6 +13,7 @@ import 'package:belog/features/blog/domain/entities/structured_body_recovery.dar
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
 import 'package:belog/features/blog/domain/usecase/list_structured_recoveries.dart';
 import 'package:belog/features/blog/domain/entities/structured_edition_read.dart';
+import 'package:belog/features/blog/domain/entities/structured_session_metadata.dart';
 import 'package:belog/features/blog/domain/repositories/structured_edition_reader.dart';
 import 'package:belog/features/blog/domain/usecase/open_structured_editing_session.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
@@ -44,6 +45,7 @@ class _Reader implements StructuredEditionReader {
   StructuredBodyKey? seenKey;
   NowaveSessionFence? seenFence;
   int calls = 0;
+  StructuredEditionReadResult? overrideResult;
   @override
   Future<StructuredEditionReadResult> read({
     required StructuredBodyKey key,
@@ -52,9 +54,10 @@ class _Reader implements StructuredEditionReader {
     calls++;
     seenKey = key;
     seenFence = fence;
-    return const StructuredEditionReadResult.failed(
-      StructuredEditionReadStatus.unsupportedDocument,
-    );
+    return overrideResult ??
+        const StructuredEditionReadResult.failed(
+          StructuredEditionReadStatus.unsupportedDocument,
+        );
   }
 }
 
@@ -156,6 +159,57 @@ class _EntryHarness {
 }
 
 void main() {
+  testWidgets(
+    'UI account change hides an active authoring editor immediately',
+    (tester) async {
+      final h = _EntryHarness(_blog());
+      addTearDown(h.close);
+      final article = structuredArticle();
+      final body = StructuredArticleDraft.parse(
+        version: article['contentBlocksVersion'],
+        blocks: article['contentBlocks'],
+      );
+      h.reader.overrideResult = StructuredEditionReadResult.found(
+        StructuredEdition(
+          key: StructuredBodyKey(
+            userId: 'author',
+            articleId: 'server-uuid',
+            locale: 'en',
+          ),
+          body: body,
+          metadata: StructuredSessionMetadata(
+            slug: 'structured',
+            title: 'title',
+            summary: '',
+            workType: 'essay',
+            publicationState: 'draft',
+            tags: null,
+            categories: null,
+            cover: null,
+          ),
+          rawArticle: {'id': 'server-uuid'},
+          metadataIssues: const {},
+        ),
+      );
+      await h.pump(tester);
+      await tester.tap(find.text('Sample title'));
+      await tester.pumpAndSettle();
+      expect(find.text('Bold代码'), findsOneWidget);
+      h.user.updateUser(
+        User(
+          id: 'other',
+          email: 'other@example.invalid',
+          name: 'Other',
+          updatedAt: DateTime.utc(2026),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Bold代码'), findsNothing);
+      expect(find.textContaining('account changed'), findsOneWidget);
+      expect(h.uploads.events, isEmpty);
+    },
+  );
+
   testWidgets('author archive opens exact ID and locale, never the slug', (
     tester,
   ) async {

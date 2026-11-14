@@ -551,6 +551,28 @@ void main() {
       },
     );
 
+    test(
+      'late input during a conflict stays in memory without an automatic write',
+      () async {
+        final parent = await h.create();
+        final session = await h.editing(parent: parent);
+        await h.inner.replace(
+          expected: parent,
+          body: _body().replacePlainText('paragraph', 'other'),
+          updatedAt: _time,
+        );
+        session.edit('first');
+        expect(await session.flush(), LocalTextFlushResult.conflict);
+        expect(session.edit('late IME input'), isTrue);
+        expect(session.state.phase, LocalTextPhase.conflict);
+        expect(session.state.text, 'late IME input');
+        expect(session.state.hasUnsavedChanges, isTrue);
+        expect(session.retrySave(), isFalse);
+        expect(await session.close(), isFalse);
+        expect((await h.inner.load(_key))!.body.blocks[2]['text'], 'other');
+      },
+    );
+
     test('competing parent edit stops the stale first buffer save', () async {
       final parent = await h.create();
       final session = await h.editing(parent: parent);

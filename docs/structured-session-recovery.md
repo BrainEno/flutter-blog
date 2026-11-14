@@ -280,3 +280,33 @@ plain text remains nonempty with a 20,000 UTF-16-unit limit, and inline runs
 must match their fallback exactly. The author list now has an opt-in all-locales
 mode, but its per-locale limit remains 100 and this work does not infer absence
 or introduce remote conditional updates.
+
+## Local unformatted text screen
+
+The local structure editor now offers a separate text screen for paragraph,
+heading and quote blocks without explicit inline runs. The old body coordinator
+is closed after an exact local handoff; returning from the text screen returns
+to the caller rather than reviving the old revision. Reopen the local recovery
+to continue editing the body. Structured runs, links, image fields, lists and
+other block data are not flattened or edited by this screen. No server write,
+queue operation or publication is enabled.
+
+The screen requires an explicit local recovery choice. Typing is persisted as
+an intermediate buffer, including an empty value; applying it to the validated
+body or discarding the buffer requires a separate confirmation. Back preserves
+a successfully saved buffer, and an unsaved failure or conflict requires an
+explicit acknowledgement before leaving. A failed save can be retried and
+additional input remains in memory until then. A conflict is not retried against
+a newer snapshot. Input is bounded by 20,000 UTF-16 units; an over-limit edit is
+rejected rather than truncated. Status and actions use the localized catalogs.
+
+The offline catalog checks for an existing buffered recovery before opening a
+body session, without reading the network; damaged buffers fail closed. Both
+catalog and author entry fence the UI account as well as the live network
+identity. Previously delivered values and OS keyboard state cannot be revoked;
+the screen clears its controller on invalidation and consumers must not retain
+private values. Process termination, externally removing a route, or storage
+failure can still lose input that has not reached SQLite. The app does not add
+storage encryption, and older-client downgrade remains unvalidated. Flutter
+widget tests do not establish real-device, IME, screen-reader, production
+backend, or signed-build validation.
