@@ -366,6 +366,7 @@ Future<void> _handoffFromBody(WidgetTester tester, _Harness h) async {
   // pumpAndSettle only waits for scheduled frames; the SQLite handoff can
   // still be finishing without a frame. Wait for the admitted write first.
   for (var i = 0; i < 50 && !h.body.completed.isCompleted; i++) {
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
     await tester.pump(const Duration(milliseconds: 20));
   }
   expect(
