@@ -359,7 +359,7 @@ and quotes. It shows existing runs lazily and lets the author toggle supported
 marks or explicitly apply/remove a link on one complete run. A plain v1 block
 is presented as one unformatted run and is promoted only when changed. Text,
 run boundaries, other marks, links, blocks, image fields and the local baseline
-remain intact. Existing list formatting, arbitrary selected ranges, formatted
+remain intact. Arbitrary selected ranges, formatted
 text insertion and v0 conversion are not exposed by this screen. A boundary
 that would split a UTF-16 surrogate pair is rejected rather than repaired.
 
@@ -394,3 +394,36 @@ also disables actions for a run or link containing an unmatched surrogate;
 this includes a surrogate pair split across two existing runs. The underlying
 snapshot is neither repaired nor rewritten. This validation is representational
 and does not imply that other character boundaries are grapheme-safe.
+
+## Local list-item run formatting
+
+The local-only v1 inline screen also opens list blocks. It presents the ordered
+set of items first; the user must explicitly choose an item before its complete
+runs can be formatted or linked. The operation never changes item text, list
+order, block identity, unrelated runs, image fields or metadata. Plain lists
+remain plain until a real change requires `itemInlines`, when every other item
+is represented by its original single fallback run. Cancelling a link dialog
+or applying an unchanged link does not write a recovery row.
+
+The server contract has no stable list-item ID. An index is therefore meaningful
+only together with the exact current in-memory body snapshot. The UI discards
+the chosen index on any body replacement, including its own accepted edit, and
+requires an explicit new choice. Captured callbacks check the session, identity
+and same body instance before making a selection; link dialogs independently
+invalidate their captured list selection on any body replacement, even if later
+edits reproduce the original JSON. The domain range operation additionally
+compares the complete serialized document, and the existing session and store
+still apply their account fence and exact local CAS. None of these values is a
+server authorization token or a conditional remote-write guarantee.
+
+A list item's fallback and each displayed run/link must be well-formed UTF-16
+to be rendered in the corresponding control. Invalid display values are hidden
+and edits to those values disabled, not repaired. This check does not claim
+Unicode grapheme awareness. The item and run lists are lazy, but selecting and
+editing still validates and snapshots the bounded complete document. A save
+failure retains the unsaved body in memory and exposes retry; a conflict stops
+writes rather than overwriting a competing recovery. An identity change clears
+selection and private dialog data. Process death before a successful flush can
+still lose in-memory changes. No remote publication, arbitrary range editing,
+text input, new storage schema, dependency or encryption is introduced here.
+Real devices, IMEs and screen readers remain unvalidated.

@@ -291,9 +291,7 @@ void main() {
         );
         expect(
           find.textContaining(
-            locale.languageCode == 'en'
-                ? 'Images and list formatting are preserved'
-                : '图片和列表格式会保留',
+            locale.languageCode == 'en' ? 'Images are preserved' : '图片会保留',
           ),
           findsOneWidget,
         );
