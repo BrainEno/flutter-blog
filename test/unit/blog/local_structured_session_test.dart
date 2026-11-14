@@ -256,6 +256,23 @@ class _Harness {
     // A conflict intentionally refuses ordinary close. Invalidate only after
     // assertions so cleanup cannot mask an unsafe deletion or lost update.
     identity.switchTo(null);
+    // Unblock any controlled operation if an assertion failed before its gate
+    // was released; teardown must not hang and hide the original failure.
+    for (final gate in [
+      store.createGate,
+      store.replaceGate,
+      store.discardGate,
+    ]) {
+      if (gate != null && !gate.isCompleted) gate.complete();
+    }
+    final pendingRead = reader.gate;
+    if (pendingRead != null && !pendingRead.isCompleted) {
+      pendingRead.complete(
+        const StructuredEditionReadResult.failed(
+          StructuredEditionReadStatus.unavailable,
+        ),
+      );
+    }
     for (final session in sessions) {
       await session.close(abandonUnsaved: true);
     }
