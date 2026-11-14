@@ -873,10 +873,12 @@ void main() {
           _run(999),
           1000,
           maxScrolls: 1000,
-          scrollable: find.descendant(
-            of: find.byType(StructuredLocalInlinePage),
-            matching: find.byType(Scrollable),
-          ),
+          scrollable: find
+              .descendant(
+                of: find.byType(ListView).first,
+                matching: find.byType(Scrollable),
+              )
+              .first,
         );
         await _tapVisible(tester, _withinRun(999, 'Bold'));
         expect(await h.session.flush(), LocalStructuredFlushResult.saved);
