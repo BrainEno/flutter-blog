@@ -7,6 +7,7 @@ import 'package:belog/features/blog/data/datasources/sqlite_structured_body_reco
 import 'package:belog/features/blog/domain/editing/local_structured_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
 import 'package:belog/features/blog/domain/editing/structured_inline_selection.dart';
+import 'package:belog/features/blog/domain/editing/structured_inline_replacement.dart';
 import 'package:belog/features/blog/domain/entities/structured_body_recovery.dart';
 import 'package:belog/features/blog/domain/entities/structured_edition_read.dart';
 import 'package:belog/features/blog/domain/entities/structured_session_metadata.dart';
@@ -255,6 +256,23 @@ class _Harness {
     // A conflict intentionally refuses ordinary close. Invalidate only after
     // assertions so cleanup cannot mask an unsafe deletion or lost update.
     identity.switchTo(null);
+    // Unblock any controlled operation if an assertion failed before its gate
+    // was released; teardown must not hang and hide the original failure.
+    for (final gate in [
+      store.createGate,
+      store.replaceGate,
+      store.discardGate,
+    ]) {
+      if (gate != null && !gate.isCompleted) gate.complete();
+    }
+    final pendingRead = reader.gate;
+    if (pendingRead != null && !pendingRead.isCompleted) {
+      pendingRead.complete(
+        const StructuredEditionReadResult.failed(
+          StructuredEditionReadStatus.unavailable,
+        ),
+      );
+    }
     for (final session in sessions) {
       await session.close(abandonUnsaved: true);
     }
@@ -273,6 +291,283 @@ void main() {
   });
   tearDown(() async {
     await h.dispose();
+  });
+
+  group('isolated inline replacement with the fenced local coordinator', () {
+    test('saves exact replaced runs and keeps all other data', () async {
+      final session = h.session();
+      await session.open();
+      final before = session.state.body!;
+      final edit = StructuredInlineReplacement.textBlock(
+        document: before,
+        blockId: 'heading',
+        start: 1,
+        end: 3,
+      );
+      expect(
+        session.edit(
+          (current) => edit.apply(
+            current,
+            inserted: StructuredInsertedText(
+              text: 'X',
+              marks: ['code'],
+              href: '/new',
+            ),
+          ),
+        ),
+        isTrue,
+      );
+      expect(await session.flush(), LocalStructuredFlushResult.saved);
+      final saved = (await h.inner.load(_key))!;
+      final heading = saved.body.blocks.first;
+      expect(heading['text'], 'BXd代码');
+      expect(heading['level'], 2);
+      final runs = heading['inlines'] as List;
+      expect(runs.map((r) => r['text']).toList(), ['B', 'X', 'd', '代码']);
+      expect(runs[0]['href'], '/guide');
+      expect(runs[1], {
+        'text': 'X',
+        'marks': ['code'],
+        'href': '/new',
+      });
+      expect(runs[2]['href'], '/guide');
+      expect(runs[3], (before.blocks.first['inlines'] as List)[1]);
+      expect(
+        saved.body.blocks.skip(1).toList(),
+        before.blocks.skip(1).toList(),
+      );
+      expect(saved.base.toJsonBlocks(), before.toJsonBlocks());
+      expect(saved.sessionMetadata!.toJson(), _metadata().toJson());
+    });
+
+    test(
+      'a stale replacement throws without starting a second write',
+      () async {
+        final session = h.session();
+        await session.open();
+        final edit = StructuredInlineReplacement.textBlock(
+          document: session.state.body!,
+          blockId: 'heading',
+          start: 1,
+          end: 3,
+        );
+        expect(session.edit((body) => body.move('image-two', 1)), isTrue);
+        expect(await session.flush(), LocalStructuredFlushResult.saved);
+        final previous = (await h.inner.load(_key))!;
+        expect(
+          () => session.edit(
+            (body) =>
+                edit.apply(body, inserted: StructuredInsertedText(text: 'X')),
+          ),
+          throwsStateError,
+        );
+        final after = (await h.inner.load(_key))!;
+        expect(after.revision, previous.revision);
+        expect(after.body.toJsonBlocks(), previous.body.toJsonBlocks());
+        expect(h.store.creates, 1);
+        expect(h.store.replaces, 0);
+      },
+    );
+
+    test(
+      'identity change rejects a retained operation and starts no write',
+      () async {
+        final session = h.session();
+        await session.open();
+        final edit = StructuredInlineReplacement.textBlock(
+          document: session.state.body!,
+          blockId: 'heading',
+          start: 1,
+          end: 3,
+        );
+        h.identity.switchTo('other');
+        expect(
+          session.edit(
+            (body) =>
+                edit.apply(body, inserted: StructuredInsertedText(text: 'X')),
+          ),
+          isFalse,
+        );
+        expect(session.state.phase, LocalStructuredPhase.invalidated);
+        expect(session.state.body, isNull);
+        expect(await h.inner.load(_key), isNull);
+        expect(h.store.creates, 0);
+      },
+    );
+
+    test(
+      'accepted write during account switch remains under original key',
+      () async {
+        h.store.createGate = Completer<void>();
+        final session = h.session();
+        await session.open();
+        final edit = StructuredInlineReplacement.textBlock(
+          document: session.state.body!,
+          blockId: 'heading',
+          start: 1,
+          end: 3,
+        );
+        expect(
+          session.edit(
+            (body) =>
+                edit.apply(body, inserted: StructuredInsertedText(text: 'X')),
+          ),
+          isTrue,
+        );
+        await h.store.createStarted.future;
+        h.identity.switchTo('other');
+        expect(session.state.phase, LocalStructuredPhase.invalidated);
+        expect(session.state.body, isNull);
+        h.store.createGate!.complete();
+        expect(await session.close(), isTrue);
+        final saved = (await h.inner.load(_key))!;
+        expect(saved.key.userId, 'author');
+        expect(saved.body.blocks.first['text'], 'BXd代码');
+        final other = StructuredBodyKey(
+          userId: 'other',
+          articleId: _key.articleId,
+          locale: _key.locale,
+        );
+        expect(await h.inner.load(other), isNull);
+      },
+    );
+
+    test(
+      'disk failure keeps the replacement in memory until explicit retry',
+      () async {
+        h.store.createError = StateError('disk');
+        final session = h.session();
+        await session.open();
+        final edit = StructuredInlineReplacement.textBlock(
+          document: session.state.body!,
+          blockId: 'heading',
+          start: 1,
+          end: 3,
+        );
+        expect(
+          session.edit(
+            (body) =>
+                edit.apply(body, inserted: StructuredInsertedText(text: 'X')),
+          ),
+          isTrue,
+        );
+        expect(await session.flush(), LocalStructuredFlushResult.failed);
+        expect(session.state.phase, LocalStructuredPhase.saveFailed);
+        expect(session.state.hasUnsavedChanges, isTrue);
+        expect(session.state.body!.blocks.first['text'], 'BXd代码');
+        expect(await h.inner.load(_key), isNull);
+        h.store.createError = null;
+        expect(session.retrySave(), isTrue);
+        expect(await session.flush(), LocalStructuredFlushResult.saved);
+        expect((await h.inner.load(_key))!.body.blocks.first['text'], 'BXd代码');
+      },
+    );
+
+    test(
+      'a competing local row triggers conflict without overwriting it',
+      () async {
+        final session = h.session();
+        await session.open();
+        final edit = StructuredInlineReplacement.textBlock(
+          document: session.state.body!,
+          blockId: 'heading',
+          start: 1,
+          end: 3,
+        );
+        final competing = await h.seed();
+        expect(
+          session.edit(
+            (body) =>
+                edit.apply(body, inserted: StructuredInsertedText(text: 'X')),
+          ),
+          isTrue,
+        );
+        expect(await session.flush(), LocalStructuredFlushResult.conflict);
+        expect(session.state.hasUnsavedChanges, isTrue);
+        expect(session.retrySave(), isFalse);
+        final after = (await h.inner.load(_key))!;
+        expect(after.rowId, competing.rowId);
+        expect(after.revision, competing.revision);
+        expect(after.body.toJsonBlocks(), competing.body.toJsonBlocks());
+      },
+    );
+
+    test('sequential edits coalesce behind an in-flight write', () async {
+      h.store.createGate = Completer<void>();
+      final session = h.session();
+      await session.open();
+      final first = StructuredInlineReplacement.textBlock(
+        document: session.state.body!,
+        blockId: 'heading',
+        start: 1,
+        end: 3,
+      );
+      expect(
+        session.edit(
+          (body) =>
+              first.apply(body, inserted: StructuredInsertedText(text: 'X')),
+        ),
+        isTrue,
+      );
+      await h.store.createStarted.future;
+      final second = StructuredInlineReplacement.textBlock(
+        document: session.state.body!,
+        blockId: 'heading',
+        start: 1,
+        end: 2,
+      );
+      expect(
+        session.edit(
+          (body) => second.apply(
+            body,
+            inserted: StructuredInsertedText(text: 'YZ', marks: ['bold']),
+          ),
+        ),
+        isTrue,
+      );
+      h.store.createGate!.complete();
+      expect(await session.flush(), LocalStructuredFlushResult.saved);
+      final saved = (await h.inner.load(_key))!;
+      expect(saved.body.blocks.first['text'], 'BYZd代码');
+      expect((saved.body.blocks.first['inlines'] as List)[1], {
+        'text': 'YZ',
+        'marks': ['bold'],
+      });
+      expect(saved.revision, 2);
+      expect(h.store.creates, 1);
+      expect(h.store.replaces, 1);
+    });
+
+    test('saved replacement is recovered only after explicit resume', () async {
+      final first = h.session();
+      await first.open();
+      final edit = StructuredInlineReplacement.textBlock(
+        document: first.state.body!,
+        blockId: 'heading',
+        start: 1,
+        end: 3,
+      );
+      expect(
+        first.edit(
+          (body) =>
+              edit.apply(body, inserted: StructuredInsertedText(text: 'X')),
+        ),
+        isTrue,
+      );
+      expect(await first.flush(), LocalStructuredFlushResult.saved);
+      expect(await first.close(), isTrue);
+      final second = h.session();
+      await second.open();
+      expect(second.state.phase, LocalStructuredPhase.recoveryChoice);
+      expect(second.state.body!.blocks.first['text'], 'BXd代码');
+      expect(second.resumeRecovery(), isTrue);
+      expect(second.state.phase, LocalStructuredPhase.editing);
+      expect(second.state.body!.blocks.first['text'], 'BXd代码');
+      expect(
+        (await h.inner.load(_key))!.body.toJsonBlocks(),
+        second.state.body!.toJsonBlocks(),
+      );
+    });
   });
 
   group('opening and explicit recovery decisions', () {

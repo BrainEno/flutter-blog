@@ -461,3 +461,48 @@ selection, remote write, publication, queue operation, dependency or migration
 is added. Process death before a successful local flush can lose an in-memory
 change. Upstream validation was checked at
 `21195c264c5a7a359e0f72916cc4d724f2b14063`.
+
+## Isolated formatted-text replacement primitive
+
+`StructuredInlineReplacement` captures a UTF-16 half-open range in one v1
+paragraph, heading, quote or explicitly indexed list item. A collapsed range is
+an insertion; a null insertion is deletion. `StructuredInsertedText` requires
+nonempty, well-formed UTF-16 and makes the attributes of new text explicit.
+It does not infer a style or link from either neighboring run. Absent marks and
+an explicitly empty mark list remain distinct. Supported marks must be unique;
+links must pass the existing URL validator and be well-formed for rendering.
+The inserted mark list is defensively copied.
+
+Only intersected runs are split; all remaining text, mark order, link values,
+optional-key presence, IDs, unrelated blocks and other list items are kept.
+Adjacent runs are never merged. Plain replacements in an unformatted target
+keep the inline field absent; explicit attributes promote it only when required.
+A collapsed deletion is an identity no-op. Replacing plain text with identical
+plain text is also a no-op; for an already formatted target, even identical
+replacement characters can deliberately change their attributes and boundaries.
+The returned body passes the existing complete v1 validator, including fallback
+agreement and document, list-item and run limits. Empty, whitespace-only or
+otherwise invalid final bodies are refused rather than normalized or dropped.
+
+This component is deliberately **not** connected to text input. It does not
+represent a temporary empty value, composing range, IME update, editable widget,
+undo history or durable intermediate. The existing `StructuredTextBuffer` is
+only for unformatted blocks and must not be used to flatten a formatted target.
+Before exposing formatted input, implement a lossless recoverable intermediate
+representation and a fenced coordinator; establish explicit style-at-caret and
+composition semantics; and test recovery, conflicts, account/locale changes,
+IME and accessibility on real devices. The primitive cannot infer an edit from
+an old/new text diff without a caller-supplied, validated range and attributes.
+
+Captures compare the entire serialized body, but are neither identity nor local
+CAS tokens. A structurally identical later body will compare equal; callers must
+separately invalidate on every intervening body replacement, including ABA
+changes, and use the account-fenced local session and exact store CAS. The
+session does not automatically suppress identity no-ops; consumers should avoid
+submitting one if they do not intend a write. The primitive accepts no remote
+operation, has no persistence or encryption of its own, and cannot guarantee
+that in-memory edits survive process death. UTF-16 boundary checks prevent
+splitting a surrogate pair but do not promise grapheme-cluster correctness.
+Unpaired target or inserted text is refused without repairing original data.
+The upstream article validator was rechecked at
+`21195c264c5a7a359e0f72916cc4d724f2b14063`.
