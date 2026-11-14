@@ -363,9 +363,11 @@ Future<void> _visibleTap(WidgetTester tester, Finder finder) async {
 
 Future<void> _handoffFromBody(WidgetTester tester, _Harness h) async {
   await _visibleTap(tester, find.byTooltip('Edit unformatted text'));
+  debugPrint('DIAG tapped');
   // pumpAndSettle only waits for scheduled frames; the SQLite handoff can
   // still be finishing without a frame. Wait for the admitted write first.
   for (var i = 0; i < 50 && !h.body.completed.isCompleted; i++) {
+    debugPrint('DIAG tick $i');
     await tester.runAsync(() => Future<void>.delayed(Duration.zero));
     await tester.pump(const Duration(milliseconds: 20));
   }
@@ -375,9 +377,11 @@ Future<void> _handoffFromBody(WidgetTester tester, _Harness h) async {
     reason:
         'handoff started: ${h.body.started}; body phase: ${h.body.state.phase}; block: ${h.body.state.body?.blocks[2]}',
   );
+  debugPrint('DIAG completed');
   final result = await h.body.completed.future;
   expect(result.status, LocalTextHandoffStatus.ready);
   await tester.pumpAndSettle();
+  debugPrint('DIAG settled');
 }
 
 Future<void> _startText(
