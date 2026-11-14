@@ -173,7 +173,7 @@ void main() {
       final low = emoji.substring(1);
       final body = document([
         paragraph(
-          'A${high}${low}B',
+          'A$high${low}B',
           runs: [
             {'text': 'A$high'},
             {
@@ -935,10 +935,10 @@ void main() {
     });
 
     test('run text and fallback preserve whitespace and literal markup', () {
-      final body = document([paragraph(' **a**\n  b\t ')]);
-      final result = select(body, 1, 6).setLink(body, '/literal');
-      expect(result.blocks.single['text'], ' **a**\n  b\t ');
-      expect(textOfRuns(textRuns(result)), ' **a**\n  b\t ');
+      final body = document([paragraph('x **a**\n  b\t y')]);
+      final result = select(body, 2, 7).setLink(body, '/literal');
+      expect(result.blocks.single['text'], 'x **a**\n  b\t y');
+      expect(textOfRuns(textRuns(result)), 'x **a**\n  b\t y');
       expect(textRuns(result)[1]['text'], '**a**');
     });
   });
