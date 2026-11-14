@@ -116,7 +116,7 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
     });
   }
 
-  Future<void> _openRange(StructuredArticleDraft body, int? itemIndex) async {
+  void _openRange(StructuredArticleDraft body, int? itemIndex) {
     if (!mounted) return;
     final state = widget.session.state;
     if (state.phase != LocalStructuredPhase.editing ||
@@ -126,20 +126,25 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
       if (mounted) setState(() => _unsupported = true);
       return;
     }
-    final seed = StructuredRangeSeed(body);
+    final seed = StructuredRangeSeed(widget.session, body);
     try {
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(
-          builder: (_) => StructuredLocalRangePage(
-            session: widget.session,
-            blockId: widget.blockId,
-            itemIndex: itemIndex,
-            seed: seed,
-          ),
-        ),
+      unawaited(
+        Navigator.of(context)
+            .push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) => StructuredLocalRangePage(
+                  session: widget.session,
+                  blockId: widget.blockId,
+                  itemIndex: itemIndex,
+                  seed: seed,
+                ),
+              ),
+            )
+            .whenComplete(seed.clear),
       );
-    } finally {
+    } catch (_) {
       seed.clear();
+      rethrow;
     }
   }
 

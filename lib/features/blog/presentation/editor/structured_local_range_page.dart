@@ -12,9 +12,21 @@ import 'package:flutter/services.dart';
 
 /// One-shot handoff that does not retain a private snapshot in a route closure.
 class StructuredRangeSeed {
-  StructuredRangeSeed(this.body);
+  StructuredRangeSeed(LocalStructuredSession session, this.body) {
+    _subscription = session.changes.listen((state) {
+      if (body != null && !identical(body, state.body)) clear();
+    });
+  }
+  late final StreamSubscription<LocalStructuredState> _subscription;
   StructuredArticleDraft? body;
-  void clear() => body = null;
+  bool _cleared = false;
+  void clear() {
+    body = null;
+    if (!_cleared) {
+      _cleared = true;
+      unawaited(_subscription.cancel());
+    }
+  }
 }
 
 /// A read-only selection surface. This route cannot insert text or publish.
@@ -184,17 +196,20 @@ class _StructuredLocalRangePageState extends State<StructuredLocalRangePage>
     }
   }
 
-  Future<void> _link() async {
+  void _link() {
     try {
-      final selection = _selection();
-      final seed = _RangeLinkSeed(selection, _body!);
+      final seed = _RangeLinkSeed(widget.session, _selection(), _body!);
       try {
-        await showDialog<void>(
-          context: context,
-          builder: (_) => _RangeLinkDialog(session: widget.session, seed: seed),
+        unawaited(
+          showDialog<void>(
+            context: context,
+            builder: (_) =>
+                _RangeLinkDialog(session: widget.session, seed: seed),
+          ).whenComplete(seed.clear),
         );
-      } finally {
+      } catch (_) {
         seed.clear();
+        rethrow;
       }
     } on ArgumentError {
       if (mounted) setState(() => _invalid = true);
@@ -336,12 +351,22 @@ String? _targetText(StructuredArticleDraft body, String id, int? itemIndex) {
 }
 
 class _RangeLinkSeed {
-  _RangeLinkSeed(this.selection, this.body);
+  _RangeLinkSeed(LocalStructuredSession session, this.selection, this.body) {
+    _subscription = session.changes.listen((state) {
+      if (body != null && !identical(body, state.body)) clear();
+    });
+  }
+  late final StreamSubscription<LocalStructuredState> _subscription;
   StructuredInlineSelection? selection;
   StructuredArticleDraft? body;
+  bool _cleared = false;
   void clear() {
     selection = null;
     body = null;
+    if (!_cleared) {
+      _cleared = true;
+      unawaited(_subscription.cancel());
+    }
   }
 }
 
