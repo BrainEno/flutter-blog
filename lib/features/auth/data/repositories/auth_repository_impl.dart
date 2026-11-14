@@ -40,39 +40,21 @@ class AuthRepositoryImpl implements AuthRepository {
       var stale = _staleSessionFailure(generation);
       if (stale != null) return left(stale);
 
-      if (!connected) {
-        final session = remoteDataSource.currentSession;
-        if (session == null) {
-          return left(
-            Failure(
-              '请登录账户',
-              kind: FailureKind.auth,
-              code: 'auth.rejected',
-              l10nKey: 'auth.required',
-            ),
-          );
+      if (!connected) return await _offlineCurrentUser(generation);
+
+      UserModel? userModel;
+      try {
+        userModel = await remoteDataSource.getCurrentUserData();
+      } catch (error) {
+        // A recently successful probe/request may be followed by a socket
+        // failure. Restore only for a definite transport failure, never for a
+        // server/auth/permission error or an inconclusive request timeout.
+        final failure = mapErrorToFailure(error);
+        if (failure.kind == FailureKind.network) {
+          return await _offlineCurrentUser(generation);
         }
-
-        // An unresolved identity must never inherit the old global cache.
-        final cached = session.userId.trim().isEmpty
-            ? null
-            : await _readCachedProfile(session.userId);
-        stale = _staleSessionFailure(generation);
-        if (stale != null) return left(stale);
-        return right(
-          UserModel(
-            id: session.userId,
-            email: session.email,
-            name: cached?.displayName ?? '',
-            avatarUrl: cached?.avatarUrl ?? '',
-            bio: cached?.bio ?? '',
-            website: cached?.website ?? '',
-            updatedAt: DateTime.now(),
-          ),
-        );
+        return left(failure);
       }
-
-      final userModel = await remoteDataSource.getCurrentUserData();
       stale = _staleSessionFailure(generation);
       if (stale != null) return left(stale);
       if (userModel == null || remoteDataSource.currentSession == null) {
@@ -93,6 +75,38 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (error) {
       return left(mapErrorToFailure(error));
     }
+  }
+
+  Future<Either<Failure, User>> _offlineCurrentUser(int generation) async {
+    final stale = _staleSessionFailure(generation);
+    if (stale != null) return left(stale);
+    final session = remoteDataSource.currentSession;
+    if (session == null) {
+      return left(
+        Failure(
+          '请登录账户',
+          kind: FailureKind.auth,
+          code: 'auth.rejected',
+          l10nKey: 'auth.required',
+        ),
+      );
+    }
+    final cached = session.userId.trim().isEmpty
+        ? null
+        : await _readCachedProfile(session.userId);
+    final afterRead = _staleSessionFailure(generation);
+    if (afterRead != null) return left(afterRead);
+    return right(
+      UserModel(
+        id: session.userId,
+        email: session.email,
+        name: cached?.displayName ?? '',
+        avatarUrl: cached?.avatarUrl ?? '',
+        bio: cached?.bio ?? '',
+        website: cached?.website ?? '',
+        updatedAt: DateTime.now(),
+      ),
+    );
   }
 
   @override
