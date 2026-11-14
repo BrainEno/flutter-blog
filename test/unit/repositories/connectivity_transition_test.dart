@@ -139,6 +139,7 @@ void main() {
       final detail = sharedBlog.getBlogById('slug');
       final related = sharedBlog.getRelatedArticles('slug');
       final commentPage = sharedComments.getComments('slug');
+      await Future<void>.delayed(Duration.zero);
       expect(healthCount, 1);
       gate.complete(http.Response('', 200));
       expect((await detail).isRight(), isTrue);
