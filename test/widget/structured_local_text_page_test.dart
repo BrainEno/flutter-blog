@@ -343,6 +343,14 @@ Future<void> _visibleTap(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _handoffFromBody(WidgetTester tester, _Harness h) async {
+  await _visibleTap(tester, find.byTooltip('Edit unformatted text'));
+  // pumpAndSettle only waits for scheduled frames; the SQLite handoff can
+  // still be finishing without a frame. Wait for the admitted write first.
+  expect(await h.body.flush(), LocalStructuredFlushResult.saved);
+  await tester.pumpAndSettle();
+}
+
 Future<void> _startText(
   WidgetTester tester,
   _Harness h, {
@@ -373,7 +381,7 @@ void main() {
       await _pump(tester, StructuredLocalEditorPage(session: h.body));
       expect(find.byTooltip('Edit unformatted text'), findsOneWidget);
       expect(find.text('Publish'), findsNothing);
-      await _visibleTap(tester, find.byTooltip('Edit unformatted text'));
+      await _handoffFromBody(tester, h);
       expect(
         find.byType(StructuredLocalTextPage),
         findsOneWidget,
@@ -400,7 +408,7 @@ void main() {
       tester,
     ) async {
       await _pump(tester, StructuredLocalEditorPage(session: h.body));
-      await _visibleTap(tester, find.byTooltip('Edit unformatted text'));
+      await _handoffFromBody(tester, h);
       await tester.tap(find.text('Continue local text'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'new local words');
@@ -427,7 +435,7 @@ void main() {
       tester,
     ) async {
       await _pump(tester, StructuredLocalEditorPage(session: h.body));
-      await _visibleTap(tester, find.byTooltip('Edit unformatted text'));
+      await _handoffFromBody(tester, h);
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       await tester.runAsync(() => Future<void>.delayed(Duration.zero));
@@ -736,38 +744,43 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
         final semantics = tester.ensureSemantics();
-        addTearDown(semantics.dispose);
-        final session = await h.direct();
-        await _pump(
-          tester,
-          StructuredLocalTextPage(session: session),
-          locale: locale,
-          scale: 1.5,
-        );
-        expect(
-          find.text(locale.languageCode == 'en' ? 'Edit local text' : '编辑本地文字'),
-          findsOneWidget,
-        );
-        await tester.tap(
-          find.text(
-            locale.languageCode == 'en' ? 'Continue local text' : '继续编辑本地文字',
-          ),
-        );
-        await tester.pumpAndSettle();
-        final field = find.byType(TextField);
-        await tester.ensureVisible(field);
-        await tester.pumpAndSettle();
-        final node = tester.getSemantics(field).getSemanticsData();
-        expect(node.flagsCollection.isTextField, isTrue);
-        expect(
-          find.text(locale.languageCode == 'en' ? 'Block text' : '区块文字'),
-          findsOneWidget,
-        );
-        expect(
-          find.text(locale.languageCode == 'en' ? 'Publish' : '发布'),
-          findsNothing,
-        );
-        expect(tester.takeException(), isNull);
+        try {
+          final session = await h.direct();
+          await _pump(
+            tester,
+            StructuredLocalTextPage(session: session),
+            locale: locale,
+            scale: 1.5,
+          );
+          expect(
+            find.text(
+              locale.languageCode == 'en' ? 'Edit local text' : '编辑本地文字',
+            ),
+            findsOneWidget,
+          );
+          await tester.tap(
+            find.text(
+              locale.languageCode == 'en' ? 'Continue local text' : '继续编辑本地文字',
+            ),
+          );
+          await tester.pumpAndSettle();
+          final field = find.byType(TextField);
+          await tester.ensureVisible(field);
+          await tester.pumpAndSettle();
+          final node = tester.getSemantics(field).getSemanticsData();
+          expect(node.flagsCollection.isTextField, isTrue);
+          expect(
+            find.text(locale.languageCode == 'en' ? 'Block text' : '区块文字'),
+            findsOneWidget,
+          );
+          expect(
+            find.text(locale.languageCode == 'en' ? 'Publish' : '发布'),
+            findsNothing,
+          );
+          expect(tester.takeException(), isNull);
+        } finally {
+          semantics.dispose();
+        }
       });
     }
 
