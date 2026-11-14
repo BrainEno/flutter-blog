@@ -666,6 +666,23 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets(
+      'identity change before dialog construction does not adopt its seed',
+      (tester) async {
+        await _openInline(tester, h);
+        await tester.ensureVisible(_withinRun(0, 'Edit link'));
+        await tester.pumpAndSettle();
+        await tester.tap(_withinRun(0, 'Edit link'));
+        h.identity.switchUser('other');
+        await tester.pumpAndSettle();
+        expect(find.byType(TextField), findsNothing);
+        expect(find.text('/guide'), findsNothing);
+        expect(find.textContaining('account changed'), findsWidgets);
+        expect(await h.inner.load(_key), isNull);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets('save failure remains visible and retry persists exact runs', (
       tester,
     ) async {

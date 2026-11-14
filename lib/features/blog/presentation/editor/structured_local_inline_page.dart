@@ -340,9 +340,14 @@ class _LinkDialogState extends State<_LinkDialog> {
   @override
   void initState() {
     super.initState();
-    _selection = widget.seed.selection;
-    _hadLink = widget.seed.href != null;
-    _controller = TextEditingController(text: widget.seed.href ?? '');
+    // The route can be scheduled just before an identity change. Check the
+    // current fence before adopting private seed values, not only on events.
+    final active = widget.session.state.phase == LocalStructuredPhase.editing;
+    _selection = active ? widget.seed.selection : null;
+    _hadLink = active && widget.seed.href != null;
+    _controller = TextEditingController(
+      text: active ? widget.seed.href ?? '' : '',
+    );
     widget.seed.clear();
     _subscription = widget.session.changes.listen(_changed);
   }
