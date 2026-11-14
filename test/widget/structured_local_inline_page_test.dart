@@ -907,6 +907,55 @@ void main() {
       expect(after.body.toJsonBlocks(), before.body.toJsonBlocks());
     });
 
+    testWidgets('body change before range route builds discards its seed', (
+      tester,
+    ) async {
+      await _openInline(tester, h);
+      await tester.ensureVisible(find.text('Select a text range'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Select a text range'));
+      expect(h.session.edit((body) => body.move('image-two', 1)), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('structured-range-text')), findsNothing);
+      expect(
+        find.textContaining('document or session changed'),
+        findsOneWidget,
+      );
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(
+        _headingRuns((await h.inner.load(_key))!.body),
+        _headingRuns(_body()),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('body change before link dialog builds discards its seed', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 1, 3);
+      await tester.ensureVisible(find.text('Set range link'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Set range link'));
+      expect(h.session.edit((body) => body.move('image-two', 1)), isTrue);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Apply link locally'),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(find.textContaining('document or session changed'), findsWidgets);
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(
+        _headingRuns((await h.inner.load(_key))!.body),
+        _headingRuns(_body()),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets(
       'account change before range route builds does not adopt the seed',
       (tester) async {

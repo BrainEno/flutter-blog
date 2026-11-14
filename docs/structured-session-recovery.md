@@ -443,7 +443,9 @@ without changing unselected content. Reverse selections are normalized.
 
 The route is a one-shot handoff tied to the exact in-memory body instance. Any
 body replacement invalidates and clears the range, including an edit that later
-returns to identical JSON. Pending link dialogs have their own instance guard.
+returns to identical JSON. Pending link dialogs have their own instance guard. Handoff seeds subscribe to
+body changes before route construction, clear on invalidation and release their
+subscriptions when consumed or cancelled.
 The session still fences identity and performs account-scoped local CAS; neither
 the selection nor its document snapshot is a server concurrency token. If a
 list changes, returning to the list requires an explicit new item selection.
