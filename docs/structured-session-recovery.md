@@ -550,3 +550,37 @@ reader and accessibility validation remain necessary before exposing formatted
 text input. Process death can still lose input not yet durably written, and the
 existing storage remains unencrypted. Upstream was checked at
 `b511936f400a38e56367a82dbcfefa35223fa4f3`.
+
+### Isolated rich-text session coordinator
+
+`LocalStructuredRichTextSession` is a local-only coordinator for one existing
+v1 formatted text block or one formatted list item. Its caller must pass exactly
+one preselected parent snapshot or exact buffered snapshot, including the row
+incarnation and backend namespace. In particular, an item index alone is not a
+stable identity: any changed parent fails the handoff rather than choosing a
+possibly different item. Opening rereads the exclusive slot and the complete
+parent; it presents a recovery choice without performing a write. Resume and
+cancel are explicit; confirmed apply and discard first flush pending input.
+The initial value preserves the original inline runs, absent versus empty marks,
+links, and uses unset selection and composition offsets. Intermediate values
+are kept exactly, including invalid final body text and unpaired UTF-16 units.
+Active composition and invalid final runs cannot be applied.
+
+Writes are serialized and coalesced on the captured key. A CAS conflict stops
+automatic writes and keeps later input in memory. A storage failure can be
+retried explicitly, but an ambiguous post-commit failure conflicts against the
+old token rather than overwriting the committed value. An uncertain finish or
+unsaved input prevents ordinary close; abandoning it requires explicit consent.
+Already admitted writes may finish for the original backend/account after an
+identity change; new input is rejected and visible session data is cleared.
+Consumers must provide an identity that also changes with their route generation
+and must fence their own async callbacks. Snapshots already handed to a consumer
+cannot be revoked. Process death or abandoning failed writes may lose input that
+never reached SQLite; this does not add encryption or cross-device recovery.
+
+`OpenIndexedRichTextRecovery` resolves an explicitly selected local index row
+into a session bound to its exact raw buffer and parent snapshot. It does not
+resume, overwrite corrupt/unknown data, infer a missing author article, call a
+server, enqueue a publish, or provide remote concurrency protection. This is
+an isolated domain component, not an IME/editor UI; real-device input,
+accessibility, and downgrade behavior remain unverified.

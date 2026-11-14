@@ -9,6 +9,7 @@ import 'package:belog/features/blog/domain/entities/structured_body_recovery.dar
 import 'package:belog/features/blog/domain/entities/structured_session_metadata.dart';
 import 'package:belog/features/blog/domain/repositories/structured_recovery_catalog.dart';
 import 'package:belog/features/blog/domain/repositories/structured_rich_text_buffer_store.dart';
+import 'package:belog/features/blog/domain/repositories/structured_rich_text_session_store.dart';
 import 'package:belog/features/blog/domain/repositories/structured_text_buffer_store.dart';
 import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
 import 'package:drift/drift.dart';
@@ -20,7 +21,7 @@ class SqliteStructuredBodyRecoveryStore
     implements
         StructuredTextSessionStore,
         StructuredRecoveryCatalog,
-        StructuredRichTextBufferStore {
+        StructuredRichTextSessionStore {
   SqliteStructuredBodyRecoveryStore(this.database, {required Uri apiBaseUrl})
     : _backend = backendKeyOf(apiBaseUrl);
 
