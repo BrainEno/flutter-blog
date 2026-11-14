@@ -310,3 +310,44 @@ failure can still lose input that has not reached SQLite. The app does not add
 storage encryption, and older-client downgrade remains unvalidated. Flutter
 widget tests do not establish real-device, IME, screen-reader, production
 backend, or signed-build validation.
+
+## Immutable inline range operations (not connected to the UI)
+
+`StructuredInlineSelection` captures a nonempty UTF-16 range in one v1
+paragraph, heading, quote or list item. A caller can deliberately set or remove
+one supported mark or validated link over that range without changing text.
+Intersected runs split only where their formatting actually changes; their
+other marks, links, optional-key presence and order are retained. Adjacent runs
+are not merged. A no-op returns the original document without promoting plain
+text into inlines. Editing a plain list item necessarily creates the v1
+`itemInlines` representation for all items, with untouched items represented
+by a single unformatted run. The original list text and item order do not
+change.
+
+The selection rejects v0, missing or wrong targets, collapsed/out-of-bounds
+ranges, surrogate-pair boundaries, invalid URLs and results exceeding the
+existing run or total-document limits. It never normalizes a URL, infers
+formatting from text, or repairs an invalid document. It checks an exact JSON
+snapshot of the entire immutable document at apply time; a different snapshot
+requires a fresh selection. This is intentionally conservative, including for
+unrelated changes, and it is **not** a database CAS token, account fence or
+server version. Callers must still use the existing identity-fenced local
+session and CAS writer. Selection values, source text and the captured document
+remain in memory and cannot be revoked after delivery to a caller.
+
+Offsets are UTF-16 units, not grapheme boundaries: a combining sequence can be
+split even though a surrogate pair cannot. Any future UI must independently
+validate selection behavior across IMEs, grapheme clusters, accessibility,
+identity invalidation and concurrent local changes before integrating it. No
+text insertion, formatting toolbar, network request, publication, queue change,
+schema migration or dependency is added here. Capturing and checking a range
+serializes a document bounded by the existing one-million-unit limit, so it is
+linear in document size; it is not a per-keystroke UI API. Tests cover exact
+run preservation, rejection, stale selections, CAS conflict, identity changes,
+storage retry and offline restart. Real devices and screen readers remain
+unverified.
+
+Upstream rechecked at `e34a490c287cefaf20fd400996207a7c452faac4`: v1 permits
+at most 1,000 nonempty runs per block or list item, their concatenation must
+match the fallback, URL validation rejects unsafe shapes, and v0 rejects
+inlines. The local operation does not imply remote conditional-write support.

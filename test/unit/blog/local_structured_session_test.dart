@@ -6,6 +6,7 @@ import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_structured_body_recovery_store.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
+import 'package:belog/features/blog/domain/editing/structured_inline_selection.dart';
 import 'package:belog/features/blog/domain/entities/structured_body_recovery.dart';
 import 'package:belog/features/blog/domain/entities/structured_edition_read.dart';
 import 'package:belog/features/blog/domain/entities/structured_session_metadata.dart';
@@ -411,6 +412,155 @@ void main() {
       expect(session.state.phase, LocalStructuredPhase.localReadFailed);
       expect(session.state.body, isNull);
       expect(h.store.creates, 0);
+    });
+  });
+
+  group('inline selections with local session fencing', () {
+    test('rapid selections coalesce behind the existing CAS writer', () async {
+      final session = h.session();
+      await session.open();
+      h.store.createGate = Completer<void>();
+      final first = StructuredInlineSelection.textBlock(
+        document: session.state.body!,
+        blockId: 'heading',
+        start: 0,
+        end: 2,
+      );
+      expect(
+        session.edit((body) => first.setMark(body, 'code', enabled: true)),
+        isTrue,
+      );
+      await h.store.createStarted.future;
+      final second = StructuredInlineSelection.textBlock(
+        document: session.state.body!,
+        blockId: 'heading',
+        start: 2,
+        end: 4,
+      );
+      expect(session.edit((body) => second.setLink(body, '/new')), isTrue);
+      h.store.createGate!.complete();
+      expect(await session.flush(), LocalStructuredFlushResult.saved);
+      final row = (await h.inner.load(_key))!;
+      expect(row.body.blocks[0]['text'], 'Bold代码');
+      final runs = row.body.blocks[0]['inlines'] as List;
+      expect(runs.first['text'], 'Bo');
+      expect((runs.first['marks'] as List).contains('code'), isTrue);
+      expect(runs[1]['text'], 'ld');
+      expect(runs[1]['href'], '/new');
+      expect(runs[2], (_body().blocks[0]['inlines'] as List)[1]);
+      expect(row.body.blocks[1], _body().blocks[1]);
+    });
+
+    test(
+      'an old selection is rejected synchronously before any new save',
+      () async {
+        final session = h.session();
+        await session.open();
+        final old = StructuredInlineSelection.textBlock(
+          document: session.state.body!,
+          blockId: 'heading',
+          start: 0,
+          end: 2,
+        );
+        expect(session.edit((body) => body.move('image-one', 2)), isTrue);
+        expect(await session.flush(), LocalStructuredFlushResult.saved);
+        final count = h.store.replaces;
+        expect(
+          () => session.edit((body) => old.setLink(body, '/x')),
+          throwsStateError,
+        );
+        expect(h.store.replaces, count);
+        expect((await h.inner.load(_key))!.body.blocks[2]['id'], 'image-one');
+      },
+    );
+
+    test(
+      'failed storage keeps a formatted edit until explicit retry',
+      () async {
+        final session = h.session();
+        await session.open();
+        h.store.createError = StateError('disk');
+        final range = StructuredInlineSelection.textBlock(
+          document: session.state.body!,
+          blockId: 'quote',
+          start: 0,
+          end: 3,
+        );
+        expect(session.edit((body) => range.setLink(body, '/local')), isTrue);
+        expect(await session.flush(), LocalStructuredFlushResult.failed);
+        expect(session.state.phase, LocalStructuredPhase.saveFailed);
+        expect(
+          (session.state.body!.blocks[3]['inlines'] as List).first['href'],
+          '/local',
+        );
+        expect(await h.inner.load(_key), isNull);
+        expect(await session.close(), isFalse);
+        h.store.createError = null;
+        expect(session.retrySave(), isTrue);
+        expect(await session.flush(), LocalStructuredFlushResult.saved);
+        final saved = (await h.inner.load(_key))!;
+        expect(
+          (saved.body.blocks[3]['inlines'] as List).first['href'],
+          '/local',
+        );
+        expect(saved.body.blocks[3]['attribution'], 'Author name');
+      },
+    );
+
+    test(
+      'competing local revision stops a formatted edit without overwrite',
+      () async {
+        final original = await h.seed(body: _body());
+        final session = h.session();
+        await session.open();
+        expect(session.resumeRecovery(), isTrue);
+        final other = (await h.inner.replace(
+          expected: original,
+          body: original.body.replacePlainText('paragraph', 'other writer'),
+          updatedAt: _time,
+        ))!;
+        final range = StructuredInlineSelection.textBlock(
+          document: session.state.body!,
+          blockId: 'heading',
+          start: 0,
+          end: 2,
+        );
+        expect(session.edit((body) => range.setLink(body, '/mine')), isTrue);
+        expect(await session.flush(), LocalStructuredFlushResult.conflict);
+        expect(session.state.hasUnsavedChanges, isTrue);
+        expect((await h.inner.load(_key))!.revision, other.revision);
+        expect(_text((await h.inner.load(_key))!.body), 'other writer');
+        expect(session.retrySave(), isFalse);
+        expect(await session.close(), isFalse);
+      },
+    );
+
+    test('account changes hide formatted state and reject new edits', () async {
+      final session = h.session();
+      await session.open();
+      h.store.createGate = Completer<void>();
+      final range = StructuredInlineSelection.textBlock(
+        document: session.state.body!,
+        blockId: 'heading',
+        start: 0,
+        end: 2,
+      );
+      expect(session.edit((body) => range.setLink(body, '/private')), isTrue);
+      await h.store.createStarted.future;
+      h.identity.switchTo('other');
+      expect(session.state.phase, LocalStructuredPhase.invalidated);
+      expect(session.state.body, isNull);
+      expect(
+        session.edit((body) => range.setMark(body, 'bold', enabled: true)),
+        isFalse,
+      );
+      h.store.createGate!.complete();
+      expect(await session.close(), isTrue);
+      final saved = (await h.inner.load(_key))!;
+      expect(
+        (saved.body.blocks.first['inlines'] as List).first['href'],
+        '/private',
+      );
     });
   });
 

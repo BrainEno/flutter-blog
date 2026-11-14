@@ -7,6 +7,7 @@ import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_structured_body_recovery_store.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
+import 'package:belog/features/blog/domain/editing/structured_inline_selection.dart';
 import 'package:belog/features/blog/domain/entities/structured_body_recovery.dart';
 import 'package:belog/features/blog/domain/entities/structured_edition_read.dart';
 import 'package:belog/features/blog/domain/entities/structured_session_metadata.dart';
@@ -148,6 +149,67 @@ void main() {
         'First caption',
       );
       expect(second.state.metadata!.cover!.bytes, [1, 2, 255]);
+      expect(await second.close(), isTrue);
+    },
+  );
+
+  test(
+    'partial formatted selections survive an offline database restart',
+    () async {
+      final dir = await Directory.systemTemp.createTemp(
+        'structured-inline-restart-',
+      );
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/sessions.sqlite');
+      var db = AppDatabase(NativeDatabase(file));
+      final reader = _Reader(_remote());
+      final first = _session(db, reader);
+      await first.open();
+      final mark = StructuredInlineSelection.textBlock(
+        document: first.state.body!,
+        blockId: 'heading',
+        start: 0,
+        end: 2,
+      );
+      expect(
+        first.edit((body) => mark.setMark(body, 'underline', enabled: false)),
+        isTrue,
+      );
+      final link = StructuredInlineSelection.listItem(
+        document: first.state.body!,
+        blockId: 'list',
+        itemIndex: 1,
+        start: 1,
+        end: 4,
+      );
+      expect(first.edit((body) => link.setLink(body, '/recovered')), isTrue);
+      expect(await first.flush(), LocalStructuredFlushResult.saved);
+      final saved = first.state.body!.toJsonBlocks();
+      expect(await first.close(), isTrue);
+      await db.close();
+
+      reader.result = const StructuredEditionReadResult.failed(
+        StructuredEditionReadStatus.unavailable,
+      );
+      db = AppDatabase(NativeDatabase(file));
+      addTearDown(db.close);
+      final second = _session(db, reader);
+      await second.open();
+      expect(second.state.phase, LocalStructuredPhase.recoveryChoice);
+      expect(
+        second.state.baseComparison,
+        StructuredBaseComparison.remoteUnavailable,
+      );
+      expect(second.resumeRecovery(), isTrue);
+      expect(second.state.body!.toJsonBlocks(), saved);
+      final list = second.state.body!.blocks.firstWhere(
+        (block) => block['id'] == 'list',
+      );
+      final selectedRuns = (list['itemInlines'] as List)[1] as List;
+      expect(selectedRuns.any((run) => run['href'] == '/recovered'), isTrue);
+      expect((list['items'] as List)[1], ' second item ');
+      expect(second.state.body!.blocks[1]['alt'], 'First image alt');
+      expect(second.state.body!.blocks[1]['caption'], 'First caption');
       expect(await second.close(), isTrue);
     },
   );
