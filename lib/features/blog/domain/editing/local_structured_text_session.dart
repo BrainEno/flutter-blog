@@ -81,9 +81,15 @@ class LocalStructuredTextSession {
     required this.fence,
     required this.identity,
     required this.store,
+    this.expectedUnbufferedParent,
+    this.expectedBufferedRecovery,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now {
-    if (selectedRowId <= 0) throw ArgumentError('Invalid selected recovery');
+    if (selectedRowId <= 0 ||
+        (expectedUnbufferedParent != null &&
+            expectedBufferedRecovery != null)) {
+      throw ArgumentError('Invalid selected recovery');
+    }
     _subscription = identity.identityChanges.listen((_) => _checkIdentity());
   }
 
@@ -93,6 +99,15 @@ class LocalStructuredTextSession {
   final NowaveSessionFence fence;
   final NowaveSessionIdentity identity;
   final StructuredTextSessionStore store;
+
+  /// When handed off from a body editor, require the precise unbuffered
+  /// snapshot that editor closed with, not merely the same row incarnation.
+  /// Ordinary recovery opens may omit this and still require explicit consent.
+  final StructuredBodyRecovery? expectedUnbufferedParent;
+
+  /// For an explicitly selected indexed buffer, require the same exact raw
+  /// buffer and parent snapshot at open. Null is not an absent-buffer claim.
+  final StructuredTextBufferRecovery? expectedBufferedRecovery;
   final DateTime Function() _now;
   final _changes = StreamController<LocalTextState>.broadcast(sync: true);
   late final StreamSubscription<void> _subscription;
@@ -173,6 +188,20 @@ class LocalStructuredTextSession {
       if (parent == null ||
           parent.rowId != selectedRowId ||
           !_sameKey(parent.key, key)) {
+        _set(const LocalTextState(phase: LocalTextPhase.conflict));
+        return;
+      }
+      final expected = expectedUnbufferedParent;
+      if (expected != null &&
+          (saved != null || !_sameSnapshot(parent, expected))) {
+        _set(const LocalTextState(phase: LocalTextPhase.conflict));
+        return;
+      }
+      final expectedBuffer = expectedBufferedRecovery;
+      if (expectedBuffer != null &&
+          (saved == null ||
+              !_sameSnapshot(saved.parent, expectedBuffer.parent) ||
+              saved.storageJson != expectedBuffer.storageJson)) {
         _set(const LocalTextState(phase: LocalTextPhase.conflict));
         return;
       }
@@ -530,3 +559,18 @@ class LocalStructuredTextSession {
 
 bool _sameKey(StructuredBodyKey a, StructuredBodyKey b) =>
     a.userId == b.userId && a.articleId == b.articleId && a.locale == b.locale;
+
+// Compare the same local token fields used by the SQLite body CAS. Equality
+// is deliberately exact, including raw JSON and nullable metadata.
+bool _sameSnapshot(StructuredBodyRecovery a, StructuredBodyRecovery b) =>
+    _sameKey(a.key, b.key) &&
+    a.backendStorageKey == b.backendStorageKey &&
+    a.rowId == b.rowId &&
+    a.revision == b.revision &&
+    a.base.version == b.base.version &&
+    a.baseStorageJson == b.baseStorageJson &&
+    a.body.version == b.body.version &&
+    a.bodyStorageJson == b.bodyStorageJson &&
+    a.updatedAt.microsecondsSinceEpoch == b.updatedAt.microsecondsSinceEpoch &&
+    a.baseMetadataStorageJson == b.baseMetadataStorageJson &&
+    a.sessionMetadataStorageJson == b.sessionMetadataStorageJson;
