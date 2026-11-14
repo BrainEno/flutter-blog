@@ -4,11 +4,13 @@ import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/l10n/edition_l10n.dart';
+import 'package:belog/core/utils/well_formed_utf16.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
 import 'package:belog/features/blog/domain/entities/structured_edition_read.dart';
 import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_text_page.dart';
+import 'package:belog/features/blog/presentation/editor/structured_local_inline_page.dart';
 import 'package:flutter/material.dart';
 
 /// A deliberately limited local-only editor. It never constructs a server
@@ -153,6 +155,27 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
     // The body coordinator was closed before handoff. Never resurrect its
     // stale revision; return to the caller, which can reopen the recovery.
     await _leave();
+  }
+
+  Future<void> _openInline(String blockId) async {
+    if (_busy ||
+        _exiting ||
+        widget.session.state.phase != LocalStructuredPhase.editing) {
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => StructuredLocalInlinePage(
+            session: widget.session,
+            blockId: blockId,
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   void _edit(
@@ -312,6 +335,8 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
             canRemove: body.blocks.length > 1,
             canBold: body.version == 1,
             canEditText: widget.session.store is StructuredTextSessionStore,
+            canEditInline: body.version == 1,
+            onInline: () => _openInline(body.blocks[index]['id'] as String),
             onText: () => _openText(body.blocks[index]['id'] as String),
             onMoveUp: () => _move(body.blocks[index]['id'] as String, -1),
             onMoveDown: () => _move(body.blocks[index]['id'] as String, 1),
@@ -408,6 +433,8 @@ class _StructuredBlockCard extends StatelessWidget {
     required this.canRemove,
     required this.canBold,
     required this.canEditText,
+    required this.canEditInline,
+    required this.onInline,
     required this.onText,
     required this.onMoveUp,
     required this.onMoveDown,
@@ -422,6 +449,8 @@ class _StructuredBlockCard extends StatelessWidget {
   final bool canRemove;
   final bool canBold;
   final bool canEditText;
+  final bool canEditInline;
+  final VoidCallback onInline;
   final VoidCallback onText;
   final VoidCallback onMoveUp;
   final VoidCallback onMoveDown;
@@ -483,6 +512,13 @@ class _StructuredBlockCard extends StatelessWidget {
                     onPressed: editable ? onText : null,
                     icon: const Icon(Icons.edit_outlined),
                   ),
+                if (canEditInline &&
+                    const {'paragraph', 'heading', 'quote'}.contains(type))
+                  IconButton(
+                    tooltip: l10n.structuredInlineOpen,
+                    onPressed: editable ? onInline : null,
+                    icon: const Icon(Icons.format_paint_outlined),
+                  ),
                 if (formatable && canBold)
                   IconButton(
                     tooltip: l10n.structuredBold,
@@ -500,28 +536,33 @@ class _StructuredBlockCard extends StatelessWidget {
 
   List<Widget> _preview(BuildContext context) {
     final l10n = context.l10n;
+    String safe(String value) =>
+        isWellFormedUtf16(value) ? value : l10n.structuredInlineUnsupported;
     switch (block['type']) {
       case 'paragraph':
       case 'heading':
       case 'quote':
         return [
-          Text(block['text'] as String),
+          Text(safe(block['text'] as String)),
           if (block['attribution'] case final String attribution)
-            Text('${l10n.structuredAttribution}: $attribution'),
+            Text('${l10n.structuredAttribution}: ${safe(attribution)}'),
         ];
       case 'list':
-        return [for (final item in block['items'] as List) Text('• $item')];
+        return [
+          for (final item in block['items'] as List)
+            Text('• ${safe(item as String)}'),
+        ];
       case 'image':
         return [
-          Text(block['src'] as String),
-          Text('${l10n.structuredAlt}: ${block['alt']}'),
+          Text(safe(block['src'] as String)),
+          Text('${l10n.structuredAlt}: ${safe(block['alt'] as String)}'),
           if (block['caption'] case final String caption)
-            Text('${l10n.structuredCaption}: $caption'),
+            Text('${l10n.structuredCaption}: ${safe(caption)}'),
         ];
       case 'code':
         return [
-          Text(block['language'] as String),
-          Text(block['code'] as String),
+          Text(safe(block['language'] as String)),
+          Text(safe(block['code'] as String)),
         ];
       default:
         return [];

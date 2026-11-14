@@ -351,3 +351,46 @@ Upstream rechecked at `e34a490c287cefaf20fd400996207a7c452faac4`: v1 permits
 at most 1,000 nonempty runs per block or list item, their concatenation must
 match the fallback, URL validation rejects unsafe shapes, and v0 rejects
 inlines. The local operation does not imply remote conditional-write support.
+
+## Local whole-run formatting screen
+
+The body editor can open a local formatting screen for v1 paragraphs, headings
+and quotes. It shows existing runs lazily and lets the author toggle supported
+marks or explicitly apply/remove a link on one complete run. A plain v1 block
+is presented as one unformatted run and is promoted only when changed. Text,
+run boundaries, other marks, links, blocks, image fields and the local baseline
+remain intact. Existing list formatting, arbitrary selected ranges, formatted
+text insertion and v0 conversion are not exposed by this screen. A boundary
+that would split a UTF-16 surrogate pair is rejected rather than repaired.
+
+Each operation captures the exact displayed body and uses the existing
+`StructuredInlineSelection` validation before the body coordinator accepts its
+serialized CAS write. A late link confirmation against a changed snapshot is
+rejected; cancellation does not create a row. Link input is a temporary dialog
+value, not a durable text buffer, and the link is not opened. Invalid or
+overlength input is not applied. Account invalidation removes private screen
+content, clears the dialog controller and drops its selection reference;
+previously delivered values and operating-system keyboard state cannot be
+revoked. The shared body session remains responsible for save status, retry,
+conflict and explicit acknowledgement before abandoning failed edits. Back
+returns to that session rather than closing or reopening a stale revision.
+Background flush remains best effort; process death can lose an admitted edit
+not yet stored or a link still being entered.
+
+This UI adds no schema migration, dependency, network write, publication or
+queue change. The list of at most 1,000 runs is rendered lazily, but capturing a
+selection still serializes the bounded document, so it is not a per-keystroke
+operation. Tests cover local-only entry, formatting and link preservation,
+invalid and stale input, account switching, CAS conflict, save failure/retry,
+rapid actions, background state, accessibility semantics and localized large
+text. Real devices, IMEs, screen readers, downgrade and production backend
+remain unverified. Upstream contract rechecked at
+`676b519015ea2a2e09cb0b229fdcd52b2f66f46a`.
+
+The Flutter text renderer cannot accept an unmatched UTF-16 surrogate even when
+an upstream JSON string contains one. The body preview displays a localized
+unsupported-content message instead of painting such a value. The run screen
+also disables actions for a run or link containing an unmatched surrogate;
+this includes a surrogate pair split across two existing runs. The underlying
+snapshot is neither repaired nor rewritten. This validation is representational
+and does not imply that other character boundaries are grapheme-safe.
