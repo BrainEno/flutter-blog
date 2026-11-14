@@ -9,6 +9,7 @@ import 'package:belog/features/blog/domain/editing/structured_article_draft.dart
 import 'package:belog/features/blog/domain/entities/structured_edition_read.dart';
 import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_text_page.dart';
+import 'package:belog/features/blog/presentation/editor/structured_local_inline_page.dart';
 import 'package:flutter/material.dart';
 
 /// A deliberately limited local-only editor. It never constructs a server
@@ -153,6 +154,26 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
     // The body coordinator was closed before handoff. Never resurrect its
     // stale revision; return to the caller, which can reopen the recovery.
     await _leave();
+  }
+
+  Future<void> _openInline(String blockId) async {
+    if (_busy ||
+        _exiting ||
+        widget.session.state.phase != LocalStructuredPhase.editing)
+      return;
+    setState(() => _busy = true);
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => StructuredLocalInlinePage(
+            session: widget.session,
+            blockId: blockId,
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   void _edit(
@@ -312,6 +333,8 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
             canRemove: body.blocks.length > 1,
             canBold: body.version == 1,
             canEditText: widget.session.store is StructuredTextSessionStore,
+            canEditInline: body.version == 1,
+            onInline: () => _openInline(body.blocks[index]['id'] as String),
             onText: () => _openText(body.blocks[index]['id'] as String),
             onMoveUp: () => _move(body.blocks[index]['id'] as String, -1),
             onMoveDown: () => _move(body.blocks[index]['id'] as String, 1),
@@ -408,6 +431,8 @@ class _StructuredBlockCard extends StatelessWidget {
     required this.canRemove,
     required this.canBold,
     required this.canEditText,
+    required this.canEditInline,
+    required this.onInline,
     required this.onText,
     required this.onMoveUp,
     required this.onMoveDown,
@@ -422,6 +447,8 @@ class _StructuredBlockCard extends StatelessWidget {
   final bool canRemove;
   final bool canBold;
   final bool canEditText;
+  final bool canEditInline;
+  final VoidCallback onInline;
   final VoidCallback onText;
   final VoidCallback onMoveUp;
   final VoidCallback onMoveDown;
@@ -482,6 +509,13 @@ class _StructuredBlockCard extends StatelessWidget {
                     tooltip: l10n.structuredTextOpen,
                     onPressed: editable ? onText : null,
                     icon: const Icon(Icons.edit_outlined),
+                  ),
+                if (canEditInline &&
+                    const {'paragraph', 'heading', 'quote'}.contains(type))
+                  IconButton(
+                    tooltip: l10n.structuredInlineOpen,
+                    onPressed: editable ? onInline : null,
+                    icon: const Icon(Icons.format_paint_outlined),
                   ),
                 if (formatable && canBold)
                   IconButton(
