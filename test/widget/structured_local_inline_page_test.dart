@@ -379,10 +379,689 @@ Future<void> _chooseListItem(WidgetTester tester, int index) async {
   );
 }
 
+StructuredArticleDraft _rangeBody(String text) => StructuredArticleDraft.parse(
+  version: 1,
+  blocks: [
+    {'id': 'p', 'type': 'paragraph', 'text': text},
+  ],
+);
+
+Finder _rangeText() => find.byKey(const ValueKey('structured-range-text'));
+
+Future<void> _openRange(WidgetTester tester, _Harness h) async {
+  await _openInline(tester, h);
+  await _tapVisible(tester, find.text('Select a text range'));
+}
+
+Future<void> _selectRange(WidgetTester tester, int base, int extent) async {
+  final controller = tester.widget<TextField>(_rangeText()).controller!;
+  controller.selection = TextSelection(baseOffset: base, extentOffset: extent);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   late _Harness h;
   setUp(() => h = _Harness());
   tearDown(() => h.dispose());
+
+  group('explicit local text ranges', () {
+    testWidgets('opens read-only without a selected range or a write', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      final field = tester.widget<TextField>(_rangeText());
+      expect(field.readOnly, isTrue);
+      expect(field.controller!.text, 'Bold代码');
+      expect(find.text('Select a nonempty text range first.'), findsOneWidget);
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.widgetWithText(OutlinedButton, 'Add style locally'),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.widgetWithText(OutlinedButton, 'Set range link'),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(await h.inner.load(_key), isNull);
+    });
+
+    testWidgets('adding a mark splits a run but preserves both links', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 1, 3);
+      await _tapVisible(tester, find.widgetWithText(ChoiceChip, 'Code style'));
+      await _tapVisible(tester, find.text('Add style locally'));
+      expect(
+        find.textContaining('document or session changed'),
+        findsOneWidget,
+      );
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      final runs = _headingRuns((await h.inner.load(_key))!.body);
+      expect(runs.length, 4);
+      expect(runs[0]['text'], 'B');
+      expect(runs[1]['text'], 'ol');
+      expect(runs[1]['marks'], [
+        'bold',
+        'italic',
+        'underline',
+        'strikethrough',
+        'code',
+      ]);
+      expect(runs[1]['href'], '/guide');
+      expect(runs[2]['text'], 'd');
+      expect(runs[2]['marks'], _headingRuns(_body())[0]['marks']);
+      expect(runs[3], _headingRuns(_body())[1]);
+    });
+
+    testWidgets(
+      'removing a style across runs preserves other marks and links',
+      (tester) async {
+        await _openRange(tester, h);
+        await _selectRange(tester, 2, 5);
+        await _tapVisible(tester, find.text('Remove style locally'));
+        expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+        final runs = _headingRuns((await h.inner.load(_key))!.body);
+        expect(runs.map((r) => r['text']).toList(), ['Bo', 'ld', '代', '码']);
+        expect(runs[0], {..._headingRuns(_body())[0] as Map, 'text': 'Bo'});
+        expect(runs[1]['marks'], ['italic', 'underline', 'strikethrough']);
+        expect(runs[1]['href'], '/guide');
+        expect(runs[2]['marks'], [
+          'code',
+          'italic',
+          'underline',
+          'strikethrough',
+        ]);
+        expect(runs[2]['href'], 'https://external.example/path');
+        expect(runs[3], {..._headingRuns(_body())[1] as Map, 'text': '码'});
+      },
+    );
+
+    testWidgets('backward selection uses its normalized range', (tester) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 3, 1);
+      await _tapVisible(tester, find.widgetWithText(ChoiceChip, 'Code style'));
+      await _tapVisible(tester, find.text('Add style locally'));
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      final runs = _headingRuns((await h.inner.load(_key))!.body);
+      expect(runs.map((r) => r['text']).toList(), ['B', 'ol', 'd', '代码']);
+      expect(runs[1]['marks'], contains('code'));
+      expect(runs[0]['marks'], isNot(contains('code')));
+      expect(runs[2]['marks'], isNot(contains('code')));
+    });
+
+    testWidgets('collapsed selection cannot invoke any range operation', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 2, 2);
+      for (final label in [
+        'Add style locally',
+        'Remove style locally',
+        'Set range link',
+        'Remove range links',
+      ]) {
+        expect(
+          tester
+              .widget<OutlinedButton>(
+                find.widgetWithText(OutlinedButton, label),
+              )
+              .onPressed,
+          isNull,
+        );
+      }
+      expect(await h.inner.load(_key), isNull);
+      expect(h.session.state.body!.toJsonBlocks(), _body().toJsonBlocks());
+    });
+
+    testWidgets('an existing style is a no-op without an unnecessary row', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 1, 3);
+      await _tapVisible(tester, find.text('Add style locally'));
+      expect(find.text('No change was needed.'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('structured-range-text')),
+        findsOneWidget,
+      );
+      expect(await h.inner.load(_key), isNull);
+      expect(h.session.state.body!.toJsonBlocks(), _body().toJsonBlocks());
+    });
+
+    testWidgets('link dialog cancel keeps the entire source unchanged', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 1, 5);
+      await _tapVisible(tester, find.text('Set range link'));
+      expect(find.text('Set a link for the selected range'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).last, '/cancelled');
+      await tester.tap(find.text('Cancel').last);
+      await tester.pumpAndSettle();
+      expect(await h.inner.load(_key), isNull);
+      expect(h.session.state.body!.toJsonBlocks(), _body().toJsonBlocks());
+    });
+
+    testWidgets('link applies to a range crossing two existing runs', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 2, 5);
+      await _tapVisible(tester, find.text('Set range link'));
+      await tester.enterText(find.byType(TextField).last, '/new');
+      await _tapVisible(tester, find.text('Apply link locally'));
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      final runs = _headingRuns((await h.inner.load(_key))!.body);
+      expect(runs.map((r) => r['text']).toList(), ['Bo', 'ld', '代', '码']);
+      expect(runs.map((r) => r['href']).toList(), [
+        '/guide',
+        '/new',
+        '/new',
+        'https://external.example/path',
+      ]);
+      expect(runs[1]['marks'], _headingRuns(_body())[0]['marks']);
+      expect(runs[2]['marks'], _headingRuns(_body())[1]['marks']);
+    });
+
+    testWidgets('removing links affects only selected code units', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 3, 5);
+      await _tapVisible(tester, find.text('Remove range links'));
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      final runs = _headingRuns((await h.inner.load(_key))!.body);
+      expect(runs.map((r) => r['text']).toList(), ['Bol', 'd', '代', '码']);
+      expect(runs[0]['href'], '/guide');
+      expect((runs[1] as Map).containsKey('href'), isFalse);
+      expect((runs[2] as Map).containsKey('href'), isFalse);
+      expect(runs[3]['href'], 'https://external.example/path');
+      expect(runs[1]['marks'], _headingRuns(_body())[0]['marks']);
+    });
+
+    testWidgets('invalid URL keeps dialog open and source unchanged', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 0, 2);
+      await _tapVisible(tester, find.text('Set range link'));
+      await tester.enterText(
+        find.byType(TextField).last,
+        'javascript:alert(1)',
+      );
+      await _tapVisible(tester, find.text('Apply link locally'));
+      expect(find.textContaining('valid site-relative'), findsOneWidget);
+      expect(await h.inner.load(_key), isNull);
+      expect(h.session.state.body!.toJsonBlocks(), _body().toJsonBlocks());
+    });
+
+    testWidgets('link input length limit refuses rather than truncates', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 0, 2);
+      await _tapVisible(tester, find.text('Set range link'));
+      await tester.enterText(find.byType(TextField).last, '/valid');
+      await tester.enterText(find.byType(TextField).last, '/${'x' * 2048}');
+      expect(
+        tester.widget<TextField>(find.byType(TextField).last).controller!.text,
+        '/valid',
+      );
+      await tester.tap(find.text('Cancel').last);
+      await tester.pumpAndSettle();
+      expect(await h.inner.load(_key), isNull);
+    });
+
+    testWidgets('surrogate pair cannot be split by a selection boundary', (
+      tester,
+    ) async {
+      final source = _rangeBody('A😀B');
+      h.reader.result = _remoteWith(source);
+      await _openRange(tester, h);
+      await _selectRange(tester, 0, 2);
+      await _tapVisible(tester, find.text('Remove style locally'));
+      expect(find.textContaining('cannot be applied safely'), findsOneWidget);
+      expect(await h.inner.load(_key), isNull);
+      expect(h.session.state.body!.toJsonBlocks(), source.toJsonBlocks());
+    });
+
+    testWidgets(
+      'a complete surrogate pair can be selected without corruption',
+      (tester) async {
+        final source = _rangeBody('A😀B');
+        h.reader.result = _remoteWith(source);
+        await _openRange(tester, h);
+        await _selectRange(tester, 1, 3);
+        await _tapVisible(tester, find.text('Add style locally'));
+        expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+        final block = (await h.inner.load(_key))!.body.blocks.single;
+        expect(block['text'], 'A😀B');
+        expect(block['inlines'], [
+          {'text': 'A'},
+          {
+            'text': '😀',
+            'marks': ['bold'],
+          },
+          {'text': 'B'},
+        ]);
+      },
+    );
+
+    testWidgets('malformed fallback never enters the selection renderer', (
+      tester,
+    ) async {
+      final source = _rangeBody('bad${'😀'.substring(0, 1)}');
+      h.reader.result = _remoteWith(source);
+      await _openRange(tester, h);
+      expect(find.byKey(const ValueKey('structured-range-text')), findsNothing);
+      expect(
+        find.textContaining('document or session changed'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+      expect(await h.inner.load(_key), isNull);
+      expect(h.session.state.body!.toJsonBlocks(), source.toJsonBlocks());
+    });
+
+    testWidgets('selection is invalidated by any other body edit', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 1, 3);
+      final old = tester
+          .widget<OutlinedButton>(
+            find.widgetWithText(OutlinedButton, 'Remove style locally'),
+          )
+          .onPressed!;
+      expect(h.session.edit((body) => body.move('image-two', 1)), isTrue);
+      old();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('structured-range-text')), findsNothing);
+      expect(
+        find.textContaining('document or session changed'),
+        findsOneWidget,
+      );
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(
+        _headingRuns((await h.inner.load(_key))!.body),
+        _headingRuns(_body()),
+      );
+    });
+
+    testWidgets('changed then restored body never revives a stale selection', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 1, 3);
+      final callback = tester
+          .widget<OutlinedButton>(
+            find.widgetWithText(OutlinedButton, 'Remove style locally'),
+          )
+          .onPressed!;
+      expect(h.session.edit((body) => body.move('image-two', 1)), isTrue);
+      expect(h.session.edit((body) => body.move('image-two', 5)), isTrue);
+      callback();
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('document or session changed'),
+        findsOneWidget,
+      );
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(
+        _headingRuns((await h.inner.load(_key))!.body),
+        _headingRuns(_body()),
+      );
+    });
+
+    testWidgets(
+      'account switch hides selected content and blocks old callbacks',
+      (tester) async {
+        await _openRange(tester, h);
+        await _selectRange(tester, 1, 3);
+        final callback = tester
+            .widget<OutlinedButton>(
+              find.widgetWithText(OutlinedButton, 'Remove style locally'),
+            )
+            .onPressed!;
+        h.identity.switchUser('other');
+        callback();
+        await tester.pump();
+        expect(find.textContaining('account changed'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('structured-range-text')),
+          findsNothing,
+        );
+        expect(find.text('Bold代码'), findsNothing);
+        expect(await h.inner.load(_key), isNull);
+      },
+    );
+
+    testWidgets('identity change clears pending range link input', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 0, 3);
+      await _tapVisible(tester, find.text('Set range link'));
+      await tester.enterText(find.byType(TextField).last, '/private');
+      h.identity.switchUser(null);
+      await tester.pump();
+      expect(find.text('/private'), findsNothing);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.textContaining('account changed'), findsWidgets);
+      expect(await h.inner.load(_key), isNull);
+    });
+
+    testWidgets('body changes while dialog is open disable confirmation', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 0, 3);
+      await _tapVisible(tester, find.text('Set range link'));
+      await tester.enterText(find.byType(TextField).last, '/stale');
+      expect(h.session.edit((body) => body.move('image-two', 1)), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.text('/stale'), findsNothing);
+      expect(find.textContaining('document or session changed'), findsWidgets);
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Apply link locally'),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(
+        _headingRuns((await h.inner.load(_key))!.body),
+        _headingRuns(_body()),
+      );
+    });
+
+    testWidgets('change and restoration while dialog is open stay stale', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 0, 3);
+      await _tapVisible(tester, find.text('Set range link'));
+      await tester.enterText(find.byType(TextField).last, '/stale');
+      expect(h.session.edit((body) => body.move('image-two', 1)), isTrue);
+      expect(h.session.edit((body) => body.move('image-two', 5)), isTrue);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Apply link locally'),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(
+        _headingRuns((await h.inner.load(_key))!.body),
+        _headingRuns(_body()),
+      );
+    });
+
+    testWidgets('plain list range only promotes on an actual edit', (
+      tester,
+    ) async {
+      final source = _plainList();
+      h.reader.result = _remoteWith(source);
+      await _openList(tester, h);
+      await _chooseListItem(tester, 1);
+      await _tapVisible(tester, find.text('Select a text range'));
+      await _selectRange(tester, 6, 12);
+      await _tapVisible(tester, find.text('Add style locally'));
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      final block = _listBlock((await h.inner.load(_key))!.body);
+      expect(block['items'], ['plain first', 'plain second']);
+      expect(block['itemInlines'], [
+        [
+          {'text': 'plain first'},
+        ],
+        [
+          {'text': 'plain '},
+          {
+            'text': 'second',
+            'marks': ['bold'],
+          },
+        ],
+      ]);
+      expect(_listBlock(source).containsKey('itemInlines'), isFalse);
+    });
+
+    testWidgets('list item reorder prevents old range callback from applying', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      await _tapVisible(tester, find.text('Select a text range'));
+      await _selectRange(tester, 1, 4);
+      final callback = tester
+          .widget<OutlinedButton>(
+            find.widgetWithText(OutlinedButton, 'Remove style locally'),
+          )
+          .onPressed!;
+      expect(h.session.edit(_reversedList), isTrue);
+      callback();
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('document or session changed'),
+        findsOneWidget,
+      );
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(
+        _listRuns((await h.inner.load(_key))!.body),
+        _listRuns(_reversedList(_body())),
+      );
+    });
+
+    testWidgets('local storage failure retains the accepted range edit', (
+      tester,
+    ) async {
+      h.store.failCreate = true;
+      await _openRange(tester, h);
+      await _selectRange(tester, 1, 3);
+      await _tapVisible(tester, find.text('Remove style locally'));
+      expect(await h.session.flush(), LocalStructuredFlushResult.failed);
+      await tester.pumpAndSettle();
+      expect(h.session.state.hasUnsavedChanges, isTrue);
+      expect(await h.inner.load(_key), isNull);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Local save failed'), findsOneWidget);
+      h.store.failCreate = false;
+      await _tapVisible(tester, find.text('Retry'));
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(_headingRuns((await h.inner.load(_key))!.body)[1]['text'], 'ol');
+    });
+
+    testWidgets('competing local recovery is never overwritten', (
+      tester,
+    ) async {
+      await h.seed();
+      final before = (await h.inner.load(_key))!;
+      h.store.hideNextLoad = true;
+      await _openRange(tester, h);
+      await _selectRange(tester, 1, 3);
+      await _tapVisible(tester, find.text('Remove style locally'));
+      expect(await h.session.flush(), LocalStructuredFlushResult.conflict);
+      await tester.pumpAndSettle();
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Another local session changed'),
+        findsOneWidget,
+      );
+      final after = (await h.inner.load(_key))!;
+      expect(after.rowId, before.rowId);
+      expect(after.revision, before.revision);
+      expect(after.body.toJsonBlocks(), before.body.toJsonBlocks());
+    });
+
+    testWidgets(
+      'account change before range route builds does not adopt the seed',
+      (tester) async {
+        await _openInline(tester, h);
+        await tester.ensureVisible(find.text('Select a text range'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Select a text range'));
+        h.identity.switchUser('other');
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('structured-range-text')),
+          findsNothing,
+        );
+        expect(find.textContaining('account changed'), findsWidgets);
+        expect(await h.inner.load(_key), isNull);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('account change before link dialog builds discards seed', (
+      tester,
+    ) async {
+      await _openRange(tester, h);
+      await _selectRange(tester, 0, 3);
+      await tester.ensureVisible(find.text('Set range link'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Set range link'));
+      h.identity.switchUser('other');
+      await tester.pumpAndSettle();
+      expect(find.byType(TextField), findsNothing);
+      expect(find.textContaining('account changed'), findsWidgets);
+      expect(await h.inner.load(_key), isNull);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('removing nonexistent links does not promote a plain block', (
+      tester,
+    ) async {
+      final source = _rangeBody('plain text');
+      h.reader.result = _remoteWith(source);
+      await _openRange(tester, h);
+      await _selectRange(tester, 1, 5);
+      await _tapVisible(tester, find.text('Remove range links'));
+      expect(find.text('No change was needed.'), findsOneWidget);
+      expect(
+        h.session.state.body!.blocks.single.containsKey('inlines'),
+        isFalse,
+      );
+      expect(await h.inner.load(_key), isNull);
+    });
+
+    testWidgets('too many resulting runs are rejected without merging', (
+      tester,
+    ) async {
+      final source = StructuredArticleDraft.parse(
+        version: 1,
+        blocks: [
+          {
+            'id': 'p',
+            'type': 'paragraph',
+            'text': 'aa${'x' * 999}',
+            'inlines': [
+              {'text': 'aa'},
+              for (var i = 0; i < 999; i++) {'text': 'x'},
+            ],
+          },
+        ],
+      );
+      h.reader.result = _remoteWith(source);
+      await _openRange(tester, h);
+      await _selectRange(tester, 0, 1);
+      await _tapVisible(tester, find.text('Add style locally'));
+      expect(find.textContaining('cannot be applied safely'), findsOneWidget);
+      expect(await h.inner.load(_key), isNull);
+      expect(h.session.state.body!.toJsonBlocks(), source.toJsonBlocks());
+    });
+
+    testWidgets('link splitting past the run limit reports a safe failure', (
+      tester,
+    ) async {
+      final source = StructuredArticleDraft.parse(
+        version: 1,
+        blocks: [
+          {
+            'id': 'p',
+            'type': 'paragraph',
+            'text': 'aa${'x' * 999}',
+            'inlines': [
+              {'text': 'aa'},
+              for (var i = 0; i < 999; i++) {'text': 'x'},
+            ],
+          },
+        ],
+      );
+      h.reader.result = _remoteWith(source);
+      await _openRange(tester, h);
+      await _selectRange(tester, 0, 1);
+      await _tapVisible(tester, find.text('Set range link'));
+      await tester.enterText(find.byType(TextField).last, '/valid');
+      await _tapVisible(tester, find.text('Apply link locally'));
+      expect(find.textContaining('cannot be applied safely'), findsOneWidget);
+      expect(await h.inner.load(_key), isNull);
+      expect(h.session.state.body!.toJsonBlocks(), source.toJsonBlocks());
+    });
+
+    testWidgets(
+      'changed displayed text cannot redirect offsets into the body',
+      (tester) async {
+        await _openRange(tester, h);
+        final controller = tester.widget<TextField>(_rangeText()).controller!;
+        controller.value = const TextEditingValue(
+          text: 'fake text',
+          selection: TextSelection(baseOffset: 0, extentOffset: 4),
+        );
+        await tester.pumpAndSettle();
+        await _tapVisible(tester, find.text('Remove style locally'));
+        expect(find.textContaining('cannot be applied safely'), findsOneWidget);
+        expect(await h.inner.load(_key), isNull);
+        expect(h.session.state.body!.toJsonBlocks(), _body().toJsonBlocks());
+      },
+    );
+
+    testWidgets('background flush persists an accepted range operation', (
+      tester,
+    ) async {
+      h.store.gateAfterCreate = true;
+      h.store.createGate = Completer<void>();
+      await _openRange(tester, h);
+      await _selectRange(tester, 1, 3);
+      await _tapVisible(tester, find.text('Remove style locally'));
+      expect(h.store.createStarted.isCompleted, isTrue);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      h.store.createGate!.complete();
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(_headingRuns((await h.inner.load(_key))!.body)[1]['text'], 'ol');
+    });
+
+    testWidgets('Chinese selection surface uses localized controls', (
+      tester,
+    ) async {
+      h.reader.result = _remoteWith(_rangeBody('文本内容'));
+      await _open(tester, h, locale: const Locale('zh'));
+      await _tapVisible(tester, find.byTooltip('编辑文本片段格式'));
+      await _tapVisible(tester, find.text('选择文本范围'));
+      expect(find.text('本地范围格式'), findsOneWidget);
+      expect(find.text('请先选择非空文本范围。'), findsOneWidget);
+      await _selectRange(tester, 0, 2);
+      await _tapVisible(tester, find.text('在本地添加样式'));
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect((await h.inner.load(_key))!.body.blocks.single['text'], '文本内容');
+    });
+  });
 
   group('list-item formatting', () {
     testWidgets('opening the list requires an explicit item choice', (
