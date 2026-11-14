@@ -365,8 +365,8 @@ Future<void> _visibleTap(WidgetTester tester, Finder finder) async {
 
 Future<void> _handoffFromBody(WidgetTester tester, _Harness h) async {
   await _visibleTap(tester, find.byTooltip('Edit unformatted text'));
-  // pumpAndSettle only waits for scheduled frames; the SQLite handoff can
-  // still be finishing without a frame. Wait for the admitted write first.
+  // pumpAndSettle only waits for frames; a native SQLite acknowledgement can
+  // need a real event-loop turn before handoff and navigation finish.
   for (var i = 0; i < 50 && !h.body.completed.isCompleted; i++) {
     await tester.runAsync(() => Future<void>.delayed(Duration.zero));
     await tester.pump(const Duration(milliseconds: 20));
@@ -415,8 +415,7 @@ void main() {
       expect(
         find.byType(StructuredLocalTextPage),
         findsOneWidget,
-        reason:
-            'body phase: ${h.body.state.phase}; local row: ${await h.inner.load(_key)}; error: ${tester.takeException()}',
+        reason: 'body phase: ${h.body.state.phase}',
       );
       expect(find.text('Local recovery found'), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
