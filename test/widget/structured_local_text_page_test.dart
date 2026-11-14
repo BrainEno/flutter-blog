@@ -212,6 +212,22 @@ class _Store implements StructuredTextSessionStore {
       inner.discard(expected);
 }
 
+class _ObservedBodySession extends LocalStructuredSession {
+  _ObservedBodySession({
+    required super.key,
+    required super.fence,
+    required super.opener,
+    required super.now,
+  });
+  final completed = Completer<LocalTextHandoffResult>();
+  @override
+  Future<LocalTextHandoffResult> handoffPlainText(String blockId) async {
+    final result = await super.handoffPlainText(blockId);
+    completed.complete(result);
+    return result;
+  }
+}
+
 class _Harness {
   _Harness() {
     db = AppDatabase(NativeDatabase.memory());
@@ -227,7 +243,7 @@ class _Harness {
       store: store,
       identity: identity,
     );
-    body = LocalStructuredSession(
+    body = _ObservedBodySession(
       key: _key,
       fence: _fence,
       opener: opener,
@@ -249,7 +265,7 @@ class _Harness {
   late final _Identity identity;
   late final _Reader reader;
   late final OpenStructuredEditingSession opener;
-  late final LocalStructuredSession body;
+  late final _ObservedBodySession body;
   late final AppUserCubit user;
   final textSessions = <LocalStructuredTextSession>[];
 
@@ -347,7 +363,8 @@ Future<void> _handoffFromBody(WidgetTester tester, _Harness h) async {
   await _visibleTap(tester, find.byTooltip('Edit unformatted text'));
   // pumpAndSettle only waits for scheduled frames; the SQLite handoff can
   // still be finishing without a frame. Wait for the admitted write first.
-  expect(await h.body.flush(), LocalStructuredFlushResult.saved);
+  final result = await h.body.completed.future;
+  expect(result.status, LocalTextHandoffStatus.ready);
   await tester.pumpAndSettle();
 }
 
