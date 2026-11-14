@@ -311,7 +311,7 @@ storage encryption, and older-client downgrade remains unvalidated. Flutter
 widget tests do not establish real-device, IME, screen-reader, production
 backend, or signed-build validation.
 
-## Immutable inline range operations (not connected to the UI)
+## Immutable inline range operations
 
 `StructuredInlineSelection` captures a nonempty UTF-16 range in one v1
 paragraph, heading, quote or list item. A caller can deliberately set or remove
@@ -342,7 +342,8 @@ identity invalidation and concurrent local changes before integrating it. No
 text insertion, formatting toolbar, network request, publication, queue change,
 schema migration or dependency is added here. Capturing and checking a range
 serializes a document bounded by the existing one-million-unit limit, so it is
-linear in document size; it is not a per-keystroke UI API. Tests cover exact
+linear in document size; it is not a per-keystroke UI API. Its later read-only
+UI integration is documented below. Tests cover exact
 run preservation, rejection, stale selections, CAS conflict, identity changes,
 storage retry and offline restart. Real devices and screen readers remain
 unverified.
@@ -359,8 +360,8 @@ and quotes. It shows existing runs lazily and lets the author toggle supported
 marks or explicitly apply/remove a link on one complete run. A plain v1 block
 is presented as one unformatted run and is promoted only when changed. Text,
 run boundaries, other marks, links, blocks, image fields and the local baseline
-remain intact. Arbitrary selected ranges, formatted
-text insertion and v0 conversion are not exposed by this screen. A boundary
+remain intact. Formatted text insertion and v0 conversion are not exposed by
+this screen; the separate range screen is described below. A boundary
 that would split a UTF-16 surrogate pair is rejected rather than repaired.
 
 Each operation captures the exact displayed body and uses the existing
@@ -424,6 +425,39 @@ editing still validates and snapshots the bounded complete document. A save
 failure retains the unsaved body in memory and exposes retry; a conflict stops
 writes rather than overwriting a competing recovery. An identity change clears
 selection and private dialog data. Process death before a successful flush can
-still lose in-memory changes. No remote publication, arbitrary range editing,
-text input, new storage schema, dependency or encryption is introduced here.
+still lose in-memory changes. This list-run screen introduced no remote
+publication, text input, new storage schema, dependency or encryption.
 Real devices, IMEs and screen readers remain unvalidated.
+
+## Explicit read-only range formatting
+
+A v1 text block or explicitly chosen list item can open a separate local range
+screen. Its text field is read-only: a user selects within one target and then
+explicitly adds or removes one supported mark, sets a link, or removes links.
+The UI does not infer a single style or URL from a mixed selection. Link entry
+starts empty, is not opened, and requires an explicit confirmation. Cancelling,
+removing an absent link, or adding an already-present mark does not create a
+recovery. Selected text is not reconstructed from rendered runs; UTF-16 offsets
+address the validated fallback, and the existing domain operation splits runs
+without changing unselected content. Reverse selections are normalized.
+
+The route is a one-shot handoff tied to the exact in-memory body instance. Any
+body replacement invalidates and clears the range, including an edit that later
+returns to identical JSON. Pending link dialogs have their own instance guard. Handoff seeds subscribe to
+body changes before route construction, clear on invalidation and release their
+subscriptions when consumed or cancelled.
+The session still fences identity and performs account-scoped local CAS; neither
+the selection nor its document snapshot is a server concurrency token. If a
+list changes, returning to the list requires an explicit new item selection.
+Account invalidation clears the field, pending link and selection references.
+A stale callback cannot apply to a later body. Save failure and conflict are
+reported by the owning editor, and can leave unsaved work in memory.
+
+Surrogate-pair boundaries, invalid URLs, run/document limits and malformed
+fallback rendering fail closed without repairing data. Offsets do not promise
+grapheme-cluster boundaries; platform selection behavior, screen-reader access,
+IME and real-device behavior remain unverified. No text insertion, cross-block
+selection, remote write, publication, queue operation, dependency or migration
+is added. Process death before a successful local flush can lose an in-memory
+change. Upstream validation was checked at
+`21195c264c5a7a359e0f72916cc4d724f2b14063`.

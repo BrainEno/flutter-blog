@@ -7,6 +7,7 @@ import 'package:belog/core/utils/well_formed_utf16.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
 import 'package:belog/features/blog/domain/editing/structured_inline_selection.dart';
+import 'package:belog/features/blog/presentation/editor/structured_local_range_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -115,6 +116,38 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
     });
   }
 
+  void _openRange(StructuredArticleDraft body, int? itemIndex) {
+    if (!mounted) return;
+    final state = widget.session.state;
+    if (state.phase != LocalStructuredPhase.editing ||
+        !identical(state.body, body) ||
+        (itemIndex != null &&
+            (_selectedItem != itemIndex || !identical(_selectedBody, body)))) {
+      if (mounted) setState(() => _unsupported = true);
+      return;
+    }
+    final seed = StructuredRangeSeed(widget.session, body);
+    try {
+      unawaited(
+        Navigator.of(context)
+            .push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) => StructuredLocalRangePage(
+                  session: widget.session,
+                  blockId: widget.blockId,
+                  itemIndex: itemIndex,
+                  seed: seed,
+                ),
+              ),
+            )
+            .whenComplete(seed.clear),
+      );
+    } catch (_) {
+      seed.clear();
+      rethrow;
+    }
+  }
+
   void _mark(StructuredArticleDraft body, _Run run, String mark, bool enabled) {
     try {
       final selection = _select(body, run);
@@ -214,6 +247,10 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(l10n.structuredInlineIntro),
+              OutlinedButton(
+                onPressed: editable ? () => _openRange(body, itemIndex) : null,
+                child: Text(l10n.structuredInlineRangeOpen),
+              ),
               if (itemIndex != null) ...[
                 Text('${l10n.structuredInlineListSelected} ${itemIndex + 1}'),
                 TextButton(
