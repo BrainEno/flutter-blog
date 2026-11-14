@@ -277,10 +277,12 @@ Future<void> _tapRun(WidgetTester tester, int index, String text) async {
     await tester.scrollUntilVisible(
       _run(index),
       250,
-      scrollable: find.descendant(
-        of: find.byType(StructuredLocalInlinePage),
-        matching: find.byType(Scrollable),
-      ),
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView).first,
+            matching: find.byType(Scrollable),
+          )
+          .first,
     );
   }
   await _tapVisible(tester, _withinRun(index, text));
@@ -312,7 +314,7 @@ void main() {
     ) async {
       await _open(tester, h);
       for (final id in ['heading', 'image-one', 'paragraph', 'quote', 'list']) {
-        final card = find.byKey(ValueKey(id));
+        final card = find.byKey(ValueKey<Object?>(id));
         if (card.evaluate().isEmpty) {
           await tester.scrollUntilVisible(
             card,
@@ -482,12 +484,43 @@ void main() {
       );
       h.reader.result = _remoteWith(body);
       await _openInline(tester, h);
-      await _tapRun(tester, 0, 'Bold');
-      expect(find.textContaining('cannot be safely edited'), findsOneWidget);
+      final unsafe = find.descendant(
+        of: _run(0),
+        matching: find.textContaining('cannot be safely edited'),
+      );
+      expect(unsafe, findsOneWidget);
+      final bold = tester.widget<FilterChip>(_withinRun(0, 'Bold'));
+      expect(bold.onSelected, isNull);
       expect(await h.inner.load(_key), isNull);
       expect(h.session.state.body!.toJsonBlocks(), body.toJsonBlocks());
+      expect(tester.takeException(), isNull);
     });
   });
+
+  testWidgets(
+    'unpaired fallback is hidden rather than sent to the text renderer',
+    (tester) async {
+      final high = '😀'.substring(0, 1);
+      final body = StructuredArticleDraft.parse(
+        version: 1,
+        blocks: [
+          {'id': 'p', 'type': 'paragraph', 'text': 'broken$high'},
+        ],
+      );
+      h.reader.result = _remoteWith(body);
+      await _open(tester, h);
+      expect(find.textContaining('cannot be safely edited'), findsOneWidget);
+      await _tapVisible(tester, find.byTooltip('Edit text-run formatting'));
+      expect(find.textContaining('cannot be safely edited'), findsOneWidget);
+      expect(
+        tester.widget<FilterChip>(_withinRun(0, 'Bold')).onSelected,
+        isNull,
+      );
+      expect(tester.takeException(), isNull);
+      expect(await h.inner.load(_key), isNull);
+      expect(h.session.state.body!.toJsonBlocks(), body.toJsonBlocks());
+    },
+  );
 
   group('link editing requires an explicit action', () {
     testWidgets('cancel retains original link and makes no local write', (

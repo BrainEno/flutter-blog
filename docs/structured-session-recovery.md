@@ -386,3 +386,11 @@ rapid actions, background state, accessibility semantics and localized large
 text. Real devices, IMEs, screen readers, downgrade and production backend
 remain unverified. Upstream contract rechecked at
 `676b519015ea2a2e09cb0b229fdcd52b2f66f46a`.
+
+The Flutter text renderer cannot accept an unmatched UTF-16 surrogate even when
+an upstream JSON string contains one. The body preview displays a localized
+unsupported-content message instead of painting such a value. The run screen
+also disables actions for a run or link containing an unmatched surrogate;
+this includes a surrogate pair split across two existing runs. The underlying
+snapshot is neither repaired nor rewritten. This validation is representational
+and does not imply that other character boundaries are grapheme-safe.

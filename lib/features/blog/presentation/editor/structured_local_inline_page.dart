@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/article_resource_url.dart';
+import 'package:belog/core/utils/well_formed_utf16.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
 import 'package:belog/features/blog/domain/editing/structured_inline_selection.dart';
@@ -262,6 +263,9 @@ class _RunCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final safe =
+        isWellFormedUtf16(run.text) &&
+        (run.href == null || isWellFormedUtf16(run.href!));
     final marks = <(String, String)>[
       ('bold', l10n.structuredInlineBold),
       ('italic', l10n.structuredInlineItalic),
@@ -276,8 +280,11 @@ class _RunCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('${l10n.structuredInlineRun} $index'),
-            SelectableText(run.text),
-            if (run.href case final String href) Text(href),
+            if (safe)
+              SelectableText(run.text)
+            else
+              Text(l10n.structuredInlineUnsupported),
+            if (safe && run.href != null) Text(run.href!),
             Wrap(
               spacing: NoWaveSpacing.small,
               children: [
@@ -285,14 +292,14 @@ class _RunCard extends StatelessWidget {
                   FilterChip(
                     label: Text(mark.$2),
                     selected: run.marks.contains(mark.$1),
-                    onSelected: editable
+                    onSelected: editable && safe
                         ? (selected) => onMark(mark.$1, selected)
                         : null,
                   ),
               ],
             ),
             OutlinedButton(
-              onPressed: editable ? onLink : null,
+              onPressed: editable && safe ? onLink : null,
               child: Text(l10n.structuredInlineLink),
             ),
           ],
