@@ -220,8 +220,10 @@ class _ObservedBodySession extends LocalStructuredSession {
     required super.now,
   });
   final completed = Completer<LocalTextHandoffResult>();
+  bool started = false;
   @override
   Future<LocalTextHandoffResult> handoffPlainText(String blockId) async {
+    started = true;
     final result = await super.handoffPlainText(blockId);
     completed.complete(result);
     return result;
@@ -369,7 +371,8 @@ Future<void> _handoffFromBody(WidgetTester tester, _Harness h) async {
   expect(
     h.body.completed.isCompleted,
     isTrue,
-    reason: 'handoff did not finish; body phase: ${h.body.state.phase}',
+    reason:
+        'handoff started: ${h.body.started}; body phase: ${h.body.state.phase}; block: ${h.body.state.body?.blocks[2]}',
   );
   final result = await h.body.completed.future;
   expect(result.status, LocalTextHandoffStatus.ready);
