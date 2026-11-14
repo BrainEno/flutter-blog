@@ -303,13 +303,669 @@ List<dynamic> _headingRuns(StructuredArticleDraft body) =>
     body.blocks.firstWhere((block) => block['id'] == 'heading')['inlines']
         as List;
 
+Map<String, Object?> _listBlock(StructuredArticleDraft body) =>
+    body.blocks.firstWhere((block) => block['id'] == 'list');
+
+List<dynamic> _listRuns(StructuredArticleDraft body) =>
+    _listBlock(body)['itemInlines'] as List;
+
+StructuredArticleDraft _plainList() => StructuredArticleDraft.parse(
+  version: 1,
+  blocks: [
+    {
+      'id': 'list',
+      'type': 'list',
+      'ordered': false,
+      'items': ['plain first', 'plain second'],
+    },
+  ],
+);
+
+StructuredArticleDraft _listWithLink() => StructuredArticleDraft.parse(
+  version: 1,
+  blocks: [
+    {
+      'id': 'list',
+      'type': 'list',
+      'ordered': false,
+      'items': ['plain first', 'plain second'],
+      'itemInlines': [
+        [
+          {'text': 'plain first'},
+        ],
+        [
+          {
+            'text': 'plain second',
+            'marks': ['bold'],
+            'href': '/old',
+          },
+        ],
+      ],
+    },
+  ],
+);
+
+StructuredArticleDraft _reversedList(StructuredArticleDraft body) {
+  final block = _listBlock(body);
+  return body.replace('list', {
+    ...block,
+    'items': (block['items'] as List).reversed.toList(),
+    'itemInlines': (block['itemInlines'] as List).reversed.toList(),
+  });
+}
+
+Future<void> _openList(WidgetTester tester, _Harness h) async {
+  await _open(tester, h);
+  final card = find.byKey(const ValueKey<Object?>('list'));
+  if (card.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(
+      card,
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+  }
+  final action = find.descendant(
+    of: card,
+    matching: find.byTooltip('Edit text-run formatting'),
+  );
+  await _tapVisible(tester, action);
+  expect(find.byType(StructuredLocalInlinePage), findsOneWidget);
+}
+
+Future<void> _chooseListItem(WidgetTester tester, int index) async {
+  await _tapVisible(
+    tester,
+    find.byKey(ValueKey('structured-list-item-$index')),
+  );
+}
+
 void main() {
   late _Harness h;
   setUp(() => h = _Harness());
   tearDown(() => h.dispose());
 
+  group('list-item formatting', () {
+    testWidgets('opening the list requires an explicit item choice', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      expect(find.text('List item 1'), findsOneWidget);
+      expect(find.text('List item 2'), findsOneWidget);
+      expect(find.text('First item'), findsOneWidget);
+      expect(find.byType(FilterChip), findsNothing);
+      expect(await h.inner.load(_key), isNull);
+      expect(h.session.state.body!.toJsonBlocks(), _body().toJsonBlocks());
+    });
+
+    testWidgets('selecting first item exposes only its runs', (tester) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      expect(find.text('Selected list item 1'), findsOneWidget);
+      expect(find.text('First '), findsOneWidget);
+      expect(find.text('item'), findsOneWidget);
+      expect(find.text(' second item '), findsNothing);
+      expect(find.byType(FilterChip), findsWidgets);
+      expect(await h.inner.load(_key), isNull);
+    });
+
+    testWidgets('selecting second item does not expose first runs', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 1);
+      expect(find.text('Selected list item 2'), findsOneWidget);
+      expect(find.text(' second item '), findsOneWidget);
+      expect(find.text('First '), findsNothing);
+      expect(find.text('item'), findsNothing);
+      expect(await h.inner.load(_key), isNull);
+    });
+
+    testWidgets('choosing a different item does not create recovery', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      await _tapVisible(tester, find.text('Choose a different list item'));
+      expect(find.text('List item 2'), findsOneWidget);
+      expect(find.byType(FilterChip), findsNothing);
+      await _chooseListItem(tester, 1);
+      expect(find.text('Selected list item 2'), findsOneWidget);
+      expect(await h.inner.load(_key), isNull);
+    });
+
+    testWidgets('marking one run preserves every other item and block', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      await _tapRun(tester, 1, 'Italic');
+      expect(find.text('List item 1'), findsOneWidget);
+      expect(find.byType(FilterChip), findsNothing);
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      final saved = (await h.inner.load(_key))!.body;
+      final runs = _listRuns(saved);
+      expect(runs[0][0], _listRuns(_body())[0][0]);
+      expect(runs[0][1], {
+        'text': 'item',
+        'marks': ['italic'],
+      });
+      expect(runs[1], _listRuns(_body())[1]);
+      expect(_listBlock(saved)['items'], _listBlock(_body())['items']);
+      expect(
+        saved.blocks.where((b) => b['id'] != 'list').toList(),
+        _body().blocks.where((b) => b['id'] != 'list').toList(),
+      );
+    });
+
+    testWidgets('marking second item leaves first item intact', (tester) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 1);
+      await _tapRun(tester, 0, 'Bold');
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      final runs = _listRuns((await h.inner.load(_key))!.body);
+      expect(runs[0], _listRuns(_body())[0]);
+      expect(runs[1][0]['text'], ' second item ');
+      expect(runs[1][0]['marks'], ['underline', 'bold']);
+    });
+
+    testWidgets('removing an existing mark keeps other runs unchanged', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      await _tapRun(tester, 0, 'Bold');
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      final runs = _listRuns((await h.inner.load(_key))!.body);
+      expect(runs[0][0]['text'], 'First ');
+      expect(runs[0][0]['marks'], isEmpty);
+      expect(runs[0][1], _listRuns(_body())[0][1]);
+      expect(runs[1], _listRuns(_body())[1]);
+    });
+
+    testWidgets('a fresh choice is required for every changed snapshot', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      await _tapRun(tester, 0, 'Italic');
+      expect(find.byType(FilterChip), findsNothing);
+      await _chooseListItem(tester, 0);
+      await _tapRun(tester, 0, 'Underline');
+      expect(find.byType(FilterChip), findsNothing);
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(_listRuns((await h.inner.load(_key))!.body)[0][0]['marks'], [
+        'bold',
+        'italic',
+        'underline',
+      ]);
+    });
+
+    testWidgets('a plain list is not promoted on selection or cancel', (
+      tester,
+    ) async {
+      final body = _plainList();
+      h.reader.result = _remoteWith(body);
+      await _openList(tester, h);
+      await _chooseListItem(tester, 1);
+      expect(
+        _listBlock(h.session.state.body!).containsKey('itemInlines'),
+        isFalse,
+      );
+      await _tapRun(tester, 0, 'Edit link');
+      await tester.enterText(find.byType(TextField), '/not-applied');
+      await tester.tap(find.text('Cancel').last);
+      await tester.pumpAndSettle();
+      expect(await h.inner.load(_key), isNull);
+      expect(
+        _listBlock(h.session.state.body!).containsKey('itemInlines'),
+        isFalse,
+      );
+    });
+
+    testWidgets('a plain list promotes all item runs only after change', (
+      tester,
+    ) async {
+      final body = _plainList();
+      h.reader.result = _remoteWith(body);
+      await _openList(tester, h);
+      await _chooseListItem(tester, 1);
+      await _tapRun(tester, 0, 'Code style');
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      final list = _listBlock((await h.inner.load(_key))!.body);
+      expect(list['items'], ['plain first', 'plain second']);
+      expect(list['itemInlines'], [
+        [
+          {'text': 'plain first'},
+        ],
+        [
+          {
+            'text': 'plain second',
+            'marks': ['code'],
+          },
+        ],
+      ]);
+      expect(_listBlock(body).containsKey('itemInlines'), isFalse);
+    });
+
+    testWidgets('link cancel preserves original and makes no write', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      await _tapRun(tester, 0, 'Edit link');
+      await tester.enterText(find.byType(TextField), '/cancelled');
+      await tester.tap(find.text('Cancel').last);
+      await tester.pumpAndSettle();
+      expect(await h.inner.load(_key), isNull);
+      expect(_listRuns(h.session.state.body!), _listRuns(_body()));
+      expect(find.text('Selected list item 1'), findsOneWidget);
+    });
+
+    testWidgets('link applies only to the chosen run', (tester) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      await _tapRun(tester, 1, 'Edit link');
+      await tester.enterText(find.byType(TextField), '/local-guide');
+      await _tapVisible(tester, find.text('Apply link locally'));
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      final runs = _listRuns((await h.inner.load(_key))!.body);
+      expect(runs[0][0], _listRuns(_body())[0][0]);
+      expect(runs[0][1], {'text': 'item', 'href': '/local-guide'});
+      expect(runs[1], _listRuns(_body())[1]);
+      expect(find.byType(FilterChip), findsNothing);
+    });
+
+    testWidgets('invalid link is rejected without any list mutation', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      await _tapRun(tester, 0, 'Edit link');
+      await tester.enterText(find.byType(TextField), 'javascript:alert(1)');
+      await _tapVisible(tester, find.text('Apply link locally'));
+      expect(find.byType(TextField), findsOneWidget);
+      expect(await h.inner.load(_key), isNull);
+      expect(_listRuns(h.session.state.body!), _listRuns(_body()));
+    });
+
+    testWidgets('removing a link preserves marks and other items', (
+      tester,
+    ) async {
+      final source = _listWithLink();
+      h.reader.result = _remoteWith(source);
+      await _openList(tester, h);
+      await _chooseListItem(tester, 1);
+      await _tapRun(tester, 0, 'Edit link');
+      await _tapVisible(tester, find.text('Remove link locally'));
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      final runs = _listRuns((await h.inner.load(_key))!.body);
+      expect(runs[0], _listRuns(source)[0]);
+      expect(runs[1][0], {
+        'text': 'plain second',
+        'marks': ['bold'],
+      });
+    });
+
+    testWidgets('unchanged link is a no-op and keeps current selection', (
+      tester,
+    ) async {
+      final source = _listWithLink();
+      h.reader.result = _remoteWith(source);
+      await _openList(tester, h);
+      await _chooseListItem(tester, 1);
+      await _tapRun(tester, 0, 'Edit link');
+      await _tapVisible(tester, find.text('Apply link locally'));
+      expect(await h.inner.load(_key), isNull);
+      expect(find.text('Selected list item 2'), findsOneWidget);
+      expect(_listRuns(h.session.state.body!), _listRuns(source));
+    });
+
+    testWidgets('reordering items clears selected index before another tap', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      expect(h.session.edit(_reversedList), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.byType(FilterChip), findsNothing);
+      expect(find.text('Selected list item 1'), findsNothing);
+      expect(find.text(' second item '), findsOneWidget);
+      await _chooseListItem(tester, 0);
+      expect(find.text(' second item '), findsOneWidget);
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(
+        _listRuns((await h.inner.load(_key))!.body),
+        _listRuns(_reversedList(_body())),
+      );
+    });
+
+    testWidgets('unrelated body changes also require a fresh choice', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      expect(h.session.edit((body) => body.move('image-two', 1)), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.byType(FilterChip), findsNothing);
+      expect(find.text('List item 1'), findsOneWidget);
+      await _chooseListItem(tester, 1);
+      expect(find.text('Selected list item 2'), findsOneWidget);
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(_listRuns((await h.inner.load(_key))!.body), _listRuns(_body()));
+    });
+
+    testWidgets('a stale dialog cannot apply after a list reorder', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      await _tapRun(tester, 0, 'Edit link');
+      await tester.enterText(find.byType(TextField), '/stale');
+      expect(h.session.edit(_reversedList), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('text or session changed'), findsOneWidget);
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Apply link locally'),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(
+        _listRuns((await h.inner.load(_key))!.body),
+        _listRuns(_reversedList(_body())),
+      );
+    });
+
+    testWidgets('a changed then restored list never revives a dialog', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      await _tapRun(tester, 0, 'Edit link');
+      await tester.enterText(find.byType(TextField), '/stale');
+      expect(h.session.edit(_reversedList), isTrue);
+      expect(h.session.edit(_reversedList), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('text or session changed'), findsOneWidget);
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Apply link locally'),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(_listRuns((await h.inner.load(_key))!.body), _listRuns(_body()));
+    });
+
+    testWidgets('deleting the chosen list makes the screen unsupported', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      expect(h.session.edit((body) => body.remove('list')), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.byType(FilterChip), findsNothing);
+      expect(find.textContaining('cannot be safely edited'), findsOneWidget);
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(
+        (await h.inner.load(_key))!.body.blocks.any((b) => b['id'] == 'list'),
+        isFalse,
+      );
+    });
+
+    testWidgets('identity change clears selected item content', (tester) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      h.identity.switchUser('other');
+      await tester.pump();
+      expect(find.textContaining('account changed'), findsOneWidget);
+      expect(find.text('First '), findsNothing);
+      expect(find.byType(FilterChip), findsNothing);
+      expect(await h.inner.load(_key), isNull);
+    });
+
+    testWidgets('identity change clears an open list link field', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      await _tapRun(tester, 0, 'Edit link');
+      await tester.enterText(find.byType(TextField), '/private');
+      h.identity.switchUser(null);
+      await tester.pump();
+      expect(find.text('/private'), findsNothing);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.textContaining('account changed'), findsWidgets);
+      expect(await h.inner.load(_key), isNull);
+    });
+
+    testWidgets('malformed item text is hidden and disabled', (tester) async {
+      final high = '😀'.substring(0, 1);
+      final source = StructuredArticleDraft.parse(
+        version: 1,
+        blocks: [
+          {
+            'id': 'list',
+            'type': 'list',
+            'ordered': false,
+            'items': ['bad$high', 'safe'],
+          },
+        ],
+      );
+      h.reader.result = _remoteWith(source);
+      await _openList(tester, h);
+      final tile = tester.widget<ListTile>(
+        find.byKey(const ValueKey('structured-list-item-0')),
+      );
+      expect(tile.onTap, isNull);
+      expect(find.textContaining('cannot be safely edited'), findsWidgets);
+      await _chooseListItem(tester, 1);
+      expect(find.text('safe'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      expect(await h.inner.load(_key), isNull);
+    });
+
+    testWidgets('split surrogate runs are hidden without altering the list', (
+      tester,
+    ) async {
+      final emoji = '😀';
+      final high = emoji.substring(0, 1);
+      final low = emoji.substring(1);
+      final source = StructuredArticleDraft.parse(
+        version: 1,
+        blocks: [
+          {
+            'id': 'list',
+            'type': 'list',
+            'ordered': false,
+            'items': ['A$high${low}B'],
+            'itemInlines': [
+              [
+                {'text': 'A$high'},
+                {'text': '${low}B'},
+              ],
+            ],
+          },
+        ],
+      );
+      h.reader.result = _remoteWith(source);
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      expect(
+        tester.widget<FilterChip>(_withinRun(0, 'Bold')).onSelected,
+        isNull,
+      );
+      expect(
+        tester.widget<FilterChip>(_withinRun(1, 'Bold')).onSelected,
+        isNull,
+      );
+      expect(tester.takeException(), isNull);
+      expect(await h.inner.load(_key), isNull);
+      expect(h.session.state.body!.toJsonBlocks(), source.toJsonBlocks());
+    });
+
+    testWidgets('save failure leaves edits in memory and offers retry', (
+      tester,
+    ) async {
+      h.store.failCreate = true;
+      await _openList(tester, h);
+      await _chooseListItem(tester, 1);
+      await _tapRun(tester, 0, 'Bold');
+      expect(await h.session.flush(), LocalStructuredFlushResult.failed);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Local save failed'), findsOneWidget);
+      expect(h.session.state.hasUnsavedChanges, isTrue);
+      expect(await h.inner.load(_key), isNull);
+      expect(
+        tester
+            .widget<ListTile>(
+              find.byKey(const ValueKey('structured-list-item-0')),
+            )
+            .onTap,
+        isNull,
+      );
+      h.store.failCreate = false;
+      await _tapVisible(tester, find.text('Retry'));
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(_listRuns((await h.inner.load(_key))!.body)[1][0]['marks'], [
+        'underline',
+        'bold',
+      ]);
+      await tester.pumpAndSettle();
+      await _chooseListItem(tester, 1);
+      expect(find.text('Selected list item 2'), findsOneWidget);
+    });
+
+    testWidgets('competing recovery causes conflict and is never overwritten', (
+      tester,
+    ) async {
+      await h.seed();
+      final existing = (await h.inner.load(_key))!;
+      h.store.hideNextLoad = true;
+      await _openList(tester, h);
+      await _chooseListItem(tester, 1);
+      await _tapRun(tester, 0, 'Bold');
+      expect(await h.session.flush(), LocalStructuredFlushResult.conflict);
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Another local session changed'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<ListTile>(
+              find.byKey(const ValueKey('structured-list-item-0')),
+            )
+            .onTap,
+        isNull,
+      );
+      expect(
+        (await h.inner.load(_key))!.body.toJsonBlocks(),
+        existing.body.toJsonBlocks(),
+      );
+    });
+
+    testWidgets('stale callback cannot target a newly reordered item', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      final callback = tester
+          .widget<FilterChip>(_withinRun(0, 'Italic'))
+          .onSelected!;
+      expect(h.session.edit(_reversedList), isTrue);
+      callback(true);
+      await tester.pumpAndSettle();
+      expect(find.byType(FilterChip), findsNothing);
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(
+        _listRuns((await h.inner.load(_key))!.body),
+        _listRuns(_reversedList(_body())),
+      );
+    });
+
+    testWidgets('stale callback cannot act after identity change', (
+      tester,
+    ) async {
+      await _openList(tester, h);
+      await _chooseListItem(tester, 0);
+      final callback = tester
+          .widget<FilterChip>(_withinRun(0, 'Italic'))
+          .onSelected!;
+      h.identity.switchUser('other');
+      callback(true);
+      await tester.pump();
+      expect(find.textContaining('account changed'), findsOneWidget);
+      expect(await h.inner.load(_key), isNull);
+    });
+
+    testWidgets('large list uses lazy item selection and preserves order', (
+      tester,
+    ) async {
+      final source = StructuredArticleDraft.parse(
+        version: 1,
+        blocks: [
+          {
+            'id': 'list',
+            'type': 'list',
+            'ordered': true,
+            'items': [for (var i = 0; i < 100; i++) 'item $i'],
+          },
+        ],
+      );
+      h.reader.result = _remoteWith(source);
+      await _openList(tester, h);
+      final last = find.byKey(const ValueKey('structured-list-item-99'));
+      expect(last, findsNothing);
+      await tester.scrollUntilVisible(
+        last,
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await _tapVisible(tester, last);
+      expect(find.text('Selected list item 100'), findsOneWidget);
+      await _tapRun(tester, 0, 'Bold');
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      final block = _listBlock((await h.inner.load(_key))!.body);
+      expect(block['items'], _listBlock(source)['items']);
+      final runs = block['itemInlines'] as List;
+      expect(runs.length, 100);
+      expect(runs.first, [
+        {'text': 'item 0'},
+      ]);
+      expect(runs.last, [
+        {
+          'text': 'item 99',
+          'marks': ['bold'],
+        },
+      ]);
+    });
+
+    testWidgets('Chinese list instructions and actions are localized', (
+      tester,
+    ) async {
+      h.reader.result = _remoteWith(_plainList());
+      await _open(tester, h, locale: const Locale('zh'));
+      await _tapVisible(tester, find.byTooltip('编辑文本片段格式'));
+      expect(find.text('列表项目 1'), findsOneWidget);
+      expect(find.textContaining('没有稳定 ID'), findsOneWidget);
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('structured-list-item-0')),
+      );
+      expect(find.text('已选择列表项目 1'), findsOneWidget);
+      expect(find.text('选择其他列表项目'), findsOneWidget);
+      expect(await h.inner.load(_key), isNull);
+    });
+  });
+
   group('entry and exact run formatting', () {
-    testWidgets('v1 text blocks expose formatting, not lists or images', (
+    testWidgets('v1 text and list blocks expose formatting, not images', (
       tester,
     ) async {
       await _open(tester, h);
@@ -328,7 +984,7 @@ void main() {
         );
         expect(
           action,
-          ['heading', 'paragraph', 'quote'].contains(id)
+          ['heading', 'paragraph', 'quote', 'list'].contains(id)
               ? findsOneWidget
               : findsNothing,
           reason: id,

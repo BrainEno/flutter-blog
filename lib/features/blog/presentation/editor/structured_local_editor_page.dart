@@ -513,7 +513,12 @@ class _StructuredBlockCard extends StatelessWidget {
                     icon: const Icon(Icons.edit_outlined),
                   ),
                 if (canEditInline &&
-                    const {'paragraph', 'heading', 'quote'}.contains(type))
+                    const {
+                      'paragraph',
+                      'heading',
+                      'quote',
+                      'list',
+                    }.contains(type))
                   IconButton(
                     tooltip: l10n.structuredInlineOpen,
                     onPressed: editable ? onInline : null,

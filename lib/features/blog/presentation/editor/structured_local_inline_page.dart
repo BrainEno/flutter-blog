@@ -32,12 +32,20 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
   late final StreamSubscription<LocalStructuredState> _subscription;
   bool _reading = false;
   bool _unsupported = false;
+  int? _selectedItem;
+  StructuredArticleDraft? _selectedBody;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _subscription = widget.session.changes.listen((_) {
+    _subscription = widget.session.changes.listen((state) {
+      // List items have no stable IDs. Any new body snapshot invalidates the
+      // selection, including our own edit and account invalidation.
+      if (_selectedItem != null && !identical(_selectedBody, state.body)) {
+        _selectedItem = null;
+        _selectedBody = null;
+      }
       if (mounted && !_reading) setState(() {});
     });
   }
@@ -54,16 +62,58 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_subscription.cancel());
+    _selectedItem = null;
+    _selectedBody = null;
     super.dispose();
   }
 
-  StructuredInlineSelection _select(StructuredArticleDraft body, _Run run) =>
-      StructuredInlineSelection.textBlock(
+  StructuredInlineSelection _select(StructuredArticleDraft body, _Run run) {
+    final item = run.itemIndex;
+    if (item == null) {
+      return StructuredInlineSelection.textBlock(
         document: body,
         blockId: widget.blockId,
         start: run.start,
         end: run.end,
       );
+    }
+    final current = widget.session.state;
+    if (_selectedItem != item ||
+        !identical(_selectedBody, body) ||
+        current.phase != LocalStructuredPhase.editing ||
+        !identical(current.body, body)) {
+      throw StateError('List item selection changed');
+    }
+    return StructuredInlineSelection.listItem(
+      document: body,
+      blockId: widget.blockId,
+      itemIndex: item,
+      start: run.start,
+      end: run.end,
+    );
+  }
+
+  void _chooseItem(StructuredArticleDraft body, int index) {
+    final state = widget.session.state;
+    if (state.phase != LocalStructuredPhase.editing ||
+        !identical(state.body, body)) {
+      if (mounted) setState(() => _unsupported = true);
+      return;
+    }
+    setState(() {
+      _selectedItem = index;
+      _selectedBody = body;
+      _unsupported = false;
+    });
+  }
+
+  void _clearItem() {
+    setState(() {
+      _selectedItem = null;
+      _selectedBody = null;
+      _unsupported = false;
+    });
+  }
 
   void _mark(StructuredArticleDraft body, _Run run, String mark, bool enabled) {
     try {
@@ -86,7 +136,11 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
       final selection = _select(body, run);
       // The mutable seed is emptied as soon as the dialog adopts it. It avoids
       // retaining another copy of the selection in the dialog builder closure.
-      final seed = _LinkSeed(selection, run.href);
+      final seed = _LinkSeed(
+        selection,
+        run.href,
+        run.itemIndex == null ? null : body,
+      );
       try {
         await showDialog<void>(
           context: context,
@@ -115,11 +169,15 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
     }
     final l10n = context.l10n;
     final body = state.body;
+    if (_selectedItem != null && !identical(_selectedBody, body)) {
+      _selectedItem = null;
+      _selectedBody = null;
+    }
     final privateState =
         state.phase != LocalStructuredPhase.invalidated &&
         state.phase != LocalStructuredPhase.closed;
     final block = privateState && body != null
-        ? _findTextBlock(body, widget.blockId)
+        ? _findSupportedBlock(body, widget.blockId)
         : null;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.structuredInlineTitle)),
@@ -140,7 +198,12 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
     Map<String, Object?> block,
   ) {
     final l10n = context.l10n;
-    final runs = _runs(block);
+    final isList = block['type'] == 'list';
+    if (isList && _selectedItem == null) {
+      return _listItems(context, state, body, block);
+    }
+    final itemIndex = isList ? _selectedItem : null;
+    final runs = _runs(block, itemIndex: itemIndex);
     final editable = state.phase == LocalStructuredPhase.editing;
     return ListView.builder(
       padding: const EdgeInsets.all(NoWaveSpacing.page),
@@ -151,6 +214,13 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(l10n.structuredInlineIntro),
+              if (itemIndex != null) ...[
+                Text('${l10n.structuredInlineListSelected} ${itemIndex + 1}'),
+                TextButton(
+                  onPressed: _clearItem,
+                  child: Text(l10n.structuredInlineListChoose),
+                ),
+              ],
               const SizedBox(height: NoWaveSpacing.small),
               Semantics(liveRegion: true, child: Text(_status(context, state))),
               if (state.phase == LocalStructuredPhase.saveFailed)
@@ -180,6 +250,55 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
     );
   }
 
+  Widget _listItems(
+    BuildContext context,
+    LocalStructuredState state,
+    StructuredArticleDraft body,
+    Map<String, Object?> block,
+  ) {
+    final l10n = context.l10n;
+    final items = block['items'] as List;
+    final editable = state.phase == LocalStructuredPhase.editing;
+    return ListView.builder(
+      padding: const EdgeInsets.all(NoWaveSpacing.page),
+      itemCount: items.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.structuredInlineListIntro),
+              const SizedBox(height: NoWaveSpacing.small),
+              Semantics(liveRegion: true, child: Text(_status(context, state))),
+              if (state.phase == LocalStructuredPhase.saveFailed)
+                TextButton(
+                  onPressed: () => widget.session.retrySave(),
+                  child: Text(l10n.actionRetry),
+                ),
+              if (_unsupported)
+                Semantics(
+                  liveRegion: true,
+                  child: Text(l10n.structuredInlineUnsupported),
+                ),
+              const SizedBox(height: NoWaveSpacing.medium),
+            ],
+          );
+        }
+        final text = items[index - 1] as String;
+        final safe = isWellFormedUtf16(text);
+        return Card(
+          child: ListTile(
+            key: ValueKey('structured-list-item-${index - 1}'),
+            title: Text('${l10n.structuredInlineListItem} $index'),
+            subtitle: Text(safe ? text : l10n.structuredInlineUnsupported),
+            enabled: editable && safe,
+            onTap: editable && safe ? () => _chooseItem(body, index - 1) : null,
+          ),
+        );
+      },
+    );
+  }
+
   String _status(BuildContext context, LocalStructuredState state) {
     final l10n = context.l10n;
     if (state.phase == LocalStructuredPhase.saveFailed) {
@@ -195,10 +314,18 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
   }
 }
 
-Map<String, Object?>? _findTextBlock(StructuredArticleDraft body, String id) {
+Map<String, Object?>? _findSupportedBlock(
+  StructuredArticleDraft body,
+  String id,
+) {
   for (final block in body.blocks) {
     if (block['id'] == id &&
-        const {'paragraph', 'heading', 'quote'}.contains(block['type'])) {
+        const {
+          'paragraph',
+          'heading',
+          'quote',
+          'list',
+        }.contains(block['type'])) {
       return block;
     }
   }
@@ -212,7 +339,9 @@ class _Run {
     required this.end,
     required this.marks,
     required this.href,
+    required this.itemIndex,
   });
+  final int? itemIndex;
   final String text;
   final int start;
   final int end;
@@ -220,12 +349,22 @@ class _Run {
   final String? href;
 }
 
-List<_Run> _runs(Map<String, Object?> block) {
-  final raw =
-      block['inlines'] as List? ??
-      [
-        {'text': block['text']},
-      ];
+List<_Run> _runs(Map<String, Object?> block, {int? itemIndex}) {
+  final List raw;
+  if (itemIndex == null) {
+    raw =
+        block['inlines'] as List? ??
+        [
+          {'text': block['text']},
+        ];
+  } else {
+    final all = block['itemInlines'] as List?;
+    raw = all == null
+        ? [
+            {'text': (block['items'] as List)[itemIndex]},
+          ]
+        : all[itemIndex] as List;
+  }
   var offset = 0;
   return [
     for (final value in raw)
@@ -238,6 +377,7 @@ List<_Run> _runs(Map<String, Object?> block) {
           end: offset + text.length,
           marks: Set<String>.of((run['marks'] as List?)?.cast<String>() ?? []),
           href: run['href'] as String?,
+          itemIndex: itemIndex,
         );
         offset += text.length;
         return result;
@@ -310,12 +450,14 @@ class _RunCard extends StatelessWidget {
 }
 
 class _LinkSeed {
-  _LinkSeed(this.selection, this.href);
+  _LinkSeed(this.selection, this.href, this.listBody);
   StructuredInlineSelection? selection;
   String? href;
+  StructuredArticleDraft? listBody;
   void clear() {
     selection = null;
     href = null;
+    listBody = null;
   }
 }
 
@@ -332,6 +474,7 @@ class _LinkDialogState extends State<_LinkDialog> {
   late final TextEditingController _controller;
   late final StreamSubscription<LocalStructuredState> _subscription;
   StructuredInlineSelection? _selection;
+  StructuredArticleDraft? _listBody;
   bool _hadLink = false;
   bool _reading = false;
   bool _invalid = false;
@@ -342,7 +485,12 @@ class _LinkDialogState extends State<_LinkDialog> {
     super.initState();
     // The route can be scheduled just before an identity change. Check the
     // current fence before adopting private seed values, not only on events.
-    final active = widget.session.state.phase == LocalStructuredPhase.editing;
+    final state = widget.session.state;
+    final active =
+        state.phase == LocalStructuredPhase.editing &&
+        (widget.seed.listBody == null ||
+            identical(widget.seed.listBody, state.body));
+    _listBody = active ? widget.seed.listBody : null;
     _selection = active ? widget.seed.selection : null;
     _hadLink = active && widget.seed.href != null;
     _controller = TextEditingController(
@@ -354,9 +502,15 @@ class _LinkDialogState extends State<_LinkDialog> {
 
   void _changed(LocalStructuredState state) {
     if (!mounted) return;
+    if (_listBody != null && !identical(_listBody, state.body)) {
+      _listBody = null;
+      _selection = null;
+      _stale = true;
+    }
     if (state.phase == LocalStructuredPhase.invalidated ||
         state.phase == LocalStructuredPhase.closed) {
       _selection = null;
+      _listBody = null;
       if (_reading) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
@@ -376,6 +530,7 @@ class _LinkDialogState extends State<_LinkDialog> {
   void dispose() {
     unawaited(_subscription.cancel());
     _selection = null;
+    _listBody = null;
     _controller.dispose();
     super.dispose();
   }
@@ -385,7 +540,8 @@ class _LinkDialogState extends State<_LinkDialog> {
     final selection = _selection;
     if (state.phase != LocalStructuredPhase.editing ||
         state.body == null ||
-        selection == null) {
+        selection == null ||
+        (_listBody != null && !identical(_listBody, state.body))) {
       setState(() => _stale = true);
       return;
     }
