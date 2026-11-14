@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:belog/core/network/connectivity_evidence.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/transport/api_base_url.dart';
 import 'package:belog/core/nowave/transport/api_envelope.dart';
@@ -85,6 +86,7 @@ class NowaveApiClient {
     required Uri baseUrl,
     NowaveAuthenticator? authenticator,
     http.Client? httpClient,
+    this.connectivityEvidence,
     this.timeout = const Duration(seconds: 30),
   }) : _base = ApiBaseUrl.parse(baseUrl),
        _authenticator = authenticator,
@@ -102,6 +104,7 @@ class NowaveApiClient {
 
   final NowaveAuthenticator? _authenticator;
   final http.Client _httpClient;
+  final ConnectivityEvidence? connectivityEvidence;
 
   /// Immutable public URL of an uploaded media asset.
   Uri mediaUri(String id) => _base.mediaUri(id);
@@ -613,6 +616,7 @@ class NowaveApiClient {
       // has no bound at all and a stalled server could hang the caller.
       final streamed = await _httpClient.send(request).timeout(budget);
       final response = await http.Response.fromStream(streamed).timeout(budget);
+      connectivityEvidence?.recordResponse(uri);
       AppLogger.debug(
         '$method ${uri.path} -> ${response.statusCode} '
         '(${stopwatch.elapsedMilliseconds}ms)',
@@ -639,6 +643,7 @@ class NowaveApiClient {
         budget,
       );
     } on SocketException {
+      connectivityEvidence?.recordTransportFailure(uri);
       // Release-build observability (issue #49): "no network" is the most
       // common support case - it must not leave the diagnostics buffer
       // empty. The record keeps method and path; the error type says what
@@ -646,9 +651,11 @@ class NowaveApiClient {
       AppLogger.requestUnreachable(method, uri.path, 'SocketException');
       rethrow;
     } on HttpException {
+      connectivityEvidence?.recordTransportFailure(uri);
       AppLogger.requestUnreachable(method, uri.path, 'HttpException');
       rethrow;
     } on http.ClientException {
+      connectivityEvidence?.recordTransportFailure(uri);
       AppLogger.requestUnreachable(method, uri.path, 'ClientException');
       rethrow;
     }

@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
+
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/network/api_connection_checker.dart';
 import 'package:belog/core/network/api_origin_report.dart';
@@ -201,13 +203,28 @@ Future<void> initDependencies() async {
     ),
     authority: SqliteSessionAuthorityStore(database),
   );
+  final connectivity = ApiConnectionChecker(uri);
+  final httpClient = http.Client();
   final sessionManager = NowaveSessionManager(
-    client: NowaveApiClient(baseUrl: uri),
+    client: NowaveApiClient(
+      baseUrl: uri,
+      httpClient: httpClient,
+      connectivityEvidence: connectivity,
+    ),
     store: sessionStore,
   );
   final apiClient = NowaveApiClient(
     baseUrl: uri,
     authenticator: sessionManager,
+    httpClient: httpClient,
+    connectivityEvidence: connectivity,
+  );
+  serviceLocator.registerSingleton<ConnectionChecker>(
+    connectivity,
+    dispose: (_) {
+      connectivity.close();
+      httpClient.close();
+    },
   );
   await sessionManager.restore();
 
@@ -318,15 +335,6 @@ Future<void> initDependencies() async {
   );
 
   serviceLocator.registerLazySingleton(() => AppUserCubit());
-  // One probe for every build mode and every origin: the configured API's own
-  // credential-free `GET /api/v1/health`. A public-internet probe used to gate
-  // this decision and reported a reachable backend as offline whenever its own
-  // public endpoints were blocked (LAN, emulator, private deployment, offline
-  // demo) - the pre-flight "no network" from issue #105. The launch scripts
-  // still pass `BELOG_DEV_BACKEND_CHECK`, which no longer changes anything.
-  serviceLocator.registerFactory<ConnectionChecker>(
-    () => buildConnectionChecker(uri),
-  );
 }
 
 void _initAuth(

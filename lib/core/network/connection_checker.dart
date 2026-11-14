@@ -8,8 +8,9 @@
 /// without a single request being sent; that was issue #105.
 ///
 /// [ApiConnectionChecker] is the only implementation wired into the app: it
-/// asks `GET /api/v1/health` on the configured origin, without credentials,
-/// in every build mode.
+/// asks `GET /api/v1/health` on the configured origin without credentials
+/// when recent HTTP evidence is unavailable. A short positive lease is not a
+/// guarantee that the next business request will succeed.
 abstract interface class ConnectionChecker {
   Future<bool> get isConnected;
 }

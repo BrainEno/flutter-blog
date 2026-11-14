@@ -226,7 +226,21 @@ class BlogRepositoryImpl implements BlogRepository {
           return left(Failure.storage(cause: error));
         }
       }
-      final blog = await blogRemoteDataSource.getBlogById(blogId);
+      late final BlogModel blog;
+      try {
+        blog = await blogRemoteDataSource.getBlogById(blogId);
+      } catch (error) {
+        final failure = mapErrorToFailure(error);
+        if (failure.kind != FailureKind.network) return left(failure);
+        try {
+          final cached = await blogLocalDataSource.loadBlogById(blogId);
+          return cached == null
+              ? left(Failure.networkOffline())
+              : right(cached);
+        } catch (error) {
+          return left(Failure.storage(cause: error));
+        }
+      }
       try {
         await blogLocalDataSource.uploadLocalBlogs(blogs: [blog]);
       } catch (error) {
