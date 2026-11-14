@@ -24,7 +24,6 @@ import 'package:belog/features/blog/presentation/editor/structured_recovery_cata
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/structured_article_fixtures.dart';
