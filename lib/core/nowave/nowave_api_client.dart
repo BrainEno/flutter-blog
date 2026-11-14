@@ -109,14 +109,14 @@ class NowaveApiClient {
   /// Immutable public URL of an uploaded media asset.
   Uri mediaUri(String id) => _base.mediaUri(id);
 
-  /// GET a JSON endpoint and return its unwrapped `data` payload. Set
-  /// [followRedirects] to false for private reads that must not forward an
-  /// Authorization header to a redirect target; 3xx then fails closed.
+  /// GET a JSON endpoint and return its unwrapped `data` payload. All API
+  /// requests reject redirects, including public reads. [followRedirects] is
+  /// retained for existing callers but `true` is rejected before sending.
   Future<dynamic> getJson(
     String path, {
     Map<String, String>? query,
     NowaveSessionFence? sessionFence,
-    bool followRedirects = true,
+    bool followRedirects = false,
   }) {
     return _request(
       'GET',
@@ -194,7 +194,7 @@ class NowaveApiClient {
     Object? body, {
     Map<String, String>? query,
     bool authenticate = true,
-    bool followRedirects = true,
+    bool followRedirects = false,
     Map<String, String>? extraHeaders,
     NowaveSessionFence? sessionFence,
   }) {
@@ -341,13 +341,12 @@ class NowaveApiClient {
 
   /// DELETE an endpoint; returns the unwrapped `data` payload when present.
   ///
-  /// Set [followRedirects] to false for a private deletion: following a 3xx
-  /// would forward the bearer token to another target, and the deletion may
-  /// already have happened where it was first sent.
+  /// Redirects are always rejected; a deletion may already have happened at
+  /// the original endpoint. Passing [followRedirects] as true is rejected.
   Future<dynamic> deleteJson(
     String path, {
     NowaveSessionFence? sessionFence,
-    bool followRedirects = true,
+    bool followRedirects = false,
   }) => _request(
     'DELETE',
     path,
@@ -401,7 +400,7 @@ class NowaveApiClient {
     Map<String, String>? query,
     bool authenticate = true,
     bool allowRefresh = true,
-    bool followRedirects = true,
+    bool followRedirects = false,
     Duration? timeout,
     Map<String, String>? extraHeaders,
     NowaveSessionFence? sessionFence,
@@ -433,11 +432,18 @@ class NowaveApiClient {
     Map<String, String>? query,
     bool authenticate = true,
     bool allowRefresh = true,
-    bool followRedirects = true,
+    bool followRedirects = false,
     Duration? timeout,
     Map<String, String>? extraHeaders,
     NowaveSessionFence? sessionFence,
   }) async {
+    if (followRedirects) {
+      throw ArgumentError.value(
+        followRedirects,
+        'followRedirects',
+        'API requests cannot follow redirects',
+      );
+    }
     if (sessionFence != null) {
       if (!authenticate) {
         throw ArgumentError('An identity fence requires authentication.');
@@ -459,7 +465,6 @@ class NowaveApiClient {
         headers,
         rawBody ?? (body == null ? null : jsonEncode(body)),
         timeout: timeout,
-        followRedirects: followRedirects,
       );
     } else {
       final authenticator = _authenticator;
@@ -494,7 +499,6 @@ class NowaveApiClient {
             headers,
             rawBody ?? (body == null ? null : jsonEncode(body)),
             timeout: timeout,
-            followRedirects: followRedirects,
           );
         } finally {
           // Applies to both responses and transport errors.
@@ -560,19 +564,6 @@ class NowaveApiClient {
         }
       }
     }
-    if (!followRedirects &&
-        response.statusCode >= 300 &&
-        response.statusCode < 400) {
-      // Never treat a redirect body as successful private data, never follow
-      // it, and never forward this request or its Authorization header to the
-      // new target. For a write, the outcome is explicitly unknown: the server
-      // may have committed the change before answering with a redirect.
-      throw NowaveApiException(
-        statusCode: response.statusCode,
-        code: 'HTTP_REDIRECT',
-        message: 'Unexpected redirect from $method ${uri.path}.',
-      );
-    }
     return _decode(method, uri, response);
   }
 
@@ -598,12 +589,11 @@ class NowaveApiClient {
     Map<String, String> headers,
     Object? payload, {
     Duration? timeout,
-    bool followRedirects = true,
   }) async {
     final budget = timeout ?? this.timeout;
     final request = http.Request(method, uri)
       ..headers.addAll(headers)
-      ..followRedirects = followRedirects;
+      ..followRedirects = false;
     if (payload is Uint8List) {
       request.bodyBytes = payload;
     } else if (payload is String) {
@@ -615,6 +605,23 @@ class NowaveApiClient {
       // request and draining the response body. `fromStream` otherwise
       // has no bound at all and a stalled server could hang the caller.
       final streamed = await _httpClient.send(request).timeout(budget);
+      if (streamed.statusCode >= 300 && streamed.statusCode < 400) {
+        // Refuse at headers: an attacker can stall or enlarge the body, and a
+        // write may have committed before this response. Cancel without
+        // awaiting a malicious stream; never parse Location, body or query.
+        connectivityEvidence?.recordResponse(uri);
+        unawaited(
+          streamed.stream
+              .listen(null, onError: (Object _, StackTrace __) {})
+              .cancel()
+              .catchError((Object _) {}),
+        );
+        throw NowaveApiException(
+          statusCode: streamed.statusCode,
+          code: 'HTTP_REDIRECT',
+          message: 'Unexpected redirect from $method ${uri.path}.',
+        );
+      }
       final response = await http.Response.fromStream(streamed).timeout(budget);
       connectivityEvidence?.recordResponse(uri);
       AppLogger.debug(
