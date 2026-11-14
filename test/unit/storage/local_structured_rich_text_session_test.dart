@@ -631,8 +631,9 @@ void main() {
     final phases = <LocalRichTextPhase>[];
     final subscription = session.changes.listen((state) {
       phases.add(state.phase);
-      if (state.phase == LocalRichTextPhase.recoveryChoice)
+      if (state.phase == LocalRichTextPhase.recoveryChoice) {
         h.identity.change('other');
+      }
     });
     await session.open();
     expect(phases.last, LocalRichTextPhase.invalidated);
