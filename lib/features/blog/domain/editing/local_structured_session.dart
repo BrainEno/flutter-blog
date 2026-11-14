@@ -4,10 +4,13 @@ import 'dart:convert';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
+import 'package:belog/features/blog/domain/editing/local_structured_text_session.dart';
+import 'package:belog/features/blog/domain/editing/structured_text_buffer.dart';
 import 'package:belog/features/blog/domain/entities/structured_body_recovery.dart';
 import 'package:belog/features/blog/domain/entities/structured_edition_read.dart';
 import 'package:belog/features/blog/domain/entities/structured_session_metadata.dart';
 import 'package:belog/features/blog/domain/repositories/structured_body_recovery_store.dart';
+import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
 import 'package:belog/features/blog/domain/usecase/open_structured_editing_session.dart';
 
 /// Local-only state. Neither a successful read nor a saved local revision
@@ -71,6 +74,25 @@ enum LocalStructuredFlushResult {
   closed,
 }
 
+enum LocalTextHandoffStatus {
+  ready,
+  unsupportedStore,
+  invalidTarget,
+  notReady,
+  failed,
+  conflict,
+  obsolete,
+}
+
+/// On [LocalTextHandoffStatus.ready] the body session is closed. A concurrent
+/// close or identity change may also close it while returning obsolete. The
+/// returned session requires explicit recovery and refuses any changed row.
+class LocalTextHandoffResult {
+  const LocalTextHandoffResult(this.status, [this.session]);
+  final LocalTextHandoffStatus status;
+  final LocalStructuredTextSession? session;
+}
+
 class _Edit {
   const _Edit(this.body, this.metadata);
   final StructuredArticleDraft body;
@@ -126,6 +148,7 @@ class LocalStructuredSession {
   bool _writeHalted = false;
   bool _discarding = false;
   bool _closing = false;
+  bool _handoff = false;
   bool _invalidated = false;
   int _openGeneration = 0;
 
@@ -380,6 +403,7 @@ class LocalStructuredSession {
   bool _canEdit() =>
       _checkIdentity() &&
       !_closing &&
+      !_handoff &&
       (_state.phase == LocalStructuredPhase.editing) &&
       !_discarding;
 
@@ -531,6 +555,78 @@ class LocalStructuredSession {
       LocalStructuredPhase.editing => LocalStructuredFlushResult.saved,
       _ => LocalStructuredFlushResult.notReady,
     };
+  }
+
+  /// Freeze body edits, persist the current snapshot if needed, then close
+  /// this coordinator before creating the text coordinator. No remote write
+  /// occurs. The second coordinator is fenced to the exact saved snapshot and
+  /// still asks before recovery. A competing save between handoff and open is
+  /// a conflict, not a newer baseline or an implicit rebase.
+  ///
+  /// Failed or conflicting writes are never abandoned. Concurrent close or
+  /// identity change may leave the original session closed or invalidated;
+  /// callers must inspect both the result and session state.
+  Future<LocalTextHandoffResult> handoffPlainText(String blockId) async {
+    if (!_canEdit()) {
+      return const LocalTextHandoffResult(LocalTextHandoffStatus.notReady);
+    }
+    final textStore = store;
+    if (textStore is! StructuredTextSessionStore) {
+      return const LocalTextHandoffResult(
+        LocalTextHandoffStatus.unsupportedStore,
+      );
+    }
+    try {
+      StructuredTextBuffer(
+        blockId: blockId,
+        text: '',
+      ).validateTarget(_state.body!);
+    } on FormatException {
+      return const LocalTextHandoffResult(LocalTextHandoffStatus.invalidTarget);
+    }
+    // Set before any await or notification so synchronous listeners cannot
+    // admit another edit or start a second handoff.
+    _handoff = true;
+    try {
+      // Even an untouched remote snapshot needs a durable parent row before a
+      // buffer can be persisted. Never create an empty or guessed baseline.
+      if (_recovery == null && _pending == null && _writer == null) {
+        _accept(_Edit(_state.body!, _state.metadata));
+      }
+      final result = await flush();
+      if (!_checkIdentity() || _closing) {
+        return const LocalTextHandoffResult(LocalTextHandoffStatus.obsolete);
+      }
+      if (result == LocalStructuredFlushResult.failed) {
+        return const LocalTextHandoffResult(LocalTextHandoffStatus.failed);
+      }
+      if (result == LocalStructuredFlushResult.conflict) {
+        return const LocalTextHandoffResult(LocalTextHandoffStatus.conflict);
+      }
+      if (result != LocalStructuredFlushResult.saved || _recovery == null) {
+        return const LocalTextHandoffResult(LocalTextHandoffStatus.notReady);
+      }
+      final expected = _recovery!;
+      final closed = await close();
+      if (!closed || !_matchesIdentity || _invalidated) {
+        return const LocalTextHandoffResult(LocalTextHandoffStatus.obsolete);
+      }
+      return LocalTextHandoffResult(
+        LocalTextHandoffStatus.ready,
+        LocalStructuredTextSession(
+          key: key,
+          selectedRowId: expected.rowId,
+          blockId: blockId,
+          fence: fence,
+          identity: identity,
+          store: textStore,
+          expectedUnbufferedParent: expected,
+          now: _now,
+        ),
+      );
+    } finally {
+      _handoff = false;
+    }
   }
 
   /// No implicit discard. Refuse to close on an active failed/conflicting save

@@ -245,3 +245,38 @@ lose input not yet persisted; the database is not newly encrypted.
 The v16 schema and older-client downgrade caveat from the previous section are
 unchanged. This adds no schema migration or dependency. Real devices, screen
 readers, production networking, and rollback remain unverified.
+
+## Exact body-to-text handoff and indexed buffer reopening
+
+A body session may now explicitly hand off one unformatted text block. It
+freezes new body edits, drains already admitted writes and creates a local
+parent recovery if the body was previously untouched. A failed or conflicting
+save leaves the original coordinator responsible for unsaved work; it is not
+silently closed. After a successful flush the body coordinator closes before
+returning a text coordinator. The latter must reread an unbuffered parent whose
+backend, account, article, locale, row incarnation, local revision, raw body
+and metadata JSON, versions and timestamp all match the saved handoff token.
+An intervening edit or any buffer, even one inserted without a revision bump,
+blocks adoption. Local revisions remain local CAS tokens, not server versions.
+
+An offline index can also resolve a selected existing text buffer without
+contacting the server. It fences the account and route generation while reading,
+verifies the selected row incarnation and supplies the exact parent and raw
+buffer as an expected snapshot. The text coordinator rereads this snapshot and
+still requires explicit recovery consent. Missing, changed and corrupt data
+are not converted into a blank article or overwritten. Callers must provide a
+route-bound identity and fence after async navigation; the use case cannot revoke
+private values already delivered to another consumer.
+
+This is domain-only infrastructure: no text input screen or catalog flow is
+wired to it yet. The previous editor remains unchanged. There is no migration,
+new dependency, remote write, publish or queue change. Persisted data is not
+newly encrypted; process death can still lose edits that have not reached the
+store. Downgrading to an older app is unvalidated. Real devices and screen
+readers remain unverified.
+
+Upstream was rechecked at `59d191a0850ef40eccd68fcf7bc9a7cdaaeee2c1`:
+plain text remains nonempty with a 20,000 UTF-16-unit limit, and inline runs
+must match their fallback exactly. The author list now has an opt-in all-locales
+mode, but its per-locale limit remains 100 and this work does not infer absence
+or introduce remote conditional updates.
