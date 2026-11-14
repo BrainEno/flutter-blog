@@ -278,7 +278,9 @@ class LocalStructuredTextSession {
       !_closing &&
       !_finishing &&
       (_state.phase == LocalTextPhase.editing ||
-          _state.phase == LocalTextPhase.actionFailed);
+          _state.phase == LocalTextPhase.actionFailed ||
+          _state.phase == LocalTextPhase.saveFailed ||
+          _state.phase == LocalTextPhase.conflict);
 
   /// Accept input synchronously, including temporarily invalid body text. A
   /// too-large value throws before changing state or scheduling a write.
@@ -287,6 +289,21 @@ class LocalStructuredTextSession {
     final buffer = StructuredTextBuffer(blockId: blockId, text: text);
     buffer.validateTarget(_parent!.body);
     _pending = buffer;
+    if (_state.phase == LocalTextPhase.saveFailed ||
+        _state.phase == LocalTextPhase.conflict) {
+      // Preserve late IME input in memory. Neither a failure nor a conflict
+      // may trigger an implicit retry or overwrite a newer local recovery.
+      _set(
+        LocalTextState(
+          phase: _state.phase,
+          body: _parent!.body,
+          text: text,
+          bufferAvailable: _saved != null,
+          hasUnsavedChanges: true,
+        ),
+      );
+      return true;
+    }
     _startWriter();
     if (!_checkIdentity() || _closing) return true;
     _set(
@@ -435,7 +452,12 @@ class LocalStructuredTextSession {
     required bool confirmed,
     required bool apply,
   }) async {
-    if (!confirmed || !_canEdit) return LocalTextFinishResult.notReady;
+    if (!confirmed ||
+        !_canEdit ||
+        _state.phase == LocalTextPhase.saveFailed ||
+        _state.phase == LocalTextPhase.conflict) {
+      return LocalTextFinishResult.notReady;
+    }
     _finishing = true;
     final done = Completer<void>();
     _finishingDone = done;

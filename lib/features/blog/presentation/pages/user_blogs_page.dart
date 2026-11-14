@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
@@ -10,6 +12,7 @@ import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/article_editions.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_authoring_key.dart';
 import 'package:belog/features/blog/domain/usecase/open_structured_editing_session.dart';
@@ -91,7 +94,8 @@ class _UserBlogsPageState extends State<UserBlogsPage>
       if (_structuredOpen) return;
       final opener =
           widget.structuredOpener ?? GetIt.I<OpenStructuredEditingSession>();
-      final user = context.read<AppUserCubit>().state;
+      final userCubit = context.read<AppUserCubit>();
+      final user = userCubit.state;
       final key = user is AppUserLoggedIn
           ? structuredAuthoringKey(
               blog: blog,
@@ -103,13 +107,24 @@ class _UserBlogsPageState extends State<UserBlogsPage>
         showSnackBar(context, context.l10n.structuredMissingIdentity);
         return;
       }
+      final fence = NowaveSessionFence(
+        userId: key.userId,
+        generation: opener.identity.sessionGeneration,
+      );
+      final identity = _AuthoringIdentity(
+        inner: opener.identity,
+        user: userCubit,
+        fence: fence,
+        routeCurrent: () => mounted,
+      );
       final session = LocalStructuredSession(
         key: key,
-        fence: NowaveSessionFence(
-          userId: key.userId,
-          generation: opener.identity.sessionGeneration,
+        fence: fence,
+        opener: OpenStructuredEditingSession(
+          reader: opener.reader,
+          store: opener.store,
+          identity: identity,
         ),
-        opener: opener,
       );
       _structuredOpen = true;
       try {
@@ -120,6 +135,7 @@ class _UserBlogsPageState extends State<UserBlogsPage>
         );
       } finally {
         _structuredOpen = false;
+        await identity.close();
       }
       // Local changes were not published and do not change the server list.
       return;
@@ -370,5 +386,59 @@ class _UserBlogsPageState extends State<UserBlogsPage>
         ],
       ),
     );
+  }
+}
+
+/// Immediately fences private editor state on either UI-account or network
+/// session changes. Once invalidated, switching back cannot resurrect it.
+class _AuthoringIdentity implements NowaveSessionIdentity {
+  _AuthoringIdentity({
+    required this.inner,
+    required this.user,
+    required this.fence,
+    required this.routeCurrent,
+  }) {
+    user.identityRevision.addListener(_changed);
+    _subscription = inner.identityChanges.listen((_) => _changed());
+  }
+  final NowaveSessionIdentity inner;
+  final AppUserCubit user;
+  final NowaveSessionFence fence;
+  final bool Function() routeCurrent;
+  final _events = StreamController<void>.broadcast(sync: true);
+  late final StreamSubscription<void> _subscription;
+  bool _invalid = false;
+
+  bool get _active {
+    final current = user.state;
+    if (!routeCurrent() ||
+        current is! AppUserLoggedIn ||
+        current.user.id != fence.userId ||
+        inner.activeUserId != fence.userId ||
+        inner.sessionGeneration != fence.generation ||
+        (inner.accessToken?.isEmpty ?? true)) {
+      _invalid = true;
+    }
+    return !_invalid;
+  }
+
+  void _changed() {
+    if (!_active) _invalid = true;
+    if (!_events.isClosed) _events.add(null);
+  }
+
+  @override
+  String? get activeUserId => _active ? inner.activeUserId : null;
+  @override
+  String? get accessToken => _active ? inner.accessToken : null;
+  @override
+  int get sessionGeneration => inner.sessionGeneration;
+  @override
+  Stream<void> get identityChanges => _events.stream;
+
+  Future<void> close() async {
+    user.identityRevision.removeListener(_changed);
+    await _subscription.cancel();
+    await _events.close();
   }
 }

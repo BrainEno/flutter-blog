@@ -7,6 +7,9 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/blog/domain/repositories/structured_recovery_catalog.dart';
+import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
+import 'package:belog/features/blog/domain/usecase/open_indexed_text_recovery.dart';
+import 'package:belog/features/blog/presentation/editor/structured_local_text_page.dart';
 import 'package:belog/features/blog/domain/usecase/list_structured_recoveries.dart';
 import 'package:belog/features/blog/domain/usecase/open_indexed_recovery.dart';
 import 'package:belog/features/blog/domain/usecase/open_structured_editing_session.dart';
@@ -117,19 +120,50 @@ class _StructuredRecoveryCatalogPageState
       _identityChanged();
       return;
     }
-    _opening = true;
+    setState(() => _opening = true);
+    final generation = _generation;
+    final identity = _AccountBoundIdentity(
+      inner: widget.opener.identity,
+      isCurrent: () => mounted && _active,
+      changes: _editorIdentityEvents.stream,
+    );
     try {
+      final store = widget.opener.store;
+      if (store is StructuredTextSessionStore) {
+        final result =
+            await OpenIndexedTextRecovery(store: store, identity: identity)(
+              entry: entry,
+              fence: widget.fence,
+              isCurrent: () => mounted && _active && generation == _generation,
+            );
+        if (!mounted || !_active || generation != _generation) {
+          await result.session?.close();
+          return;
+        }
+        if (result.status == IndexedTextRecoveryStatus.ready) {
+          await Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(
+              builder: (_) => StructuredLocalTextPage(session: result.session!),
+            ),
+          );
+          return;
+        }
+        if (result.status != IndexedTextRecoveryStatus.noBuffer) {
+          if (result.status != IndexedTextRecoveryStatus.obsolete) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(context.l10n.structuredLocalFailure)),
+            );
+          }
+          return;
+        }
+      }
       final session = openIndexedRecovery(
         entry: entry,
         fence: widget.fence,
         opener: OpenStructuredEditingSession(
           reader: widget.opener.reader,
           store: widget.opener.store,
-          identity: _AccountBoundIdentity(
-            inner: widget.opener.identity,
-            isCurrent: () => mounted && _active,
-            changes: _editorIdentityEvents.stream,
-          ),
+          identity: identity,
         ),
       );
       await Navigator.of(context).push<void>(
@@ -138,9 +172,11 @@ class _StructuredRecoveryCatalogPageState
         ),
       );
     } finally {
-      _opening = false;
+      if (mounted) {
+        setState(() => _opening = false);
+        if (_active) await _refresh();
+      }
     }
-    if (mounted && _active) await _refresh();
   }
 
   @override
