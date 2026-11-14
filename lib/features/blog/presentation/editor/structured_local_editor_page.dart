@@ -159,8 +159,9 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
   Future<void> _openInline(String blockId) async {
     if (_busy ||
         _exiting ||
-        widget.session.state.phase != LocalStructuredPhase.editing)
+        widget.session.state.phase != LocalStructuredPhase.editing) {
       return;
+    }
     setState(() => _busy = true);
     try {
       await Navigator.of(context).push<void>(

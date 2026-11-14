@@ -311,7 +311,27 @@ void main() {
       tester,
     ) async {
       await _open(tester, h);
-      expect(find.byTooltip('Edit text-run formatting'), findsNWidgets(3));
+      for (final id in ['heading', 'image-one', 'paragraph', 'quote', 'list']) {
+        final card = find.byKey(ValueKey(id));
+        if (card.evaluate().isEmpty) {
+          await tester.scrollUntilVisible(
+            card,
+            250,
+            scrollable: find.byType(Scrollable).first,
+          );
+        }
+        final action = find.descendant(
+          of: card,
+          matching: find.byTooltip('Edit text-run formatting'),
+        );
+        expect(
+          action,
+          ['heading', 'paragraph', 'quote'].contains(id)
+              ? findsOneWidget
+              : findsNothing,
+          reason: id,
+        );
+      }
       expect(find.byTooltip('Edit unformatted text'), findsNothing);
       expect(find.text('Publish'), findsNothing);
       expect(await h.inner.load(_key), isNull);
