@@ -40,7 +40,7 @@ class AuthRepositoryImpl implements AuthRepository {
       var stale = _staleSessionFailure(generation);
       if (stale != null) return left(stale);
 
-      if (!connected) return _offlineCurrentUser(generation);
+      if (!connected) return await _offlineCurrentUser(generation);
 
       UserModel? userModel;
       try {
@@ -51,7 +51,7 @@ class AuthRepositoryImpl implements AuthRepository {
         // server/auth/permission error or an inconclusive request timeout.
         final failure = mapErrorToFailure(error);
         if (failure.kind == FailureKind.network) {
-          return _offlineCurrentUser(generation);
+          return await _offlineCurrentUser(generation);
         }
         return left(failure);
       }
