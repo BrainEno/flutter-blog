@@ -374,7 +374,12 @@ void main() {
       expect(find.byTooltip('Edit unformatted text'), findsOneWidget);
       expect(find.text('Publish'), findsNothing);
       await _visibleTap(tester, find.byTooltip('Edit unformatted text'));
-      expect(find.byType(StructuredLocalTextPage), findsOneWidget);
+      expect(
+        find.byType(StructuredLocalTextPage),
+        findsOneWidget,
+        reason:
+            'body phase: ${h.body.state.phase}; local row: ${await h.inner.load(_key)}; error: ${tester.takeException()}',
+      );
       expect(find.text('Local recovery found'), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
       expect(h.body.state.phase, LocalStructuredPhase.closed);

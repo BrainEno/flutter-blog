@@ -1,0 +1,26 @@
+name: Local text widget diagnostics
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          channel: stable
+          flutter-version: '3.47.8'
+          cache: true
+          pub-cache: true
+      - run: flutter pub get
+      - run: flutter test test/widget/structured_local_text_page_test.dart --reporter expanded > /tmp/focused.txt 2>&1
+      - if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
+          { echo 'Focused local text test diagnostics'; echo '```'; tail -c 60000 /tmp/focused.txt; echo '```'; } | gh pr comment "$PR_NUMBER" --body-file -
