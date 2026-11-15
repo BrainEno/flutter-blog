@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
@@ -20,6 +24,9 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
   final CreateComment createComment;
   final DeleteComment deleteComment;
   final Uuid uuid;
+  final NowaveSessionIdentity? sessionIdentity;
+  StreamSubscription<void>? _identitySubscription;
+  int _identityEpoch = 0;
 
   /// Composer limit; the server enforces its own body cap and rejects
   /// anything beyond it.
@@ -34,12 +41,92 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
     required this.deleteComment,
     required this.slug,
     Uuid? uuidGenerator,
-  }) : uuid = uuidGenerator ?? const Uuid(),
+    NowaveSessionIdentity? sessionIdentity,
+  }) : sessionIdentity = sessionIdentity ?? createComment.sessionIdentity,
+       uuid = uuidGenerator ?? const Uuid(),
        super(const CommentState()) {
     on<CommentsRequested>(_onCommentsRequested);
     on<MoreCommentsRequested>(_onMoreCommentsRequested);
     on<CommentSubmitted>(_onCommentSubmitted);
     on<CommentDeleteRequested>(_onCommentDeleteRequested);
+    on<CommentIdentityChanged>(_onIdentityChanged);
+    _identitySubscription = this.sessionIdentity?.identityChanges.listen((_) {
+      _identityEpoch++;
+      _pageGeneration++;
+      _clearPending();
+      if (!isClosed) add(CommentIdentityChanged(_identityEpoch));
+    });
+  }
+
+  /// Captured synchronously at event admission, before a queued handler can
+  /// observe a newer account. Missing identity always fails closed.
+  NowaveSessionFence? captureFence() {
+    final identity = sessionIdentity;
+    final user = identity?.activeUserId;
+    if (identity == null ||
+        user == null ||
+        user.isEmpty ||
+        (identity.accessToken?.isEmpty ?? true)) {
+      return null;
+    }
+    return NowaveSessionFence(
+      userId: user,
+      generation: identity.sessionGeneration,
+    );
+  }
+
+  bool _current(NowaveSessionFence? fence, int epoch) {
+    final identity = sessionIdentity;
+    return fence != null &&
+        identity != null &&
+        epoch == _identityEpoch &&
+        identity.activeUserId == fence.userId &&
+        identity.sessionGeneration == fence.generation &&
+        !(identity.accessToken?.isEmpty ?? true);
+  }
+
+  @override
+  void add(CommentEvent event) {
+    if ((event is CommentSubmitted || event is CommentDeleteRequested) &&
+        state.identityEpoch != _identityEpoch) {
+      return;
+    }
+    if (event is CommentSubmitted && event.fence == null) {
+      event = CommentSubmitted(
+        content: event.content,
+        parentCommentId: event.parentCommentId,
+        fence: captureFence(),
+      );
+    } else if (event is CommentDeleteRequested && event.fence == null) {
+      event = CommentDeleteRequested(event.commentId, fence: captureFence());
+    }
+    super.add(event);
+  }
+
+  void _onIdentityChanged(
+    CommentIdentityChanged event,
+    Emitter<CommentState> emit,
+  ) {
+    if (event.epoch != _identityEpoch) return;
+    _nextCursor = null;
+    emit(
+      state.copyWith(
+        identityEpoch: event.epoch,
+        submitting: false,
+        deletingIds: const {},
+        isLoadingMore: false,
+        error: '',
+        hasMore: false,
+        clearLoadMoreFailure: true,
+      ),
+    );
+    add(const CommentsRequested());
+  }
+
+  @override
+  Future<void> close() async {
+    await _identitySubscription?.cancel();
+    return super.close();
   }
 
   String? _pendingKey;
@@ -195,6 +282,9 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
     CommentSubmitted event,
     Emitter<CommentState> emit,
   ) async {
+    final fence = event.fence;
+    final epoch = _identityEpoch;
+    if (!_current(fence, epoch)) return;
     final content = event.content.trim();
     if (content.isEmpty || state.submitting) {
       return;
@@ -233,8 +323,10 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
         content: content,
         parentCommentId: event.parentCommentId,
         idempotencyKey: _pendingKey!,
+        sessionFence: fence,
       ),
     );
+    if (emit.isDone || !_current(fence, epoch)) return;
     await result.fold(
       (failure) async {
         // Keep the pending key: a retry of the unchanged text replays the
@@ -264,6 +356,9 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
     CommentDeleteRequested event,
     Emitter<CommentState> emit,
   ) async {
+    final fence = event.fence;
+    final epoch = _identityEpoch;
+    if (!_current(fence, epoch)) return;
     if (state.deletingIds.contains(event.commentId)) {
       return;
     }
@@ -273,8 +368,9 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
         error: '',
       ),
     );
+    final result = await deleteComment(event.commentId, sessionFence: fence);
+    if (emit.isDone || !_current(fence, epoch)) return;
     final remaining = {...state.deletingIds}..remove(event.commentId);
-    final result = await deleteComment(event.commentId);
     await result.fold(
       (failure) async {
         emit(

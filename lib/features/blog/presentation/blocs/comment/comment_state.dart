@@ -21,6 +21,9 @@ class CommentState {
 
   final bool submitting;
 
+  /// Changes whenever an account/session transition invalidates a composer.
+  final int identityEpoch;
+
   /// Comment ids with an in-flight delete request.
   final Set<String> deletingIds;
 
@@ -42,6 +45,7 @@ class CommentState {
     this.error = '',
     this.failure,
     this.submitting = false,
+    this.identityEpoch = 0,
     this.deletingIds = const {},
     this.isLoadingMore = false,
     this.hasMore = false,
@@ -62,6 +66,7 @@ class CommentState {
     String? error,
     Failure? failure,
     bool? submitting,
+    int? identityEpoch,
     Set<String>? deletingIds,
     bool? isLoadingMore,
     bool? hasMore,
@@ -75,6 +80,7 @@ class CommentState {
       error: error ?? this.error,
       failure: failure ?? (error == null ? this.failure : null),
       submitting: submitting ?? this.submitting,
+      identityEpoch: identityEpoch ?? this.identityEpoch,
       deletingIds: deletingIds ?? this.deletingIds,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       hasMore: hasMore ?? this.hasMore,

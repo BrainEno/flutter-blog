@@ -1,5 +1,6 @@
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/network/connection_checker.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/comment_model.dart';
 import 'package:belog/features/blog/data/repositories/comment_repository_impl.dart';
@@ -7,6 +8,8 @@ import 'package:belog/features/blog/domain/entities/comment.dart';
 import 'package:belog/features/blog/domain/entities/comment_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+
+const _fence = NowaveSessionFence(userId: 'u1', generation: 1);
 
 class MockCommentRemote extends Mock implements CommentRemoteDataSource {}
 
@@ -111,6 +114,7 @@ void main() {
           content: '你好',
           parentCommentId: null,
           idempotencyKey: 'key-1',
+          sessionFence: _fence,
         ),
       ).thenAnswer((_) async => _comment('c9'));
 
@@ -119,6 +123,7 @@ void main() {
         content: '你好',
         parentCommentId: null,
         idempotencyKey: 'key-1',
+        sessionFence: _fence,
       );
 
       expect(result.isRight(), isTrue);
@@ -128,6 +133,7 @@ void main() {
           content: '你好',
           parentCommentId: null,
           idempotencyKey: 'key-1',
+          sessionFence: _fence,
         ),
       ).called(1);
     });
@@ -140,6 +146,7 @@ void main() {
         content: '你好',
         parentCommentId: null,
         idempotencyKey: 'key-1',
+        sessionFence: _fence,
       );
 
       result.fold(
@@ -152,6 +159,7 @@ void main() {
           content: any(named: 'content'),
           parentCommentId: any(named: 'parentCommentId'),
           idempotencyKey: any(named: 'idempotencyKey'),
+          sessionFence: _fence,
         ),
       );
     });
@@ -159,9 +167,11 @@ void main() {
 
   group('deleteComment', () {
     test('returns right on success', () async {
-      when(() => remote.deleteComment('c1')).thenAnswer((_) async => true);
+      when(
+        () => remote.deleteComment('c1', sessionFence: _fence),
+      ).thenAnswer((_) async => true);
 
-      final result = await repository.deleteComment('c1');
+      final result = await repository.deleteComment('c1', sessionFence: _fence);
 
       expect(result.isRight(), isTrue);
     });
@@ -169,10 +179,10 @@ void main() {
     test('offline returns a failure without calling the server', () async {
       when(() => connection.isConnected).thenAnswer((_) async => false);
 
-      final result = await repository.deleteComment('c1');
+      final result = await repository.deleteComment('c1', sessionFence: _fence);
 
       expect(result.isLeft(), isTrue);
-      verifyNever(() => remote.deleteComment(any()));
+      verifyNever(() => remote.deleteComment(any(), sessionFence: _fence));
     });
   });
 }

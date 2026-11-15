@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/core/nowave/session/session_identity.dart';
+
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
 import 'package:belog/features/blog/domain/entities/comment_page.dart';
@@ -12,6 +15,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:uuid/uuid.dart';
+
+const _fence = NowaveSessionFence(userId: 'u1', generation: 1);
+
+class _Identity implements NowaveSessionIdentity {
+  @override
+  String? get activeUserId => 'u1';
+  @override
+  String? get accessToken => 'token';
+  @override
+  int get sessionGeneration => 1;
+  @override
+  Stream<void> get identityChanges => const Stream.empty();
+}
 
 class MockGetComments extends Mock implements GetComments {}
 
@@ -41,6 +57,7 @@ void main() {
   late CommentBloc bloc;
 
   setUpAll(() {
+    registerFallbackValue(_fence);
     registerFallbackValue(
       CreateCommentParams(slug: '', content: '', idempotencyKey: ''),
     );
@@ -59,6 +76,7 @@ void main() {
       deleteComment: deleteComment,
       slug: 'my-slug',
       uuidGenerator: uuid,
+      sessionIdentity: _Identity(),
     );
   });
 
@@ -497,7 +515,7 @@ void main() {
       expect(bloc.state.totalCount, 2);
 
       when(
-        () => deleteComment('c1'),
+        () => deleteComment('c1', sessionFence: any(named: 'sessionFence')),
       ).thenAnswer((_) async => right<Failure, void>(null));
 
       bloc.add(const CommentDeleteRequested('c1'));
@@ -516,7 +534,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       when(
-        () => deleteComment('c1'),
+        () => deleteComment('c1', sessionFence: any(named: 'sessionFence')),
       ).thenAnswer((_) async => left<Failure, void>(Failure('评论删除失败')));
 
       bloc.add(const CommentDeleteRequested('c1'));

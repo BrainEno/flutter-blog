@@ -1,4 +1,5 @@
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
 import 'package:belog/features/blog/domain/entities/comment_page.dart';
 import 'package:fpdart/fpdart.dart';
@@ -26,9 +27,13 @@ abstract interface class CommentRepository {
     required String content,
     String? parentCommentId,
     required String idempotencyKey,
+    required NowaveSessionFence sessionFence,
   });
 
   /// Deletes one of the viewer's own comments; the server cascades to the
   /// comment's whole reply subtree.
-  Future<Either<Failure, void>> deleteComment(String commentId);
+  Future<Either<Failure, void>> deleteComment(
+    String commentId, {
+    required NowaveSessionFence sessionFence,
+  });
 }
