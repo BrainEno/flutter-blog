@@ -28,8 +28,9 @@ class NowaveArticleViewRecorder implements ArticleViewRecorder {
         : null;
     return () async {
       if (identity.sessionGeneration != generation ||
-          identity.activeUserId != user)
+          identity.activeUserId != user) {
         return;
+      }
       if (fence != null && (identity.accessToken?.isEmpty ?? true)) return;
       await client.postViewOnce(
         '/articles/${article.id}/views',

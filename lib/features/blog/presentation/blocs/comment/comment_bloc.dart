@@ -438,7 +438,7 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
       if (isClosed || !_current(fence, epoch)) {
         return const CommentEditResult(CommentEditStatus.sessionChanged);
       }
-      return result.fold(
+      return result.fold<CommentEditResult>(
         (failure) => CommentEditResult(
           failure.code == 'comments.editUnknown'
               ? CommentEditStatus.outcomeUnknown

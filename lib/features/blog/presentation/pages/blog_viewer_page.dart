@@ -106,8 +106,9 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
   void _scheduleView(Blog blog) {
     if (blog.isDraft ||
         blog.id.isEmpty ||
-        !const {'zh-CN', 'zh-TW', 'en'}.contains(blog.locale))
+        !const {'zh-CN', 'zh-TW', 'en'}.contains(blog.locale)) {
       return;
+    }
     final key = '${blog.id}\u0000${blog.locale}';
     if (_viewRecorded.contains(key) || !_viewScheduled.add(key)) return;
     PreparedArticleView? operation;
@@ -122,7 +123,8 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
       _viewScheduled.remove(key);
       return;
     }
-    if (operation == null) {
+    final prepared = operation;
+    if (prepared == null) {
       _viewScheduled.remove(key);
       return;
     }
@@ -133,10 +135,11 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
       if (current is! BlogViewerLoaded ||
           current.blog.id != blog.id ||
           current.blog.locale != blog.locale ||
-          current.blog.isDraft)
+          current.blog.isDraft) {
         return;
+      }
       _viewRecorded.add(key);
-      _sendView(operation);
+      _sendView(prepared);
     });
   }
 
