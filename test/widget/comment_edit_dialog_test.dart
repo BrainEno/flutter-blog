@@ -164,6 +164,34 @@ void main() {
     );
     expect(tester.widget<TextField>(find.byType(TextField)).readOnly, isTrue);
   });
+  testWidgets('account switch lets the reader dismiss a pending edit', (
+    tester,
+  ) async {
+    final gate = Completer<CommentEditResult>();
+    when(
+      () => bloc.editPlainComment(
+        original: any(named: 'original'),
+        text: any(named: 'text'),
+        fence: any(named: 'fence'),
+      ),
+    ).thenAnswer((_) => gate.future);
+    await open(tester);
+    await tester.enterText(find.byType(TextField), 'private draft');
+    await tester.pump();
+    await tester.tap(find.text('Save'));
+    await tester.pump();
+    expect(find.text('Saving…'), findsOneWidget);
+    identity.signOut();
+    await tester.pump();
+    expect(find.text('private draft'), findsNothing);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CommentEditDialog), findsNothing);
+    gate.complete(const CommentEditResult(CommentEditStatus.sessionChanged));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('successful save closes the editor', (tester) async {
     when(
       () => bloc.editPlainComment(

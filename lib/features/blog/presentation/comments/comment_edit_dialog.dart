@@ -51,7 +51,12 @@ class _CommentEditDialogState extends State<CommentEditDialog> {
         // This signal is synchronous. Hide the old account's text immediately,
         // even if the ordinary auth state has not yet been emitted.
         _text.clear();
-        if (mounted) setState(() => _invalidated = true);
+        if (mounted) {
+          setState(() {
+            _invalidated = true;
+            _saving = false;
+          });
+        }
       },
     );
   }
