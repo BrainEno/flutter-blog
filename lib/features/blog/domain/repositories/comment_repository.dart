@@ -30,6 +30,14 @@ abstract interface class CommentRepository {
     required NowaveSessionFence sessionFence,
   });
 
+  /// Replaces plain comment text using the captured viewer fence. This is not
+  /// a conditional update: the server can overwrite a concurrent edit.
+  Future<Either<Failure, Comment>> editComment({
+    required String commentId,
+    required String content,
+    required NowaveSessionFence sessionFence,
+  });
+
   /// Deletes one of the viewer's own comments; the server cascades to the
   /// comment's whole reply subtree.
   Future<Either<Failure, void>> deleteComment(

@@ -4,9 +4,11 @@ import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
+import 'package:belog/features/blog/domain/comments/comment_edit_guard.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_event.dart';
+import 'package:belog/features/blog/presentation/blocs/comment/comment_edit_result.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
@@ -25,6 +27,8 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
   final DeleteComment deleteComment;
   final Uuid uuid;
   final NowaveSessionIdentity? sessionIdentity;
+  final EditComment? editComment;
+  final Map<String, Object> _editing = {};
   StreamSubscription<void>? _identitySubscription;
   int _identityEpoch = 0;
 
@@ -42,6 +46,7 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
     required this.slug,
     Uuid? uuidGenerator,
     NowaveSessionIdentity? sessionIdentity,
+    this.editComment,
   }) : sessionIdentity = sessionIdentity ?? createComment.sessionIdentity,
        uuid = uuidGenerator ?? const Uuid(),
        super(const CommentState()) {
@@ -50,10 +55,12 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
     on<CommentSubmitted>(_onCommentSubmitted);
     on<CommentDeleteRequested>(_onCommentDeleteRequested);
     on<CommentIdentityChanged>(_onIdentityChanged);
+    on<CommentEditApplied>(_onEditApplied);
     _identitySubscription = this.sessionIdentity?.identityChanges.listen((_) {
       _identityEpoch++;
       _pageGeneration++;
       _clearPending();
+      _editing.clear();
       if (!isClosed) add(CommentIdentityChanged(_identityEpoch));
     });
   }
@@ -359,7 +366,8 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
     final fence = event.fence;
     final epoch = _identityEpoch;
     if (!_current(fence, epoch)) return;
-    if (state.deletingIds.contains(event.commentId)) {
+    if (state.deletingIds.contains(event.commentId) ||
+        _editing.containsKey(event.commentId)) {
       return;
     }
     emit(
@@ -390,6 +398,85 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
           ),
         );
       },
+    );
+  }
+
+  /// Save one explicitly plain-text comment. The snapshot check catches local
+  /// changes before sending; it is NOT a server-side compare-and-swap. Other
+  /// devices can still write between this check and the PATCH.
+  Future<CommentEditResult> editPlainComment({
+    required Comment original,
+    required String text,
+    required NowaveSessionFence fence,
+  }) async {
+    final epoch = _identityEpoch;
+    if (isClosed || !_current(fence, epoch)) {
+      return const CommentEditResult(CommentEditStatus.sessionChanged);
+    }
+    final content = text.trim();
+    final current = CommentEditGuard.find(state.comments, original.id);
+    if (current == null ||
+        !CommentEditGuard.sameSnapshot(current, original) ||
+        original.authorId != fence.userId ||
+        !CommentEditGuard.canEdit(original, maxLength: maxContentLength) ||
+        state.deletingIds.contains(original.id) ||
+        _editing.containsKey(original.id) ||
+        content.isEmpty ||
+        content == original.content ||
+        content.length > maxContentLength) {
+      return const CommentEditResult(CommentEditStatus.stale);
+    }
+    final token = Object();
+    _editing[original.id] = token;
+    try {
+      final result =
+          await (editComment ?? EditComment(createComment.commentRepository))(
+            commentId: original.id,
+            content: content,
+            sessionFence: fence,
+          );
+      if (isClosed || !_current(fence, epoch)) {
+        return const CommentEditResult(CommentEditStatus.sessionChanged);
+      }
+      return result.fold<CommentEditResult>(
+        (failure) => CommentEditResult(
+          failure.code == 'comments.editUnknown'
+              ? CommentEditStatus.outcomeUnknown
+              : CommentEditStatus.rejected,
+          failure: failure,
+        ),
+        (updated) {
+          if (!CommentEditGuard.acceptsResponse(original, updated, content)) {
+            return const CommentEditResult(CommentEditStatus.outcomeUnknown);
+          }
+          add(
+            CommentEditApplied(before: original, after: updated, fence: fence),
+          );
+          return const CommentEditResult(CommentEditStatus.saved);
+        },
+      );
+    } catch (_) {
+      return const CommentEditResult(CommentEditStatus.outcomeUnknown);
+    } finally {
+      if (identical(_editing[original.id], token)) _editing.remove(original.id);
+    }
+  }
+
+  void _onEditApplied(CommentEditApplied event, Emitter<CommentState> emit) {
+    if (!_current(event.fence, _identityEpoch)) return;
+    final current = CommentEditGuard.find(state.comments, event.before.id);
+    if (current == null ||
+        !CommentEditGuard.sameSnapshot(current, event.before)) {
+      return;
+    }
+    emit(
+      state.copyWith(
+        comments: CommentEditGuard.apply(
+          state.comments,
+          event.before,
+          event.after,
+        ),
+      ),
     );
   }
 
@@ -459,6 +546,7 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
       authorId: comment.authorId,
       parentCommentId: comment.parentCommentId,
       content: comment.content,
+      isPlainText: comment.isPlainText,
       authorName: comment.authorName,
       authorAvatarUrl: comment.authorAvatarUrl,
       createdAt: comment.createdAt,

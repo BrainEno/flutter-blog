@@ -53,6 +53,23 @@ class CreateCommentParams {
   });
 }
 
+/// Write boundary for a comment correction. The server checks authorship; the
+/// local fence prevents a dialog opened in one session from using another.
+class EditComment {
+  const EditComment(this.commentRepository);
+  final CommentRepository commentRepository;
+
+  Future<Either<Failure, Comment>> call({
+    required String commentId,
+    required String content,
+    required NowaveSessionFence sessionFence,
+  }) => commentRepository.editComment(
+    commentId: commentId,
+    content: content,
+    sessionFence: sessionFence,
+  );
+}
+
 class DeleteComment implements UseCase<void, String> {
   final CommentRepository commentRepository;
   const DeleteComment(this.commentRepository);

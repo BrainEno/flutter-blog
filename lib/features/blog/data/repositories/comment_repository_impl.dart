@@ -77,6 +77,34 @@ class CommentRepositoryImpl implements CommentRepository {
   }
 
   @override
+  Future<Either<Failure, Comment>> editComment({
+    required String commentId,
+    required String content,
+    required NowaveSessionFence sessionFence,
+  }) async {
+    try {
+      if (!await connectionChecker.isConnected) {
+        return left(Failure.networkOffline());
+      }
+      final edited = await commentRemoteDataSource.editComment(
+        commentId: commentId,
+        content: content,
+        sessionFence: sessionFence,
+      );
+      return right(edited);
+    } on ServerException catch (error) {
+      return left(error.toFailure());
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'editComment failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return left(Failure('编辑结果无法确认', code: 'comments.editUnknown'));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> deleteComment(
     String commentId, {
     required NowaveSessionFence sessionFence,

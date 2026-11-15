@@ -8,6 +8,7 @@ import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/blog/data/models/comment_model.dart';
 import 'package:belog/features/blog/domain/entities/comment_page.dart';
+import 'package:belog/features/blog/domain/comments/comment_edit_guard.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
 
 /// Remote comments on a published article (issue #19).
@@ -25,6 +26,12 @@ abstract interface class CommentRemoteDataSource {
     required String content,
     String? parentCommentId,
     required String idempotencyKey,
+    required NowaveSessionFence sessionFence,
+  });
+
+  Future<CommentModel> editComment({
+    required String commentId,
+    required String content,
     required NowaveSessionFence sessionFence,
   });
 
@@ -115,6 +122,67 @@ class CommentRemoteDataSourceImpl implements CommentRemoteDataSource {
         );
       }
       throw mapToServerException(e);
+    }
+  }
+
+  @override
+  Future<CommentModel> editComment({
+    required String commentId,
+    required String content,
+    required NowaveSessionFence sessionFence,
+  }) async {
+    if (!CommentEditGuard.isSafeId(commentId)) {
+      throw const ServerException(
+        '评论标识不支持编辑',
+        code: 'comments.editUnavailable',
+      );
+    }
+    try {
+      final data = await client.patchJsonForViewerOnce(
+        '/comments/$commentId',
+        {'content': content},
+        query: {'locale': _locale},
+        sessionFence: sessionFence,
+      );
+      if (data is! Map<String, dynamic>) {
+        throw const ServerException('编辑结果无法确认', code: 'comments.editUnknown');
+      }
+      final edited = CommentModel.fromMap(data);
+      if (edited.id != commentId ||
+          edited.authorId != sessionFence.userId ||
+          !edited.isPlainText ||
+          edited.editedAt == null ||
+          edited.content != content) {
+        throw const ServerException('编辑结果无法确认', code: 'comments.editUnknown');
+      }
+      return edited;
+    } on NowaveApiException catch (error) {
+      // A 404 can also mean the comment was deleted; only 405 identifies an
+      // unsupported method. Preserve the difference for the reader.
+      if (error.statusCode == 405) {
+        throw ServerException(
+          '此服务器暂不支持编辑评论',
+          code: 'comments.editUnavailable',
+          cause: error,
+        );
+      }
+      if (error.statusCode >= 500 || error.code == 'HTTP_REDIRECT') {
+        throw ServerException(
+          '编辑结果无法确认',
+          code: 'comments.editUnknown',
+          cause: error,
+        );
+      }
+      throw mapToServerException(error);
+    } on ServerException {
+      rethrow;
+    } catch (error) {
+      // Network and malformed responses can happen after the write committed.
+      throw ServerException(
+        '编辑结果无法确认',
+        code: 'comments.editUnknown',
+        cause: error,
+      );
     }
   }
 

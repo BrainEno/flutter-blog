@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/features/blog/domain/entities/comment.dart';
 
 sealed class CommentEvent extends Equatable {
   const CommentEvent();
@@ -58,4 +59,20 @@ final class CommentIdentityChanged extends CommentEvent {
   final int epoch;
   @override
   List<Object?> get props => [epoch];
+}
+
+/// Reconciles a completed edit without replacing newer replies or resurrecting
+/// a comment deleted while the request was in flight.
+final class CommentEditApplied extends CommentEvent {
+  const CommentEditApplied({
+    required this.before,
+    required this.after,
+    required this.fence,
+  });
+  final Comment before;
+  final Comment after;
+  final NowaveSessionFence fence;
+
+  @override
+  List<Object?> get props => [before, after, fence.userId, fence.generation];
 }

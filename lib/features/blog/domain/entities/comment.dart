@@ -17,6 +17,10 @@ class Comment {
   /// Plain-text fallback of the comment body (server content version 0).
   final String content;
 
+  /// The wire response explicitly identified a version-zero, block-free body.
+  /// Unknown or structured bodies cannot be safely edited as plain text.
+  final bool isPlainText;
+
   /// Author display fields, resolved from the joined profile; empty when
   /// the profile has no name configured.
   final String authorName;
@@ -34,6 +38,7 @@ class Comment {
     required this.authorId,
     this.parentCommentId,
     required this.content,
+    this.isPlainText = false,
     this.authorName = '',
     this.authorAvatarUrl = '',
     required this.createdAt,

@@ -6,6 +6,7 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/views/article_view_recorder.dart';
 import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
@@ -34,6 +35,9 @@ class BlogViewerPage extends StatefulWidget {
   /// Related-articles rider loader (issue #19); same injection pattern.
   final GetRelatedArticles? getRelatedArticles;
 
+  /// Optional, best-effort view telemetry; injectable for reader tests.
+  final RecordArticleView? recordArticleView;
+
   /// Injectable device speech and navigation boundaries for reader tests.
   final SpeechCoordinator? speechCoordinator;
   final ReadAloudPreferences? readAloudPreferences;
@@ -44,6 +48,7 @@ class BlogViewerPage extends StatefulWidget {
     required this.blogId,
     this.historyStore,
     this.getRelatedArticles,
+    this.recordArticleView,
     this.speechCoordinator,
     this.readAloudPreferences,
     this.readAloudRouteObserver,
@@ -57,6 +62,8 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
   /// Guards the history write so retries and like refreshes do not spam
   /// the store (the upsert would deduplicate anyway, but skip for free).
   String? _historyRecordedFor;
+  final Set<String> _viewRecorded = {};
+  final Set<String> _viewScheduled = {};
 
   @override
   void initState() {
@@ -90,6 +97,58 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
         error: e,
         stackTrace: stackTrace,
       );
+    }
+  }
+
+  /// Schedule only after a frame displaying this edition completed. The initial
+  /// state may already be loaded (card navigation), so a state listener alone
+  /// would miss it. Retries/rebuilds on this route do not send another beacon.
+  void _scheduleView(Blog blog) {
+    if (blog.isDraft ||
+        blog.id.isEmpty ||
+        !const {'zh-CN', 'zh-TW', 'en'}.contains(blog.locale)) {
+      return;
+    }
+    final key = '${blog.id}\u0000${blog.locale}';
+    if (_viewRecorded.contains(key) || !_viewScheduled.add(key)) return;
+    PreparedArticleView? operation;
+    try {
+      final recorder =
+          widget.recordArticleView ??
+          (GetIt.instance.isRegistered<RecordArticleView>()
+              ? GetIt.instance<RecordArticleView>()
+              : null);
+      operation = recorder?.prepare(blog);
+    } catch (_) {
+      _viewScheduled.remove(key);
+      return;
+    }
+    final prepared = operation;
+    if (prepared == null) {
+      _viewScheduled.remove(key);
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _viewScheduled.remove(key);
+      if (!mounted) return;
+      final current = context.read<BlogViewerCubit>().state;
+      if (current is! BlogViewerLoaded ||
+          current.blog.id != blog.id ||
+          current.blog.locale != blog.locale ||
+          current.blog.isDraft) {
+        return;
+      }
+      _viewRecorded.add(key);
+      _sendView(prepared);
+    });
+  }
+
+  Future<void> _sendView(PreparedArticleView operation) async {
+    try {
+      await operation();
+    } catch (_) {
+      // Optional telemetry must not change content, trigger a snackbar, or
+      // retry after an uncertain network outcome.
     }
   }
 
@@ -130,6 +189,7 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
       },
       builder: (context, state) {
         if (state is BlogViewerLoaded) {
+          _scheduleView(state.blog);
           return ViewerScaffold(
             blog: state.blog,
             onRequestLogin: _requestLogin,
