@@ -125,6 +125,7 @@ void main() {
     );
     await open(tester);
     await tester.enterText(find.byType(TextField), 'draft correction');
+    await tester.pump();
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(find.text('draft correction'), findsOneWidget);
@@ -151,6 +152,7 @@ void main() {
     );
     await open(tester);
     await tester.enterText(find.byType(TextField), 'draft correction');
+    await tester.pump();
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(find.textContaining('result is unknown'), findsOneWidget);
