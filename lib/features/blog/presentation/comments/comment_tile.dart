@@ -49,6 +49,8 @@ class CommentTile extends StatelessWidget {
     if (!identical(context.read<AppUserCubit>(), users)) return;
     final comments = context.read<CommentBloc>();
     if (comments.isClosed) return;
+    final fence = comments.captureFence();
+    if (fence == null || fence.userId != comment.authorId) return;
     final confirmed = await confirmDelete();
     if (!confirmed || !context.mounted || comments.isClosed || !stillOwner()) {
       return;
@@ -57,7 +59,13 @@ class CommentTile extends StatelessWidget {
         !identical(context.read<CommentBloc>(), comments)) {
       return;
     }
-    comments.add(CommentDeleteRequested(comment.id));
+    final currentFence = comments.captureFence();
+    if (currentFence == null ||
+        currentFence.userId != fence.userId ||
+        currentFence.generation != fence.generation) {
+      return;
+    }
+    comments.add(CommentDeleteRequested(comment.id, fence: fence));
   }
 
   @override

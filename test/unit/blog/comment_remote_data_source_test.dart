@@ -5,6 +5,7 @@ import 'package:belog/core/error/failures.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -12,6 +13,18 @@ import 'package:mocktail/mocktail.dart';
 class MockNowaveApiClient extends Mock implements NowaveApiClient {}
 
 const _kSlug = 'my-slug';
+const _fence = NowaveSessionFence(userId: 'u1', generation: 1);
+
+class _Auth implements NowaveViewerAuthenticator {
+  @override
+  String? get activeUserId => 'u1';
+  @override
+  String? get accessToken => 'token';
+  @override
+  int get sessionGeneration => 1;
+  @override
+  Future<bool> refresh() async => false;
+}
 
 /// A comment row as the server serializes it (plain-text content v0 with
 /// the joined author profile and nested replies).
@@ -257,6 +270,7 @@ void main() {
           any(),
           query: any(named: 'query'),
           extraHeaders: any(named: 'extraHeaders'),
+          sessionFence: _fence,
         ),
       ).thenAnswer((_) async => _commentMap(id: 'c9', content: '新评论'));
 
@@ -265,6 +279,7 @@ void main() {
         content: '新评论',
         parentCommentId: null,
         idempotencyKey: 'key-1',
+        sessionFence: _fence,
       );
 
       expect(comment.id, 'c9');
@@ -275,6 +290,7 @@ void main() {
           {'content': '新评论', 'parentCommentId': null},
           query: {'locale': 'zh-CN'},
           extraHeaders: {'Idempotency-Key': 'key-1'},
+          sessionFence: _fence,
         ),
       ).called(1);
     });
@@ -299,6 +315,7 @@ void main() {
         addTearDown(transport.close);
         final realClient = NowaveApiClient(
           baseUrl: Uri.parse('https://example.invalid'),
+          authenticator: _Auth(),
           httpClient: transport,
         );
         final remote = CommentRemoteDataSourceImpl(realClient);
@@ -308,6 +325,7 @@ void main() {
             content: 'draft',
             parentCommentId: 'parent',
             idempotencyKey: 'key-1',
+            sessionFence: _fence,
           ),
           throwsA(
             isA<ServerException>()
@@ -345,6 +363,7 @@ void main() {
               any(),
               query: any(named: 'query'),
               extraHeaders: any(named: 'extraHeaders'),
+              sessionFence: _fence,
             ),
           ).thenThrow(
             NowaveApiException(
@@ -358,6 +377,7 @@ void main() {
               slug: _kSlug,
               content: 'draft',
               idempotencyKey: 'key-1',
+              sessionFence: _fence,
             ),
             throwsA(
               isA<ServerException>()
@@ -380,6 +400,7 @@ void main() {
           any(),
           query: any(named: 'query'),
           extraHeaders: any(named: 'extraHeaders'),
+          sessionFence: _fence,
         ),
       ).thenAnswer((_) async => _commentMap(id: 'c10', parentId: 'c1'));
 
@@ -388,6 +409,7 @@ void main() {
         content: '回复',
         parentCommentId: 'c1',
         idempotencyKey: 'key-2',
+        sessionFence: _fence,
       );
 
       verify(
@@ -396,6 +418,7 @@ void main() {
           {'content': '回复', 'parentCommentId': 'c1'},
           query: {'locale': 'zh-CN'},
           extraHeaders: {'Idempotency-Key': 'key-2'},
+          sessionFence: _fence,
         ),
       ).called(1);
     });
@@ -404,19 +427,27 @@ void main() {
   group('deleteComment', () {
     test('returns true when the server reports the delete', () async {
       when(
-        () => client.deleteJson(any()),
+        () => client.deleteJson(any(), sessionFence: _fence),
       ).thenAnswer((_) async => {'deleted': true});
 
-      expect(await dataSource.deleteComment('c1'), isTrue);
-      verify(() => client.deleteJson('/comments/c1')).called(1);
+      expect(
+        await dataSource.deleteComment('c1', sessionFence: _fence),
+        isTrue,
+      );
+      verify(
+        () => client.deleteJson('/comments/c1', sessionFence: _fence),
+      ).called(1);
     });
 
     test('returns false when the comment was already gone', () async {
       when(
-        () => client.deleteJson(any()),
+        () => client.deleteJson(any(), sessionFence: _fence),
       ).thenAnswer((_) async => {'deleted': false});
 
-      expect(await dataSource.deleteComment('c1'), isFalse);
+      expect(
+        await dataSource.deleteComment('c1', sessionFence: _fence),
+        isFalse,
+      );
     });
   });
 }

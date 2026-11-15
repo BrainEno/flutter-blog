@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/core/nowave/session/session_identity.dart';
+
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
@@ -23,6 +26,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:uuid/uuid.dart';
+
+const _fence = NowaveSessionFence(userId: 'u1', generation: 1);
+
+class _Identity implements NowaveSessionIdentity {
+  @override
+  String? get activeUserId => 'viewer-1';
+  @override
+  String? get accessToken => 'token';
+  @override
+  int get sessionGeneration => 1;
+  @override
+  Stream<void> get identityChanges => const Stream.empty();
+}
 
 class MockGetComments extends Mock implements GetComments {}
 
@@ -116,6 +132,7 @@ void main() {
   late MockUuid uuid;
 
   setUpAll(() {
+    registerFallbackValue(_fence);
     registerFallbackValue(
       CreateCommentParams(slug: '', content: '', idempotencyKey: ''),
     );
@@ -145,6 +162,7 @@ void main() {
     deleteComment: deleteComment,
     slug: 'my-slug',
     uuidGenerator: uuid,
+    sessionIdentity: _Identity(),
   );
 
   testWidgets('renders the thread with nested replies (plain text)', (
@@ -211,7 +229,10 @@ void main() {
             ),
           );
           when(
-            () => deleteComment('child'),
+            () => deleteComment(
+              'child',
+              sessionFence: any(named: 'sessionFence'),
+            ),
           ).thenAnswer((_) async => right<Failure, void>(null));
           final bloc = buildBloc();
           addTearDown(bloc.close);
@@ -306,7 +327,7 @@ void main() {
       ),
     );
     when(
-      () => deleteComment('c1'),
+      () => deleteComment('c1', sessionFence: any(named: 'sessionFence')),
     ).thenAnswer((_) async => right<Failure, void>(null));
 
     final bloc = buildBloc();
@@ -901,7 +922,7 @@ void main() {
       ),
     );
     when(
-      () => deleteComment('c1'),
+      () => deleteComment('c1', sessionFence: any(named: 'sessionFence')),
     ).thenAnswer((_) async => right<Failure, void>(null));
 
     final bloc = buildBloc();
@@ -916,12 +937,16 @@ void main() {
     await tester.tap(find.text('删除'));
     await tester.pumpAndSettle();
     expect(find.text('删除评论'), findsOneWidget);
-    verifyNever(() => deleteComment(any()));
+    verifyNever(
+      () => deleteComment(any(), sessionFence: any(named: 'sessionFence')),
+    );
 
     await tester.tap(find.widgetWithText(TextButton, '删除').last);
     await tester.pumpAndSettle();
 
-    verify(() => deleteComment('c1')).called(1);
+    verify(
+      () => deleteComment('c1', sessionFence: any(named: 'sessionFence')),
+    ).called(1);
     expect(find.text('我自己说的'), findsNothing);
   });
 
@@ -941,7 +966,9 @@ void main() {
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
     expect(find.text('own comment'), findsOneWidget);
-    verifyNever(() => deleteComment(any()));
+    verifyNever(
+      () => deleteComment(any(), sessionFence: any(named: 'sessionFence')),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -963,7 +990,7 @@ void main() {
         ),
       );
       when(
-        () => deleteComment('own'),
+        () => deleteComment('own', sessionFence: any(named: 'sessionFence')),
       ).thenAnswer((_) async => right<Failure, void>(null));
       final bloc = buildBloc();
       addTearDown(bloc.close);
@@ -992,7 +1019,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, '删除').last);
       await tester.pumpAndSettle();
-      verifyNever(() => deleteComment(any()));
+      verifyNever(
+        () => deleteComment(any(), sessionFence: any(named: 'sessionFence')),
+      );
       expect(find.text('own comment'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
@@ -1003,7 +1032,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, '删除').last);
       await tester.pumpAndSettle();
-      verify(() => deleteComment('own')).called(1);
+      verify(
+        () => deleteComment('own', sessionFence: any(named: 'sessionFence')),
+      ).called(1);
       expect(find.text('own comment'), findsNothing);
       expect(tester.takeException(), isNull);
     });
@@ -1029,7 +1060,9 @@ void main() {
       old();
       await tester.pumpAndSettle();
       expect(find.text('删除评论'), findsNothing);
-      verifyNever(() => deleteComment(any()));
+      verifyNever(
+        () => deleteComment(any(), sessionFence: any(named: 'sessionFence')),
+      );
       expect(tester.takeException(), isNull);
     },
   );
@@ -1070,7 +1103,9 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     confirmation.complete(true);
     await tester.pumpAndSettle();
-    verifyNever(() => deleteComment(any()));
+    verifyNever(
+      () => deleteComment(any(), sessionFence: any(named: 'sessionFence')),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -1085,6 +1120,9 @@ void main() {
       () => bloc.stream,
     ).thenAnswer((_) => const Stream<CommentState>.empty());
     when(() => bloc.isClosed).thenAnswer((_) => closed);
+    when(
+      () => bloc.captureFence(),
+    ).thenReturn(const NowaveSessionFence(userId: 'viewer-1', generation: 1));
     final confirmation = Completer<bool>();
     await tester.pumpWidget(
       MultiBlocProvider(
@@ -1241,7 +1279,7 @@ void main() {
           () => getComments('my-slug'),
         ).thenAnswer((_) async => right<Failure, CommentPage>(_page([thread])));
         when(
-          () => deleteComment('c12'),
+          () => deleteComment('c12', sessionFence: any(named: 'sessionFence')),
         ).thenAnswer((_) async => right<Failure, void>(null));
         final bloc = buildBloc();
         addTearDown(bloc.close);
@@ -1289,13 +1327,17 @@ void main() {
         expect(delete.hitTestable(), findsOneWidget);
         await tester.tap(delete);
         await tester.pumpAndSettle();
-        verifyNever(() => deleteComment(any()));
+        verifyNever(
+          () => deleteComment(any(), sessionFence: any(named: 'sessionFence')),
+        );
         expect(find.text(l10n.commentDeleteTitle), findsOneWidget);
         await tester.tap(
           find.widgetWithText(TextButton, l10n.actionDelete).last,
         );
         await tester.pumpAndSettle();
-        verify(() => deleteComment('c12')).called(1);
+        verify(
+          () => deleteComment('c12', sessionFence: any(named: 'sessionFence')),
+        ).called(1);
         expect(find.text('deepest body'), findsNothing);
         expect(find.byType(CommentTile), findsNWidgets(12));
         expect(tester.takeException(), isNull);

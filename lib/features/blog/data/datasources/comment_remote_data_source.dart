@@ -5,6 +5,7 @@ import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/blog/data/models/comment_model.dart';
 import 'package:belog/features/blog/domain/entities/comment_page.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
@@ -24,9 +25,13 @@ abstract interface class CommentRemoteDataSource {
     required String content,
     String? parentCommentId,
     required String idempotencyKey,
+    required NowaveSessionFence sessionFence,
   });
 
-  Future<bool> deleteComment(String commentId);
+  Future<bool> deleteComment(
+    String commentId, {
+    required NowaveSessionFence sessionFence,
+  });
 }
 
 class CommentRemoteDataSourceImpl implements CommentRemoteDataSource {
@@ -84,6 +89,7 @@ class CommentRemoteDataSourceImpl implements CommentRemoteDataSource {
     required String content,
     String? parentCommentId,
     required String idempotencyKey,
+    required NowaveSessionFence sessionFence,
   }) async {
     try {
       final data = await client.postJson(
@@ -91,6 +97,7 @@ class CommentRemoteDataSourceImpl implements CommentRemoteDataSource {
         {'content': content, 'parentCommentId': parentCommentId},
         query: {'locale': _locale},
         extraHeaders: {'Idempotency-Key': idempotencyKey},
+        sessionFence: sessionFence,
       );
       if (data is! Map<String, dynamic>) {
         throw const ServerException('服务器返回了无法解析的数据', code: 'server.parse');
@@ -112,9 +119,15 @@ class CommentRemoteDataSourceImpl implements CommentRemoteDataSource {
   }
 
   @override
-  Future<bool> deleteComment(String commentId) async {
+  Future<bool> deleteComment(
+    String commentId, {
+    required NowaveSessionFence sessionFence,
+  }) async {
     try {
-      final data = await client.deleteJson('/comments/$commentId');
+      final data = await client.deleteJson(
+        '/comments/$commentId',
+        sessionFence: sessionFence,
+      );
       if (data is! Map<String, dynamic>) {
         throw const ServerException('服务器返回了无法解析的数据', code: 'server.parse');
       }

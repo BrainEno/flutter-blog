@@ -50,6 +50,7 @@ class _CommentsSectionState extends State<CommentsSection> {
   /// Comment the composer currently replies to; null for a top-level
   /// comment.
   Comment? _replyTo;
+  int _composerIdentityEpoch = 0;
 
   @override
   void initState() {
@@ -95,10 +96,20 @@ class _CommentsSectionState extends State<CommentsSection> {
   }
 
   void _submit() {
-    context.read<CommentBloc>().add(
+    final user = context.read<AppUserCubit>().state;
+    final comments = context.read<CommentBloc>();
+    final fence = comments.captureFence();
+    if (comments.state.identityEpoch != _composerIdentityEpoch ||
+        user is! AppUserLoggedIn ||
+        fence == null ||
+        user.user.id != fence.userId) {
+      return;
+    }
+    comments.add(
       CommentSubmitted(
         content: _controller.text,
         parentCommentId: _replyTo?.id,
+        fence: fence,
       ),
     );
   }
@@ -111,8 +122,15 @@ class _CommentsSectionState extends State<CommentsSection> {
     return BlocConsumer<CommentBloc, CommentState>(
       listenWhen: (previous, current) =>
           (current.error.isNotEmpty && previous.error != current.error) ||
-          (previous.submitting && !current.submitting),
+          (previous.submitting && !current.submitting) ||
+          previous.identityEpoch != current.identityEpoch,
       listener: (context, state) {
+        if (state.identityEpoch != _composerIdentityEpoch) {
+          _composerIdentityEpoch = state.identityEpoch;
+          _controller.clear();
+          _cancelReply();
+          return;
+        }
         if (state.error.isNotEmpty) {
           // Load failures render inline next to their retry button;
           // submit/delete failures surface as a snackbar instead.

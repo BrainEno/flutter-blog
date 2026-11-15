@@ -236,7 +236,7 @@ Future<void> initDependencies() async {
   );
   _initAuth(sessionManager, apiClient, uri);
   await _initBlog(apiClient, sessionManager);
-  _initComments(apiClient);
+  _initComments(apiClient, sessionManager);
   _initAuthors(apiClient, uri);
   _initCategories(uri);
   _initUser(apiClient, sessionManager);
@@ -521,7 +521,7 @@ Future<void> _initBlog(
     );
 }
 
-void _initComments(NowaveApiClient apiClient) {
+void _initComments(NowaveApiClient apiClient, NowaveSessionManager identity) {
   serviceLocator
     // Datasource
     ..registerFactory<CommentRemoteDataSource>(
@@ -539,7 +539,12 @@ void _initComments(NowaveApiClient apiClient) {
     )
     // Usecases
     ..registerFactory(() => GetComments(serviceLocator<CommentRepository>()))
-    ..registerFactory(() => CreateComment(serviceLocator<CommentRepository>()))
+    ..registerFactory(
+      () => CreateComment(
+        serviceLocator<CommentRepository>(),
+        sessionIdentity: identity,
+      ),
+    )
     ..registerFactory(() => DeleteComment(serviceLocator<CommentRepository>()));
   // CommentBloc is page-scoped and built by the viewer route with the
   // article's slug, like BlogViewerCubit.

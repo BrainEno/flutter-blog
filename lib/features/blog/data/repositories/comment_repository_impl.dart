@@ -1,6 +1,7 @@
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
+import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
@@ -45,6 +46,7 @@ class CommentRepositoryImpl implements CommentRepository {
     required String content,
     String? parentCommentId,
     required String idempotencyKey,
+    required NowaveSessionFence sessionFence,
   }) async {
     try {
       if (!await connectionChecker.isConnected) {
@@ -63,6 +65,7 @@ class CommentRepositoryImpl implements CommentRepository {
         content: content,
         parentCommentId: parentCommentId,
         idempotencyKey: idempotencyKey,
+        sessionFence: sessionFence,
       );
       return right(res);
     } on ServerException catch (e) {
@@ -74,7 +77,10 @@ class CommentRepositoryImpl implements CommentRepository {
   }
 
   @override
-  Future<Either<Failure, void>> deleteComment(String commentId) async {
+  Future<Either<Failure, void>> deleteComment(
+    String commentId, {
+    required NowaveSessionFence sessionFence,
+  }) async {
     try {
       if (!await connectionChecker.isConnected) {
         return left(
@@ -89,7 +95,10 @@ class CommentRepositoryImpl implements CommentRepository {
 
       // `deleted: false` (already gone server-side) is treated as success:
       // the comment is gone either way, so the local tree just drops it.
-      await commentRemoteDataSource.deleteComment(commentId);
+      await commentRemoteDataSource.deleteComment(
+        commentId,
+        sessionFence: sessionFence,
+      );
       return right(null);
     } on ServerException catch (e) {
       return left(e.toFailure());
