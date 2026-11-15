@@ -164,6 +164,43 @@ void main() {
     );
     expect(tester.widget<TextField>(find.byType(TextField)).readOnly, isTrue);
   });
+  testWidgets('successful save closes the editor', (tester) async {
+    when(
+      () => bloc.editPlainComment(
+        original: any(named: 'original'),
+        text: any(named: 'text'),
+        fence: any(named: 'fence'),
+      ),
+    ).thenAnswer((_) async => const CommentEditResult(CommentEditStatus.saved));
+    await open(tester);
+    await tester.enterText(find.byType(TextField), 'new text');
+    await tester.pump();
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CommentEditDialog), findsNothing);
+    verify(
+      () => bloc.editPlainComment(
+        original: any(named: 'original'),
+        text: 'new text',
+        fence: any(named: 'fence'),
+      ),
+    ).called(1);
+  });
+
+  testWidgets(
+    'review compares local original and draft without claiming a server check',
+    (tester) async {
+      await open(tester);
+      await tester.enterText(find.byType(TextField), 'new words');
+      await tester.pump();
+      await tester.tap(find.text('Review local changes'));
+      await tester.pumpAndSettle();
+      expect(find.text('Original text'), findsOneWidget);
+      expect(find.text('Text to save'), findsOneWidget);
+      expect(find.textContaining('not a fresh server check'), findsOneWidget);
+    },
+  );
+
   testWidgets('session replacement immediately hides draft and blocks save', (
     tester,
   ) async {
