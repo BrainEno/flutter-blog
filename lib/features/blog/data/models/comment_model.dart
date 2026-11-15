@@ -12,6 +12,7 @@ class CommentModel extends Comment {
     required super.authorId,
     super.parentCommentId,
     required super.content,
+    super.isPlainText,
     super.authorName = '',
     super.authorAvatarUrl = '',
     required super.createdAt,
@@ -27,6 +28,12 @@ class CommentModel extends Comment {
       authorId: map['authorId'] as String? ?? '',
       parentCommentId: map['parentCommentId'] as String?,
       content: map['content'] as String? ?? '',
+      isPlainText:
+          map['content'] is String &&
+          map['contentBlocksVersion'] is int &&
+          map['contentBlocksVersion'] == 0 &&
+          map.containsKey('contentBlocks') &&
+          map['contentBlocks'] == null,
       authorName: author?['displayName'] as String? ?? '',
       authorAvatarUrl: author?['avatarUrl'] as String? ?? '',
       createdAt:

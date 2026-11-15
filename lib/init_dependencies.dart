@@ -43,6 +43,8 @@ import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:belog/features/blog/data/views/nowave_article_view_recorder.dart';
+import 'package:belog/features/blog/domain/views/article_view_recorder.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/datasources/category_remote_data_source.dart';
@@ -426,6 +428,11 @@ Future<void> _initBlog(
   NowaveApiClient apiClient,
   NowaveSessionManager sessionManager,
 ) async {
+  serviceLocator.registerLazySingleton<RecordArticleView>(
+    () => RecordArticleView(
+      NowaveArticleViewRecorder(client: apiClient, identity: sessionManager),
+    ),
+  );
   // Datasource
   serviceLocator
     ..registerFactory<BlogRemoteDataSource>(

@@ -242,6 +242,44 @@ class NowaveApiClient {
     sessionFence: sessionFence,
   );
 
+  /// A comment edit must not be replayed after a 401: the server has no
+  /// conditional version and a retry can overwrite a newer edit. The caller
+  /// captures the fence before opening its editor; the same identity must hold
+  /// at send time and until the response has been read.
+  Future<dynamic> patchJsonForViewerOnce(
+    String path,
+    Object? body, {
+    required NowaveSessionFence sessionFence,
+    Map<String, String>? query,
+  }) => _request(
+    'PATCH',
+    path,
+    query: query,
+    body: body,
+    sessionFence: sessionFence,
+    followRedirects: false,
+    allowRefresh: false,
+    allowProactiveRefresh: false,
+  );
+
+  /// Best-effort view telemetry, never retried or redirected. With a fence it
+  /// uses the viewer only while the captured session is still current; without
+  /// one the request is anonymous and cannot cause an authentication refresh.
+  Future<dynamic> postViewOnce(
+    String path, {
+    required Map<String, String> query,
+    NowaveSessionFence? sessionFence,
+  }) => _request(
+    'POST',
+    path,
+    query: query,
+    authenticate: sessionFence != null,
+    sessionFence: sessionFence,
+    allowRefresh: false,
+    allowProactiveRefresh: false,
+    followRedirects: false,
+  );
+
   /// Sends one sensitive, viewer-scoped PUT, with no 401 replay or redirect.
   ///
   /// A 401 can mean the submitted credential was rejected, not an expired
@@ -400,6 +438,7 @@ class NowaveApiClient {
     Map<String, String>? query,
     bool authenticate = true,
     bool allowRefresh = true,
+    bool allowProactiveRefresh = true,
     bool followRedirects = false,
     Duration? timeout,
     Map<String, String>? extraHeaders,
@@ -414,6 +453,7 @@ class NowaveApiClient {
       query: query,
       authenticate: authenticate,
       allowRefresh: allowRefresh,
+      allowProactiveRefresh: allowProactiveRefresh,
       followRedirects: followRedirects,
       timeout: timeout,
       extraHeaders: extraHeaders,
@@ -432,6 +472,7 @@ class NowaveApiClient {
     Map<String, String>? query,
     bool authenticate = true,
     bool allowRefresh = true,
+    bool allowProactiveRefresh = true,
     bool followRedirects = false,
     Duration? timeout,
     Map<String, String>? extraHeaders,
@@ -506,7 +547,8 @@ class NowaveApiClient {
         }
       }
 
-      if (authenticator is NowaveProactiveAuthenticator) {
+      if (allowProactiveRefresh &&
+          authenticator is NowaveProactiveAuthenticator) {
         await authenticator.ensureFreshAccess();
         if (sessionEnded()) {
           // No request has been sent yet. Preserve the ordinary expired-login

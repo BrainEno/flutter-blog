@@ -5,8 +5,10 @@ import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
+import 'package:belog/features/blog/domain/comments/comment_edit_guard.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/comment/comment_event.dart';
+import 'package:belog/features/blog/presentation/comments/comment_edit_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -66,6 +68,34 @@ class CommentTile extends StatelessWidget {
       return;
     }
     comments.add(CommentDeleteRequested(comment.id, fence: fence));
+  }
+
+  Future<void> _openEditor(
+    BuildContext context,
+    AppUserCubit users,
+    int revision,
+  ) async {
+    if (users.isClosed || users.identityRevision.value != revision) return;
+    final user = users.state;
+    final bloc = context.read<CommentBloc>();
+    final fence = bloc.captureFence();
+    if (user is! AppUserLoggedIn ||
+        user.user.id != comment.authorId ||
+        fence == null ||
+        fence.userId != comment.authorId ||
+        !CommentEditGuard.canEdit(
+          comment,
+          maxLength: CommentBloc.maxContentLength,
+        ) ||
+        bloc.isClosed) {
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) =>
+          CommentEditDialog(comment: comment, bloc: bloc, fence: fence),
+    );
   }
 
   @override
@@ -166,6 +196,16 @@ class CommentTile extends StatelessWidget {
                               : () => onReply!(comment),
                         ),
                         if (isOwn) ...[
+                          if (CommentEditGuard.canEdit(
+                            comment,
+                            maxLength: CommentBloc.maxContentLength,
+                          ))
+                            _ActionText(
+                              label: context.l10n.commentEditAction,
+                              onPressed: deleting
+                                  ? null
+                                  : () => _openEditor(context, users, revision),
+                            ),
                           _ActionText(
                             label: deleting
                                 ? context.l10n.commentDeleting
