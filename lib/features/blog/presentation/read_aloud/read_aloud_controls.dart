@@ -207,9 +207,9 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                   padding: const EdgeInsets.only(top: NoWaveSpacing.xs),
                   child: Text(
                     sleepTimerStatus,
-                    style: NoWaveTypography.meta(context).copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
+                    style: NoWaveTypography.meta(
+                      context,
+                    ).copyWith(color: scheme.onSurfaceVariant),
                   ),
                 ),
               Semantics(
