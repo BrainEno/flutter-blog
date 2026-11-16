@@ -16,14 +16,27 @@ const defaultSpeechRate = 1.0;
 /// article. The map contains no article text, audio, backend address or user
 /// identity. A missing entry means to use the platform's automatic voice.
 class ReadAloudSettings {
-  ReadAloudSettings({
-    required this.follow,
+  /// The public factory keeps the ergonomic `speed:` argument while sanitizing
+  /// it before the immutable instance is made. A separate private constructor
+  /// avoids an initializing-formal/field-name collision on older Dart front
+  /// ends, which otherwise reported `speed` as initialized twice.
+  factory ReadAloudSettings({
+    required bool follow,
     required double speed,
     Map<String, String> preferredVoiceIds = const {},
-  }) : speed = sanitizeSpeechRate(speed),
-       preferredVoiceIds = UnmodifiableMapView(
-         _normalizeVoiceIds(preferredVoiceIds),
-       );
+  }) {
+    return ReadAloudSettings._(
+      follow: follow,
+      speed: sanitizeSpeechRate(speed),
+      preferredVoiceIds: _normalizeVoiceIds(preferredVoiceIds),
+    );
+  }
+
+  ReadAloudSettings._({
+    required this.follow,
+    required this.speed,
+    required Map<String, String> preferredVoiceIds,
+  }) : preferredVoiceIds = UnmodifiableMapView(preferredVoiceIds);
 
   const ReadAloudSettings.defaults()
     : follow = true,
