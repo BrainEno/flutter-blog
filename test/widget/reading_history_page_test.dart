@@ -40,6 +40,20 @@ class _FakeStore implements ReadingHistoryStore {
   }
 }
 
+class _LegacyStore extends _FakeStore
+    implements UnattributedHistoryMaintenance {
+  _LegacyStore() : super([]);
+  bool available = true;
+  int legacyClears = 0;
+  @override
+  Future<bool> hasUnattributedHistory() async => available;
+  @override
+  Future<void> clearUnattributedHistory() async {
+    legacyClears++;
+    available = false;
+  }
+}
+
 class _ControlledStore extends _FakeStore {
   _ControlledStore() : super([]);
 
@@ -98,6 +112,48 @@ void main() {
       await tester.pump();
     }
   }
+
+  testWidgets('old unattributed history requires explicit deletion', (
+    tester,
+  ) async {
+    final store = _LegacyStore();
+    await pumpPage(tester, store);
+    await tester.tap(find.byTooltip('删除无法归属的旧历史'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('可能包含其他账号'), findsOneWidget);
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(store.legacyClears, 0);
+    await tester.tap(find.byTooltip('删除无法归属的旧历史'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('清空'));
+    await tester.pumpAndSettle();
+    expect(store.legacyClears, 1);
+    expect(find.byTooltip('删除无法归属的旧历史'), findsNothing);
+    expect(store.cleared, isEmpty);
+  });
+
+  testWidgets(
+    'account change during old history confirmation cancels deletion',
+    (tester) async {
+      final store = _LegacyStore();
+      await pumpPage(tester, store);
+      await tester.tap(find.byTooltip('删除无法归属的旧历史'));
+      await tester.pumpAndSettle();
+      cubit.updateUser(
+        User(
+          id: 'u2',
+          email: 'b@example.invalid',
+          name: 'B',
+          updatedAt: DateTime.utc(2026),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('清空'));
+      await tester.pumpAndSettle();
+      expect(store.legacyClears, 0);
+    },
+  );
 
   testWidgets('renders the recorded reads newest-first', (tester) async {
     final store = _FakeStore([

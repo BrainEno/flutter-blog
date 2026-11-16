@@ -36,6 +36,9 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
   int _loadVersion = 0;
   int _accountVersion = 0;
   bool _loading = true;
+  bool _legacyAvailable = false;
+  bool _clearingLegacy = false;
+  int _legacyLoadVersion = 0;
 
   @override
   void initState() {
@@ -46,6 +49,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
       _loading = false;
     } else {
       unawaited(_reload());
+      unawaited(_loadLegacyStatus());
     }
   }
 
@@ -82,12 +86,84 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
     if (userId == _entriesUserId) return;
     _loadVersion++;
     _accountVersion++;
+    _legacyLoadVersion++;
     setState(() {
+      _legacyAvailable = false;
       _entriesUserId = userId;
       _entries = [];
       _loading = userId != null;
     });
-    if (userId != null) unawaited(_reload());
+    if (userId != null) {
+      unawaited(_reload());
+      unawaited(_loadLegacyStatus());
+    }
+  }
+
+  Future<void> _loadLegacyStatus() async {
+    final store = _store;
+    final userId = _userId;
+    final version = ++_legacyLoadVersion;
+    final accountVersion = _accountVersion;
+    if (store is! UnattributedHistoryMaintenance || userId == null) return;
+    try {
+      final available = await (store as UnattributedHistoryMaintenance)
+          .hasUnattributedHistory();
+      if (!mounted ||
+          _userId != userId ||
+          version != _legacyLoadVersion ||
+          accountVersion != _accountVersion) {
+        return;
+      }
+      setState(() => _legacyAvailable = available);
+    } catch (_) {
+      // A failed diagnostic never prevents viewing the current history.
+    }
+  }
+
+  Future<void> _confirmClearLegacy() async {
+    final store = _store;
+    final userId = _userId;
+    if (store is! UnattributedHistoryMaintenance ||
+        userId == null ||
+        userId != _entriesUserId ||
+        !_legacyAvailable ||
+        _clearingLegacy) {
+      return;
+    }
+    final accountVersion = _accountVersion;
+    final l10n = context.l10n;
+    final confirmed = await showNoWaveConfirmDialog(
+      context,
+      title: l10n.historyLegacyClearTitle,
+      message: l10n.historyLegacyClearBody,
+      cancelLabel: l10n.actionCancel,
+      confirmLabel: l10n.actionClear,
+    );
+    if (!mounted ||
+        !confirmed ||
+        _userId != userId ||
+        _accountVersion != accountVersion ||
+        _clearingLegacy) {
+      return;
+    }
+    setState(() => _clearingLegacy = true);
+    try {
+      await (store as UnattributedHistoryMaintenance)
+          .clearUnattributedHistory();
+      if (!mounted || _userId != userId || _accountVersion != accountVersion) {
+        return;
+      }
+      _legacyLoadVersion++;
+      setState(() => _legacyAvailable = false);
+    } catch (_) {
+      if (mounted && _userId == userId && _accountVersion == accountVersion) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.errorStorage)));
+      }
+    } finally {
+      if (mounted) setState(() => _clearingLegacy = false);
+    }
   }
 
   Future<void> _reload() async {
@@ -184,6 +260,12 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
         title: Text(context.l10n.historyTitle),
         elevation: 1.0,
         actions: [
+          if (ownerMatches && _legacyAvailable)
+            IconButton(
+              tooltip: context.l10n.historyLegacyClearTitle,
+              icon: const Icon(Icons.storage_outlined),
+              onPressed: _clearingLegacy ? null : _confirmClearLegacy,
+            ),
           if (entries.isNotEmpty)
             IconButton(
               tooltip: context.l10n.clearHistoryTitle,

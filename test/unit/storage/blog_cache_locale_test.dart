@@ -22,7 +22,11 @@ void main() {
     addTearDown(db.close);
 
     final content = ContentLocale();
-    final cache = SqliteBlogCache(db, contentLocale: content);
+    final cache = SqliteBlogCache(
+      db,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+      contentLocale: content,
+    );
 
     await cache.uploadLocalBlogs(blogs: [_blog('shared', content: '中文正文')]);
     expect((await cache.loadBlogs()).single.content, '中文正文');

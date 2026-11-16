@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/storage/app_database.dart';
+import 'package:belog/core/storage/backend_key.dart';
 import 'package:belog/features/blog/data/datasources/article_document_codec.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
@@ -18,7 +19,17 @@ class SqliteBlogCache implements BlogLocalDataSource {
   /// Null keeps the default instance, which is the historical Chinese cache.
   final ContentLocale? contentLocale;
 
-  SqliteBlogCache(this.database, {this.contentLocale});
+  SqliteBlogCache(
+    this.database, {
+    required Uri apiBaseUrl,
+    this.contentLocale,
+    DateTime Function()? now,
+  }) : _backend = backendKeyOf(apiBaseUrl),
+       _now = now ?? DateTime.now;
+
+  final String _backend;
+  final DateTime Function() _now;
+  static const int maxEntriesPerLocale = 250;
 
   String get _locale => (contentLocale ?? ContentLocale.instance).tag;
 
@@ -30,6 +41,8 @@ class SqliteBlogCache implements BlogLocalDataSource {
         await database.upsertBlogRow(
           id: blog.id,
           contentLocale: locale,
+          backend: _backend,
+          accessedAt: _now().toUtc().microsecondsSinceEpoch,
           articleId: blog.articleId,
           title: blog.title,
           content: blog.content,
@@ -43,55 +56,99 @@ class SqliteBlogCache implements BlogLocalDataSource {
           categoriesJson: _encodeCategories(blog.categories),
         );
       }
+      await database.customStatement(
+        'DELETE FROM blog_cache WHERE backend = ? AND content_locale = ? AND id IN ('
+        'SELECT id FROM blog_cache WHERE backend = ? AND content_locale = ? '
+        'ORDER BY accessed_at DESC, id ASC LIMIT -1 OFFSET ?)',
+        [_backend, locale, _backend, locale, maxEntriesPerLocale],
+      );
     });
+  }
+
+  /// Update the LRU order for the exact rows returned by this backend and
+  /// locale. A single bounded statement avoids a write per result.
+  Future<void> _touch(String locale, List<String> ids) async {
+    if (ids.isEmpty) return;
+    final placeholders = List.filled(ids.length, '?').join(',');
+    try {
+      await database.customStatement(
+        'UPDATE blog_cache SET accessed_at = ? WHERE backend = ? '
+        'AND content_locale = ? AND id IN ($placeholders)',
+        [_now().toUtc().microsecondsSinceEpoch, _backend, locale, ...ids],
+      );
+    } on Object {
+      // A failed advisory touch must not make already-read offline content
+      // unavailable (for example when the disk is full). The next successful
+      // eviction may treat this item as older than it actually is.
+    }
   }
 
   @override
   Future<List<BlogModel>> loadBlogs({int limit = 500, int offset = 0}) async {
     RangeError.checkValueInInterval(limit, 1, 500, 'limit');
     RangeError.checkNotNegative(offset, 'offset');
+    final locale = _locale;
     final rows = await database
         .customSelect(
-          'SELECT * FROM blog_cache WHERE content_locale = ? '
+          'SELECT * FROM blog_cache WHERE backend = ? AND content_locale = ? '
           'ORDER BY updated_at DESC, id ASC LIMIT ? OFFSET ?',
           variables: [
-            Variable<String>(_locale),
+            Variable<String>(_backend),
+            Variable<String>(locale),
             Variable<int>(limit),
             Variable<int>(offset),
           ],
         )
         .get();
-    return rows.map((row) => _blogFromRow(row.data)).toList();
+    final blogs = rows.map((row) => _blogFromRow(row.data)).toList();
+    await _touch(locale, blogs.map((blog) => blog.id).toList());
+    return blogs;
   }
 
   @override
   Future<List<BlogModel>> searchLocalBlogs(String query) async {
     // instr treats %, _ and backslashes as literal characters, not SQL wildcards.
+    final locale = _locale;
     final rows = await database
         .customSelect(
-          'SELECT * FROM blog_cache WHERE content_locale = ? '
+          'SELECT * FROM blog_cache WHERE backend = ? AND content_locale = ? '
           'AND instr(lower(title), lower(?)) > 0 '
           'ORDER BY updated_at DESC, id ASC LIMIT 500',
-          variables: [Variable<String>(_locale), Variable<String>(query)],
+          variables: [
+            Variable<String>(_backend),
+            Variable<String>(locale),
+            Variable<String>(query),
+          ],
         )
         .get();
-    return rows.map((row) => _blogFromRow(row.data)).toList();
+    final blogs = rows.map((row) => _blogFromRow(row.data)).toList();
+    await _touch(locale, blogs.map((blog) => blog.id).toList());
+    return blogs;
   }
 
   /// Removes the article in every cached language: the server copy is gone,
   /// so no language may serve it offline.
   @override
-  Future<void> deleteCachedBlog(String id) => database.deleteBlogCacheRow(id);
+  Future<void> deleteCachedBlog(String id) =>
+      database.deleteBlogCacheRow(id, backend: _backend);
 
   @override
   Future<BlogModel?> loadBlogById(String id) async {
+    final locale = _locale;
     final rows = await database
         .customSelect(
-          'SELECT * FROM blog_cache WHERE id = ? AND content_locale = ? LIMIT 1',
-          variables: [Variable<String>(id), Variable<String>(_locale)],
+          'SELECT * FROM blog_cache WHERE backend = ? AND id = ? AND content_locale = ? LIMIT 1',
+          variables: [
+            Variable<String>(_backend),
+            Variable<String>(id),
+            Variable<String>(locale),
+          ],
         )
         .get();
-    return rows.isEmpty ? null : _blogFromRow(rows.single.data);
+    if (rows.isEmpty) return null;
+    final blog = _blogFromRow(rows.single.data);
+    await _touch(locale, [blog.id]);
+    return blog;
   }
 
   BlogModel _blogFromRow(Map<String, Object?> data) {

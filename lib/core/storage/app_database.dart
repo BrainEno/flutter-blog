@@ -11,11 +11,19 @@ import 'package:drift/native.dart';
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
-  factory AppDatabase.open(File file) =>
-      AppDatabase(NativeDatabase.createInBackground(file));
+  factory AppDatabase.open(File file) => AppDatabase(
+    NativeDatabase.createInBackground(
+      file,
+      setup: (database) {
+        // Per-connection busy timeout must be set before migrations begin.
+        database.execute('PRAGMA busy_timeout = 5000');
+        database.execute('PRAGMA journal_mode = WAL');
+      },
+    ),
+  );
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -35,9 +43,9 @@ class AppDatabase extends GeneratedDatabase {
       await customStatement('CREATE INDEX drafts_blog_id ON drafts(blog_id)');
       await _createAccountDrafts();
       await _createStructuredBodyDrafts();
-      await _createBlogCache();
-      await _createBlogCacheFeedIndex();
-      await _createReadingHistory();
+      await _createScopedBlogCache();
+      await _createScopedBlogCacheIndexes();
+      await _createScopedReadingHistory();
       await _createPublishQueue();
     },
     onUpgrade: (m, from, to) async {
@@ -227,6 +235,11 @@ class AppDatabase extends GeneratedDatabase {
           );
         }
       }
+      if (from < 17) {
+        // Rebuild both tables atomically so a failed copy never strands data
+        // in a temporary table with a partially upgraded schema.
+        await transaction(_scopeUnattributedCacheAndHistory);
+      }
     },
   );
 
@@ -337,6 +350,76 @@ class AppDatabase extends GeneratedDatabase {
     );
   }
 
+  /// v17 keeps old rows in an unattributed namespace, never guessing which
+  /// backend produced them. They remain on disk, but normal adapters require
+  /// a nonempty origin and cannot read or evict them. A later version may
+  /// offer an explicit recovery flow without silently assigning ownership.
+  Future<void> _scopeUnattributedCacheAndHistory() async {
+    if (!await _tableExists('blog_cache')) {
+      await _createScopedBlogCache();
+      await _createScopedBlogCacheIndexes();
+    } else if (!await _columnExists('blog_cache', 'backend')) {
+      await customStatement('DROP INDEX IF EXISTS blog_cache_feed_order');
+      await customStatement('ALTER TABLE blog_cache RENAME TO blog_cache_v16');
+      await _createScopedBlogCache();
+      await customStatement(
+        "INSERT INTO blog_cache (backend, id, content_locale, article_id, title, content, "
+        "poster_id, image_url, tags, updated_at, poster_name, poster_avatar, "
+        "document_json, categories_json, accessed_at) "
+        "SELECT '', id, content_locale, article_id, title, content, poster_id, "
+        "image_url, tags, updated_at, poster_name, poster_avatar, document_json, "
+        "categories_json, updated_at FROM blog_cache_v16",
+      );
+      await customStatement('DROP TABLE blog_cache_v16');
+      await _createScopedBlogCacheIndexes();
+    }
+    if (!await _tableExists('reading_history')) {
+      await _createScopedReadingHistory();
+    } else if (!await _columnExists('reading_history', 'backend')) {
+      await customStatement('DROP INDEX IF EXISTS reading_history_by_user');
+      await customStatement(
+        'ALTER TABLE reading_history RENAME TO reading_history_v16',
+      );
+      await _createScopedReadingHistory();
+      await customStatement(
+        "INSERT INTO reading_history(backend,user_id,blog_id,title,poster_name,image_url,read_at) "
+        "SELECT '',user_id,blog_id,title,poster_name,image_url,read_at FROM reading_history_v16",
+      );
+      await customStatement('DROP TABLE reading_history_v16');
+    }
+  }
+
+  Future<void> _createScopedBlogCache() => customStatement(
+    "CREATE TABLE blog_cache (backend TEXT NOT NULL DEFAULT '', "
+    "id TEXT NOT NULL, content_locale TEXT NOT NULL DEFAULT 'zh-CN', "
+    "article_id TEXT NOT NULL DEFAULT '', title TEXT NOT NULL, content TEXT NOT NULL, "
+    "poster_id TEXT NOT NULL, image_url TEXT NOT NULL, tags TEXT NOT NULL, "
+    "updated_at INTEGER NOT NULL, poster_name TEXT, poster_avatar TEXT, "
+    "document_json TEXT, categories_json TEXT, accessed_at INTEGER NOT NULL DEFAULT 0, "
+    "PRIMARY KEY (backend, id, content_locale))",
+  );
+
+  Future<void> _createScopedBlogCacheIndexes() async {
+    await customStatement(
+      'CREATE INDEX blog_cache_feed_order ON blog_cache(backend, content_locale, updated_at DESC, id ASC)',
+    );
+    await customStatement(
+      'CREATE INDEX blog_cache_eviction ON blog_cache(backend, content_locale, accessed_at DESC, id ASC)',
+    );
+  }
+
+  Future<void> _createScopedReadingHistory() async {
+    await customStatement(
+      "CREATE TABLE reading_history (backend TEXT NOT NULL DEFAULT '', "
+      "user_id TEXT NOT NULL, blog_id TEXT NOT NULL, title TEXT NOT NULL, "
+      "poster_name TEXT NOT NULL DEFAULT '', image_url TEXT NOT NULL DEFAULT '', "
+      "read_at INTEGER NOT NULL, PRIMARY KEY(backend, user_id, blog_id))",
+    );
+    await customStatement(
+      'CREATE INDEX reading_history_by_user ON reading_history(backend, user_id, read_at DESC, blog_id ASC)',
+    );
+  }
+
   /// Warns once that a retired `default.isar` file exists.
   ///
   /// The Isar reader was removed (#107): the file cannot be imported any more,
@@ -385,8 +468,11 @@ class AppDatabase extends GeneratedDatabase {
   ///
   /// The article itself is gone on the server, so no language may keep a copy
   /// (a deleted article must not reappear offline in the other language).
-  Future<void> deleteBlogCacheRow(String id) =>
-      customStatement('DELETE FROM blog_cache WHERE id = ?', [id]);
+  Future<void> deleteBlogCacheRow(String id, {required String backend}) =>
+      customStatement('DELETE FROM blog_cache WHERE backend = ? AND id = ?', [
+        backend,
+        id,
+      ]);
 
   /// Writes one cached article row from primitives.
   ///
@@ -395,6 +481,8 @@ class AppDatabase extends GeneratedDatabase {
   Future<void> upsertBlogRow({
     required String id,
     required String contentLocale,
+    String backend = '',
+    int accessedAt = 0,
     required String title,
     required String content,
     required String posterId,
@@ -408,14 +496,16 @@ class AppDatabase extends GeneratedDatabase {
     String? categoriesJson,
   }) => customStatement(
     '''
-    INSERT INTO blog_cache(id, content_locale, article_id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar, document_json, categories_json)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id, content_locale) DO UPDATE SET article_id = excluded.article_id, title = excluded.title, content = excluded.content,
+    INSERT INTO blog_cache(backend, accessed_at, id, content_locale, article_id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar, document_json, categories_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(backend, id, content_locale) DO UPDATE SET article_id = excluded.article_id, title = excluded.title, content = excluded.content,
       poster_id = excluded.poster_id, image_url = excluded.image_url, tags = excluded.tags,
       updated_at = excluded.updated_at, poster_name = excluded.poster_name, poster_avatar = excluded.poster_avatar,
-      document_json = excluded.document_json, categories_json = excluded.categories_json
+      document_json = excluded.document_json, categories_json = excluded.categories_json, accessed_at = excluded.accessed_at
     ''',
     [
+      backend,
+      accessedAt,
       id,
       contentLocale,
       articleId,

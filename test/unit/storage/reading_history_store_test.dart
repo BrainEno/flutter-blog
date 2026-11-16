@@ -15,7 +15,10 @@ void main() {
   setUp(() async {
     dir = await Directory.systemTemp.createTemp('belog-history-');
     db = AppDatabase(NativeDatabase(File('${dir.path}/history.sqlite')));
-    store = SqliteReadingHistoryStore(db);
+    store = SqliteReadingHistoryStore(
+      db,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    );
   });
 
   tearDown(() async {
@@ -134,7 +137,10 @@ void main() {
 
     final upgraded = AppDatabase(NativeDatabase(file));
     addTearDown(upgraded.close);
-    final upgradedStore = SqliteReadingHistoryStore(upgraded);
+    final upgradedStore = SqliteReadingHistoryStore(
+      upgraded,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    );
     await upgradedStore.record(userId: 'u1', blog: blog('upgrade'));
     expect((await upgradedStore.list(userId: 'u1')).single.blogId, 'upgrade');
     // The v2 data is untouched.

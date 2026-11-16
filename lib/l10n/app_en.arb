@@ -362,6 +362,8 @@
   "myArticlesDraftsHint": "Drafts are visible only to you. Open one in the editor and publish to make it public.",
   "historyTitle": "Reading history",
   "clearHistoryTitle": "Clear reading history",
+  "historyLegacyClearTitle": "Delete old unattributed history",
+  "historyLegacyClearBody": "Older history has no reliable server or account identity. Delete all of these old records on this device, including records that may belong to other accounts? Current server history will not be changed.",
   "clearHistoryBody": "This deletes every reading record on this device and cannot be undone. Continue?",
   "historyEmpty": "No reading history yet",
   "historyEmptyHint": "Articles you read stay on this device, visible only to you",

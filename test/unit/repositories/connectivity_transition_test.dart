@@ -427,7 +427,11 @@ void main() {
       final db = AppDatabase(NativeDatabase.memory());
       addTearDown(db.close);
       final locale = ContentLocale();
-      final cache = SqliteBlogCache(db, contentLocale: locale);
+      final cache = SqliteBlogCache(
+        db,
+        apiBaseUrl: Uri.parse('https://api.example.invalid'),
+        contentLocale: locale,
+      );
       await cache.uploadLocalBlogs(blogs: [_article]);
       final repository = BlogRepositoryImpl(blogRemote, cache, checker);
       when(

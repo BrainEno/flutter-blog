@@ -1,21 +1,26 @@
 import 'package:belog/core/storage/app_database.dart';
+import 'package:belog/core/storage/backend_key.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
 import 'package:drift/drift.dart';
 
-class SqliteReadingHistoryStore implements ReadingHistoryStore {
+class SqliteReadingHistoryStore
+    implements ReadingHistoryStore, UnattributedHistoryMaintenance {
   final AppDatabase database;
-  SqliteReadingHistoryStore(this.database);
+  SqliteReadingHistoryStore(this.database, {required Uri apiBaseUrl})
+    : _backend = backendKeyOf(apiBaseUrl);
+  final String _backend;
 
   @override
   Future<void> record({required String userId, required Blog blog}) {
     return database.customStatement(
-      'INSERT INTO reading_history(user_id, blog_id, title, poster_name, image_url, read_at) '
-      'VALUES (?, ?, ?, ?, ?, ?) '
-      'ON CONFLICT(user_id, blog_id) DO UPDATE SET title = excluded.title, '
+      'INSERT INTO reading_history(backend, user_id, blog_id, title, poster_name, image_url, read_at) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?) '
+      'ON CONFLICT(backend, user_id, blog_id) DO UPDATE SET title = excluded.title, '
       'poster_name = excluded.poster_name, image_url = excluded.image_url, '
       'read_at = excluded.read_at',
       [
+        _backend,
         userId,
         blog.id,
         blog.title,
@@ -34,9 +39,13 @@ class SqliteReadingHistoryStore implements ReadingHistoryStore {
     final rows = await database
         .customSelect(
           'SELECT blog_id, title, poster_name, image_url, read_at '
-          'FROM reading_history WHERE user_id = ? '
-          'ORDER BY read_at DESC LIMIT ?',
-          variables: [Variable<String>(userId), Variable<int>(limit)],
+          'FROM reading_history WHERE backend = ? AND user_id = ? '
+          'ORDER BY read_at DESC, blog_id ASC LIMIT ?',
+          variables: [
+            Variable<String>(_backend),
+            Variable<String>(userId),
+            Variable<int>(limit),
+          ],
         )
         .get();
     return rows
@@ -55,15 +64,30 @@ class SqliteReadingHistoryStore implements ReadingHistoryStore {
   }
 
   @override
-  Future<void> remove({required String userId, required String blogId}) =>
-      database.customStatement(
-        'DELETE FROM reading_history WHERE user_id = ? AND blog_id = ?',
-        [userId, blogId],
-      );
+  Future<void> remove({
+    required String userId,
+    required String blogId,
+  }) => database.customStatement(
+    'DELETE FROM reading_history WHERE backend = ? AND user_id = ? AND blog_id = ?',
+    [_backend, userId, blogId],
+  );
 
   @override
   Future<void> clear({required String userId}) => database.customStatement(
-    'DELETE FROM reading_history WHERE user_id = ?',
-    [userId],
+    'DELETE FROM reading_history WHERE backend = ? AND user_id = ?',
+    [_backend, userId],
+  );
+  @override
+  Future<bool> hasUnattributedHistory() async =>
+      (await database
+          .customSelect(
+            "SELECT 1 AS present FROM reading_history WHERE backend = '' LIMIT 1",
+          )
+          .getSingleOrNull()) !=
+      null;
+
+  @override
+  Future<void> clearUnattributedHistory() => database.customStatement(
+    "DELETE FROM reading_history WHERE backend = ''",
   );
 }
