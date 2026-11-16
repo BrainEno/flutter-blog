@@ -1,4 +1,5 @@
 import 'package:belog/core/l10n/app_language.dart';
+import 'package:belog/core/l10n/content_language.dart';
 import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/l10n/locale_bloc.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -18,6 +19,27 @@ import 'package:mocktail/mocktail.dart';
 import '../support/locale_test_support.dart';
 
 class _Repository extends Mock implements BlogRepository {}
+
+/// The production [LocaleBloc] event/persistence contract is unit-tested and
+/// its BlogPage integration is exercised separately. This harness exposes the
+/// state transition the Offline Library page listens for without making this
+/// page test depend on that unrelated asynchronous event queue.
+class _PageLocaleBloc extends LocaleBloc {
+  _PageLocaleBloc(this.content)
+    : super(
+        SystemLocalePreferenceStore(),
+        contentLocale: content,
+        deviceLocale: () => const Locale('en'),
+      );
+
+  final ContentLocale content;
+
+  void select(AppLanguage language) {
+    final selectedContent = contentLanguageFor(language, const Locale('en'));
+    content.update(selectedContent);
+    emit(LocaleState(language, selectedContent));
+  }
+}
 
 OfflineLibrarySnapshot _snapshot(
   String locale, {
@@ -49,18 +71,14 @@ OfflineLibrarySnapshot _snapshot(
 void main() {
   late _Repository repository;
   late ContentLocale content;
-  late LocaleBloc localeBloc;
+  late _PageLocaleBloc localeBloc;
   late OfflineLibraryCubit cubit;
   late GoRouter router;
 
   setUp(() async {
     repository = _Repository();
     content = ContentLocale();
-    localeBloc = LocaleBloc(
-      SystemLocalePreferenceStore(),
-      contentLocale: content,
-      deviceLocale: () => const Locale('en'),
-    );
+    localeBloc = _PageLocaleBloc(content);
     // Let the bloc finish its initial system-language event before the page
     // subscribes. Production also waits for this before it builds the router;
     // otherwise that event itself would look like a user language switch.
@@ -230,7 +248,7 @@ void main() {
 
       await pump(tester);
       expect(find.text('Rain title'), findsOneWidget);
-      localeBloc.add(SetAppLanguage(AppLanguage.zh));
+      localeBloc.select(AppLanguage.zh);
       await tester.pumpAndSettle();
 
       expect(content.tag, 'zh-CN');
