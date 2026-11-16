@@ -171,6 +171,17 @@ void main() {
       expect(saved!.buffer.runs.first.text, 'New');
       expect(saved.buffer.runs.first.href, '/guide');
       expect(saved.buffer.runs.last.text, '代码');
+      await tester.pump();
+      await tester.scrollUntilVisible(
+        find.text('Apply to local body'),
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
       await _tap(tester, find.text('Apply to local body'));
       await _tap(tester, find.text('Apply to local body').last);
       await tester.pumpAndSettle();
