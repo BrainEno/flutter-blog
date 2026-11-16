@@ -5,6 +5,9 @@ import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_text_session.dart';
+import 'package:belog/features/blog/domain/editing/local_structured_rich_text_session.dart';
+import 'package:belog/features/blog/domain/editing/structured_rich_text_buffer.dart';
+import 'package:belog/features/blog/domain/repositories/structured_rich_text_session_store.dart';
 import 'package:belog/features/blog/domain/editing/structured_text_buffer.dart';
 import 'package:belog/features/blog/domain/entities/structured_body_recovery.dart';
 import 'package:belog/features/blog/domain/entities/structured_edition_read.dart';
@@ -91,6 +94,14 @@ class LocalTextHandoffResult {
   const LocalTextHandoffResult(this.status, [this.session]);
   final LocalTextHandoffStatus status;
   final LocalStructuredTextSession? session;
+}
+
+/// A rich handoff uses the same status vocabulary as the plain editor, but
+/// returns a coordinator for one explicitly captured formatted target.
+class LocalRichTextHandoffResult {
+  const LocalRichTextHandoffResult(this.status, [this.session]);
+  final LocalTextHandoffStatus status;
+  final LocalStructuredRichTextSession? session;
 }
 
 class _Edit {
@@ -620,6 +631,88 @@ class LocalStructuredSession {
           fence: fence,
           identity: identity,
           store: textStore,
+          expectedUnbufferedParent: expected,
+          now: _now,
+        ),
+      );
+    } finally {
+      _handoff = false;
+    }
+  }
+
+  /// Transfer one explicitly selected formatted target to the intermediate
+  /// buffer coordinator. The whole body snapshot is captured so that list
+  /// indices cannot silently move to another item. No remote write occurs.
+  Future<LocalRichTextHandoffResult> handoffRichText({
+    required String blockId,
+    required int? itemIndex,
+    required StructuredArticleDraft selectedBody,
+  }) async {
+    if (!_canEdit() || !identical(_state.body, selectedBody)) {
+      return const LocalRichTextHandoffResult(LocalTextHandoffStatus.notReady);
+    }
+    final richStore = store;
+    if (richStore is! StructuredRichTextSessionStore) {
+      return const LocalRichTextHandoffResult(
+        LocalTextHandoffStatus.unsupportedStore,
+      );
+    }
+    try {
+      StructuredRichTextBuffer(
+        blockId: blockId,
+        itemIndex: itemIndex,
+        runs: const [],
+        selectionBase: -1,
+        selectionExtent: -1,
+        composingStart: -1,
+        composingEnd: -1,
+      ).validateTarget(selectedBody);
+    } on FormatException {
+      return const LocalRichTextHandoffResult(
+        LocalTextHandoffStatus.invalidTarget,
+      );
+    }
+    _handoff = true;
+    try {
+      if (_recovery == null && _pending == null && _writer == null) {
+        _accept(_Edit(_state.body!, _state.metadata));
+      }
+      final result = await flush();
+      if (!_checkIdentity() || _closing) {
+        return const LocalRichTextHandoffResult(
+          LocalTextHandoffStatus.obsolete,
+        );
+      }
+      if (result == LocalStructuredFlushResult.failed) {
+        return const LocalRichTextHandoffResult(LocalTextHandoffStatus.failed);
+      }
+      if (result == LocalStructuredFlushResult.conflict) {
+        return const LocalRichTextHandoffResult(
+          LocalTextHandoffStatus.conflict,
+        );
+      }
+      if (result != LocalStructuredFlushResult.saved || _recovery == null) {
+        return const LocalRichTextHandoffResult(
+          LocalTextHandoffStatus.notReady,
+        );
+      }
+      final expected = _recovery!;
+      final closed = await close();
+      if (!closed || !_matchesIdentity || _invalidated) {
+        return const LocalRichTextHandoffResult(
+          LocalTextHandoffStatus.obsolete,
+        );
+      }
+      return LocalRichTextHandoffResult(
+        LocalTextHandoffStatus.ready,
+        LocalStructuredRichTextSession(
+          key: key,
+          selectedRowId: expected.rowId,
+          blockId: blockId,
+          itemIndex: itemIndex,
+          fence: fence,
+          identity: identity,
+          store: richStore,
           expectedUnbufferedParent: expected,
           now: _now,
         ),

@@ -6,6 +6,7 @@ import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_structured_body_recovery_store.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_session.dart';
+import 'package:belog/features/blog/domain/editing/local_structured_rich_text_session.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_text_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
 import 'package:belog/features/blog/domain/editing/structured_text_buffer.dart';
@@ -354,6 +355,47 @@ void main() {
     late _Harness h;
     setUp(() => h = _Harness());
     tearDown(() => h.dispose());
+
+    test(
+      'rich handoff requires an exact body and preserves the local parent',
+      () async {
+        final opener = OpenStructuredEditingSession(
+          reader: h.reader,
+          store: h.inner,
+          identity: h.identity,
+        );
+        final body = await h.editing(opener: opener);
+        final selected = body.state.body!;
+        final stale = await body.handoffRichText(
+          blockId: 'heading',
+          itemIndex: null,
+          selectedBody: _body(),
+        );
+        expect(stale.status, LocalTextHandoffStatus.notReady);
+        final invalid = await body.handoffRichText(
+          blockId: 'paragraph',
+          itemIndex: null,
+          selectedBody: selected,
+        );
+        expect(invalid.status, LocalTextHandoffStatus.invalidTarget);
+        final result = await body.handoffRichText(
+          blockId: 'heading',
+          itemIndex: null,
+          selectedBody: selected,
+        );
+        expect(result.status, LocalTextHandoffStatus.ready);
+        expect(body.state.phase, LocalStructuredPhase.closed);
+        final rich = result.session!;
+        await rich.open();
+        expect(rich.state.phase, LocalRichTextPhase.recoveryChoice);
+        expect(rich.state.buffer!.runs.first.href, '/guide');
+        expect(
+          (await h.inner.load(_key))!.body.toJsonBlocks(),
+          selected.toJsonBlocks(),
+        );
+        await rich.close();
+      },
+    );
 
     test('an untouched remote body is saved locally before handoff', () async {
       final body = await h.editing();

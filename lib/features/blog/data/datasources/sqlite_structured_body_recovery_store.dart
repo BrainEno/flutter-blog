@@ -21,12 +21,50 @@ class SqliteStructuredBodyRecoveryStore
     implements
         StructuredTextSessionStore,
         StructuredRecoveryCatalog,
+        StructuredRecoveryBufferInspector,
         StructuredRichTextSessionStore {
   SqliteStructuredBodyRecoveryStore(this.database, {required Uri apiBaseUrl})
     : _backend = backendKeyOf(apiBaseUrl);
 
   final AppDatabase database;
   final String _backend;
+
+  /// A bounded read of the format discriminator only. Decoding a discriminator
+  /// is not a recovery token: callers re-read and CAS the exact row separately.
+  @override
+  Future<StructuredRecoveryBufferKind> inspectBuffer({
+    required StructuredBodyKey key,
+    required int rowId,
+  }) async {
+    if (rowId <= 0) return StructuredRecoveryBufferKind.missing;
+    final row = await database
+        .customSelect(
+          'SELECT id, substr(text_buffer, 1, 5600001) AS buffer '
+          'FROM structured_body_drafts WHERE backend = ? AND user_id = ? '
+          'AND article_id = ? AND locale = ?',
+          variables: _keyVariables(key),
+        )
+        .getSingleOrNull();
+    if (row == null || row.read<int>('id') != rowId) {
+      return StructuredRecoveryBufferKind.missing;
+    }
+    final raw = row.readNullable<String>('buffer');
+    if (raw == null) return StructuredRecoveryBufferKind.none;
+    if (raw.length > 5600000) return StructuredRecoveryBufferKind.unknown;
+    try {
+      final value = jsonDecode(raw);
+      if (value is! Map || value['schema'] is! int) {
+        return StructuredRecoveryBufferKind.unknown;
+      }
+      return switch (value['schema']) {
+        1 => StructuredRecoveryBufferKind.plain,
+        2 => StructuredRecoveryBufferKind.rich,
+        _ => StructuredRecoveryBufferKind.unknown,
+      };
+    } on Object {
+      return StructuredRecoveryBufferKind.unknown;
+    }
+  }
 
   /// Bounded keyset pagination, scoped before reading any identity values.
   /// Only short key columns are read; bodies and metadata are decoded on open.
