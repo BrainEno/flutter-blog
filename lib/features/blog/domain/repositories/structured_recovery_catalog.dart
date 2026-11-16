@@ -27,3 +27,14 @@ abstract interface class StructuredRecoveryCatalog {
     int? afterRowId,
   });
 }
+
+/// Identifies the format of the shared buffer slot without granting an edit
+/// token. The selected opener must independently validate the full snapshot.
+enum StructuredRecoveryBufferKind { none, plain, rich, unknown, missing }
+
+abstract interface class StructuredRecoveryBufferInspector {
+  Future<StructuredRecoveryBufferKind> inspectBuffer({
+    required StructuredBodyKey key,
+    required int rowId,
+  });
+}

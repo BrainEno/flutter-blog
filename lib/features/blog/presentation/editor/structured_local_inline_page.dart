@@ -8,6 +8,8 @@ import 'package:belog/features/blog/domain/editing/local_structured_session.dart
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
 import 'package:belog/features/blog/domain/editing/structured_inline_selection.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_range_page.dart';
+import 'package:belog/features/blog/presentation/editor/structured_local_rich_text_page.dart';
+import 'package:belog/features/blog/domain/repositories/structured_rich_text_session_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -33,6 +35,7 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
   late final StreamSubscription<LocalStructuredState> _subscription;
   bool _reading = false;
   bool _unsupported = false;
+  bool _handingOff = false;
   int? _selectedItem;
   StructuredArticleDraft? _selectedBody;
 
@@ -148,6 +151,47 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
     }
   }
 
+  Future<void> _openRichText(
+    StructuredArticleDraft body,
+    int? itemIndex,
+  ) async {
+    if (_handingOff ||
+        widget.session.store is! StructuredRichTextSessionStore) {
+      return;
+    }
+    final state = widget.session.state;
+    if (state.phase != LocalStructuredPhase.editing ||
+        !identical(state.body, body) ||
+        (itemIndex != null &&
+            (_selectedItem != itemIndex || !identical(_selectedBody, body)))) {
+      return;
+    }
+    setState(() => _handingOff = true);
+    final result = await widget.session.handoffRichText(
+      blockId: widget.blockId,
+      itemIndex: itemIndex,
+      selectedBody: body,
+    );
+    if (!mounted) {
+      await result.session?.close();
+      return;
+    }
+    final session = result.session;
+    if (result.status != LocalTextHandoffStatus.ready || session == null) {
+      setState(() {
+        _handingOff = false;
+        _unsupported = true;
+      });
+      return;
+    }
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => StructuredLocalRichTextPage(session: session),
+      ),
+    );
+    if (mounted) Navigator.of(context).pop();
+  }
+
   void _mark(StructuredArticleDraft body, _Run run, String mark, bool enabled) {
     try {
       final selection = _select(body, run);
@@ -212,14 +256,20 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
     final block = privateState && body != null
         ? _findSupportedBlock(body, widget.blockId)
         : null;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.structuredInlineTitle)),
-      body: SafeArea(
-        child: !privateState
-            ? Center(child: Text(l10n.structuredSessionChanged))
-            : body == null || block == null || body.version != 1
-            ? Center(child: Text(l10n.structuredInlineUnsupported))
-            : _content(context, state, body, block),
+    return PopScope<Object?>(
+      canPop: !_handingOff,
+      child: Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: !_handingOff,
+          title: Text(l10n.structuredInlineTitle),
+        ),
+        body: SafeArea(
+          child: !privateState
+              ? Center(child: Text(l10n.structuredSessionChanged))
+              : body == null || block == null || body.version != 1
+              ? Center(child: Text(l10n.structuredInlineUnsupported))
+              : _content(context, state, body, block),
+        ),
       ),
     );
   }
@@ -237,7 +287,8 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
     }
     final itemIndex = isList ? _selectedItem : null;
     final runs = _runs(block, itemIndex: itemIndex);
-    final editable = state.phase == LocalStructuredPhase.editing;
+    final editable =
+        state.phase == LocalStructuredPhase.editing && !_handingOff;
     return ListView.builder(
       padding: const EdgeInsets.all(NoWaveSpacing.page),
       itemCount: runs.length + 1,
@@ -247,8 +298,21 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(l10n.structuredInlineIntro),
+              if ((itemIndex == null && block.containsKey('inlines')) ||
+                  (itemIndex != null && block.containsKey('itemInlines')))
+                OutlinedButton(
+                  onPressed:
+                      editable &&
+                          !_handingOff &&
+                          widget.session.store is StructuredRichTextSessionStore
+                      ? () => _openRichText(body, itemIndex)
+                      : null,
+                  child: Text(l10n.structuredRichOpen),
+                ),
               OutlinedButton(
-                onPressed: editable ? () => _openRange(body, itemIndex) : null,
+                onPressed: editable && !_handingOff
+                    ? () => _openRange(body, itemIndex)
+                    : null,
                 child: Text(l10n.structuredInlineRangeOpen),
               ),
               if (itemIndex != null) ...[
@@ -295,7 +359,8 @@ class _StructuredLocalInlinePageState extends State<StructuredLocalInlinePage>
   ) {
     final l10n = context.l10n;
     final items = block['items'] as List;
-    final editable = state.phase == LocalStructuredPhase.editing;
+    final editable =
+        state.phase == LocalStructuredPhase.editing && !_handingOff;
     return ListView.builder(
       padding: const EdgeInsets.all(NoWaveSpacing.page),
       itemCount: items.length + 1,

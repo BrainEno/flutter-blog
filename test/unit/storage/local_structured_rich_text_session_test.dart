@@ -302,6 +302,46 @@ void main() {
   tearDown(() => h.dispose());
 
   test(
+    'catalog classifies the shared slot without guessing future schemas',
+    () async {
+      final parent = await h.create();
+      expect(
+        await h.inner.inspectBuffer(key: _key, rowId: parent.rowId),
+        StructuredRecoveryBufferKind.none,
+      );
+      expect(
+        await h.inner.inspectBuffer(key: _key, rowId: parent.rowId + 1),
+        StructuredRecoveryBufferKind.missing,
+      );
+      final saved = (await h.inner.createRichTextBuffer(
+        expected: parent,
+        buffer: _buffer('input'),
+        updatedAt: _time,
+      ))!;
+      expect(
+        await h.inner.inspectBuffer(key: _key, rowId: saved.parent.rowId),
+        StructuredRecoveryBufferKind.rich,
+      );
+      await h.db.customStatement(
+        'UPDATE structured_body_drafts SET text_buffer = ? WHERE id = ?',
+        ['{"schema":3}', parent.rowId],
+      );
+      expect(
+        await h.inner.inspectBuffer(key: _key, rowId: parent.rowId),
+        StructuredRecoveryBufferKind.unknown,
+      );
+      await h.db.customStatement(
+        'UPDATE structured_body_drafts SET text_buffer = ? WHERE id = ?',
+        ['{broken', parent.rowId],
+      );
+      expect(
+        await h.inner.inspectBuffer(key: _key, rowId: parent.rowId),
+        StructuredRecoveryBufferKind.unknown,
+      );
+    },
+  );
+
+  test(
     'exact selection and explicit choice preserve all initial formatting',
     () async {
       final parent = await h.create();

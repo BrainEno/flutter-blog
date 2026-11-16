@@ -176,6 +176,11 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+    // A rich input handoff closes the old body coordinator. Return to the
+    // owner rather than reopening its stale local revision.
+    if (mounted && widget.session.state.phase == LocalStructuredPhase.closed) {
+      await _leave();
+    }
   }
 
   void _edit(

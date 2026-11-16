@@ -8,6 +8,9 @@ import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/blog/domain/repositories/structured_recovery_catalog.dart';
 import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
+import 'package:belog/features/blog/domain/repositories/structured_rich_text_session_store.dart';
+import 'package:belog/features/blog/domain/usecase/open_indexed_rich_text_recovery.dart';
+import 'package:belog/features/blog/presentation/editor/structured_local_rich_text_page.dart';
 import 'package:belog/features/blog/domain/usecase/open_indexed_text_recovery.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_text_page.dart';
 import 'package:belog/features/blog/domain/usecase/list_structured_recoveries.dart';
@@ -129,7 +132,55 @@ class _StructuredRecoveryCatalogPageState
     );
     try {
       final store = widget.opener.store;
-      if (store is StructuredTextSessionStore) {
+      StructuredRecoveryBufferKind? kind;
+      if (store is StructuredRecoveryBufferInspector) {
+        try {
+          kind = await store.inspectBuffer(key: entry.key!, rowId: entry.rowId);
+        } on Object {
+          kind = StructuredRecoveryBufferKind.unknown;
+        }
+        if (!mounted || !_active || generation != _generation) return;
+        if (kind == StructuredRecoveryBufferKind.unknown ||
+            kind == StructuredRecoveryBufferKind.missing) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.l10n.structuredLocalFailure)),
+          );
+          return;
+        }
+      }
+      if (kind == StructuredRecoveryBufferKind.rich) {
+        if (store is! StructuredRichTextSessionStore) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.l10n.structuredLocalFailure)),
+          );
+          return;
+        }
+        final result =
+            await OpenIndexedRichTextRecovery(store: store, identity: identity)(
+              entry: entry,
+              fence: widget.fence,
+              isCurrent: () => mounted && _active && generation == _generation,
+            );
+        if (!mounted || !_active || generation != _generation) {
+          await result.session?.close();
+          return;
+        }
+        if (result.status == IndexedRichTextRecoveryStatus.ready) {
+          await Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(
+              builder: (_) =>
+                  StructuredLocalRichTextPage(session: result.session!),
+            ),
+          );
+        } else if (result.status != IndexedRichTextRecoveryStatus.obsolete) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.l10n.structuredLocalFailure)),
+          );
+        }
+        return;
+      }
+      if (kind != StructuredRecoveryBufferKind.none &&
+          store is StructuredTextSessionStore) {
         final result =
             await OpenIndexedTextRecovery(store: store, identity: identity)(
               entry: entry,
