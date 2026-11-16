@@ -51,96 +51,105 @@ class OfflineLibraryArticleTile extends StatelessWidget {
         : l10n.offlineLibraryMatches(_matchFields(l10n, matches.fields));
 
     return Semantics(
+      container: true,
       button: true,
       label: l10n.offlineLibraryOpenArticle(article.title),
       hint: matchDescription,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          focusColor: AppPalette.orange.withAlpha(55),
-          hoverColor: AppPalette.orange.withAlpha(25),
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: border)),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.medium),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ExcludeSemantics(
-                  child: SizedBox(
-                    width: _indexWidth,
-                    child: Text(
-                      formatNumber(
-                        Localizations.localeOf(context),
-                        index,
-                      ).padLeft(2, '0'),
-                      style: NoWaveTypography.meta(context),
+      onTap: onTap,
+      // The visual InkWell would otherwise merge its title/tag children into
+      // this node. One named action is shorter and more useful to a reader
+      // using a screen reader than an unlabelled row followed by its text.
+      child: ExcludeSemantics(
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            focusColor: AppPalette.orange.withAlpha(55),
+            hoverColor: AppPalette.orange.withAlpha(25),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: border)),
+              ),
+              padding: const EdgeInsets.symmetric(
+                vertical: NoWaveSpacing.medium,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ExcludeSemantics(
+                    child: SizedBox(
+                      width: _indexWidth,
+                      child: Text(
+                        formatNumber(
+                          Localizations.localeOf(context),
+                          index,
+                        ).padLeft(2, '0'),
+                        style: NoWaveTypography.meta(context),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: NoWaveSpacing.small),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Wrap(
-                        spacing: NoWaveSpacing.small,
-                        runSpacing: NoWaveSpacing.xs,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            formatDate(
-                              Localizations.localeOf(context),
-                              article.updatedAt,
+                  const SizedBox(width: NoWaveSpacing.small),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: NoWaveSpacing.small,
+                          runSpacing: NoWaveSpacing.xs,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              formatDate(
+                                Localizations.localeOf(context),
+                                article.updatedAt,
+                              ),
+                              style: NoWaveTypography.meta(context),
                             ),
-                            style: NoWaveTypography.meta(context),
-                          ),
-                          for (final tag in article.tags.take(4))
-                            _TagText(label: tag),
-                        ],
-                      ),
-                      const SizedBox(height: NoWaveSpacing.small),
-                      Text(
-                        article.title,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: NoWaveTypography.title(context, size: 24),
-                      ),
-                      const SizedBox(height: NoWaveSpacing.xs),
-                      Text(author, style: NoWaveTypography.meta(context)),
-                      if (matchDescription != null) ...[
-                        const SizedBox(height: NoWaveSpacing.small),
-                        Text(
-                          matchDescription,
-                          style: NoWaveTypography.meta(
-                            context,
-                          ).copyWith(color: theme.colorScheme.onSurfaceVariant),
+                            for (final tag in article.tags.take(4))
+                              _TagText(label: tag),
+                          ],
                         ),
-                      ],
-                      if (matches?.hasBodyExcerpt ?? false) ...[
                         const SizedBox(height: NoWaveSpacing.small),
                         Text(
-                          l10n.offlineLibraryBodyExcerpt,
-                          style: NoWaveTypography.meta(context),
+                          article.title,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: NoWaveTypography.title(context, size: 24),
                         ),
                         const SizedBox(height: NoWaveSpacing.xs),
-                        Text(
-                          matches!.bodyExcerpt!,
-                          maxLines: 4,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium,
-                        ),
+                        Text(author, style: NoWaveTypography.meta(context)),
+                        if (matchDescription != null) ...[
+                          const SizedBox(height: NoWaveSpacing.small),
+                          Text(
+                            matchDescription,
+                            style: NoWaveTypography.meta(context).copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                        if (matches?.hasBodyExcerpt ?? false) ...[
+                          const SizedBox(height: NoWaveSpacing.small),
+                          Text(
+                            l10n.offlineLibraryBodyExcerpt,
+                            style: NoWaveTypography.meta(context),
+                          ),
+                          const SizedBox(height: NoWaveSpacing.xs),
+                          Text(
+                            matches!.bodyExcerpt!,
+                            maxLines: 4,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: NoWaveSpacing.small),
-                const ExcludeSemantics(
-                  child: Icon(Icons.arrow_forward, size: 20),
-                ),
-              ],
+                  const SizedBox(width: NoWaveSpacing.small),
+                  const ExcludeSemantics(
+                    child: Icon(Icons.arrow_forward, size: 20),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

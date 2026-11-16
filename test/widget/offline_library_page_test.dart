@@ -1,4 +1,5 @@
 import 'package:belog/core/l10n/app_language.dart';
+import 'package:belog/core/l10n/content_language.dart';
 import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/l10n/locale_bloc.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -223,7 +224,11 @@ void main() {
 
       await pump(tester);
       expect(find.text('Rain title'), findsOneWidget);
+      final contentChanged = localeBloc.stream.firstWhere(
+        (state) => state.content == ContentLanguage.zh,
+      );
       localeBloc.add(SetAppLanguage(AppLanguage.zh));
+      await contentChanged;
       await tester.pumpAndSettle();
 
       expect(content.tag, 'zh-CN');
