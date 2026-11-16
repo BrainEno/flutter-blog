@@ -110,11 +110,12 @@ class _StructuredBlockPropertiesPageState
 
   void _changed() {
     if (_clearing) return;
-    if (mounted)
+    if (mounted) {
       setState(() {
         _dirty = true;
         _invalid = false;
       });
+    }
   }
 
   void _onSession(LocalStructuredState state) {
