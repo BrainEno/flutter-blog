@@ -10,6 +10,7 @@ import 'package:belog/features/blog/domain/editing/structured_article_draft.dart
 import 'package:belog/features/blog/domain/entities/structured_edition_read.dart';
 import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_text_page.dart';
+import 'package:belog/features/blog/presentation/editor/structured_block_properties_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_inline_page.dart';
 import 'package:flutter/material.dart';
 
@@ -183,6 +184,34 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
     }
   }
 
+  Future<void> _openProperties(
+    StructuredArticleDraft body,
+    String blockId,
+  ) async {
+    if (_busy ||
+        _exiting ||
+        widget.session.state.phase != LocalStructuredPhase.editing ||
+        !identical(widget.session.state.body, body)) {
+      return;
+    }
+    final seed = StructuredBlockPropertiesSeed(body);
+    setState(() => _busy = true);
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => StructuredBlockPropertiesPage(
+            session: widget.session,
+            blockId: blockId,
+            seed: seed,
+          ),
+        ),
+      );
+    } finally {
+      seed.clear();
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   void _edit(
     StructuredArticleDraft Function(StructuredArticleDraft) operation,
   ) {
@@ -341,6 +370,8 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
             canBold: body.version == 1,
             canEditText: widget.session.store is StructuredTextSessionStore,
             canEditInline: body.version == 1,
+            onProperties: () =>
+                _openProperties(body, body.blocks[index]['id'] as String),
             onInline: () => _openInline(body.blocks[index]['id'] as String),
             onText: () => _openText(body.blocks[index]['id'] as String),
             onMoveUp: () => _move(body.blocks[index]['id'] as String, -1),
@@ -439,6 +470,7 @@ class _StructuredBlockCard extends StatelessWidget {
     required this.canBold,
     required this.canEditText,
     required this.canEditInline,
+    required this.onProperties,
     required this.onInline,
     required this.onText,
     required this.onMoveUp,
@@ -455,6 +487,7 @@ class _StructuredBlockCard extends StatelessWidget {
   final bool canBold;
   final bool canEditText;
   final bool canEditInline;
+  final VoidCallback onProperties;
   final VoidCallback onInline;
   final VoidCallback onText;
   final VoidCallback onMoveUp;
@@ -509,6 +542,18 @@ class _StructuredBlockCard extends StatelessWidget {
                   onPressed: editable && canRemove ? onRemove : null,
                   icon: const Icon(Icons.delete_outline),
                 ),
+                if (const {
+                  'image',
+                  'code',
+                  'quote',
+                  'heading',
+                  'list',
+                }.contains(type))
+                  IconButton(
+                    tooltip: l10n.structuredPropertiesOpen,
+                    onPressed: editable ? onProperties : null,
+                    icon: const Icon(Icons.tune),
+                  ),
                 if (canEditText &&
                     const {'paragraph', 'heading', 'quote'}.contains(type) &&
                     !block.containsKey('inlines'))

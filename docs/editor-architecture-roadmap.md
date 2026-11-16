@@ -95,3 +95,20 @@ snapshot；账号切换和重启后 queue 不会把正文发送给另一个账�
   清理只能匹配已发布的 immutable snapshot。
 - **无障碍与离线说明**：本地/只读/不可发布状态必须被文本和 semantics 说清楚，不能
   用禁用的图标让读者猜测。
+
+### Local block-property form
+
+The local structure editor can change image alternative text and optional
+caption, code language and literal code, quote attribution, heading level,
+and ordered-list display. It preserves image URLs, other blocks, text, inline
+runs and list items. Optional-field absence remains different from an empty
+value. These edits use the same strict schema and exact immutable body snapshot
+as the local coordinator; a changed body or account invalidates the form.
+
+The form is deliberately temporary: typing is not crash-recoverable and the
+user is warned before leaving a dirty form. Applying a valid form queues the
+existing local compare-and-swap writer; the parent editor reports pending,
+failed or conflicting saves. Applying does not guarantee a disk write, alter
+Markdown publishing, upload images, or publish a structured article. An input
+method composition must finish before applying. Unsupported malformed UTF-16
+is not rendered or edited through this form.
