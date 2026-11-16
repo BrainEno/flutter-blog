@@ -365,21 +365,25 @@ class _UserMediaPickerSheetState extends State<UserMediaPickerSheet> {
                 borderRadius: BorderRadius.circular(NoWaveRadius.none),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final decode = NoWaveImageDecodeSize.constraints(
-                      constraints: constraints,
-                      devicePixelRatio: MediaQuery.of(context).devicePixelRatio,
-                      fallbackLogicalWidth: 120,
-                      fallbackLogicalHeight: 160,
-                    ).boundedBySource(
-                      sourceWidth: asset.width,
-                      sourceHeight: asset.height,
-                    );
+                    final decode =
+                        NoWaveImageDecodeSize.constraints(
+                          constraints: constraints,
+                          devicePixelRatio: MediaQuery.of(
+                            context,
+                          ).devicePixelRatio,
+                          fallbackLogicalWidth: 120,
+                          fallbackLogicalHeight: 160,
+                        ).boundedBySource(
+                          sourceWidth: asset.width,
+                          sourceHeight: asset.height,
+                        );
                     return CachedNetworkImage(
                       imageUrl: asset.imageUrl,
                       fit: BoxFit.cover,
                       memCacheWidth: decode.width,
                       memCacheHeight: decode.height,
-                      placeholder: (context, url) => const NoWaveSkeletonBlock(),
+                      placeholder: (context, url) =>
+                          const NoWaveSkeletonBlock(),
                       errorWidget: (context, url, error) => const Center(
                         child: Icon(Icons.broken_image_outlined),
                       ),

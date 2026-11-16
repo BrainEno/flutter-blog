@@ -36,6 +36,14 @@ class ArticleCover extends StatelessWidget {
   Widget build(BuildContext context) {
     final uri = resolveArticleResourceUrl(imageUrl);
     final plate = NoWaveCoverPlate.forSeed(seed);
+    // Covers fill their cards. The viewport width is a conservative upper
+    // bound for a card before its parent finishes layout, and the policy cap
+    // still protects the decoded image cache on wide devices.
+    final decode = noWaveDecodeSizeForFixed(
+      context,
+      logicalWidth: MediaQuery.of(context).size.width,
+      logicalHeight: MediaQuery.of(context).size.width / aspectRatio,
+    );
     Widget fallback() =>
         Image.asset(plate.asset, fit: BoxFit.cover, excludeFromSemantics: true);
 
@@ -47,26 +55,16 @@ class ArticleCover extends StatelessWidget {
           aspectRatio: aspectRatio,
           child: ColoredBox(
             color: AppPalette.ink,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final decode = NoWaveImageDecodeSize.constraints(
-                  constraints: constraints,
-                  devicePixelRatio: MediaQuery.of(context).devicePixelRatio,
-                  fallbackLogicalWidth: 640,
-                  fallbackLogicalHeight: 640 / aspectRatio,
-                );
-                return uri != null
-                    ? CachedNetworkImage(
-                        imageUrl: uri.toString(),
-                        fit: BoxFit.cover,
-                        memCacheWidth: decode.width,
-                        memCacheHeight: decode.height,
-                        placeholder: (_, _) => fallback(),
-                        errorWidget: (_, _, _) => fallback(),
-                      )
-                    : fallback();
-              },
-            ),
+            child: uri != null
+                ? CachedNetworkImage(
+                    imageUrl: uri.toString(),
+                    fit: BoxFit.cover,
+                    memCacheWidth: decode.width,
+                    memCacheHeight: decode.height,
+                    placeholder: (_, _) => fallback(),
+                    errorWidget: (_, _, _) => fallback(),
+                  )
+                : fallback(),
           ),
         ),
       ),

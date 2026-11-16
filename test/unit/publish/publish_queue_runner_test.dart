@@ -364,9 +364,8 @@ void main() {
         ),
       );
 
-      identity
-        ..activeUserId = 'bob'
-        ..sessionGeneration++;
+      identity.activeUserId = 'bob';
+      identity.sessionGeneration++;
       // This is what PublishQueueService does in its identity listener. The
       // runner must remember it while Alice's HTTP request is still awaiting.
       expect(await runner.drain(), 0);

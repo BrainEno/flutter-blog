@@ -17,10 +17,7 @@ import 'package:flutter/material.dart';
 /// the same way on every image surface.
 @immutable
 class NoWaveImageDecodeSize {
-  const NoWaveImageDecodeSize._({
-    required this.width,
-    required this.height,
-  });
+  const NoWaveImageDecodeSize._({required this.width, required this.height});
 
   /// A single image dimension above this is generally not useful in an app UI
   /// and can turn one maliciously large image into a memory-pressure event.
@@ -98,10 +95,7 @@ class NoWaveImageDecodeSize {
   /// asking its CDN/codec to upscale a small source just because it is shown
   /// on a high-density display. Non-positive source dimensions mean "unknown"
   /// and retain the existing request.
-  NoWaveImageDecodeSize boundedBySource({
-    int? sourceWidth,
-    int? sourceHeight,
-  }) {
+  NoWaveImageDecodeSize boundedBySource({int? sourceWidth, int? sourceHeight}) {
     final boundedWidth = sourceWidth != null && sourceWidth > 0
         ? math.min(width, sourceWidth)
         : width;
@@ -112,9 +106,7 @@ class NoWaveImageDecodeSize {
   }
 
   static int _physical(double logical, double ratio, int maximum) {
-    final safeMaximum = maximum
-        .clamp(minDimension, maxDimension)
-        .toInt();
+    final safeMaximum = maximum.clamp(minDimension, maxDimension).toInt();
     final safeLogical = _finitePositive(logical)
         ? logical
         : minDimension.toDouble();

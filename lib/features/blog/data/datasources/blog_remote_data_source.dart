@@ -205,6 +205,7 @@ abstract class _BlogRemoteOperationContext {
 class BlogRemoteDataSourceImpl extends _BlogRemoteOperationContext
     with _BlogRemoteReadOperations, _BlogRemoteWriteOperations
     implements BlogRemoteDataSource {
+  @override
   final NowaveApiClient client;
 
   /// Where the *active* account is read from.
@@ -214,6 +215,7 @@ class BlogRemoteDataSourceImpl extends _BlogRemoteOperationContext
   /// identity the app would be trusting the token holder implicitly - the gap
   /// in #104 - so the app always passes one; tests that predate the fence may
   /// omit it and keep the old behaviour.
+  @override
   final NowaveSessionIdentity? identity;
 
   BlogRemoteDataSourceImpl(this.client, {this.identity, this.contentLocale});
@@ -222,9 +224,11 @@ class BlogRemoteDataSourceImpl extends _BlogRemoteOperationContext
   /// historical Chinese default for callers that never switch (tests).
   final ContentLocale? contentLocale;
 
+  @override
   String get _locale => (contentLocale ?? ContentLocale.instance).tag;
 
   /// Tag name -> id resolution, cached for the app session.
+  @override
   late final NowaveTagResolver _tags = NowaveTagResolver(client);
 
   /// The viewer's like state, with one in-flight toggle per article.
@@ -244,6 +248,7 @@ class BlogRemoteDataSourceImpl extends _BlogRemoteOperationContext
   /// decide something *before* the first request keep their own handler:
   /// `getOnlineFeed` chooses the path, `getArticlesByTag` adds a 404 case and
   /// `resolveTag` normalises the query first.
+  @override
   Future<T> _guard<T>(Future<T> Function() body) async {
     try {
       return await body();
@@ -256,6 +261,7 @@ class BlogRemoteDataSourceImpl extends _BlogRemoteOperationContext
   ///
   /// Refused when nobody is signed in: sending the request anyway would run it
   /// for an account the caller never meant to act as.
+  @override
   NowaveSessionFence requireActiveFence() {
     final active = identity;
     final userId = active?.activeUserId ?? '';
@@ -277,6 +283,7 @@ class BlogRemoteDataSourceImpl extends _BlogRemoteOperationContext
   ///
   /// The server treats an omitted `locale` on an article write as `zh-CN`, so
   /// silently dropping the edition would rewrite the wrong translation.
+  @override
   String _editionLocale(String? locale) {
     final trimmed = locale?.trim() ?? '';
     return trimmed.isEmpty ? _locale : trimmed;

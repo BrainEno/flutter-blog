@@ -12,6 +12,10 @@ import 'package:mocktail/mocktail.dart';
 class _MockPublishQueueStore extends Mock implements PublishQueueStore {}
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(<String>[]);
+  });
+
   final draft = BlogDraft(
     userId: 'author',
     title: ' Title ',
@@ -32,18 +36,16 @@ void main() {
     updatedAt: DateTime.utc(2026),
   );
 
-  EditorPublishIntent createIntent({
-    Blog? target,
-    ArticleRevision? revision,
-  }) => EditorPublishIntent(
-    draft: draft,
-    target: target,
-    expectedRevision: revision,
-    image: null,
-    coverUrl: 'https://example.test/media/cover.webp',
-    sessionGeneration: 7,
-    idempotencyKey: 'publish-key',
-  );
+  EditorPublishIntent createIntent({Blog? target, ArticleRevision? revision}) =>
+      EditorPublishIntent(
+        draft: draft,
+        target: target,
+        expectedRevision: revision,
+        image: null,
+        coverUrl: 'https://example.test/media/cover.webp',
+        sessionGeneration: 7,
+        idempotencyKey: 'publish-key',
+      );
 
   group('EditorPublishIntent', () {
     test('creates an upload event from its immutable snapshot', () {
@@ -81,46 +83,48 @@ void main() {
       expect(intent.buildEvent, throwsStateError);
     });
 
-    test('queues exactly the update snapshot after an uncertain failure',
-        () async {
-      final revision = ArticleRevision.parse('42')!;
-      final intent = createIntent(target: article(), revision: revision);
-      final store = _MockPublishQueueStore();
-      when(
-        () => store.enqueue(
-          userId: any(named: 'userId'),
-          title: any(named: 'title'),
-          content: any(named: 'content'),
-          tags: any(named: 'tags'),
-          idempotencyKey: any(named: 'idempotencyKey'),
-          cover: any(named: 'cover'),
-          coverUrl: any(named: 'coverUrl'),
-          kind: any(named: 'kind'),
-          targetId: any(named: 'targetId'),
-          categoryIds: any(named: 'categoryIds'),
-          expectedRevision: any(named: 'expectedRevision'),
-          locale: any(named: 'locale'),
-        ),
-      ).thenAnswer((_) async => throw UnimplementedError());
+    test(
+      'queues exactly the update snapshot after an uncertain failure',
+      () async {
+        final revision = ArticleRevision.parse('42')!;
+        final intent = createIntent(target: article(), revision: revision);
+        final store = _MockPublishQueueStore();
+        when(
+          () => store.enqueue(
+            userId: any(named: 'userId'),
+            title: any(named: 'title'),
+            content: any(named: 'content'),
+            tags: any(named: 'tags'),
+            idempotencyKey: any(named: 'idempotencyKey'),
+            cover: any(named: 'cover', that: isNull),
+            coverUrl: any(named: 'coverUrl'),
+            kind: any(named: 'kind'),
+            targetId: any(named: 'targetId'),
+            categoryIds: any(named: 'categoryIds'),
+            expectedRevision: any(named: 'expectedRevision'),
+            locale: any(named: 'locale'),
+          ),
+        ).thenAnswer((_) async => throw UnimplementedError());
 
-      await expectLater(intent.enqueue(store), throwsUnimplementedError);
-      verify(
-        () => store.enqueue(
-          userId: 'author',
-          title: 'Title',
-          content: 'Body',
-          tags: any(named: 'tags'),
-          idempotencyKey: 'publish-key',
-          cover: null,
-          coverUrl: 'https://example.test/media/cover.webp',
-          kind: PublishQueueKind.edit,
-          targetId: 'article-slug',
-          categoryIds: any(named: 'categoryIds'),
-          expectedRevision: revision,
-          locale: 'en',
-        ),
-      ).called(1);
-    });
+        await expectLater(intent.enqueue(store), throwsUnimplementedError);
+        verify(
+          () => store.enqueue(
+            userId: 'author',
+            title: 'Title',
+            content: 'Body',
+            tags: any(named: 'tags'),
+            idempotencyKey: 'publish-key',
+            cover: null,
+            coverUrl: 'https://example.test/media/cover.webp',
+            kind: PublishQueueKind.edit,
+            targetId: 'article-slug',
+            categoryIds: any(named: 'categoryIds'),
+            expectedRevision: revision,
+            locale: 'en',
+          ),
+        ).called(1);
+      },
+    );
 
     test('only transient failures can be queued', () {
       expect(EditorPublishIntent.shouldQueue(Failure.networkOffline()), isTrue);

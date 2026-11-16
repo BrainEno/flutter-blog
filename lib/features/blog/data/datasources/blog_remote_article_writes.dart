@@ -66,7 +66,6 @@ mixin _BlogRemoteWriteOperations on _BlogRemoteOperationContext {
     });
   }
 
-
   Future<BlogModel> editBlog(
     BlogModel blog, {
     ArticleRevision? expectedRevision,

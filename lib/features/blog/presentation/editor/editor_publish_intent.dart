@@ -62,10 +62,8 @@ class EditorPublishIntent {
   PublishQueueKind get queueKind =>
       isUpdate ? PublishQueueKind.edit : PublishQueueKind.create;
 
-  NowaveSessionFence get sessionFence => NowaveSessionFence(
-    userId: draft.userId,
-    generation: sessionGeneration,
-  );
+  NowaveSessionFence get sessionFence =>
+      NowaveSessionFence(userId: draft.userId, generation: sessionGeneration);
 
   /// Whether this value can ever be translated into a safe remote write.
   bool get canDispatch => !isUpdate || expectedRevision != null;
@@ -141,7 +139,9 @@ class EditorPublishIntent {
   /// validation and storage failures need an explicit human or device action,
   /// so queueing them would create a misleading perpetually-failing row.
   static bool shouldQueue(Failure failure) => switch (failure.kind) {
-    FailureKind.network || FailureKind.timeout || FailureKind.server ||
+    FailureKind.network ||
+    FailureKind.timeout ||
+    FailureKind.server ||
     FailureKind.unknown => true,
     _ => false,
   };
