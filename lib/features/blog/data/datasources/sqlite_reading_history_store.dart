@@ -68,7 +68,7 @@ class SqliteReadingHistoryStore implements ReadingHistoryStore {
     required String blogId,
   }) => database.customStatement(
     'DELETE FROM reading_history WHERE backend = ? AND user_id = ? AND blog_id = ?',
-    [userId, blogId],
+    [_backend, userId, blogId],
   );
 
   @override
