@@ -51,6 +51,26 @@ be written, the offline read still succeeds, but the row may be evicted earlier.
 This is a row-count limit, not a byte quota or TTL; large individual articles,
 multiple backends and the preserved legacy namespace can still consume space.
 
+## Android backup boundary
+
+`belog.sqlite` can hold a session fallback containing access/refresh tokens when
+platform secure storage is unavailable, as well as unpublished drafts, queued
+writes, reading history, article cache and reader preferences. Android therefore
+sets `android:allowBackup="false"` in the release manifest. It also references
+explicit `res/xml/backup_rules.xml` and `data_extraction_rules.xml` deny-lists
+for legacy full backup and Android 12+ cloud/device-transfer parsers; each
+excludes the app root, files, databases, preferences and external app storage.
+The manifest flag is the primary block, not encryption or a promise that every
+OEM migration/forensics tool can never copy a device. The checked-in XML is a
+regression-tested defense-in-depth policy, not a user-managed backup/export
+feature.
+
+This applies to Android app data only. iOS/macOS/Windows backup, restore,
+enterprise management and filesystem-retention policies remain platform or
+deployment concerns. Before an upgrade, downgrade, device migration or manual
+copy of private app data, treat the database as sensitive and do not assume a
+restored secure-storage key can decrypt an old session.
+
 ## Offline Library
 
 The Search tab's Offline Library is a read-only catalog over **only the active

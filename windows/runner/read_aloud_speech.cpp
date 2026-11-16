@@ -71,6 +71,7 @@ void ReadAloudSpeech::Initialize(HWND window) {
   while (enumerator->Next(1, &token, nullptr) == S_OK) {
     WCHAR* id = nullptr;
     WCHAR* language = nullptr;
+    WCHAR* display_name = nullptr;
     ComPtr<ISpDataKey> attributes;
     if (SUCCEEDED(token->GetId(&id)) &&
         SUCCEEDED(token->OpenKey(L"Attributes", &attributes)) &&
@@ -80,11 +81,16 @@ void ReadAloudSpeech::Initialize(HWND window) {
       wchar_t locale[LOCALE_NAME_MAX_LENGTH] = {};
       const LCID lcid = static_cast<LCID>(std::wcstoul(language, nullptr, 16));
       if (LCIDToLocaleName(lcid, locale, LOCALE_NAME_MAX_LENGTH, 0) > 0) {
-        voices_.push_back({Utf8FromUtf16(id), Utf8FromUtf16(locale), token});
+        const auto identifier = Utf8FromUtf16(id);
+        const auto name = SUCCEEDED(SpGetDescription(token.Get(), &display_name))
+                              ? Utf8FromUtf16(display_name)
+                              : identifier;
+        voices_.push_back({identifier, Utf8FromUtf16(locale), name, token});
       }
     }
     CoTaskMemFree(id);
     CoTaskMemFree(language);
+    CoTaskMemFree(display_name);
     token.Reset();
   }
 }
@@ -102,7 +108,8 @@ void ReadAloudSpeech::HandleMethodCall(
     EncodableList voices;
     for (const auto& voice : voices_) {
       voices.emplace_back(EncodableMap{{EncodableValue("id"), EncodableValue(voice.id)},
-                                      {EncodableValue("language"), EncodableValue(voice.language)}});
+                                      {EncodableValue("language"), EncodableValue(voice.language)},
+                                      {EncodableValue("name"), EncodableValue(voice.name)}});
     }
     result->Success(EncodableValue(EncodableMap{
         {EncodableValue("available"), EncodableValue(voice_ != nullptr)},

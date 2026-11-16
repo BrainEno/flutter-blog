@@ -272,6 +272,40 @@ void main() {
     },
   );
 
+  testWidgets('voice picker and sleep timer expose local reader choices', (
+    tester,
+  ) async {
+    final engine = FakeSpeechEngine();
+    final prefs = FakeReadAloudPreferences();
+    final reader = readerFor(engine, prefs);
+    await reader.initialize();
+    addTearDown(() async {
+      reader.dispose();
+      await flushSpeech();
+      await engine.close();
+    });
+    await tester.pumpWidget(app(ReadAloudControls(controller: reader)));
+    await tester.tap(find.byKey(const ValueKey('read-aloud-voice')));
+    await tester.pumpAndSettle();
+    expect(find.text('Choose a voice'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('read-aloud-voice-automatic')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('read-aloud-voice-english-uk')));
+    await tester.pump();
+    expect(prefs.voiceWrites, [('en', 'english-uk')]);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('read-aloud-sleep-timer')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('5 minutes').last);
+    await tester.pumpAndSettle();
+    expect(reader.hasSleepTimer, isTrue);
+    expect(find.textContaining('Stops in'), findsOneWidget);
+  });
+
   testWidgets(
     'empty or unsupported articles hide the entry; errors are visible',
     (tester) async {

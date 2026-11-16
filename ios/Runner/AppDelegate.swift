@@ -17,12 +17,18 @@ import UIKit
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }
+
 // Kept in sync with the other Apple runner. The channel owns no article text
 // after an utterance finishes; callbacks are correlated by utterance identity.
+// On iPhone/iPad we explicitly use playback/spoken-audio so the reader is not
+// muted by the silent switch. `.duckOthers` lowers, rather than stops, music or
+// a podcast and `notifyOthersOnDeactivation` lets it recover after narration.
 private final class PlatformReadAloud: NSObject, AVSpeechSynthesizerDelegate {
   private let channel: FlutterMethodChannel
   private let synthesizer = AVSpeechSynthesizer()
+  private let audioSession = AVAudioSession.sharedInstance()
   private var utterances: [ObjectIdentifier: String] = [:]
+  private var audioSessionActive = false
 
   init(messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(name: "belog/read_aloud", binaryMessenger: messenger)
@@ -37,11 +43,14 @@ private final class PlatformReadAloud: NSObject, AVSpeechSynthesizerDelegate {
       case "initialize":
         let voices = AVSpeechSynthesisVoice.speechVoices()
           .sorted { $0.identifier < $1.identifier }
-          .map { ["id": $0.identifier, "language": $0.language] }
+          .map { ["id": $0.identifier, "language": $0.language, "name": $0.name] }
         result(["available": true, "voices": voices])
       case "stop":
-        self.utterances.removeAll()
+        // Keep every mapping until AVSpeechSynthesizer calls didCancel. The
+        // Dart controller needs that correlated terminal event to ignore stale
+        // speech safely; clearing here used to drop it completely.
         self.synthesizer.stopSpeaking(at: .immediate)
+        self.deactivateAudioSessionIfIdle()
         result(nil)
       case "speak":
         guard let args = call.arguments as? [String: Any],
@@ -63,6 +72,10 @@ private final class PlatformReadAloud: NSObject, AVSpeechSynthesizerDelegate {
           AVSpeechUtteranceMaximumSpeechRate,
           max(AVSpeechUtteranceMinimumSpeechRate, AVSpeechUtteranceDefaultSpeechRate * Float(rate))
         )
+        guard self.activateAudioSession() else {
+          result(false)
+          return
+        }
         self.utterances[ObjectIdentifier(utterance)] = id
         self.synthesizer.speak(utterance)
         result(true)
@@ -70,6 +83,30 @@ private final class PlatformReadAloud: NSObject, AVSpeechSynthesizerDelegate {
         result(FlutterMethodNotImplemented)
       }
     }
+  }
+
+  private func activateAudioSession() -> Bool {
+    do {
+      try audioSession.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
+      try audioSession.setActive(true)
+      audioSessionActive = true
+      return true
+    } catch {
+      // The Dart side converts a rejected request into its existing localized,
+      // retryable error state. Do not start visual progress without audio.
+      return false
+    }
+  }
+
+  private func deactivateAudioSessionIfIdle() {
+    guard audioSessionActive, utterances.isEmpty, !synthesizer.isSpeaking else { return }
+    do {
+      try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+    } catch {
+      // Losing focus is best-effort. There is no user content to recover and
+      // another process may have made the session inactive already.
+    }
+    audioSessionActive = false
   }
 
   private func emit(_ utterance: AVSpeechUtterance, type: String,
@@ -82,8 +119,13 @@ private final class PlatformReadAloud: NSObject, AVSpeechSynthesizerDelegate {
         event["start"] = range.location
         event["end"] = range.location + range.length
       }
-      if terminal { self.utterances.removeValue(forKey: key) }
+      // Invoke before retiring the correlation. A later utterance can already
+      // be queued, so deactivation also waits for every tracked callback.
       self.channel.invokeMethod("event", arguments: event)
+      if terminal {
+        self.utterances.removeValue(forKey: key)
+        self.deactivateAudioSessionIfIdle()
+      }
     }
   }
 

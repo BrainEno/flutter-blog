@@ -1,26 +1,43 @@
-/// A device speech voice. The platform chooses a default when no match exists.
+/// A device speech voice. [id] is an opaque platform identifier; [displayName]
+/// is supplied only to help a person distinguish installed voices in the reader
+/// controls. The platform chooses its default when no compatible voice exists.
 class SpeechVoice {
-  const SpeechVoice({required this.id, required this.language});
+  const SpeechVoice({
+    required this.id,
+    required this.language,
+    String? displayName,
+  }) : displayName = displayName ?? id;
+
   final String id;
   final String language;
+  final String displayName;
+}
+
+/// Compare a voice to a requested language without requiring a package for a
+/// full BCP-47 parser. Engines commonly return either `en-US` or `en_US`; an
+/// exact match wins and a language-family voice remains a supported fallback.
+bool voiceSupportsLanguage(SpeechVoice voice, String language) {
+  final requested = _normalizedSpeechLanguage(language);
+  final candidate = _normalizedSpeechLanguage(voice.language);
+  if (requested.isEmpty || candidate.isEmpty) return false;
+  return requested == candidate ||
+      requested.split('-').first == candidate.split('-').first;
 }
 
 SpeechVoice? matchingSpeechVoice(List<SpeechVoice> voices, String language) {
-  final requested = language.toLowerCase().replaceAll('_', '-');
+  final requested = _normalizedSpeechLanguage(language);
+  if (requested.isEmpty) return null;
   for (final voice in voices) {
-    if (voice.language.toLowerCase().replaceAll('_', '-') == requested) {
-      return voice;
-    }
+    if (_normalizedSpeechLanguage(voice.language) == requested) return voice;
   }
-  final family = requested.split('-').first;
   for (final voice in voices) {
-    if (voice.language.toLowerCase().replaceAll('_', '-').split('-').first ==
-        family) {
-      return voice;
-    }
+    if (voiceSupportsLanguage(voice, requested)) return voice;
   }
   return null;
 }
+
+String _normalizedSpeechLanguage(String value) =>
+    value.toLowerCase().trim().replaceAll('_', '-');
 
 enum SpeechEventType { started, range, completed, cancelled, error }
 
@@ -54,10 +71,4 @@ abstract interface class SpeechEngine {
   });
 
   Future<void> stop();
-}
-
-/// Only the follow preference is persisted; article text and audio are not.
-abstract interface class ReadAloudPreferences {
-  Future<bool> loadFollow();
-  Future<void> saveFollow(bool enabled);
 }

@@ -17,8 +17,10 @@ class MainFlutterWindow: NSWindow {
     super.awakeFromNib()
   }
 }
-// Kept in sync with the other Apple runner. The channel owns no article text
-// after an utterance finishes; callbacks are correlated by utterance identity.
+
+// Kept in sync with the iOS runner's correlation behavior. macOS has no
+// mobile AVAudioSession, but it must keep an utterance ID through didCancel so
+// the Dart coordinator can reliably discard an old callback after stop/seek.
 private final class PlatformReadAloud: NSObject, AVSpeechSynthesizerDelegate {
   private let channel: FlutterMethodChannel
   private let synthesizer = AVSpeechSynthesizer()
@@ -37,10 +39,11 @@ private final class PlatformReadAloud: NSObject, AVSpeechSynthesizerDelegate {
       case "initialize":
         let voices = AVSpeechSynthesisVoice.speechVoices()
           .sorted { $0.identifier < $1.identifier }
-          .map { ["id": $0.identifier, "language": $0.language] }
+          .map { ["id": $0.identifier, "language": $0.language, "name": $0.name] }
         result(["available": true, "voices": voices])
       case "stop":
-        self.utterances.removeAll()
+        // didCancel is responsible for terminal event delivery and cleanup.
+        // Clearing this map first used to make cancellation invisible to Dart.
         self.synthesizer.stopSpeaking(at: .immediate)
         result(nil)
       case "speak":
@@ -82,8 +85,8 @@ private final class PlatformReadAloud: NSObject, AVSpeechSynthesizerDelegate {
         event["start"] = range.location
         event["end"] = range.location + range.length
       }
-      if terminal { self.utterances.removeValue(forKey: key) }
       self.channel.invokeMethod("event", arguments: event)
+      if terminal { self.utterances.removeValue(forKey: key) }
     }
   }
 

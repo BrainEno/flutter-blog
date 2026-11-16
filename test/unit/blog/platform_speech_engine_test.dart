@@ -25,7 +25,11 @@ void main() {
             return {
               'available': true,
               'voices': [
-                {'id': 'voice-en', 'language': 'en-US'},
+                {
+                  'id': 'voice-en',
+                  'language': 'en-US',
+                  'name': 'English system voice',
+                },
                 {'id': 42, 'language': 'bad'},
               ],
             };
@@ -40,6 +44,7 @@ void main() {
       final voices = await engine.initialize();
       expect(voices, hasLength(1));
       expect(voices.single.id, 'voice-en');
+      expect(voices.single.displayName, 'English system voice');
       await engine.speak(
         utteranceId: 'read-1',
         text: 'Hello 😀',

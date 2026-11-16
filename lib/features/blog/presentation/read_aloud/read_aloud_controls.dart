@@ -2,6 +2,9 @@ import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controller.dart';
+import 'package:belog/features/blog/presentation/read_aloud/read_aloud_sleep_timer.dart';
+import 'package:belog/features/blog/presentation/read_aloud/read_aloud_voice_picker.dart';
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 /// Compact, keyboard- and screen-reader-accessible article player.
@@ -47,6 +50,8 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
             ReadAloudNotice.hint => l10n.readAloudHint,
             ReadAloudNotice.stopped => l10n.readAloudStopped,
             ReadAloudNotice.finished => l10n.readAloudFinished,
+            ReadAloudNotice.sleepTimerFinished =>
+              l10n.readAloudSleepTimerFinished,
             ReadAloudNotice.error => l10n.readAloudError,
           },
         };
@@ -113,6 +118,63 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                         ),
                       ),
                     ],
+                  ),
+                  if (controller.voiceChoices.isNotEmpty)
+                    TextButton.icon(
+                      key: const ValueKey('read-aloud-voice'),
+                      onPressed: () =>
+                          ReadAloudVoicePicker.show(context, controller),
+                      icon: const Icon(Icons.record_voice_over_outlined),
+                      label: Text(l10n.readAloudVoice),
+                    ),
+                  Tooltip(
+                    message: l10n.readAloudSleepTimerHint,
+                    child: PopupMenuButton<ReadAloudSleepTimerOption>(
+                      key: const ValueKey('read-aloud-sleep-timer'),
+                      tooltip: l10n.readAloudSleepTimer,
+                      onSelected: controller.setSleepTimer,
+                      itemBuilder: (context) => [
+                        for (final option in ReadAloudSleepTimerOption.values)
+                          PopupMenuItem<ReadAloudSleepTimerOption>(
+                            value: option,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  option == controller.sleepTimerOption
+                                      ? Icons.radio_button_checked
+                                      : Icons.radio_button_off,
+                                ),
+                                const SizedBox(width: NoWaveSpacing.small),
+                                Text(_sleepTimerLabel(l10n, option)),
+                              ],
+                            ),
+                          ),
+                      ],
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: NoWaveSpacing.small,
+                          vertical: NoWaveSpacing.xs,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.timer_outlined),
+                            const SizedBox(width: NoWaveSpacing.xs),
+                            Text(
+                              controller.hasSleepTimer
+                                  ? l10n.readAloudSleepTimerActive(
+                                      (controller
+                                                  .sleepTimerRemaining
+                                                  ?.inMinutes ??
+                                              0) +
+                                          1,
+                                    )
+                                  : l10n.readAloudSleepTimer,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                   Tooltip(
                     message: l10n.readAloudFollowHint,
@@ -207,4 +269,17 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
       },
     );
   }
+}
+
+String _sleepTimerLabel(
+  AppLocalizations l10n,
+  ReadAloudSleepTimerOption option,
+) {
+  return switch (option) {
+    ReadAloudSleepTimerOption.off => l10n.readAloudSleepTimerOff,
+    ReadAloudSleepTimerOption.fiveMinutes => l10n.readAloudSleepTimerFive,
+    ReadAloudSleepTimerOption.tenMinutes => l10n.readAloudSleepTimerTen,
+    ReadAloudSleepTimerOption.fifteenMinutes => l10n.readAloudSleepTimerFifteen,
+    ReadAloudSleepTimerOption.thirtyMinutes => l10n.readAloudSleepTimerThirty,
+  };
 }

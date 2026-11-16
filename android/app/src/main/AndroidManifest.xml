@@ -21,10 +21,17 @@
         </intent>
     </queries>
 
+    <!-- Private SQLite may contain fallback session tokens, unpublished drafts,
+         queued writes and reading history. Do not hand any of it to Android
+         cloud backup or device-to-device transfer. The XML exclusions below
+         make that intent auditable on API levels that parse those resources. -->
     <application
         android:label="No Wave"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name=".MainActivity"
             android:exported="true"
