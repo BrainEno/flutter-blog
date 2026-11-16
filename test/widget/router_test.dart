@@ -1,6 +1,8 @@
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/locale_bloc.dart';
+import 'package:belog/core/l10n/content_locale.dart';
+import 'package:belog/core/l10n/content_language.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/common/widgets/no_wave_action_row.dart';
 import 'package:belog/core/error/failures.dart';
@@ -40,6 +42,7 @@ import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/entities/comment_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
+import 'package:belog/features/blog/domain/offline_library/offline_library.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_deleted_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/restore_deleted_blog.dart';
@@ -53,6 +56,7 @@ import 'package:belog/features/blog/domain/usecase/get_my_article_editions.dart'
 import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_user_liked_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/is_blog_liked.dart';
+import 'package:belog/features/blog/domain/usecase/offline_library.dart';
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/toggle_like_blog.dart';
 import 'package:belog/features/blog/domain/usecase/update_blog.dart';
@@ -61,12 +65,14 @@ import 'package:belog/features/blog/presentation/blocs/blog/blog_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
+import 'package:belog/features/blog/presentation/blocs/offline_library/offline_library_cubit.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
 import 'package:belog/features/blog/presentation/pages/saved_blogs_page.dart';
 import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
+import 'package:belog/features/blog/presentation/pages/offline_library_page.dart';
 import 'package:belog/features/blog/presentation/pages/recycle_bin_page.dart';
 import 'package:belog/features/blog/presentation/pages/user_blogs_page.dart';
 import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
@@ -287,9 +293,12 @@ class Harness {
         () => RequestPasswordReset(passwordRecovery),
       )
       ..registerFactory<ResetPassword>(() => ResetPassword(passwordRecovery))
+      ..registerLazySingleton<ContentLocale>(() => ContentLocale.instance)
       ..registerFactory(() => GetAllBlogs(repository))
       ..registerFactory(() => GetBlogById(repository))
       ..registerFactory(() => SearchBlogs(repository))
+      ..registerFactory(() => GetOfflineLibrary(repository))
+      ..registerFactory(() => ClearOfflineLibrary(repository))
       ..registerFactory(() => ToggleLikeBlog(repository))
       ..registerFactory(() => IsBlogLiked(repository))
       ..registerFactory(() => GetUserLikedBlogs(repository))
@@ -303,6 +312,13 @@ class Harness {
       ..registerFactory(() => GetRelatedArticles(repository))
       ..registerFactory(() => BlogBloc(getAllBlogs: sl<GetAllBlogs>()))
       ..registerFactory(() => BlogSearchBloc(searchBlogs: sl<SearchBlogs>()))
+      ..registerFactory(
+        () => OfflineLibraryCubit(
+          getOfflineLibrary: sl<GetOfflineLibrary>(),
+          clearOfflineLibrary: sl<ClearOfflineLibrary>(),
+          contentLocale: sl<ContentLocale>(),
+        ),
+      )
       ..registerFactory(
         () => BlogLikedBloc(
           toggleBlogLike: sl<ToggleLikeBlog>(),
@@ -464,6 +480,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(BlogPage), findsOneWidget);
   });
+
+  testWidgets(
+    'offline library is a public search route with no connectivity probe',
+    (tester) async {
+      ContentLocale.instance.update(ContentLanguage.zh);
+      final harness = Harness()
+        ..buildRouter(initialLocation: '/search/offline-library');
+      addTearDown(harness.dispose);
+      when(
+        () => harness.local.inspectOfflineLibrary(),
+      ).thenAnswer((_) async => OfflineLibrarySnapshot.empty(locale: 'zh-CN'));
+
+      await harness.pump(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(OfflineLibraryPage), findsOneWidget);
+      expect(find.byType(LoginPage), findsNothing);
+      expect(find.text('当前语言没有已缓存文章'), findsOneWidget);
+      verify(() => harness.local.inspectOfflineLibrary()).called(1);
+      verifyNever(() => harness.connection.isConnected);
+      verifyNever(() => harness.remote.searchBlogs(any()));
+    },
+  );
 
   testWidgets('reduced motion removes the tab-switch fade', (tester) async {
     final harness = Harness()..buildRouter();

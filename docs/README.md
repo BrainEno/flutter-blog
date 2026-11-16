@@ -17,6 +17,7 @@
 
 - [未归属旧草稿](unclaimed-drafts.md)：保留、只读导出范围和降级风险。
 - [SQLite 存储](sqlite-storage.md)：schema 版本、迁移、Isar 移除与降级限制。
+- [离线书库](offline-library.md)：有界本地全文搜索、backend/语言隔离、清空范围与存储估算。
 - [发布队列](publish-queue.md)：离线/失败后的安全重试、幂等键、账号与后端隔离和
   已知限制。
 - [通知收件箱](notifications.md)：按需 cursor 翻页、无推送与轮询、账号围栏、已读语义、

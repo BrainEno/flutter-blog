@@ -1,4 +1,5 @@
 import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/offline_library/offline_library.dart';
 
 /// Offline cache of published articles.
 ///
@@ -20,6 +21,16 @@ abstract interface class BlogLocalDataSource {
   Future<List<BlogModel>> loadBlogs({int limit = 500, int offset = 0});
 
   Future<List<BlogModel>> searchLocalBlogs(String query);
+
+  /// Returns a local-only catalog for this datasource's exact backend and
+  /// content-language namespace. It does not update LRU timestamps: browsing
+  /// cache metadata is not the same thing as opening an article.
+  Future<OfflineLibrarySnapshot> inspectOfflineLibrary();
+
+  /// Removes only the public cached articles in this datasource's current
+  /// backend/content-language namespace. It never clears drafts, queues,
+  /// session data, reading history, another backend, or another language.
+  Future<void> clearOfflineLibrary();
 
   /// Returns the cached article with the given business id, if present.
   Future<BlogModel?> loadBlogById(String id);

@@ -69,6 +69,7 @@ import 'package:belog/features/blog/domain/repositories/structured_edition_reade
 import 'package:belog/features/blog/domain/repositories/structured_recovery_catalog.dart';
 import 'package:belog/features/blog/domain/usecase/list_structured_recoveries.dart';
 import 'package:belog/features/blog/domain/usecase/open_structured_editing_session.dart';
+import 'package:belog/features/blog/domain/usecase/offline_library.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/repositories/category_repository.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
@@ -100,6 +101,7 @@ import 'package:belog/features/blog/presentation/blocs/blog/blog_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
+import 'package:belog/features/blog/presentation/blocs/offline_library/offline_library_cubit.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/categories/categories_cubit.dart';
 import 'package:belog/features/blog/presentation/blocs/category_articles/bloc/category_articles_bloc.dart';
@@ -465,6 +467,10 @@ Future<void> _initBlog(
     ..registerFactory(() => GetAllBlogs(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetBlogById(serviceLocator<BlogRepository>()))
     ..registerFactory(() => SearchBlogs(serviceLocator<BlogRepository>()))
+    ..registerFactory(() => GetOfflineLibrary(serviceLocator<BlogRepository>()))
+    ..registerFactory(
+      () => ClearOfflineLibrary(serviceLocator<BlogRepository>()),
+    )
     ..registerFactory(() => ToggleLikeBlog(serviceLocator<BlogRepository>()))
     ..registerFactory(() => IsBlogLiked(serviceLocator<BlogRepository>()))
     ..registerFactory(() => GetUserLikedBlogs(serviceLocator<BlogRepository>()))
@@ -499,6 +505,13 @@ Future<void> _initBlog(
     )
     ..registerFactory(
       () => BlogSearchBloc(searchBlogs: serviceLocator<SearchBlogs>()),
+    )
+    ..registerFactory(
+      () => OfflineLibraryCubit(
+        getOfflineLibrary: serviceLocator<GetOfflineLibrary>(),
+        clearOfflineLibrary: serviceLocator<ClearOfflineLibrary>(),
+        contentLocale: serviceLocator<ContentLocale>(),
+      ),
     )
     ..registerFactory(
       () => BlogLikedBloc(

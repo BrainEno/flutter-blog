@@ -46,6 +46,24 @@ be written, the offline read still succeeds, but the row may be evicted earlier.
 This is a row-count limit, not a byte quota or TTL; large individual articles,
 multiple backends and the preserved legacy namespace can still consume space.
 
+## Offline Library
+
+The Search tab's Offline Library is a read-only catalog over **only the active
+backend + content-language** `blog_cache` rows. It has no schema migration or
+FTS side table: the already bounded 250-row namespace is read once, then title,
+author, tags and flattened reader body text are matched in memory with bounded
+substring terms. Listing/searching does not touch `accessed_at`; opening an
+article through the usual viewer remains an ordinary cache read and may update
+its LRU timestamp.
+
+The catalog shows an estimate of the row-owned UTF-8 text/JSON/URL bytes. It is
+not SQLite/WAL page usage, the app's total data use, or the image cache size.
+Its confirmed clear action deletes only `blog_cache` rows for the active backend
+and language. It does not clear drafts, structured recoveries, publish queue,
+reading history, profile/session data or any other cache namespace. See
+[Offline Library](offline-library.md) for the user-visible behavior and query
+limits.
+
 Older cache and history records do not identify their backend. They remain in an
 unattributed namespace and are not displayed or cleared by any normal backend
 session. This prevents cross-server disclosure but means old offline articles

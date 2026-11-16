@@ -23,6 +23,7 @@ import 'package:belog/features/blog/presentation/blocs/blog/blog_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
+import 'package:belog/features/blog/presentation/blocs/offline_library/offline_library_cubit.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_viewer/blog_viewer_cubit.dart';
 import 'package:belog/features/blog/presentation/blocs/categories/categories_cubit.dart';
 import 'package:belog/features/blog/presentation/blocs/category_articles/bloc/category_articles_bloc.dart';
@@ -44,6 +45,7 @@ import 'package:belog/features/blog/presentation/pages/recycle_bin_page.dart';
 import 'package:belog/features/blog/presentation/pages/saved_blogs_page.dart';
 import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
 import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
+import 'package:belog/features/blog/presentation/pages/offline_library_page.dart';
 import 'package:belog/features/blog/presentation/pages/tag_articles_page.dart';
 import 'package:belog/features/blog/presentation/tag_navigation.dart';
 import 'package:belog/features/blog/presentation/pages/user_blogs_page.dart';
@@ -247,6 +249,14 @@ GoRouter createAppRouter({
                   tagRoute(),
                   categoriesRoute(),
                   categoryRoute(),
+                  GoRoute(
+                    path: 'offline-library',
+                    builder: (context, state) => BlocProvider(
+                      create: (_) => serviceLocator<OfflineLibraryCubit>(),
+                      child: const OfflineLibraryPage(),
+                    ),
+                    routes: [viewerRoute()],
+                  ),
                   GoRoute(
                     path: 'authors',
                     builder: (context, state) => BlocProvider(

@@ -95,7 +95,17 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
     final l10n = context.l10n;
     final foreground = Theme.of(context).colorScheme.onSurface;
     return Scaffold(
-      appBar: AppBar(title: const NoWaveMasthead()),
+      appBar: AppBar(
+        title: const NoWaveMasthead(),
+        actions: [
+          IconButton(
+            tooltip: l10n.offlineLibraryTooltip,
+            icon: const Icon(Icons.folder_off_outlined),
+            onPressed: () => context.push('/search/offline-library'),
+          ),
+          const SizedBox(width: NoWaveSpacing.small),
+        ],
+      ),
       // The heading, field and results share one scroll view so they can all
       // reflow when the keyboard or a large text scale reduces the viewport.
       body: CustomScrollView(

@@ -7,6 +7,7 @@ import 'package:belog/features/blog/data/datasources/article_document_codec.dart
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
+import 'package:belog/features/blog/domain/offline_library/offline_library.dart';
 import 'package:drift/drift.dart';
 
 /// The offline cache is scoped by content language (#108): rows written for
@@ -124,6 +125,85 @@ class SqliteBlogCache implements BlogLocalDataSource {
     final blogs = rows.map((row) => _blogFromRow(row.data)).toList();
     await _touch(locale, blogs.map((blog) => blog.id).toList());
     return blogs;
+  }
+
+  @override
+  Future<OfflineLibrarySnapshot> inspectOfflineLibrary() async {
+    final locale = _locale;
+    // This intentionally stays a bounded table scan. The cache already has a
+    // strict per-backend/per-locale cap, and maintaining a shadow FTS table
+    // would create another write consistency path for every cache update.
+    final rows = await database
+        .customSelect(
+          'SELECT *, ($_estimatedRowBytes) AS estimated_bytes '
+          'FROM blog_cache WHERE backend = ? AND content_locale = ? '
+          'ORDER BY accessed_at DESC, updated_at DESC, id ASC '
+          'LIMIT ?',
+          variables: [
+            Variable<String>(_backend),
+            Variable<String>(locale),
+            Variable<int>(maxEntriesPerLocale),
+          ],
+        )
+        .get();
+    final summaryRow = await database
+        .customSelect(
+          'SELECT COUNT(*) AS article_count, '
+          'COALESCE(SUM($_estimatedRowBytes), 0) AS estimated_bytes, '
+          'MAX(accessed_at) AS newest_accessed_at '
+          'FROM blog_cache WHERE backend = ? AND content_locale = ?',
+          variables: [Variable<String>(_backend), Variable<String>(locale)],
+        )
+        .getSingle();
+    final summary = OfflineLibrarySummary(
+      articleCount: summaryRow.read<int>('article_count'),
+      estimatedBytes: summaryRow.read<int>('estimated_bytes'),
+      newestAccessedAt: _microsecondsOrNull(
+        summaryRow.data['newest_accessed_at'] as int?,
+      ),
+    );
+    return OfflineLibrarySnapshot(
+      locale: locale,
+      summary: summary,
+      entries: [
+        for (final row in rows)
+          OfflineLibraryEntry(
+            article: _blogFromRow(row.data),
+            lastAccessedAt:
+                _microsecondsOrNull(row.data['accessed_at'] as int?) ??
+                DateTime.fromMicrosecondsSinceEpoch(0, isUtc: true),
+            estimatedBytes: row.read<int>('estimated_bytes'),
+          ),
+      ],
+    );
+  }
+
+  /// SQLite [length] counts Unicode characters for TEXT. Casting values to BLOB
+  /// makes this a UTF-8 byte estimate and includes only values owned by this
+  /// one cache row, not SQLite/WAL overhead or image-package disk files.
+  static const String _estimatedRowBytes =
+      "length(CAST(backend AS BLOB)) + length(CAST(id AS BLOB)) + "
+      "length(CAST(content_locale AS BLOB)) + length(CAST(article_id AS BLOB)) + "
+      "length(CAST(title AS BLOB)) + "
+      "length(CAST(content AS BLOB)) + length(CAST(poster_id AS BLOB)) + "
+      "length(CAST(image_url AS BLOB)) + length(CAST(tags AS BLOB)) + "
+      "length(CAST(COALESCE(poster_name, '') AS BLOB)) + "
+      "length(CAST(COALESCE(poster_avatar, '') AS BLOB)) + "
+      "length(CAST(COALESCE(document_json, '') AS BLOB)) + "
+      "length(CAST(COALESCE(categories_json, '') AS BLOB))";
+
+  DateTime? _microsecondsOrNull(int? value) {
+    if (value == null || value <= 0) return null;
+    return DateTime.fromMicrosecondsSinceEpoch(value, isUtc: true);
+  }
+
+  @override
+  Future<void> clearOfflineLibrary() {
+    final locale = _locale;
+    return database.customStatement(
+      'DELETE FROM blog_cache WHERE backend = ? AND content_locale = ?',
+      [_backend, locale],
+    );
   }
 
   /// Removes the article in every cached language: the server copy is gone,
