@@ -7,6 +7,7 @@ import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
+import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -123,12 +124,11 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                       ? null
                       : SizedBox.square(
                           dimension: NoWaveSizes.listThumbnailSmall,
-                          child: Image.network(
-                            blog.imageUrl,
-                            fit: BoxFit.cover,
-                            semanticLabel: context.l10n.coverOf(blog.title),
-                            errorBuilder: (context, error, stackTrace) =>
-                                const SizedBox(),
+                          child: ArticleCover(
+                            title: blog.title,
+                            imageUrl: blog.imageUrl,
+                            seed: blog.articleId,
+                            aspectRatio: 1,
                           ),
                         ),
                   title: Text(

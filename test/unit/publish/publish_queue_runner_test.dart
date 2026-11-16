@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -206,6 +207,7 @@ void main() {
     final stored = (await store.entries(userId: 'alice')).single;
     expect(stored.status, PublishQueueStatus.queued);
     expect(stored.attempts, 0);
+    expect(stored.nextAttemptAt, isNull);
   });
 
   test('nothing is sent while no account is signed in', () async {
@@ -293,7 +295,7 @@ void main() {
     expect(await store.entries(userId: 'alice'), isEmpty);
   });
 
-  test('one drain at a time: a second call is a no-op', () async {
+  test('one drain at a time: a second call is coalesced', () async {
     await enqueue();
     when(
       () => repository.uploadBlog(
@@ -326,6 +328,69 @@ void main() {
       ),
     ).called(1);
   });
+
+  test(
+    'a drain requested after an account switch runs the new account queue',
+    () async {
+      await enqueue(userId: 'alice', title: 'Alice work', key: 'key-alice');
+      await enqueue(userId: 'bob', title: 'Bob work', key: 'key-bob');
+      final aliceResult = Completer<Either<Failure, Blog>>();
+      when(
+        () => repository.uploadBlog(
+          uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+          title: any(named: 'title'),
+          content: any(named: 'content'),
+          posterId: any(named: 'posterId'),
+          tags: any(named: 'tags'),
+          sessionFence: any(named: 'sessionFence'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).thenAnswer((invocation) async {
+        final owner = invocation.namedArguments[#posterId] as String;
+        if (owner == 'alice') return aliceResult.future;
+        return right(_blog('Bob work'));
+      });
+
+      final aliceDrain = runner.drain();
+      await untilCalled(
+        () => repository.uploadBlog(
+          uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+          title: 'Alice work',
+          content: any(named: 'content'),
+          posterId: 'alice',
+          tags: any(named: 'tags'),
+          sessionFence: any(named: 'sessionFence'),
+          idempotencyKey: 'key-alice',
+        ),
+      );
+
+      identity
+        ..activeUserId = 'bob'
+        ..sessionGeneration++;
+      // This is what PublishQueueService does in its identity listener. The
+      // runner must remember it while Alice's HTTP request is still awaiting.
+      expect(await runner.drain(), 0);
+      aliceResult.complete(left(Failure.auth('session changed')));
+
+      expect(await aliceDrain, 1);
+      expect(await store.entries(userId: 'bob'), isEmpty);
+      final alice = (await store.entries(userId: 'alice')).single;
+      expect(alice.status, PublishQueueStatus.queued);
+      expect(alice.attempts, 0);
+      expect(alice.nextAttemptAt, isNull);
+      verify(
+        () => repository.uploadBlog(
+          uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+          title: 'Bob work',
+          content: any(named: 'content'),
+          posterId: 'bob',
+          tags: any(named: 'tags'),
+          sessionFence: any(named: 'sessionFence'),
+          idempotencyKey: 'key-bob',
+        ),
+      ).called(1);
+    },
+  );
 
   Future<PublishQueueEntry> enqueueWithCover({String key = 'key-cover'}) {
     return store.enqueue(

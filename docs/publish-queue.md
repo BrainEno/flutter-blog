@@ -30,7 +30,9 @@
    行。`sessionFence` 在每次发送前用**当前**会话重建，所以同一账号退出再登录会
    继续排队（那是账号的长期意图），换账号则不会被别人发出去。
 3. **一次只发一条。** 发送前先在事务里 `queued → uploading` 抢占；第二个 drain
-   拿不到同一行，页面也不能绕过 runner 直接发。
+   不会拿到同一行，页面也不能绕过 runner 直接发。若这次发送尚在途时发生登录或切换
+   账号，后到的 drain 会合并成一个 follow-up cycle：旧账号行释放/结束后，runner 重新
+   读取身份并处理新账号的队列，不会因为“正在跑”丢掉这次唤醒。
 
 ## 重试与退避
 
@@ -38,7 +40,7 @@
 | --- | --- |
 | `network` / `timeout` / `storage` | 重试，1m → 5m → 15m → 60m → 3h |
 | `server` / `unknown` | 同上，但最多 5 次，之后 `failed` |
-| `auth`（会话过期/退出） | 保持 `queued`，**不消耗**重试次数，等重新登录 |
+| `auth`（会话过期/退出） | 保持 `queued`，**不消耗**重试次数且不写退避时间；重新登录/切回该账号立即可 drain |
 | `permission` / `validation` | 立即 `failed`，等人处理 |
 
 编辑器的失败分类与这里一致：只有可能被重试修好的失败才入队，表单校验类失败仍
@@ -157,8 +159,9 @@ no-wave 的媒体上传**没有幂等键**，所以旧实现里每一次重试�
 - `test/unit/repositories/blog_repository_cover_test.dart`：`uploadCover` 的成败与
   离线短路，`uploadBlog(uploadedCoverUrl:)` 复用 URL、不再上传字节；
 - `test/unit/publish/publish_queue_runner_test.dart`：带上幂等键发送、失败分类、
-  无会话不发、串账号不发、离线不消耗尝试、FIFO、并发 drain 只发一次、封面只上传
-  一次（成功即写回，重试与已有 `cover_url` 的条目都不再上传）、编辑条目走更新而
+  无会话不发、串账号不发、会话切换时合并 follow-up drain、离线不消耗尝试、FIFO、
+  并发 drain 只发一次、封面只上传一次（成功即写回，重试与已有 `cover_url` 的条目都
+  不再上传）、编辑条目走更新而
   不是新建、编辑缺目标时停下等人处理；
 - `test/widget/publish_queue_page_test.dart`：只有 `failed` 出现「继续编辑」，点进去
   带着该条目打开编辑器，返回后重新读一次队列；编辑条目会标出「编辑已发布文章」；

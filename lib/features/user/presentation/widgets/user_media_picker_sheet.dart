@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/common/media/no_wave_image_decode_size.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -362,12 +363,28 @@ class _UserMediaPickerSheetState extends State<UserMediaPickerSheet> {
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(NoWaveRadius.none),
-                child: CachedNetworkImage(
-                  imageUrl: asset.imageUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => const NoWaveSkeletonBlock(),
-                  errorWidget: (context, url, error) =>
-                      const Center(child: Icon(Icons.broken_image_outlined)),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final decode = NoWaveImageDecodeSize.constraints(
+                      constraints: constraints,
+                      devicePixelRatio: MediaQuery.of(context).devicePixelRatio,
+                      fallbackLogicalWidth: 120,
+                      fallbackLogicalHeight: 160,
+                    ).boundedBySource(
+                      sourceWidth: asset.width,
+                      sourceHeight: asset.height,
+                    );
+                    return CachedNetworkImage(
+                      imageUrl: asset.imageUrl,
+                      fit: BoxFit.cover,
+                      memCacheWidth: decode.width,
+                      memCacheHeight: decode.height,
+                      placeholder: (context, url) => const NoWaveSkeletonBlock(),
+                      errorWidget: (context, url, error) => const Center(
+                        child: Icon(Icons.broken_image_outlined),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),

@@ -1,3 +1,4 @@
+import 'package:belog/core/common/media/no_wave_image_decode_size.dart';
 import 'package:belog/core/design/cover/no_wave_cover_plate.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -46,14 +47,26 @@ class ArticleCover extends StatelessWidget {
           aspectRatio: aspectRatio,
           child: ColoredBox(
             color: AppPalette.ink,
-            child: uri != null
-                ? CachedNetworkImage(
-                    imageUrl: uri.toString(),
-                    fit: BoxFit.cover,
-                    placeholder: (_, _) => fallback(),
-                    errorWidget: (_, _, _) => fallback(),
-                  )
-                : fallback(),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final decode = NoWaveImageDecodeSize.constraints(
+                  constraints: constraints,
+                  devicePixelRatio: MediaQuery.of(context).devicePixelRatio,
+                  fallbackLogicalWidth: 640,
+                  fallbackLogicalHeight: 640 / aspectRatio,
+                );
+                return uri != null
+                    ? CachedNetworkImage(
+                        imageUrl: uri.toString(),
+                        fit: BoxFit.cover,
+                        memCacheWidth: decode.width,
+                        memCacheHeight: decode.height,
+                        placeholder: (_, _) => fallback(),
+                        errorWidget: (_, _, _) => fallback(),
+                      )
+                    : fallback();
+              },
+            ),
           ),
         ),
       ),

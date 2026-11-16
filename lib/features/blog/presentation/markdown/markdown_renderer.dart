@@ -1,3 +1,4 @@
+import 'package:belog/core/common/media/no_wave_image_decode_size.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/app_logger.dart';
@@ -449,6 +450,11 @@ class MarkdownRenderer {
             ),
           );
         }
+        final decode = noWaveDecodeSizeForFixed(
+          context,
+          logicalWidth: MediaQuery.of(context).size.width,
+          logicalHeight: 320,
+        );
         return WidgetSpan(
           alignment: PlaceholderAlignment.middle,
           child: Padding(
@@ -465,6 +471,8 @@ class MarkdownRenderer {
                   child: CachedNetworkImage(
                     imageUrl: uri.toString(),
                     fit: BoxFit.contain,
+                    memCacheWidth: decode.width,
+                    memCacheHeight: decode.height,
                     errorWidget: (context, error, stackTrace) => SizedBox(
                       // A failed image keeps its slot instead of collapsing.
                       height: 40, // design-token-ok: failed image slot

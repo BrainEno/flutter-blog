@@ -36,6 +36,7 @@ import 'package:belog/features/blog/presentation/editor/article_conflict_review_
 import 'package:belog/features/blog/presentation/editor/auto_save_banner.dart';
 import 'package:belog/features/blog/presentation/editor/editor_app_bar.dart';
 import 'package:belog/features/blog/presentation/editor/editor_form.dart';
+import 'package:belog/features/blog/presentation/editor/editor_publish_intent.dart';
 import 'package:belog/features/blog/presentation/widgets/draft_recovery_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -148,10 +149,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
   DateTime? _publishStartedAt;
   BlogDraft? _publishedDraftSnapshot;
 
-  /// The cover sent with the current attempt, kept so a failure can be queued
-  /// with the same bytes or reusable immutable media URL.
-  ImageUpload? _publishImageSnapshot;
-  String? _publishCoverUrlSnapshot;
+  /// The immutable request snapshot currently in flight. It is the single
+  /// source for BLoC dispatch and an offline queue retry, so typing after the
+  /// button press cannot mutate what a failure stores.
+  EditorPublishIntent? _publishIntent;
 
   NavigatorState? _mediaPickerNavigator;
   Route<dynamic>? _mediaPickerRoute;
@@ -717,19 +718,6 @@ class _BlogEditorState extends State<BlogEditorPage> {
     }
   }
 
-  /// Failures a retry can plausibly fix. A rejected body, a permission denial
-  /// or an expired session is not queued: sending it again would only fail
-  /// again, and the user has to act first.
-  static bool _isWorthQueueing(FailureKind kind) {
-    if (kind == FailureKind.network || kind == FailureKind.timeout) {
-      return true;
-    }
-    if (kind == FailureKind.server || kind == FailureKind.unknown) {
-      return true;
-    }
-    return false;
-  }
-
   /// Keeps a publish the network refused (issue #23).
   ///
   /// The queued entry carries the same idempotency key as the attempt that
@@ -740,41 +728,23 @@ class _BlogEditorState extends State<BlogEditorPage> {
   /// safely stored, which is what lets the page report "queued" instead of
   /// "failed".
   Future<bool> _queueFailedPublish() async {
-    final snapshot = _publishedDraftSnapshot;
-    final key = _publishIdempotencyKey;
+    final intent = _publishIntent;
     final store = _queueStore;
-    final target = _target;
-    if (snapshot == null || key == null || store == null) return false;
+    if (intent == null || store == null) return false;
     try {
-      await store.enqueue(
-        userId: snapshot.userId,
-        title: snapshot.title.trim(),
-        content: snapshot.content.trim(),
-        tags: List.of(snapshot.tags),
-        idempotencyKey: key,
-        cover: _publishImageSnapshot,
-        coverUrl: _publishCoverUrlSnapshot,
-        kind: target == null ? PublishQueueKind.create : PublishQueueKind.edit,
-        targetId: target?.id,
-        categoryIds: snapshot.categoryIds,
-        expectedRevision: target == null ? null : _expectedRevision,
-        // Persist the edition with the edit: a retry days later must not guess
-        // the language from whatever the app displays then.
-        locale: target?.locale,
-      );
+      await intent.enqueue(store);
     } catch (_) {
       return false;
     }
-    // The entry now holds the text, so the local draft is redundant; later
-    // edits during the publish attempt are kept as a draft on purpose.
+    // The entry now holds the text, cover, locale and revision from the exact
+    // dispatched request. Later edits during the request stay as a draft.
     await _retireResumedEntry();
     _publishIdempotencyKey = null;
     _publishStartedAt = null;
     _hasUnsavedEdits = _editedDuringPublish;
     await _clearPublishedDraft();
     _publishedDraftSnapshot = null;
-    _publishImageSnapshot = null;
-    _publishCoverUrlSnapshot = null;
+    _publishIntent = null;
     unawaited(_queueDrainer?.drain());
     return true;
   }
@@ -822,15 +792,18 @@ class _BlogEditorState extends State<BlogEditorPage> {
         ? imageUpload
         : null;
     final publishCoverUrl = isNewImageSelected ? _selectedCoverUrl : null;
-    final sessionFence = NowaveSessionFence(
-      userId: draft.userId,
-      generation: _editorGeneration,
-    );
     // A key identifies one intent to publish. It is generated once, before the
     // first request, and reused by every retry of that intent (#23).
     final idempotencyKey = _publishIdempotencyKey ??= const Uuid().v4();
-    _publishImageSnapshot = publishImage;
-    _publishCoverUrlSnapshot = publishCoverUrl;
+    final intent = EditorPublishIntent(
+      draft: draft,
+      target: _target,
+      expectedRevision: _expectedRevision,
+      image: publishImage,
+      coverUrl: publishCoverUrl,
+      sessionGeneration: _editorGeneration,
+      idempotencyKey: idempotencyKey,
+    );
     // Persist the exact request snapshot first. If the route is closed, the
     // account changes, or the server response is lost, the text survives.
     try {
@@ -846,38 +819,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
     if (!mounted || !_isCurrentEditor) return;
     _hasUnsavedEdits = version != _draftRequestVersion;
     _publishedDraftSnapshot = draft;
-    if (_target == null) {
-      context.read<BlogUploadBloc>().add(
-        UploadBlogEvent(
-          image: publishImage,
-          uploadedCoverUrl: publishCoverUrl,
-          title: draft.title.trim(),
-          content: draft.content.trim(),
-          posterId: draft.userId,
-          tags: List.of(draft.tags),
-          sessionFence: sessionFence,
-          idempotencyKey: idempotencyKey,
-          categoryIds: draft.categoryIds,
-        ),
-      );
-    } else {
-      context.read<BlogUploadBloc>().add(
-        UpdateBlogEvent(
-          blogId: _target.id,
-          expectedRevision: _expectedRevision!,
-          image: publishImage,
-          uploadedCoverUrl: publishCoverUrl,
-          title: draft.title.trim(),
-          content: draft.content.trim(),
-          tags: List.of(draft.tags),
-          sessionFence: sessionFence,
-          // Save the edition this editor was opened on, not the language the
-          // interface happens to be showing now.
-          locale: _target.locale,
-          categoryIds: draft.categoryIds,
-        ),
-      );
-    }
+    _publishIntent = intent;
+    context.read<BlogUploadBloc>().add(intent.buildEvent());
   }
 
   /// Reports a failed publish, keeping it in the queue when that is the only
@@ -889,15 +832,15 @@ class _BlogEditorState extends State<BlogEditorPage> {
   Future<void> _reportVersionConflict(BlogUploadVersionConflict failure) async {
     _publishStartedAt = null;
     _publishedDraftSnapshot = null;
-    _publishImageSnapshot = null;
-    _publishCoverUrlSnapshot = null;
+    _publishIntent = null;
     if (!mounted || !_isCurrentEditor) return;
     setState(() => _hasVersionConflict = true);
     showSnackBar(context, localizedFailure(context.l10n, failure.failure));
   }
 
   Future<void> _reportPublishFailure(BlogUploadFailure failure) async {
-    if (_isWorthQueueing(failure.failure.kind) && await _queueFailedPublish()) {
+    if (EditorPublishIntent.shouldQueue(failure.failure) &&
+        await _queueFailedPublish()) {
       if (!mounted || !_isCurrentEditor) return;
       showSnackBar(
         context,
@@ -910,6 +853,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
     }
     _publishStartedAt = null;
     _publishedDraftSnapshot = null;
+    _publishIntent = null;
     if (_hasUnsavedEdits && _draftsReady) _scheduleAutoSave();
     if (!mounted || !_isCurrentEditor) return;
     showSnackBar(context, localizedFailure(context.l10n, failure.failure));
@@ -1065,8 +1009,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
             _hasUnsavedEdits = _editedDuringPublish;
             unawaited(_retireResumedEntry());
             _publishIdempotencyKey = null;
-            _publishImageSnapshot = null;
-            _publishCoverUrlSnapshot = null;
+            _publishIntent = null;
             unawaited(_clearPublishedDraft());
             Navigator.of(context).pop(true);
           }
