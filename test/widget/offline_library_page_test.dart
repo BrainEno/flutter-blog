@@ -65,6 +65,10 @@ void main() {
     // subscribes. Production also waits for this before it builds the router;
     // otherwise that event itself would look like a user language switch.
     await localeBloc.initialized;
+    // `initialized` completes while its async event handler unwinds. Drain the
+    // queued event before a test sends a real language selection, so the
+    // serialized Bloc transformer cannot keep that selection behind startup.
+    await pumpEventQueue();
     cubit = OfflineLibraryCubit(
       getOfflineLibrary: GetOfflineLibrary(repository),
       clearOfflineLibrary: ClearOfflineLibrary(repository),
