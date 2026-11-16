@@ -5,6 +5,7 @@ import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/author_articles_paging.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,10 +14,12 @@ import 'package:mocktail/mocktail.dart';
 class MockNowaveApiClient extends Mock implements NowaveApiClient {}
 
 const _kSlug = 'my-slug';
+final _revision = ArticleRevision.parse('9223372036854775807')!;
 
 BlogModel _blog() => BlogModel(
   id: _kSlug,
   articleId: 'server-uuid-1',
+  articleRevision: _revision,
   title: '标题',
   content: '正文',
   posterId: 'u1',
@@ -30,6 +33,7 @@ Map<String, dynamic> _articleMap({bool likedByViewer = false}) {
   return <String, dynamic>{
     'id': 'server-uuid-1',
     'slug': _kSlug,
+    'revision': '9223372036854775807',
     'title': '标题',
     'summary': '作者的摘要',
     'authorId': 'u1',
@@ -180,9 +184,23 @@ void main() {
     );
   });
 
-  test('direct edit also rejects unknown or unsupported structure', () async {
+  test('direct edit refuses to issue an unfenced PUT', () async {
     await expectLater(
       dataSource.editBlog(_blog()),
+      throwsA(
+        isA<ServerException>().having(
+          (error) => error.code,
+          'code',
+          'article.revisionRequired',
+        ),
+      ),
+    );
+    verifyNever(() => client.putJson(any(), any()));
+  });
+
+  test('direct edit also rejects unknown or unsupported structure', () async {
+    await expectLater(
+      dataSource.editBlog(_blog(), expectedRevision: _revision),
       throwsA(
         isA<ServerException>().having(
           (error) => error.code,
@@ -204,7 +222,10 @@ void main() {
       () => client.putJson('/articles/server-uuid-1', any()),
     ).thenAnswer((_) async => _articleMap());
 
-    await dataSource.editBlog(original.copyWith(title: '新标题', content: '新正文'));
+    await dataSource.editBlog(
+      original.copyWith(title: '新标题', content: '新正文'),
+      expectedRevision: _revision,
+    );
 
     final body =
         verify(
@@ -213,6 +234,7 @@ void main() {
             as Map<String, dynamic>;
     expect(body['summary'], '作者的摘要');
     expect(body['contentBlocksVersion'], 0);
+    expect(body['expectedRevision'], '9223372036854775807');
   });
 
   test('direct edit rejects an unknown server summary', () async {
@@ -221,7 +243,7 @@ void main() {
     expect(original.plainEditorCompatible, isTrue);
 
     await expectLater(
-      dataSource.editBlog(original),
+      dataSource.editBlog(original, expectedRevision: _revision),
       throwsA(
         isA<ServerException>().having(
           (error) => error.code,
@@ -472,7 +494,11 @@ void main() {
         () => client.putJson('/articles/server-uuid-1', any()),
       ).thenAnswer((_) async => _articleMap());
 
-      await dataSource.editBlog(original, categoryIds: const ['cat-2']);
+      await dataSource.editBlog(
+        original,
+        expectedRevision: _revision,
+        categoryIds: const ['cat-2'],
+      );
 
       final body =
           verify(
@@ -489,7 +515,7 @@ void main() {
         () => client.putJson('/articles/server-uuid-1', any()),
       ).thenAnswer((_) async => _articleMap());
 
-      await dataSource.editBlog(original);
+      await dataSource.editBlog(original, expectedRevision: _revision);
 
       final body =
           verify(

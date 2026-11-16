@@ -6,6 +6,7 @@ import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -18,6 +19,7 @@ class MockConnection extends Mock implements ConnectionChecker {}
 
 const _kOldCoverUrl = 'https://api.example.invalid/api/v1/media/old-asset';
 const _kNewCoverUrl = 'https://api.example.invalid/api/v1/media/new-asset';
+final _revision = ArticleRevision.parse('7')!;
 
 BlogModel _blog({
   String imageUrl = _kOldCoverUrl,
@@ -26,6 +28,7 @@ BlogModel _blog({
 }) => BlogModel(
   id: 'my-slug',
   articleId: 'b1',
+  articleRevision: _revision,
   plainEditorCompatible: plainEditorCompatible,
   serverSummary: serverSummary,
   title: '标题',
@@ -233,6 +236,55 @@ void main() {
   });
 
   group('editBlog', () {
+    test('refuses an edit without an original server revision', () async {
+      final result = await repository.editBlog(
+        blogId: 'my-slug',
+        title: 'new',
+        content: 'body',
+        tags: const [],
+      );
+
+      result.fold(
+        (failure) => expect(failure.code, 'article.revisionRequired'),
+        (_) => fail('an unfenced edit must never be sent'),
+      );
+      verifyNever(() => remote.getBlogById(any()));
+      verifyNever(
+        () => remote.editBlog(
+          any(),
+          expectedRevision: any(named: 'expectedRevision'),
+        ),
+      );
+    });
+
+    test('a newer read becomes a conflict before cover upload', () async {
+      final newer = ArticleRevision.parse('8')!;
+      when(
+        () => remote.getBlogById('my-slug'),
+      ).thenAnswer((_) async => _blog().copyWith(articleRevision: newer));
+
+      final result = await repository.editBlog(
+        blogId: 'my-slug',
+        expectedRevision: _revision,
+        image: cover,
+        title: 'new',
+        content: 'body',
+        tags: const [],
+      );
+
+      result.fold(
+        (failure) => expect(failure.code, 'article.versionConflict'),
+        (_) => fail('a stale draft must not write'),
+      );
+      verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
+      verifyNever(
+        () => remote.editBlog(
+          any(),
+          expectedRevision: any(named: 'expectedRevision'),
+        ),
+      );
+    });
+
     test(
       'rejects unsupported structures before uploading or writing',
       () async {
@@ -242,6 +294,7 @@ void main() {
 
         final result = await repository.editBlog(
           blogId: 'my-slug',
+          expectedRevision: _revision,
           image: cover,
           title: '新标题',
           content: '新正文',
@@ -254,7 +307,12 @@ void main() {
           (_) => fail('unsupported content must not be overwritten'),
         );
         verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
-        verifyNever(() => remote.editBlog(any()));
+        verifyNever(
+          () => remote.editBlog(
+            any(),
+            expectedRevision: any(named: 'expectedRevision'),
+          ),
+        );
       },
     );
 
@@ -265,6 +323,7 @@ void main() {
 
       final result = await repository.editBlog(
         blogId: 'my-slug',
+        expectedRevision: _revision,
         image: cover,
         title: '新标题',
         content: '正文',
@@ -273,7 +332,12 @@ void main() {
 
       expect(result.isLeft(), isTrue);
       verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
-      verifyNever(() => remote.editBlog(any()));
+      verifyNever(
+        () => remote.editBlog(
+          any(),
+          expectedRevision: any(named: 'expectedRevision'),
+        ),
+      );
     });
 
     test('fetches the article, uploads a new cover, then updates', () async {
@@ -283,12 +347,18 @@ void main() {
       when(
         () => remote.uploadBlogImage(image: any(named: 'image')),
       ).thenAnswer((_) async => _kNewCoverUrl);
-      when(() => remote.editBlog(any())).thenAnswer(
+      when(
+        () => remote.editBlog(
+          any(),
+          expectedRevision: any(named: 'expectedRevision'),
+        ),
+      ).thenAnswer(
         (invocation) async => invocation.positionalArguments[0] as BlogModel,
       );
 
       final result = await repository.editBlog(
         blogId: 'my-slug',
+        expectedRevision: _revision,
         image: cover,
         title: '新标题',
         content: '新正文',
@@ -299,7 +369,7 @@ void main() {
       final order = verifyInOrder([
         () => remote.getBlogById('my-slug'),
         () => remote.uploadBlogImage(image: any(named: 'image')),
-        () => remote.editBlog(captureAny()),
+        () => remote.editBlog(captureAny(), expectedRevision: _revision),
       ]);
       final updated = order.last.captured.single as BlogModel;
       expect(updated.imageUrl, _kNewCoverUrl);
@@ -313,12 +383,18 @@ void main() {
       when(
         () => remote.getBlogById('my-slug'),
       ).thenAnswer((_) async => _blog());
-      when(() => remote.editBlog(any())).thenAnswer(
+      when(
+        () => remote.editBlog(
+          any(),
+          expectedRevision: any(named: 'expectedRevision'),
+        ),
+      ).thenAnswer(
         (invocation) async => invocation.positionalArguments[0] as BlogModel,
       );
 
       final result = await repository.editBlog(
         blogId: 'my-slug',
+        expectedRevision: _revision,
         uploadedCoverUrl: _kNewCoverUrl,
         title: '新标题',
         content: '新正文',
@@ -328,7 +404,7 @@ void main() {
       expect(result.isRight(), isTrue);
       verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
       final BlogModel updated = verify(
-        () => remote.editBlog(captureAny()),
+        () => remote.editBlog(captureAny(), expectedRevision: _revision),
       ).captured.single;
       expect(updated.imageUrl, _kNewCoverUrl);
       expect(updated.serverSummary, '作者的摘要');
@@ -338,12 +414,18 @@ void main() {
       when(
         () => remote.getBlogById('my-slug'),
       ).thenAnswer((_) async => _blog());
-      when(() => remote.editBlog(any())).thenAnswer(
+      when(
+        () => remote.editBlog(
+          any(),
+          expectedRevision: any(named: 'expectedRevision'),
+        ),
+      ).thenAnswer(
         (invocation) async => invocation.positionalArguments[0] as BlogModel,
       );
 
       final result = await repository.editBlog(
         blogId: 'my-slug',
+        expectedRevision: _revision,
         image: null,
         title: '新标题',
         content: '新正文',
@@ -353,7 +435,10 @@ void main() {
       expect(result.isRight(), isTrue);
       verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
       final updated =
-          verify(() => remote.editBlog(captureAny())).captured.single
+          verify(
+                () =>
+                    remote.editBlog(captureAny(), expectedRevision: _revision),
+              ).captured.single
               as BlogModel;
       expect(updated.imageUrl, _kOldCoverUrl);
     });

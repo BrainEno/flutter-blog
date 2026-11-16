@@ -1,6 +1,7 @@
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/usecase/usecase.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:fpdart/fpdart.dart';
@@ -14,6 +15,7 @@ class UpdateBlog implements UseCase<Blog, UpdateBlogParams> {
   Future<Either<Failure, Blog>> call(UpdateBlogParams params) async {
     return await blogRepository.editBlog(
       blogId: params.blogId,
+      expectedRevision: params.expectedRevision,
       image: params.image,
       uploadedCoverUrl: params.uploadedCoverUrl,
       title: params.title,
@@ -28,6 +30,10 @@ class UpdateBlog implements UseCase<Blog, UpdateBlogParams> {
 
 class UpdateBlogParams {
   final String blogId;
+
+  /// Opaque server revision captured when the author opened/rebased this
+  /// editor. It cannot be reconstructed safely during this update.
+  final ArticleRevision expectedRevision;
   final ImageUpload? image;
 
   /// Existing immutable media URL chosen as the cover; avoids uploading it.
@@ -48,6 +54,7 @@ class UpdateBlogParams {
 
   UpdateBlogParams({
     required this.blogId,
+    required this.expectedRevision,
     this.image,
     this.uploadedCoverUrl,
     required this.title,

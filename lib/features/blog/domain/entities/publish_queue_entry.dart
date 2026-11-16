@@ -1,3 +1,5 @@
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
+
 /// Lifecycle of one queued publish (issue #23).
 ///
 /// The queue records that the author *asked to publish*; a draft records that
@@ -55,6 +57,7 @@ class PublishQueueEntry {
     this.targetId,
     this.locale,
     this.categoryIds,
+    this.expectedRevision,
     this.coverFileName,
     this.coverMimeType,
     this.coverUrl,
@@ -104,6 +107,13 @@ class PublishQueueEntry {
   /// effect when the retry runs" - what every entry queued before this field
   /// existed does, and only correct for the default edition.
   final String? locale;
+
+  /// Exact version condition captured with an edit intent.
+  ///
+  /// A queue retry must use the same original revision. It may now conflict
+  /// after an ambiguous response, but it must never read a newer revision and
+  /// turn an old local draft into an unprotected overwrite.
+  final ArticleRevision? expectedRevision;
 
   final PublishQueueStatus status;
 
@@ -155,6 +165,7 @@ class PublishQueueEntry {
       targetId: targetId,
       locale: locale,
       categoryIds: categoryIds,
+      expectedRevision: expectedRevision,
       status: status ?? this.status,
       attempts: attempts ?? this.attempts,
       createdAt: createdAt,

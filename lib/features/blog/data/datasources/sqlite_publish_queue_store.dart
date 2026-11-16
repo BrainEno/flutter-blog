@@ -5,6 +5,7 @@ import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/core/storage/backend_key.dart';
 import 'package:belog/core/utils/app_logger.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
 import 'package:drift/drift.dart';
@@ -52,6 +53,7 @@ class SqlitePublishQueueStore implements PublishQueueStore {
     PublishQueueKind kind = PublishQueueKind.create,
     String? targetId,
     String? locale,
+    ArticleRevision? expectedRevision,
     List<String>? categoryIds,
   }) {
     if (userId.isEmpty) {
@@ -62,6 +64,9 @@ class SqlitePublishQueueStore implements PublishQueueStore {
     }
     if (kind == PublishQueueKind.edit && (targetId ?? '').isEmpty) {
       throw ArgumentError('A queued edit needs the article it updates.');
+    }
+    if (kind == PublishQueueKind.edit && expectedRevision == null) {
+      throw ArgumentError('A queued edit needs its server revision.');
     }
     final id = _uuid.v4();
     // Copy the bytes before the write waits for its turn: the caller may drop
@@ -80,9 +85,9 @@ class SqlitePublishQueueStore implements PublishQueueStore {
       await database.customInsert(
         'INSERT INTO publish_queue(id, backend, user_id, idempotency_key, '
         'title, content, tags, cover_file, cover_mime, cover_url, kind, '
-        'target_id, locale, category_ids, state, attempts, next_attempt_at, '
-        'last_error_code, created_at, updated_at) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, '
+        'target_id, locale, category_ids, expected_revision, state, attempts, '
+        'next_attempt_at, last_error_code, created_at, updated_at) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, '
         'NULL, ?, ?)',
         variables: [
           Variable<String>(id),
@@ -103,6 +108,9 @@ class SqlitePublishQueueStore implements PublishQueueStore {
           Variable<String>(
             categoryIds == null ? null : jsonEncode(categoryIds),
           ),
+          Variable<String>(
+            kind == PublishQueueKind.edit ? expectedRevision?.value : null,
+          ),
           Variable<String>(PublishQueueStatus.queued.name),
           Variable<int>(now.microsecondsSinceEpoch),
           Variable<int>(now.microsecondsSinceEpoch),
@@ -117,6 +125,9 @@ class SqlitePublishQueueStore implements PublishQueueStore {
         categoryIds: categoryIds == null
             ? null
             : List<String>.unmodifiable(categoryIds),
+        expectedRevision: kind == PublishQueueKind.edit
+            ? expectedRevision
+            : null,
         idempotencyKey: idempotencyKey,
         kind: kind,
         targetId: kind == PublishQueueKind.edit ? targetId : null,
@@ -355,6 +366,11 @@ class SqlitePublishQueueStore implements PublishQueueStore {
       ),
       targetId: row.readNullable<String>('target_id'),
       locale: row.readNullable<String>('locale'),
+      // A damaged legacy condition follows the same fail-closed path as a
+      // missing one: the runner marks this edit for human review, never PUTs.
+      expectedRevision: ArticleRevision.parse(
+        row.readNullable<String>('expected_revision'),
+      ),
       nextAttemptAt: _timeOf(row.readNullable<int>('next_attempt_at')),
       lastErrorCode: row.readNullable<String>('last_error_code'),
     );

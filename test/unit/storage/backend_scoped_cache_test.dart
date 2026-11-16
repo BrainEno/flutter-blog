@@ -6,15 +6,18 @@ import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_blog_cache.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_reading_history_store.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 final _one = Uri.parse('https://one.example.invalid/v1');
 final _two = Uri.parse('https://two.example.invalid/v1');
+final _revision = ArticleRevision.parse('9223372036854775807')!;
 
 BlogModel _blog(String id, {String title = 'title'}) => BlogModel(
   id: id,
+  articleRevision: _revision,
   title: title,
   content: 'content $id',
   posterId: 'author',
@@ -59,6 +62,22 @@ void main() {
       expect((await historyB.list(userId: 'u')).single.title, 'two');
       await historyA.clear(userId: 'v');
       expect((await historyB.list(userId: 'u')).single.title, 'two');
+    },
+  );
+
+  test(
+    'cache preserves an opaque article revision for a later safe edit',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final cache = SqliteBlogCache(db, apiBaseUrl: _one);
+
+      await cache.uploadLocalBlogs(blogs: [_blog('revision')]);
+
+      expect(
+        (await cache.loadBlogById('revision'))?.articleRevision,
+        _revision,
+      );
     },
   );
 
@@ -159,15 +178,14 @@ void main() {
         await SqliteBlogCache(db, apiBaseUrl: _one).loadBlogById('old'),
         isNull,
       );
-      expect(
-        (await db
-                .customSelect(
-                  "SELECT content FROM blog_cache WHERE backend = ''",
-                )
-                .getSingle())
-            .read<String>('content'),
-        'body',
-      );
+      final legacyCache = await db
+          .customSelect("SELECT * FROM blog_cache WHERE backend = ''")
+          .getSingle();
+      expect(legacyCache.read<String>('content'), 'body');
+      // A v16 cache row has no provable server condition. The v18 migration
+      // keeps it readable but leaves the new condition null, so it can never
+      // authorize an unconditional update.
+      expect(legacyCache.readNullable<String>('article_revision'), isNull);
       expect(
         (await db
                 .customSelect(

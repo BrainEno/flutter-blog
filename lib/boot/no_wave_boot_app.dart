@@ -94,10 +94,13 @@ class _NoWaveBootAppState extends State<NoWaveBootApp> {
     if (builder != null) return builder();
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (_) => serviceLocator<ThemeBloc>()),
-        BlocProvider(create: (_) => serviceLocator<LocaleBloc>()),
-        BlocProvider(create: (_) => serviceLocator<AuthBloc>()),
-        BlocProvider(create: (_) => serviceLocator<AppUserCubit>()),
+        // These are GetIt lazy singletons. `create` would make each provider
+        // believe it owns the instance and close it when this root unmounts;
+        // then a later root rebuild receives a permanently closed singleton.
+        BlocProvider<ThemeBloc>.value(value: serviceLocator<ThemeBloc>()),
+        BlocProvider<LocaleBloc>.value(value: serviceLocator<LocaleBloc>()),
+        BlocProvider<AuthBloc>.value(value: serviceLocator<AuthBloc>()),
+        BlocProvider<AppUserCubit>.value(value: serviceLocator<AppUserCubit>()),
       ],
       child: const NoWaveApp(),
     );

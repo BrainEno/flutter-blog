@@ -7,6 +7,8 @@ import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
+import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
 import 'package:belog/features/blog/domain/notion_export/notion_export.dart';
@@ -31,6 +33,8 @@ import 'package:fpdart/fpdart.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../support/publish_queue_fakes.dart';
+
+final _revision = ArticleRevision.parse('7')!;
 
 /// A 1x1 transparent PNG, so the cover preview decodes instead of failing.
 final _pngBytes = base64Decode(
@@ -226,8 +230,10 @@ class _Harness {
   }
 }
 
-Blog publishedBlog() => Blog(
+Blog publishedBlog() => BlogModel(
   id: 'my-slug',
+  articleId: 'article-my-slug',
+  articleRevision: _revision,
   title: '已发布标题',
   content: '已发布正文',
   posterId: 'user',
@@ -379,6 +385,7 @@ void main() {
     final queued = harness.queue.enqueued.single;
     expect(queued.kind, PublishQueueKind.edit);
     expect(queued.targetId, 'my-slug');
+    expect(queued.expectedRevision, _revision);
     expect(queued.title, '改过的标题');
   });
 
@@ -406,6 +413,7 @@ void main() {
     final event = harness.bloc.events.single;
     expect(event, isA<UpdateBlogEvent>());
     expect((event as UpdateBlogEvent).blogId, 'my-slug');
+    expect(event.expectedRevision, _revision);
 
     harness.states.add(BlogUploadSuccess());
     await tester.pumpAndSettle();

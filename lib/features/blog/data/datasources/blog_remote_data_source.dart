@@ -14,6 +14,7 @@ import 'package:belog/features/blog/data/datasources/nowave_article_codec.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/data/models/deleted_blog_model.dart';
 import 'package:belog/features/blog/domain/entities/article_editions.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/author_articles_paging.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
@@ -140,6 +141,7 @@ abstract interface class BlogRemoteDataSource {
   /// categories alone, an empty list clears them, one id replaces them.
   Future<BlogModel> editBlog(
     BlogModel blog, {
+    ArticleRevision? expectedRevision,
     NowaveSessionFence? sessionFence,
     List<String>? categoryIds,
   });
@@ -645,10 +647,19 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   @override
   Future<BlogModel> editBlog(
     BlogModel blog, {
+    ArticleRevision? expectedRevision,
     NowaveSessionFence? sessionFence,
     List<String>? categoryIds,
   }) {
     return _guard(() async {
+      final condition = expectedRevision;
+      if (condition == null) {
+        throw const ServerException(
+          '服务器没有提供可验证的文章版本，请刷新后再编辑',
+          kind: FailureKind.validation,
+          code: 'article.revisionRequired',
+        );
+      }
       if (blog.articleId.isEmpty) {
         throw const ServerException(
           '该文章缺少服务端编号，无法更新，请尝试重新打开后再编辑',
@@ -683,6 +694,9 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
         // See the create path: an omitted `tagIds` keeps the stored tags, so
         // removing the last tag would otherwise never reach the server.
         'tagIds': tagIds,
+        // Atomic server condition. This stays an opaque decimal string: a
+        // conversion through Dart number types would corrupt large revisions.
+        'expectedRevision': condition.value,
         if (categoryIds != null) 'categoryIds': categoryIds,
       };
       final data = sessionFence == null

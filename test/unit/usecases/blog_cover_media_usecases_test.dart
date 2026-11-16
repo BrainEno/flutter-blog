@@ -1,4 +1,5 @@
 import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/usecase/update_blog.dart';
@@ -12,6 +13,7 @@ class _MockBlogRepository extends Mock implements BlogRepository {}
 void main() {
   const fence = NowaveSessionFence(userId: 'user-a', generation: 4);
   const coverUrl = 'https://api.example.invalid/api/v1/media/asset-1';
+  final revision = ArticleRevision.parse('7')!;
   final blog = Blog(
     id: 'article-1',
     title: 'Title',
@@ -76,6 +78,7 @@ void main() {
     when(
       () => repository.editBlog(
         blogId: 'article-1',
+        expectedRevision: revision,
         title: 'Title',
         content: 'Body',
         tags: const [],
@@ -90,6 +93,7 @@ void main() {
     final result = await UpdateBlog(repository)(
       UpdateBlogParams(
         blogId: 'article-1',
+        expectedRevision: revision,
         title: 'Title',
         content: 'Body',
         tags: const [],
@@ -103,6 +107,7 @@ void main() {
     verify(
       () => repository.editBlog(
         blogId: 'article-1',
+        expectedRevision: revision,
         title: 'Title',
         content: 'Body',
         tags: const [],

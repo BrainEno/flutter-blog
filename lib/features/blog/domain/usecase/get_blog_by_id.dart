@@ -10,12 +10,19 @@ class GetBlogById implements UseCase<Blog, GetBlogByIdParams> {
 
   @override
   Future<Either<Failure, Blog>> call(GetBlogByIdParams params) {
-    return blogRepository.getBlogById(params.blogId);
+    return params.requireFresh
+        ? blogRepository.getBlogById(params.blogId, requireFresh: true)
+        : blogRepository.getBlogById(params.blogId);
   }
 }
 
 class GetBlogByIdParams {
   final String blogId;
 
-  GetBlogByIdParams({required this.blogId});
+  /// Conflict review must compare against a response obtained now. In
+  /// particular, it may not use an offline cache response with the revision
+  /// that just failed its conditional write.
+  final bool requireFresh;
+
+  GetBlogByIdParams({required this.blogId, this.requireFresh = false});
 }

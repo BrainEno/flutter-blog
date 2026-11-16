@@ -1,4 +1,5 @@
 import 'package:belog/features/blog/domain/entities/article_document.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
 
 /// Published blog article.
@@ -18,6 +19,12 @@ class Blog {
   /// leave it null; authoring must additionally validate owner and locale and
   /// fetch the exact edition under the current session fence.
   String? get authoringArticleId => null;
+
+  /// Server work revision captured from the same response as this article.
+  ///
+  /// It is deliberately an opaque string value, not a timestamp or a locally
+  /// incremented counter. Null means this source cannot authorize a safe edit.
+  ArticleRevision? get authoringRevision => null;
 
   final String title;
   final String content;

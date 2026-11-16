@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/core/storage/backend_key.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:drift/drift.dart';
@@ -66,6 +67,11 @@ class SqliteBlogDraftStore implements BlogDraftStore {
         final String encoded => (jsonDecode(encoded) as List).cast<String>(),
         null => null,
       },
+      // A legacy or damaged condition is deliberately unavailable; the
+      // editor preserves this draft but must refuse an unfenced remote write.
+      expectedRevision: ArticleRevision.parse(
+        row.readNullable<String>('expected_revision'),
+      ),
       updatedAt: DateTime.fromMicrosecondsSinceEpoch(
         row.read<int>('updated_at'),
       ),
@@ -81,6 +87,7 @@ class SqliteBlogDraftStore implements BlogDraftStore {
       final List<String> ids => jsonEncode(ids),
       null => null,
     };
+    final expectedRevision = draft.expectedRevision?.value;
     return _serializeWrite(() async {
       await database.transaction(() async {
         final existing = await _load(draft.blogId, draft.userId);
@@ -88,13 +95,14 @@ class SqliteBlogDraftStore implements BlogDraftStore {
           draft.id = existing.id;
           await database.customStatement(
             'UPDATE account_drafts SET title = ?, content = ?, tags = ?, '
-            'category_ids = ?, updated_at = ? '
+            'category_ids = ?, expected_revision = ?, updated_at = ? '
             'WHERE id = ? AND backend = ? AND user_id = ? AND blog_id IS ?',
             [
               draft.title,
               draft.content,
               tags,
               categoryIds,
+              expectedRevision,
               draft.updatedAt.microsecondsSinceEpoch,
               draft.id,
               _backend,
@@ -105,8 +113,8 @@ class SqliteBlogDraftStore implements BlogDraftStore {
         } else {
           final id = await database.customInsert(
             'INSERT INTO account_drafts(backend, user_id, blog_id, title, '
-            'content, tags, category_ids, updated_at) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            'content, tags, category_ids, expected_revision, updated_at) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
             variables: [
               Variable<String>(_backend),
               Variable<String>(draft.userId),
@@ -115,6 +123,7 @@ class SqliteBlogDraftStore implements BlogDraftStore {
               Variable(draft.content),
               Variable(tags),
               Variable<String>(categoryIds),
+              Variable<String>(expectedRevision),
               Variable(draft.updatedAt.microsecondsSinceEpoch),
             ],
           );
@@ -133,7 +142,7 @@ class SqliteBlogDraftStore implements BlogDraftStore {
         'DELETE FROM account_drafts '
         'WHERE id = ? AND backend = ? AND user_id = ? AND blog_id IS ? '
         'AND updated_at = ? AND title = ? AND content = ? AND tags = ? '
-        'AND category_ids IS ?',
+        'AND category_ids IS ? AND expected_revision IS ?',
         variables: [
           Variable(id),
           Variable<String>(_backend),
@@ -146,6 +155,7 @@ class SqliteBlogDraftStore implements BlogDraftStore {
           Variable<String>(
             draft.categoryIds == null ? null : jsonEncode(draft.categoryIds),
           ),
+          Variable<String>(draft.expectedRevision?.value),
         ],
       );
       return deleted == 1;

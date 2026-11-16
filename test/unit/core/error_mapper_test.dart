@@ -63,6 +63,20 @@ void main() {
       expect(exception.kind, FailureKind.validation);
     });
 
+    test('ARTICLE_VERSION_CONFLICT becomes an authoring conflict', () {
+      final exception = mapToServerException(
+        const NowaveApiException(
+          statusCode: 409,
+          code: 'ARTICLE_VERSION_CONFLICT',
+          message: 'expected revision does not match',
+        ),
+      );
+
+      expect(exception.kind, FailureKind.validation);
+      expect(exception.code, 'article.versionConflict');
+      expect(exception.message, isNot(contains('expected')));
+    });
+
     test(
       'NowaveApiException IDEMPOTENCY_CONFLICT becomes a validation error',
       () {

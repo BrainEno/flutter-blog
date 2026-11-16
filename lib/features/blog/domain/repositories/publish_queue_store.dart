@@ -1,4 +1,5 @@
 import 'package:belog/core/common/entities/image_upload.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 
 /// Durable store for publishes that still owe the server a request
@@ -39,6 +40,11 @@ abstract interface class PublishQueueStore {
     PublishQueueKind kind = PublishQueueKind.create,
     String? targetId,
     String? locale,
+
+    /// Required for an edit. It remains the original server revision on every
+    /// retry, including after an uncertain response, so a retry can conflict
+    /// safely but can never overwrite a newer server article.
+    ArticleRevision? expectedRevision,
 
     /// The author's category choice at queue time; null leaves the article's
     /// categories alone when the entry is eventually sent.

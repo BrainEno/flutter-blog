@@ -33,6 +33,8 @@ class EditorForm extends StatelessWidget {
     required this.blog,
     required this.hasUnclaimedDrafts,
     this.resumedFromQueue = false,
+    this.hasVersionConflict = false,
+    this.onReviewVersionConflict,
     required this.autoSaveStatus,
     required this.onPickCover,
     required this.onChooseCoverFromLibrary,
@@ -59,6 +61,12 @@ class EditorForm extends StatelessWidget {
   /// The text came from a failed queue entry, so the page says what happens to
   /// that entry when this publish succeeds.
   final bool resumedFromQueue;
+
+  /// A conditional update found a newer server work. The editor keeps the
+  /// local draft visible and does not queue/retry it; this callback opens the
+  /// explicit three-way review before the author can rebase its condition.
+  final bool hasVersionConflict;
+  final VoidCallback? onReviewVersionConflict;
   final AutoSaveStatus autoSaveStatus;
   final VoidCallback onPickCover;
   final VoidCallback onChooseCoverFromLibrary;
@@ -96,6 +104,41 @@ class EditorForm extends StatelessWidget {
                   child: Semantics(
                     liveRegion: true,
                     child: Text(context.l10n.legacyDraftsNotice),
+                  ),
+                ),
+              if (hasVersionConflict)
+                Semantics(
+                  container: true,
+                  liveRegion: true,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: NoWaveSpacing.medium),
+                    padding: const EdgeInsets.all(NoWaveSpacing.medium),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.l10n.articleConflictNoticeTitle,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: NoWaveSpacing.small),
+                        Text(context.l10n.articleConflictNoticeBody),
+                        const SizedBox(height: NoWaveSpacing.small),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: onReviewVersionConflict,
+                            icon: const Icon(Icons.compare_arrows_outlined),
+                            label: Text(context.l10n.articleConflictReview),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               AutoSaveBanner(status: autoSaveStatus),

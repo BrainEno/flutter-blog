@@ -23,7 +23,7 @@ class AppDatabase extends GeneratedDatabase {
   );
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -240,6 +240,38 @@ class AppDatabase extends GeneratedDatabase {
         // in a temporary table with a partially upgraded schema.
         await transaction(_scopeUnattributedCacheAndHistory);
       }
+      if (from < 18) {
+        // no-wave's optimistic-concurrency counter is a decimal int64 string.
+        // It must stay TEXT all the way through SQLite: a numeric affinity or
+        // a Dart number conversion could round a valid server value. NULL is
+        // intentionally an old/unknown source and causes authoring to fail
+        // closed, never an unguarded PUT.
+        if (!await _tableExists('blog_cache')) {
+          await _createScopedBlogCache();
+          await _createScopedBlogCacheIndexes();
+        } else if (!await _columnExists('blog_cache', 'article_revision')) {
+          await customStatement(
+            'ALTER TABLE blog_cache ADD COLUMN article_revision TEXT',
+          );
+        }
+        if (!await _tableExists('account_drafts')) {
+          await _createAccountDrafts();
+        } else if (!await _columnExists(
+          'account_drafts',
+          'expected_revision',
+        )) {
+          await customStatement(
+            'ALTER TABLE account_drafts ADD COLUMN expected_revision TEXT',
+          );
+        }
+        if (!await _tableExists('publish_queue')) {
+          await _createPublishQueue();
+        } else if (!await _columnExists('publish_queue', 'expected_revision')) {
+          await customStatement(
+            'ALTER TABLE publish_queue ADD COLUMN expected_revision TEXT',
+          );
+        }
+      }
     },
   );
 
@@ -264,7 +296,7 @@ class AppDatabase extends GeneratedDatabase {
       'id INTEGER PRIMARY KEY AUTOINCREMENT, backend TEXT NOT NULL, '
       'user_id TEXT NOT NULL, blog_id TEXT, title TEXT NOT NULL, '
       'content TEXT NOT NULL, tags TEXT NOT NULL, category_ids TEXT, '
-      'updated_at INTEGER NOT NULL)',
+      'expected_revision TEXT, updated_at INTEGER NOT NULL)',
     );
     await customStatement(
       'CREATE UNIQUE INDEX account_drafts_new '
@@ -309,7 +341,7 @@ class AppDatabase extends GeneratedDatabase {
       'content TEXT NOT NULL, tags TEXT NOT NULL, cover_file TEXT, '
       'cover_mime TEXT, cover_url TEXT, '
       "kind TEXT NOT NULL DEFAULT 'create', target_id TEXT, locale TEXT, "
-      'category_ids TEXT, state TEXT NOT NULL, '
+      'category_ids TEXT, expected_revision TEXT, state TEXT NOT NULL, '
       'attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at INTEGER, '
       'last_error_code TEXT, '
       'created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
@@ -395,7 +427,8 @@ class AppDatabase extends GeneratedDatabase {
     "article_id TEXT NOT NULL DEFAULT '', title TEXT NOT NULL, content TEXT NOT NULL, "
     "poster_id TEXT NOT NULL, image_url TEXT NOT NULL, tags TEXT NOT NULL, "
     "updated_at INTEGER NOT NULL, poster_name TEXT, poster_avatar TEXT, "
-    "document_json TEXT, categories_json TEXT, accessed_at INTEGER NOT NULL DEFAULT 0, "
+    "document_json TEXT, categories_json TEXT, article_revision TEXT, "
+    "accessed_at INTEGER NOT NULL DEFAULT 0, "
     "PRIMARY KEY (backend, id, content_locale))",
   );
 
@@ -494,14 +527,16 @@ class AppDatabase extends GeneratedDatabase {
     String? posterAvatar,
     String? documentJson,
     String? categoriesJson,
+    String? articleRevision,
   }) => customStatement(
     '''
-    INSERT INTO blog_cache(backend, accessed_at, id, content_locale, article_id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar, document_json, categories_json)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO blog_cache(backend, accessed_at, id, content_locale, article_id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar, document_json, categories_json, article_revision)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(backend, id, content_locale) DO UPDATE SET article_id = excluded.article_id, title = excluded.title, content = excluded.content,
       poster_id = excluded.poster_id, image_url = excluded.image_url, tags = excluded.tags,
       updated_at = excluded.updated_at, poster_name = excluded.poster_name, poster_avatar = excluded.poster_avatar,
-      document_json = excluded.document_json, categories_json = excluded.categories_json, accessed_at = excluded.accessed_at
+      document_json = excluded.document_json, categories_json = excluded.categories_json,
+      article_revision = excluded.article_revision, accessed_at = excluded.accessed_at
     ''',
     [
       backend,
@@ -519,6 +554,7 @@ class AppDatabase extends GeneratedDatabase {
       posterAvatar,
       documentJson,
       categoriesJson,
+      articleRevision,
     ],
   );
 }

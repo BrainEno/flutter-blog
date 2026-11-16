@@ -65,6 +65,16 @@ ServerException mapToServerException(Object error) {
           code: 'server.CONFLICT',
           cause: error,
         );
+      case 'ARTICLE_VERSION_CONFLICT':
+        // A stale conditional write is a normal authoring branch, not a
+        // generic duplicate/validation error. The editor retains its draft
+        // and asks the author to review a freshly read article before rebasing.
+        return ServerException(
+          '文章已在其他位置更新，请先核对最新内容',
+          kind: FailureKind.validation,
+          code: 'article.versionConflict',
+          cause: error,
+        );
       case 'IDEMPOTENCY_CONFLICT':
         // Same Idempotency-Key reused with a different request (issue #19:
         // the server replays the original work on a same-key retry).

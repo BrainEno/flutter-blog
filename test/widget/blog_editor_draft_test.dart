@@ -3,8 +3,13 @@ import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
+import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
+import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
+import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
@@ -12,9 +17,14 @@ import 'package:belog/features/blog/presentation/pages/blog_editor_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:mocktail/mocktail.dart';
 
+final _revision = ArticleRevision.parse('7')!;
+
 class MockUploadBloc extends Mock implements BlogUploadBloc {}
+
+class MockBlogRepository extends Mock implements BlogRepository {}
 
 /// Mock that records dispatched events instead of relying on void stubs.
 class RecordingUploadBloc extends Mock implements BlogUploadBloc {
@@ -127,8 +137,10 @@ User testUser(String id) => User(
   updatedAt: DateTime.utc(2024),
 );
 
-Blog makeBlog(String id) => Blog(
+Blog makeBlog(String id) => BlogModel(
   id: id,
+  articleId: 'article-$id',
+  articleRevision: _revision,
   title: '已发布标题',
   content: '已发布正文',
   posterId: 'author',
@@ -190,6 +202,7 @@ Future<RecordingUploadBloc> openEditorLive(
   required StreamController<BlogUploadState> states,
   AppUserCubit? appUser,
   FakeSessionIdentity? session,
+  GetBlogById? getBlogById,
 }) async {
   final bloc = RecordingUploadBloc();
   when(() => bloc.state).thenReturn(BlogUploadInitial());
@@ -213,6 +226,7 @@ Future<RecordingUploadBloc> openEditorLive(
           blog: blog,
           draftStore: store,
           sessionIdentity: identity,
+          getBlogById: getBlogById,
         ),
       ),
     ),
@@ -689,6 +703,141 @@ void main() {
     expect(bloc.events, isEmpty);
     expect(find.text('无法保存本地备份，文章尚未发布。请检查存储后重试。'), findsOneWidget);
   });
+
+  testWidgets('an edit with no server revision saves locally but is not sent', (
+    tester,
+  ) async {
+    final store = FakeDraftStore();
+    final states = StreamController<BlogUploadState>.broadcast();
+    addTearDown(states.close);
+    final bloc = await openEditorLive(
+      tester,
+      store,
+      blog: Blog(
+        id: 'legacy-article',
+        title: 'old title',
+        content: 'old body',
+        posterId: 'author',
+        imageUrl: '',
+        tags: const [],
+        updatedAt: DateTime.utc(2025),
+      ),
+      states: states,
+    );
+
+    await tester.enterText(find.byType(TextFormField).first, 'local title');
+    await tester.tap(find.text('发布'));
+    await tester.pump();
+
+    expect(bloc.events, isEmpty);
+    expect(store.savedDrafts.last.title, 'local title');
+    expect(store.savedDrafts.last.expectedRevision, isNull);
+    expect(
+      find.text('这篇文章没有可验证的服务端版本。请在支持安全更新的服务上刷新；本地草稿已保留。'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a version conflict keeps the saved draft and offers review', (
+    tester,
+  ) async {
+    final store = FakeDraftStore();
+    final states = StreamController<BlogUploadState>.broadcast();
+    addTearDown(states.close);
+    final bloc = await openEditorLive(
+      tester,
+      store,
+      blog: makeBlog('article-a'),
+      states: states,
+    );
+
+    await tester.enterText(find.byType(TextFormField).first, 'local title');
+    await tester.tap(find.text('发布'));
+    await tester.pump();
+    final event = bloc.events.single as UpdateBlogEvent;
+    expect(event.expectedRevision, _revision);
+    final beforeConflict = store.savedDrafts.last;
+
+    states.add(
+      const BlogUploadVersionConflict(
+        Failure(
+          '文章已在其他位置更新，请先核对最新内容',
+          kind: FailureKind.validation,
+          code: 'article.versionConflict',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('更改需要核对'), findsOneWidget);
+    expect(find.text('核对最新版本'), findsOneWidget);
+    expect(store.savedDrafts.last, same(beforeConflict));
+  });
+
+  testWidgets(
+    'conflict review uses a fresh response and only rebases when confirmed',
+    (tester) async {
+      final store = FakeDraftStore();
+      final states = StreamController<BlogUploadState>.broadcast();
+      final repository = MockBlogRepository();
+      final latestRevision = ArticleRevision.parse('8')!;
+      final latest = BlogModel(
+        id: 'article-a',
+        articleId: 'article-article-a',
+        articleRevision: latestRevision,
+        title: '服务器的新标题',
+        content: '服务器的新正文',
+        posterId: 'author',
+        imageUrl: '',
+        tags: const ['新版'],
+        updatedAt: DateTime.utc(2026),
+      );
+      when(
+        () => repository.getBlogById('article-a', requireFresh: true),
+      ).thenAnswer((_) async => right(latest));
+      addTearDown(states.close);
+      final bloc = await openEditorLive(
+        tester,
+        store,
+        blog: makeBlog('article-a'),
+        states: states,
+        getBlogById: GetBlogById(repository),
+      );
+
+      await tester.enterText(find.byType(TextFormField).first, '本地标题');
+      await tester.tap(find.text('发布'));
+      await tester.pump();
+      states.add(
+        const BlogUploadVersionConflict(
+          Failure(
+            '文章已在其他位置更新，请先核对最新内容',
+            kind: FailureKind.validation,
+            code: 'article.versionConflict',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final reviewAction = find.text('核对最新版本');
+      await tester.ensureVisible(reviewAction);
+      await tester.tap(reviewAction);
+      await tester.pumpAndSettle();
+      expect(find.text('核对文章更改'), findsOneWidget);
+      verify(
+        () => repository.getBlogById('article-a', requireFresh: true),
+      ).called(1);
+
+      await tester.tap(find.text('以最新版本作为保存基础'));
+      await tester.pumpAndSettle();
+      expect(store.savedDrafts.last.expectedRevision, latestRevision);
+      expect(find.text('核对文章更改'), findsNothing);
+
+      await tester.tap(find.text('发布'));
+      await tester.pump();
+      final rebasedEvent = bloc.events.last as UpdateBlogEvent;
+      expect(rebasedEvent.expectedRevision, latestRevision);
+    },
+  );
 
   testWidgets('same-account relogin invalidates an in-flight publish', (
     tester,

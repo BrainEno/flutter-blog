@@ -1,5 +1,6 @@
 import 'package:belog/features/blog/data/datasources/article_document_codec.dart';
 import 'package:belog/features/blog/data/datasources/nowave_article_codec.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
 
@@ -22,6 +23,7 @@ class BlogModel extends Blog {
     super.document,
     this.documentJson,
     this.articleId = '',
+    this.articleRevision,
     this.publishedAt,
     this.serverSummary,
     this.plainEditorCompatible = false,
@@ -34,9 +36,17 @@ class BlogModel extends Blog {
   /// this is the address used by `PUT /articles/:articleId`.
   final String articleId;
 
+  /// Exact server work revision returned with this row, when the deployment
+  /// supports optimistic concurrency. Invalid server strings are represented as
+  /// null so authoring fails closed instead of rewriting without a condition.
+  final ArticleRevision? articleRevision;
+
   @override
   String? get authoringArticleId =>
       articleId.isNotEmpty && articleId == articleId.trim() ? articleId : null;
+
+  @override
+  ArticleRevision? get authoringRevision => articleRevision;
 
   /// Exact UTC millisecond timestamp returned by the server. It is only
   /// used for a live feed continuation and is not stored in the cache.
@@ -57,6 +67,7 @@ class BlogModel extends Blog {
   BlogModel copyWith({
     String? id,
     String? articleId,
+    ArticleRevision? articleRevision,
     String? content,
     String? posterId,
     String? title,
@@ -72,6 +83,7 @@ class BlogModel extends Blog {
     return BlogModel(
       id: id ?? this.id,
       articleId: articleId ?? this.articleId,
+      articleRevision: articleRevision ?? this.articleRevision,
       publishedAt: publishedAt,
       document: content == null || content == this.content ? document : null,
       documentJson: content == null || content == this.content
@@ -163,6 +175,7 @@ class BlogModel extends Blog {
       locale: map['locale'] as String? ?? '',
       id: map['slug'] as String? ?? '',
       articleId: map['id'] as String? ?? '',
+      articleRevision: ArticleRevision.parse(map['revision']),
       publishedAt: map['publishedAt'] is String
           ? map['publishedAt'] as String
           : null,

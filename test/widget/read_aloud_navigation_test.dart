@@ -85,10 +85,10 @@ void main() {
       expect(engine.calls.last.rate, 1.25);
 
       final beforePage = engine.stopCount;
-      harness.router!.push('/author/author');
+      harness.router!.router.push('/author/author');
       await tester.pumpAndSettle();
       expect(engine.stopCount, greaterThan(beforePage));
-      harness.router!.pop();
+      harness.router!.router.pop();
       await tester.pumpAndSettle();
       await startPlayback(tester);
       final beforeBackground = engine.stopCount;
@@ -99,7 +99,7 @@ void main() {
       await tester.pumpAndSettle();
       await startPlayback(tester);
       final beforeRoot = engine.stopCount;
-      harness.router!.push('/login');
+      harness.router!.router.push('/login');
       await tester.pumpAndSettle();
       expect(engine.stopCount, greaterThan(beforeRoot));
       expect(tester.takeException(), isNull);

@@ -1,6 +1,7 @@
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/blog/domain/entities/article_editions.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
@@ -74,7 +75,14 @@ abstract interface class BlogRepository {
     String? expectedViewerId,
   });
 
-  Future<Either<Failure, Blog>> getBlogById(String blogId);
+  /// Reads one article. Normal reader calls may fall back to the local cache
+  /// when the network is unavailable. A conditional-write conflict review sets
+  /// [requireFresh] so it can never present an old cached revision as the
+  /// article the author is explicitly rebasing against.
+  Future<Either<Failure, Blog>> getBlogById(
+    String blogId, {
+    bool requireFresh = false,
+  });
 
   /// Resolves a stored tag name to its server taxonomy; null means the
   /// server has no such tag (an explicit empty state, never "everything").
@@ -138,8 +146,14 @@ abstract interface class BlogRepository {
   /// [locale] is the edition to write. Null means the current content
   /// language; pass the edition the article was opened from, because the
   /// server inserts or replaces exactly the translation named in the body.
+  ///
+  /// [expectedRevision] is mandatory. A client must never manufacture one by
+  /// re-reading immediately before the write: it represents the article the
+  /// author reviewed, and a stale value must become a conflict rather than an
+  /// overwrite.
   Future<Either<Failure, Blog>> editBlog({
     required String blogId,
+    ArticleRevision? expectedRevision,
     required String title,
     required String content,
     required List<String> tags,

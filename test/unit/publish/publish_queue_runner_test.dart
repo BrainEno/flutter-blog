@@ -9,6 +9,7 @@ import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_publish_queue_store.dart';
 import 'package:belog/features/blog/data/publish/publish_queue_runner.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
@@ -36,6 +37,7 @@ class _FakeIdentity implements NowaveSessionIdentity {
 }
 
 const _kCoverUrl = 'https://api.example.invalid/api/v1/media/cover-1';
+final _revision = ArticleRevision.parse('9223372036854775807')!;
 
 const _rejected = Failure(
   '标题太长',
@@ -510,6 +512,7 @@ void main() {
       idempotencyKey: key,
       kind: PublishQueueKind.edit,
       targetId: targetId,
+      expectedRevision: _revision,
       cover: withCover
           ? ImageUpload(bytes: Uint8List.fromList(const [4, 5, 6]))
           : null,
@@ -525,6 +528,7 @@ void main() {
         content: any(named: 'content'),
         tags: any(named: 'tags'),
         uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+        expectedRevision: any(named: 'expectedRevision'),
         sessionFence: any(named: 'sessionFence'),
       ),
     ).thenAnswer((_) async => right(_blog('edited title')));
@@ -538,6 +542,7 @@ void main() {
         content: 'edited body',
         tags: any(named: 'tags'),
         uploadedCoverUrl: null,
+        expectedRevision: _revision,
         sessionFence: any(named: 'sessionFence'),
       ),
     ).called(1);
@@ -564,6 +569,7 @@ void main() {
         content: any(named: 'content'),
         tags: any(named: 'tags'),
         uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+        expectedRevision: any(named: 'expectedRevision'),
         sessionFence: any(named: 'sessionFence'),
       ),
     ).thenAnswer((_) async => left(Failure.networkOffline()));
@@ -593,6 +599,7 @@ void main() {
         content: any(named: 'content'),
         tags: any(named: 'tags'),
         uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+        expectedRevision: any(named: 'expectedRevision'),
         sessionFence: any(named: 'sessionFence'),
       ),
     ).thenAnswer((_) async {
@@ -622,10 +629,65 @@ void main() {
         content: any(named: 'content'),
         tags: any(named: 'tags'),
         uploadedCoverUrl: _kCoverUrl,
+        expectedRevision: _revision,
         sessionFence: any(named: 'sessionFence'),
       ),
     ).called(2);
   });
+
+  test(
+    'a legacy edit without a revision stops without an HTTP update',
+    () async {
+      await enqueueEdit();
+      await db.customStatement(
+        'UPDATE publish_queue SET expected_revision = NULL',
+      );
+
+      expect(await runner.drain(), 0);
+
+      final stored = (await store.entries(userId: 'alice')).single;
+      expect(stored.status, PublishQueueStatus.failed);
+      expect(stored.lastErrorCode, 'article.revisionRequired');
+      verifyNever(
+        () => repository.editBlog(
+          blogId: any(named: 'blogId'),
+          title: any(named: 'title'),
+          content: any(named: 'content'),
+          tags: any(named: 'tags'),
+          uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+          expectedRevision: any(named: 'expectedRevision'),
+          sessionFence: any(named: 'sessionFence'),
+        ),
+      );
+    },
+  );
+
+  test(
+    'a malformed queued revision also stops without an HTTP update',
+    () async {
+      await enqueueEdit();
+      await db.customStatement(
+        "UPDATE publish_queue SET expected_revision = '0001'",
+      );
+
+      expect(await runner.drain(), 0);
+
+      final stored = (await store.entries(userId: 'alice')).single;
+      expect(stored.status, PublishQueueStatus.failed);
+      expect(stored.lastErrorCode, 'article.revisionRequired');
+      verifyNever(
+        () => repository.editBlog(
+          blogId: any(named: 'blogId'),
+          title: any(named: 'title'),
+          content: any(named: 'content'),
+          tags: any(named: 'tags'),
+          uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+          expectedRevision: any(named: 'expectedRevision'),
+          sessionFence: any(named: 'sessionFence'),
+        ),
+      );
+    },
+  );
 
   test('an edit with no target stops for a human', () async {
     // Enqueued through the store this cannot happen; the runner still refuses
@@ -646,6 +708,7 @@ void main() {
         content: any(named: 'content'),
         tags: any(named: 'tags'),
         uploadedCoverUrl: any(named: 'uploadedCoverUrl'),
+        expectedRevision: any(named: 'expectedRevision'),
         sessionFence: any(named: 'sessionFence'),
       ),
     );

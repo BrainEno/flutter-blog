@@ -1,10 +1,13 @@
 import 'package:belog/core/common/entities/image_upload.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
 
 /// One queue row with the fields the UI cares about defaulted to a failed,
 /// retryable entry.
+final _defaultEditRevision = ArticleRevision.parse('7')!;
+
 PublishQueueEntry queueEntry({
   String id = 'queue-1',
   String userId = 'user',
@@ -22,6 +25,7 @@ PublishQueueEntry queueEntry({
   String? targetId,
   String? locale,
   List<String>? categoryIds,
+  ArticleRevision? expectedRevision,
 }) => PublishQueueEntry(
   id: id,
   userId: userId,
@@ -41,6 +45,9 @@ PublishQueueEntry queueEntry({
   targetId: targetId,
   locale: locale,
   categoryIds: categoryIds,
+  expectedRevision:
+      expectedRevision ??
+      (kind == PublishQueueKind.edit ? _defaultEditRevision : null),
 );
 
 /// A queue store that records calls instead of touching disk.
@@ -78,6 +85,7 @@ class FakePublishQueueStore implements PublishQueueStore {
     PublishQueueKind kind = PublishQueueKind.create,
     String? targetId,
     String? locale,
+    ArticleRevision? expectedRevision,
     List<String>? categoryIds,
   }) async {
     final entry = queueEntry(
@@ -94,6 +102,7 @@ class FakePublishQueueStore implements PublishQueueStore {
       targetId: targetId,
       locale: locale,
       categoryIds: categoryIds,
+      expectedRevision: expectedRevision,
       coverUrl: coverUrl,
     );
     enqueued.add(entry);

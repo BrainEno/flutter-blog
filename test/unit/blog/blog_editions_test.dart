@@ -5,16 +5,20 @@ import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/transport/api_envelope.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockNowaveApiClient extends Mock implements NowaveApiClient {}
+
+final _revision = ArticleRevision.parse('7')!;
 
 /// A full article envelope, in the edition the server answered with.
 Map<String, dynamic> _articleMap({String locale = 'zh-CN'}) {
   return <String, dynamic>{
     'id': 'server-uuid-1',
     'slug': 'my-slug',
+    'revision': '7',
     'title': '标题',
     'summary': '作者的摘要',
     'authorId': 'u1',
@@ -47,10 +51,11 @@ void main() {
   });
 
   group('an article knows its edition', () {
-    test('the payload locale is kept on the model', () {
+    test('the payload locale and opaque revision are kept on the model', () {
       final blog = BlogModel.fromNowaveArticle(_articleMap(locale: 'en'));
 
       expect(blog.locale, 'en');
+      expect(blog.articleRevision, _revision);
     });
 
     test('a payload without a locale leaves the edition unknown', () {
@@ -74,7 +79,10 @@ void main() {
         () => client.putJson('/articles/server-uuid-1', any()),
       ).thenAnswer((_) async => _articleMap());
 
-      await dataSource.editBlog(original.copyWith(title: '新标题'));
+      await dataSource.editBlog(
+        original.copyWith(title: '新标题'),
+        expectedRevision: _revision,
+      );
 
       final body =
           verify(
@@ -96,7 +104,7 @@ void main() {
         () => client.putJson('/articles/server-uuid-1', any()),
       ).thenAnswer((_) async => _articleMap(locale: 'en'));
 
-      await dataSource.editBlog(original);
+      await dataSource.editBlog(original, expectedRevision: _revision);
 
       final body =
           verify(

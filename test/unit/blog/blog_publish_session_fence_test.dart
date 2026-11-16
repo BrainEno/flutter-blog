@@ -10,11 +10,14 @@ import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mocktail/mocktail.dart';
+
+final _revision = ArticleRevision.parse('7')!;
 
 class _Auth implements NowaveViewerAuthenticator {
   String user = 'A';
@@ -56,6 +59,7 @@ NowaveApiClient _client(_Auth auth, MockClient httpClient) => NowaveApiClient(
 BlogModel _blog({List<String> tags = const []}) => BlogModel(
   id: 'slug',
   articleId: 'article-id',
+  articleRevision: _revision,
   title: 'private draft',
   content: 'private body',
   posterId: 'A',
@@ -71,6 +75,7 @@ http.Response _article() => http.Response(
     'data': {
       'id': 'article-id',
       'slug': 'slug',
+      'revision': '7',
       'authorId': 'A',
       'title': 'title',
       'summary': 'summary',
@@ -227,6 +232,7 @@ void main() {
       final repository = BlogRepositoryImpl(remote, _UnusedLocal(), _Online());
       final pending = repository.editBlog(
         blogId: 'slug',
+        expectedRevision: _revision,
         title: 'A',
         content: 'private',
         tags: [],
