@@ -43,5 +43,7 @@
 - [Supabase 到 no-wave 的迁移](supabase-to-nowave-migration.md)：历史迁移背景；
   旧快照的接口结论以较新的 API 差距审计和当前源码为准。
 - [代码健壮性审查](code-audit.md)：指定基线的已修复项与剩余风险。
+- [编辑器收敛路线图](editor-architecture-roadmap.md)：Markdown 写入、结构化本地
+  恢复工具、条件并发与临时页面退役的安全边界和分阶段验收。
 - [Agent 开发流程](agent-development.md) 和 [AGENTS.md](../AGENTS.md)：工程约束、
   验证与 PR 证据；会话平台若限定工作分支，应遵守该更高优先级的约束。

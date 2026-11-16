@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:belog/core/common/media/no_wave_image_decode_size.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
@@ -54,6 +55,14 @@ class EditorCoverField extends StatelessWidget {
   }
 
   Widget _cover(BuildContext context) {
+    // The editor cover fills its parent width but has a fixed paint height.
+    // The screen width is a conservative upper bound before the parent has
+    // laid out; it still prevents a camera original from occupying the cache.
+    final decode = noWaveDecodeSizeForFixed(
+      context,
+      logicalWidth: MediaQuery.of(context).size.width,
+      logicalHeight: NoWaveSizes.coverEditorBox,
+    );
     final picked = image;
     if (picked != null && isNewImageSelected) {
       return SizedBox(
@@ -61,7 +70,12 @@ class EditorCoverField extends StatelessWidget {
         width: double.infinity,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Image.file(picked, fit: BoxFit.cover),
+          child: Image.file(
+            picked,
+            fit: BoxFit.cover,
+            cacheWidth: decode.width,
+            cacheHeight: decode.height,
+          ),
         ),
       );
     }
@@ -72,7 +86,12 @@ class EditorCoverField extends StatelessWidget {
         width: double.infinity,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Image.memory(bytes, fit: BoxFit.cover),
+          child: Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+            cacheWidth: decode.width,
+            cacheHeight: decode.height,
+          ),
         ),
       );
     }
@@ -85,7 +104,12 @@ class EditorCoverField extends StatelessWidget {
         width: double.infinity,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: CachedNetworkImage(imageUrl: selectedCover, fit: BoxFit.cover),
+          child: CachedNetworkImage(
+            imageUrl: selectedCover,
+            fit: BoxFit.cover,
+            memCacheWidth: decode.width,
+            memCacheHeight: decode.height,
+          ),
         ),
       );
     }
@@ -101,6 +125,8 @@ class EditorCoverField extends StatelessWidget {
             // asset id), so the URL is used as-is: no cache-busting suffix.
             imageUrl: published.imageUrl,
             fit: BoxFit.cover,
+            memCacheWidth: decode.width,
+            memCacheHeight: decode.height,
           ),
         ),
       );

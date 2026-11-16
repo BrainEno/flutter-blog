@@ -26,6 +26,9 @@ import 'package:belog/features/blog/domain/usecase/search_blogs.dart'
     show kMaxSearchResults;
 import 'package:belog/core/common/entities/image_upload.dart';
 
+part 'blog_remote_article_reads.dart';
+part 'blog_remote_article_writes.dart';
+
 // HTTP status codes are spelled out below (401/400/404) so the file does not
 // have to import `dart:io` just for its constants.
 //
@@ -184,7 +187,25 @@ const int _kTagLookupPages = 5;
 /// primary list: the server caps the endpoint at 50, we show a handful.
 const int _kRelatedLimit = 6;
 
-class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
+/// The narrow shared contract for the extracted read/write operation mixins.
+///
+/// It deliberately exposes only transport, locale, taxonomy and session-fence
+/// primitives. Public operations remain in the mixins or the façade, so a
+/// future change cannot quietly couple a read route to a write implementation.
+abstract class _BlogRemoteOperationContext {
+  NowaveApiClient get client;
+  NowaveSessionIdentity? get identity;
+  String get _locale;
+  NowaveTagResolver get _tags;
+  Future<T> _guard<T>(Future<T> Function() body);
+  NowaveSessionFence requireActiveFence();
+  String _editionLocale(String? locale);
+}
+
+class BlogRemoteDataSourceImpl extends _BlogRemoteOperationContext
+    with _BlogRemoteReadOperations, _BlogRemoteWriteOperations
+    implements BlogRemoteDataSource {
+  @override
   final NowaveApiClient client;
 
   /// Where the *active* account is read from.
@@ -194,6 +215,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   /// identity the app would be trusting the token holder implicitly - the gap
   /// in #104 - so the app always passes one; tests that predate the fence may
   /// omit it and keep the old behaviour.
+  @override
   final NowaveSessionIdentity? identity;
 
   BlogRemoteDataSourceImpl(this.client, {this.identity, this.contentLocale});
@@ -202,9 +224,11 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   /// historical Chinese default for callers that never switch (tests).
   final ContentLocale? contentLocale;
 
+  @override
   String get _locale => (contentLocale ?? ContentLocale.instance).tag;
 
   /// Tag name -> id resolution, cached for the app session.
+  @override
   late final NowaveTagResolver _tags = NowaveTagResolver(client);
 
   /// The viewer's like state, with one in-flight toggle per article.
@@ -224,6 +248,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   /// decide something *before* the first request keep their own handler:
   /// `getOnlineFeed` chooses the path, `getArticlesByTag` adds a 404 case and
   /// `resolveTag` normalises the query first.
+  @override
   Future<T> _guard<T>(Future<T> Function() body) async {
     try {
       return await body();
@@ -236,6 +261,7 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
   ///
   /// Refused when nobody is signed in: sending the request anyway would run it
   /// for an account the caller never meant to act as.
+  @override
   NowaveSessionFence requireActiveFence() {
     final active = identity;
     final userId = active?.activeUserId ?? '';
@@ -252,537 +278,15 @@ class BlogRemoteDataSourceImpl implements BlogRemoteDataSource {
     );
   }
 
-  @override
-  Future<BlogModel> uploadBlog(
-    BlogModel blog, {
-    NowaveSessionFence? sessionFence,
-    String? idempotencyKey,
-    List<String>? categoryIds,
-  }) {
-    return _guard(() async {
-      final tagIds = await _tags.resolveIds(blog.tags, sessionFence);
-      final body = <String, dynamic>{
-        'title': blog.title,
-        'contentBlocks': blogToContentBlocks(
-          content: blog.content,
-          coverUrl: blog.imageUrl.isNotEmpty ? blog.imageUrl : null,
-        ),
-        'contentBlocksVersion': 0,
-        'publish': true,
-        'locale': _locale,
-        // Sent even when empty: an omitted `tagIds` means "leave the tags
-        // alone", so a cleared list would silently come back on the next read.
-        'tagIds': tagIds,
-        if (categoryIds != null) 'categoryIds': categoryIds,
-      };
-      // The server replays a repeated `Idempotency-Key` instead of creating a
-      // second article, which is what makes a queued publish safe to retry
-      // after a lost response (#23). The key is stable per intent, so a 401
-      // refresh-and-replay keeps it too.
-      final headers = idempotencyKey == null || idempotencyKey.isEmpty
-          ? null
-          : <String, String>{'Idempotency-Key': idempotencyKey};
-      final data = sessionFence == null
-          ? await client.postJson('/articles', body, extraHeaders: headers)
-          : await client.postJson(
-              '/articles',
-              body,
-              extraHeaders: headers,
-              sessionFence: sessionFence,
-            );
-      return BlogModel.fromNowaveArticle(articlePayloadMap(data));
-    });
-  }
-
-  @override
-  Future<String> uploadBlogImage({
-    required ImageUpload image,
-    NowaveSessionFence? sessionFence,
-  }) {
-    return _guard(() async {
-      // A lost response does not prove the upload failed: the server may
-      // already have stored a new asset. Media has no idempotency key yet,
-      // so do not silently create another one on a transport retry.
-      final asset = sessionFence == null
-          ? await client.uploadMedia(image.bytes, image.mimeType)
-          : await client.uploadMedia(
-              image.bytes,
-              image.mimeType,
-              sessionFence: sessionFence,
-            );
-      return client.mediaUri(asset.id).toString();
-    });
-  }
-
-  @override
-  Future<List<BlogModel>> getAllBlogs({required int page}) {
-    return _guard(() async {
-      final offset = (page - 1) * kBlogPageSize;
-      final data = await retryOnConnectionClosed(
-        () => client.getJson(
-          '/articles',
-          query: {
-            'limit': '$kBlogPageSize',
-            'offset': '$offset',
-            'locale': _locale,
-          },
-        ),
-      );
-      return articlePayloadList(data);
-    });
-  }
-
-  @override
-  Future<LatestFeedSlice> getAllBlogsAfter({required String cursor}) async {
-    final continuation = LatestFeedContinuation.tryDecode(cursor);
-    if (continuation == null) throw const LatestFeedCursorUnavailable();
-    try {
-      final data = await retryOnConnectionClosed(
-        () => client.getJson(
-          '/articles',
-          query: {
-            'limit': '${continuation.requestLimit}',
-            'cursor': continuation.apiCursor,
-            'locale': _locale,
-          },
-        ),
-      );
-      if (data is! List || data.any((row) => row is! Map<String, dynamic>)) {
-        throw const LatestFeedCursorUnavailable();
-      }
-      return continuation.advance(articlePayloadList(data));
-    } on LatestFeedCursorUnavailable {
-      rethrow;
-    } on LatestFeedCursorTooDense {
-      rethrow;
-    } on NowaveApiException catch (error) {
-      if (error.statusCode == 400 && error.code == 'BAD_USER_INPUT') {
-        throw const LatestFeedCursorUnavailable();
-      }
-      throw mapToServerException(error);
-    } catch (error) {
-      throw mapToServerException(error);
-    }
-  }
-
-  @override
-  Future<List<BlogModel>> getOnlineFeed({
-    required int page,
-    required BlogFeedKind kind,
-    String? expectedViewerId,
-  }) async {
-    if (kind == BlogFeedKind.latest) return getAllBlogs(page: page);
-    try {
-      final query = <String, String>{
-        'limit': '$kBlogPageSize',
-        'offset': '${(page - 1) * kBlogPageSize}',
-        'locale': _locale,
-        if (kind == BlogFeedKind.popular) 'sort': 'popular',
-      };
-      final dynamic data;
-      if (kind == BlogFeedKind.following) {
-        // Do not retry outside the identity fence: a new account could
-        // otherwise be used for a retry of the previous viewer's request.
-        data = await client.getJsonForViewer(
-          '/me/feed',
-          expectedUserId: expectedViewerId ?? '',
-          query: query,
-        );
-      } else {
-        final path = kind == BlogFeedKind.featured ? '/featured' : '/articles';
-        data = await retryOnConnectionClosed(
-          () => client.getJson(path, query: query),
-        );
-      }
-      return articlePayloadList(data);
-    } catch (e) {
-      throw mapToServerException(e);
-    }
-  }
-
-  @override
-  Future<BlogModel> getBlogById(
-    String blogId, {
-    NowaveSessionFence? sessionFence,
-    String? locale,
-  }) {
-    return _guard(() async {
-      final edition = _editionLocale(locale);
-      final data = sessionFence == null
-          ? await client.getJson(
-              '/articles/$blogId',
-              query: {'locale': edition},
-            )
-          : await client.getJson(
-              '/articles/$blogId',
-              query: {'locale': edition},
-              sessionFence: sessionFence,
-            );
-      return BlogModel.fromNowaveArticle(articlePayloadMap(data));
-    });
-  }
-
   /// The locale a write must name: the edition a caller handed us when it
   /// knows one, otherwise the content language in effect.
   ///
   /// The server treats an omitted `locale` on an article write as `zh-CN`, so
   /// silently dropping the edition would rewrite the wrong translation.
+  @override
   String _editionLocale(String? locale) {
     final trimmed = locale?.trim() ?? '';
     return trimmed.isEmpty ? _locale : trimmed;
-  }
-
-  @override
-  Future<List<BlogModel>> getRelatedArticles(String slug) {
-    return _guard(() async {
-      final data = await client.getJson(
-        '/articles/$slug/related',
-        query: {'limit': '$_kRelatedLimit', 'locale': _locale},
-      );
-      return articlePayloadList(data);
-    });
-  }
-
-  @override
-  Future<List<BlogModel>> getAuthorArticles(
-    String posterId, {
-    BlogFeedKind kind = BlogFeedKind.latest,
-    int offset = 0,
-    int limit = kAuthorPageSize,
-  }) {
-    return _guard(() async {
-      final data = await client.getJson(
-        '/authors/${Uri.encodeComponent(posterId)}/articles',
-        query: {
-          'limit': '$limit',
-          'locale': _locale,
-          if (kind == BlogFeedKind.popular) 'sort': 'popular',
-          // The first page sends no offset: an older deployment ignores the
-          // parameter and answers the first page anyway, which is the right
-          // answer for it.
-          if (offset > 0) 'offset': '$offset',
-        },
-      );
-      return articlePayloadList(data);
-    });
-  }
-
-  @override
-  Future<List<BlogModel>> getBlogsByPosterId(String posterId) {
-    return _guard(() async {
-      final data = await client.getJson(
-        '/authors/${Uri.encodeComponent(posterId)}/articles',
-        query: {'limit': '$_kListLimit', 'locale': _locale},
-      );
-      return articlePayloadList(data);
-    });
-  }
-
-  @override
-  Future<List<BlogModel>> getMyArticles({required String userId}) async {
-    try {
-      final data = await client.getJsonForViewer(
-        '/me/articles',
-        expectedUserId: userId,
-        query: {'limit': '$_kListLimit', 'locale': _locale},
-      );
-      return articlePayloadList(data);
-    } on NowaveApiException catch (error) {
-      // A deployment that predates the account-scoped list still serves the
-      // public author list. "My articles" keeps working there; only server
-      // drafts stay invisible, exactly as before.
-      if (error.statusCode == 404 || error.statusCode == 405) {
-        return getBlogsByPosterId(userId);
-      }
-      throw mapToServerException(error);
-    } catch (e) {
-      throw mapToServerException(e);
-    }
-  }
-
-  @override
-  Future<ArticleEditions> getMyArticleEditions({required String userId}) async {
-    try {
-      final envelope = await client.getEnvelopeForViewer(
-        '/me/articles',
-        expectedUserId: userId,
-        query: {'limit': '$_kEditionsPerLocaleLimit', 'allLocales': 'true'},
-      );
-      final data = envelope.data;
-      if (data is! List) {
-        throw ServerException(
-          '服务器返回了无法解析的数据',
-          kind: FailureKind.server,
-          code: 'server.parse',
-          cause: data,
-        );
-      }
-      final blogs = data
-          .whereType<Map<String, dynamic>>()
-          .map(BlogModel.fromNowaveArticle)
-          .toList();
-      return ArticleEditions(
-        blogs: blogs,
-        locales: _metaLocales(envelope.meta),
-      );
-    } on NowaveApiException catch (error) {
-      // Same fallback as the single-locale list: a deployment without the
-      // account-scoped route still serves the public author list, which has no
-      // editions to tell apart, so the marker stays absent.
-      if (error.statusCode == 404 || error.statusCode == 405) {
-        return ArticleEditions(
-          blogs: await getBlogsByPosterId(userId),
-          locales: null,
-        );
-      }
-      throw mapToServerException(error);
-    } catch (e) {
-      throw mapToServerException(e);
-    }
-  }
-
-  /// The `meta.locales` marker, or null when the answer did not carry one.
-  ///
-  /// An older deployment ignores `allLocales` and answers the current language
-  /// with no marker; treating that as a complete multi-language list would
-  /// hide every other edition behind a confident empty result.
-  List<String>? _metaLocales(Map<String, dynamic>? meta) {
-    final raw = meta?['locales'];
-    if (raw is! List) return null;
-    final locales = raw
-        .whereType<String>()
-        .map((locale) => locale.trim())
-        .where((locale) => locale.isNotEmpty)
-        .toList();
-    return locales.isEmpty ? null : locales;
-  }
-
-  @override
-  Future<TagRef?> resolveTag(String name) async {
-    final wanted = name.trim();
-    if (wanted.isEmpty) return null;
-    final wantedKey = wanted.toLowerCase();
-    var offset = 0;
-    try {
-      // `query` is a server-side substring match, so the answer no longer
-      // depends on where the tag sorts. Paging covers the pathological case
-      // (a one-letter tag matching hundreds of taxonomies).
-      for (var page = 0; page < _kTagLookupPages; page++) {
-        final data = await client.getJson(
-          '/tags',
-          query: {
-            'query': wanted,
-            'limit': '$_kListLimit',
-            'offset': '$offset',
-            'locale': _locale,
-          },
-        );
-        final tags = (data as List? ?? const []);
-        for (final entry in tags.whereType<Map<String, dynamic>>()) {
-          final tagName = (entry['name'] as String?)?.trim() ?? '';
-          final slug = (entry['slug'] as String?)?.trim() ?? '';
-          if (slug.isEmpty || tagName.isEmpty) continue;
-          if (tagName.toLowerCase() == wantedKey) {
-            return TagRef(name: tagName, slug: slug);
-          }
-        }
-        if (tags.length < _kListLimit) return null;
-        offset += _kListLimit;
-      }
-      // Bounded: a substring that still matches thousands of tags is not a
-      // name anybody can browse to, and searching forever would hang the tap.
-      return null;
-    } catch (e) {
-      throw mapToServerException(e);
-    }
-  }
-
-  @override
-  Future<List<BlogModel>> getArticlesByTag(
-    String slug, {
-    required int offset,
-  }) async {
-    try {
-      final data = await client.getJson(
-        '/tags/${Uri.encodeComponent(slug)}/articles',
-        query: {
-          'limit': '$kTagPageSize',
-          'offset': '$offset',
-          'locale': _locale,
-        },
-      );
-      return articlePayloadList(data);
-    } catch (e) {
-      if (e is NowaveApiException && e.statusCode == 404) {
-        // The tag disappeared between resolving it and reading its page.
-        throw const ServerException(
-          '这个标签已不存在',
-          kind: FailureKind.server,
-          code: 'tag.notFound',
-        );
-      }
-      throw mapToServerException(e);
-    }
-  }
-
-  @override
-  Future<List<BlogModel>> searchBlogs(String query) {
-    return _guard(() async {
-      final sanitizedQuery = query.trim();
-      if (sanitizedQuery.isEmpty) {
-        return const <BlogModel>[];
-      }
-      final data = await client.getJson(
-        '/articles',
-        query: {
-          'query': sanitizedQuery,
-          'limit': '$kMaxSearchResults',
-          'locale': _locale,
-        },
-      );
-      return articlePayloadList(data);
-    });
-  }
-
-  @override
-  Future<BlogModel> editBlog(
-    BlogModel blog, {
-    ArticleRevision? expectedRevision,
-    NowaveSessionFence? sessionFence,
-    List<String>? categoryIds,
-  }) {
-    return _guard(() async {
-      final condition = expectedRevision;
-      if (condition == null) {
-        throw const ServerException(
-          '服务器没有提供可验证的文章版本，请刷新后再编辑',
-          kind: FailureKind.validation,
-          code: 'article.revisionRequired',
-        );
-      }
-      if (blog.articleId.isEmpty) {
-        throw const ServerException(
-          '该文章缺少服务端编号，无法更新，请尝试重新打开后再编辑',
-          kind: FailureKind.validation,
-          code: 'article.idUpdate',
-        );
-      }
-      if (!blog.plainEditorCompatible || blog.serverSummary == null) {
-        throw const ServerException(
-          '无法安全保留这篇文章的正文或摘要，请在 no-wave 网页编辑',
-          kind: FailureKind.validation,
-          code: 'article.structuredEditUnsupported',
-        );
-      }
-      final tagIds = await _tags.resolveIds(blog.tags, sessionFence);
-      final body = <String, dynamic>{
-        'slug': blog.id,
-        'title': blog.title,
-        // Preserve the freshly fetched server summary. An empty value may
-        // still be regenerated by no-wave's write normalization.
-        'summary': blog.serverSummary,
-        'contentBlocks': blogToContentBlocks(
-          content: blog.content,
-          coverUrl: blog.imageUrl.isNotEmpty ? blog.imageUrl : null,
-        ),
-        'contentBlocksVersion': 0,
-        'publish': true,
-        // The edition this body belongs to, not the language the app happens
-        // to display right now: `PUT` inserts or replaces exactly the named
-        // translation.
-        'locale': _editionLocale(blog.locale),
-        // See the create path: an omitted `tagIds` keeps the stored tags, so
-        // removing the last tag would otherwise never reach the server.
-        'tagIds': tagIds,
-        // Atomic server condition. This stays an opaque decimal string: a
-        // conversion through Dart number types would corrupt large revisions.
-        'expectedRevision': condition.value,
-        if (categoryIds != null) 'categoryIds': categoryIds,
-      };
-      final data = sessionFence == null
-          ? await client.putJson('/articles/${blog.articleId}', body)
-          : await client.putJson(
-              '/articles/${blog.articleId}',
-              body,
-              sessionFence: sessionFence,
-            );
-      return BlogModel.fromNowaveArticle(articlePayloadMap(data));
-    });
-  }
-
-  @override
-  Future<bool> deleteArticle(String articleId) {
-    return _guard(() async {
-      if (articleId.isEmpty) {
-        throw const ServerException(
-          '该文章缺少服务端编号，无法删除',
-          kind: FailureKind.validation,
-          code: 'article.idDelete',
-        );
-      }
-      // 200 with `{id, deletedAt}` means tombstoned; every other outcome
-      // (404 not-yours-or-gone, 403 foreign author, ...) throws. The fence
-      // makes a page belonging to an old account refuse to delete into the
-      // new one, and the client refuses if the account changes mid-flight.
-      final fence = identity == null ? null : requireActiveFence();
-      await client.deleteJson('/articles/$articleId', sessionFence: fence);
-      return true;
-    });
-  }
-
-  @override
-  Future<List<DeletedBlog>> getDeletedBlogs() {
-    return _guard(() async {
-      final fence = identity == null ? null : requireActiveFence();
-      final data = await retryOnConnectionClosed(
-        () => fence == null
-            ? client.getJson(
-                '/me/articles/deleted',
-                query: {'limit': '$_kListLimit', 'locale': _locale},
-              )
-            : client.getJsonForViewer(
-                '/me/articles/deleted',
-                expectedUserId: fence.userId,
-                query: {'limit': '$_kListLimit', 'locale': _locale},
-              ),
-      );
-      if (data is List) {
-        return data
-            .whereType<Map<String, dynamic>>()
-            .map(DeletedBlogModel.fromNowaveArticle)
-            .toList();
-      }
-      throw ServerException(
-        '服务器返回了无法解析的数据',
-        kind: FailureKind.server,
-        code: 'server.parse',
-        cause: data,
-      );
-    });
-  }
-
-  @override
-  Future<BlogModel> restoreArticle(String articleId, {String? locale}) {
-    return _guard(() async {
-      if (articleId.isEmpty) {
-        throw const ServerException(
-          '该文章缺少服务端编号，无法恢复',
-          kind: FailureKind.validation,
-          code: 'article.idRestore',
-        );
-      }
-      // The restore route reads the locale from the query string, and a
-      // tombstone of a non-default edition must name its own language or the
-      // server looks for a translation that is not the one in the bin.
-      final fence = identity == null ? null : requireActiveFence();
-      final data = await client.postJson(
-        '/articles/$articleId/restore',
-        null,
-        query: {'locale': _editionLocale(locale)},
-        sessionFence: fence,
-      );
-      return BlogModel.fromNowaveArticle(articlePayloadMap(data));
-    });
   }
 
   @override

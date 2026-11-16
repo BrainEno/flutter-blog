@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/common/media/no_wave_image_decode_size.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
 import 'package:belog/core/design/components/no_wave_skeleton.dart';
 import 'package:belog/core/design/design_tokens.dart';
@@ -305,6 +306,11 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                   Localizations.localeOf(context),
                   entry.readAt,
                 );
+                final decode = noWaveDecodeSizeForFixed(
+                  context,
+                  logicalWidth: NoWaveSizes.listThumbnail,
+                  logicalHeight: NoWaveSizes.listThumbnail,
+                );
                 return Dismissible(
                   key: ValueKey(entry.blogId),
                   direction: DismissDirection.endToStart,
@@ -332,8 +338,10 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                               : CachedNetworkImage(
                                   imageUrl: entry.imageUrl,
                                   fit: BoxFit.cover,
-                                  width: 56,
-                                  height: 56,
+                                  width: NoWaveSizes.listThumbnail,
+                                  height: NoWaveSizes.listThumbnail,
+                                  memCacheWidth: decode.width,
+                                  memCacheHeight: decode.height,
                                   errorWidget: (context, error, stackTrace) =>
                                       Icon(
                                         Icons.broken_image,

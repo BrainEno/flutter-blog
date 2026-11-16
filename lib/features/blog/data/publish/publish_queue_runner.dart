@@ -53,41 +53,64 @@ class PublishQueueRunner implements PublishQueueDrainer {
   /// How many attempts an entry gets before it stops retrying on its own.
   static const int _kMaxAttempts = 5;
 
-  /// One drain at a time; a second call while a send is in flight is a no-op.
+  /// A drain can be in flight while the active account changes. Dropping the
+  /// later request leaves the new account's queue dormant until a lifecycle
+  /// event happens to occur, so retain one coalesced follow-up request instead.
   bool _running = false;
+  bool _pendingDrain = false;
 
   /// Sends what is due for the active account and stops at the first failure.
   ///
-  /// Returns the number of entries the server accepted.
+  /// A call that arrives while a send is in flight records a follow-up cycle;
+  /// it intentionally returns zero because the original caller owns the shared
+  /// work. Once that cycle yields, the runner reads [identity] again rather
+  /// than reusing the old account's id. This makes a sign-in or account switch
+  /// during a slow A request reliably continue B's queue.
+  ///
+  /// Returns the number of entries the initiating call's drain cycles sent.
   @override
   Future<int> drain() async {
-    if (_running) return 0;
-    final userId = identity.activeUserId;
-    if (userId == null || userId.isEmpty) return 0;
+    if (_running) {
+      _pendingDrain = true;
+      return 0;
+    }
     _running = true;
     var sent = 0;
     try {
-      if (!await connectionChecker.isConnected) return 0;
-      while (true) {
-        final entry = await store.claimNext(
-          userId: userId,
-          now: DateTime.now(),
-        );
-        if (entry == null) break;
-        if (identity.activeUserId != userId) {
-          // The session changed between the claim and the send. Put the entry
-          // back untouched: it is not this drain's to send.
-          await store.release(entry.id);
-          break;
-        }
-        final accepted = await _send(entry);
-        if (!accepted) break;
-        sent++;
-      }
+      do {
+        _pendingDrain = false;
+        sent += await _drainActiveAccount();
+        // A callback can arrive after the final `claimNext` but before this
+        // check. Reading the marker only after the entire cycle means that
+        // signal is never lost.
+      } while (_pendingDrain);
     } catch (error) {
       AppLogger.error('the publish queue stopped unexpectedly', error: error);
     } finally {
       _running = false;
+    }
+    return sent;
+  }
+
+  Future<int> _drainActiveAccount() async {
+    final userId = identity.activeUserId;
+    if (userId == null || userId.isEmpty) return 0;
+    if (!await connectionChecker.isConnected) return 0;
+
+    var sent = 0;
+    while (true) {
+      final entry = await store.claimNext(userId: userId, now: DateTime.now());
+      if (entry == null) break;
+      if (identity.activeUserId != userId) {
+        // The session changed between the claim and the send. Put the entry
+        // back untouched: it is not this drain's to send. The identity event
+        // has set [_pendingDrain], so the active account runs next.
+        await store.release(entry.id);
+        break;
+      }
+      final accepted = await _send(entry);
+      if (!accepted) break;
+      sent++;
     }
     return sent;
   }
@@ -259,12 +282,13 @@ class PublishQueueRunner implements PublishQueueDrainer {
     final kind = failure.kind;
     final retryable = _isRetryable(kind, entry.attempts);
     DateTime? nextAttemptAt;
-    if (retryable) {
-      // A missing session waits briefly, so the backoff cannot hide a sign-in
-      // prompt from the user.
-      final wait = kind == FailureKind.auth ? 0 : entry.attempts;
-      nextAttemptAt = DateTime.now().add(_backoffFor(wait));
+    if (retryable && kind != FailureKind.auth) {
+      nextAttemptAt = DateTime.now().add(_backoffFor(entry.attempts));
     }
+    // Auth/session failures are a pause, not a failed network attempt. Keep
+    // the entry due immediately: the identity stream starts a new drain when
+    // this account signs in again, and an arbitrary one-minute cooldown would
+    // make that recovery look broken.
     await store.recordFailure(
       entry.id,
       errorCode: failure.code ?? kind.name,

@@ -1,3 +1,4 @@
+import 'package:belog/core/common/media/no_wave_image_decode_size.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/avatar_url.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -34,6 +35,11 @@ class NoWaveAvatar extends StatelessWidget {
     // Null means "not safely renderable": keep the neutral portrait rather
     // than loading an unverified host.
     final url = resolveAvatarUrl(imageUrl, webBaseUrl: webBaseUrl);
+    final decode = noWaveDecodeSizeForFixed(
+      context,
+      logicalWidth: size,
+      logicalHeight: size,
+    );
 
     Widget fallback() => Center(
       child: Icon(
@@ -57,6 +63,8 @@ class NoWaveAvatar extends StatelessWidget {
                   ? CachedNetworkImage(
                       imageUrl: url,
                       fit: BoxFit.cover,
+                      memCacheWidth: decode.width,
+                      memCacheHeight: decode.height,
                       placeholder: (_, _) => fallback(),
                       errorWidget: (_, _, _) => fallback(),
                     )

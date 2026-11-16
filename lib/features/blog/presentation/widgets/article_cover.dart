@@ -1,3 +1,4 @@
+import 'package:belog/core/common/media/no_wave_image_decode_size.dart';
 import 'package:belog/core/design/cover/no_wave_cover_plate.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -35,6 +36,14 @@ class ArticleCover extends StatelessWidget {
   Widget build(BuildContext context) {
     final uri = resolveArticleResourceUrl(imageUrl);
     final plate = NoWaveCoverPlate.forSeed(seed);
+    // Covers fill their cards. The viewport width is a conservative upper
+    // bound for a card before its parent finishes layout, and the policy cap
+    // still protects the decoded image cache on wide devices.
+    final decode = noWaveDecodeSizeForFixed(
+      context,
+      logicalWidth: MediaQuery.of(context).size.width,
+      logicalHeight: MediaQuery.of(context).size.width / aspectRatio,
+    );
     Widget fallback() =>
         Image.asset(plate.asset, fit: BoxFit.cover, excludeFromSemantics: true);
 
@@ -50,6 +59,8 @@ class ArticleCover extends StatelessWidget {
                 ? CachedNetworkImage(
                     imageUrl: uri.toString(),
                     fit: BoxFit.cover,
+                    memCacheWidth: decode.width,
+                    memCacheHeight: decode.height,
                     placeholder: (_, _) => fallback(),
                     errorWidget: (_, _, _) => fallback(),
                   )
