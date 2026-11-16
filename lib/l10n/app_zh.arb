@@ -264,6 +264,8 @@
   "myArticlesDraftsHint": "草稿只有你自己能看到；在编辑器中打开并发布后才会公开。",
   "historyTitle": "阅读历史",
   "clearHistoryTitle": "清空阅读历史",
+  "historyLegacyClearTitle": "删除无法归属的旧历史",
+  "historyLegacyClearBody": "旧阅读历史没有可靠的服务器或账号标识。要删除此设备上的全部旧记录吗？其中可能包含其他账号的记录。当前服务器的历史不会改变。",
   "clearHistoryBody": "将删除这台设备上的全部阅读记录，且无法恢复。确定吗？",
   "historyEmpty": "还没有阅读记录",
   "historyEmptyHint": "阅读过的文章会记录在这台设备上，仅自己可见",

@@ -50,7 +50,9 @@ Older cache and history records do not identify their backend. They remain in an
 unattributed namespace and are not displayed or cleared by any normal backend
 session. This prevents cross-server disclosure but means old offline articles
 and history will not appear after upgrade; old history remains on disk and is
-not deleted by sign-out. No automatic owner assignment or cleanup is attempted.
+not deleted by sign-out. When such history exists, the history page offers an
+explicit device-wide deletion with a warning that it may include other accounts.
+No automatic owner assignment or cleanup is attempted.
 Back up the app data directory before migration. Downgrade and WAL operation on
 real devices have not been verified; older clients may not understand v17 and
 must not be assumed safe to open the upgraded file.

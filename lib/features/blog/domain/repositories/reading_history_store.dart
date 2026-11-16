@@ -43,3 +43,11 @@ abstract class ReadingHistoryStore {
   /// Deletes every entry of [userId].
   Future<void> clear({required String userId});
 }
+
+/// Optional device-wide maintenance for pre-backend history. These rows cannot
+/// be attributed to any account or server and must never be returned as normal
+/// history. Deletion is explicit and affects the entire unattributed namespace.
+abstract interface class UnattributedHistoryMaintenance {
+  Future<bool> hasUnattributedHistory();
+  Future<void> clearUnattributedHistory();
+}

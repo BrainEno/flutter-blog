@@ -98,6 +98,18 @@ void main() {
     },
   );
 
+  test('an advisory LRU touch failure does not block offline reading', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final cache = SqliteBlogCache(db, apiBaseUrl: _one);
+    await cache.uploadLocalBlogs(blogs: [_blog('saved')]);
+    await db.customStatement(
+      "CREATE TRIGGER block_touch BEFORE UPDATE ON blog_cache BEGIN SELECT RAISE(ABORT, 'disk read-only'); END",
+    );
+    expect((await cache.loadBlogById('saved'))!.content, 'content saved');
+    expect((await cache.loadBlogs()).single.id, 'saved');
+  });
+
   test('a failed batch rolls back its writes and eviction', () async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
@@ -177,6 +189,12 @@ void main() {
             .read<String>('title'),
         'private history',
       );
+      final maintenance = SqliteReadingHistoryStore(db, apiBaseUrl: _one);
+      expect(await maintenance.hasUnattributedHistory(), isTrue);
+      await maintenance.record(userId: 'user', blog: _blog('current'));
+      await maintenance.clearUnattributedHistory();
+      expect(await maintenance.hasUnattributedHistory(), isFalse);
+      expect((await maintenance.list(userId: 'user')).single.blogId, 'current');
       await db.close();
     },
   );

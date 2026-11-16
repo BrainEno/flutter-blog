@@ -4,7 +4,8 @@ import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
 import 'package:drift/drift.dart';
 
-class SqliteReadingHistoryStore implements ReadingHistoryStore {
+class SqliteReadingHistoryStore
+    implements ReadingHistoryStore, UnattributedHistoryMaintenance {
   final AppDatabase database;
   SqliteReadingHistoryStore(this.database, {required Uri apiBaseUrl})
     : _backend = backendKeyOf(apiBaseUrl);
@@ -75,5 +76,18 @@ class SqliteReadingHistoryStore implements ReadingHistoryStore {
   Future<void> clear({required String userId}) => database.customStatement(
     'DELETE FROM reading_history WHERE backend = ? AND user_id = ?',
     [_backend, userId],
+  );
+  @override
+  Future<bool> hasUnattributedHistory() async =>
+      (await database
+          .customSelect(
+            "SELECT 1 AS present FROM reading_history WHERE backend = '' LIMIT 1",
+          )
+          .getSingleOrNull()) !=
+      null;
+
+  @override
+  Future<void> clearUnattributedHistory() => database.customStatement(
+    "DELETE FROM reading_history WHERE backend = ''",
   );
 }
