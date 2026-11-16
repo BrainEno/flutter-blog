@@ -309,6 +309,11 @@ void main() {
     tester,
   ) async {
     await _open(tester, h);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('image-one')),
+      200,
+    );
+    await tester.pumpAndSettle();
     await _tapVisible(
       tester,
       find.descendant(
@@ -332,6 +337,11 @@ void main() {
 
   testWidgets('unapplied form warns before discard', (tester) async {
     await _open(tester, h);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('image-one')),
+      200,
+    );
+    await tester.pumpAndSettle();
     await _tapVisible(
       tester,
       find.descendant(
@@ -353,6 +363,11 @@ void main() {
 
   testWidgets('changed snapshot disables a pending form', (tester) async {
     await _open(tester, h);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('image-one')),
+      200,
+    );
+    await tester.pumpAndSettle();
     await _tapVisible(
       tester,
       find.descendant(
@@ -378,6 +393,11 @@ void main() {
     tester,
   ) async {
     await _open(tester, h);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('image-one')),
+      200,
+    );
+    await tester.pumpAndSettle();
     await _tapVisible(
       tester,
       find.descendant(
