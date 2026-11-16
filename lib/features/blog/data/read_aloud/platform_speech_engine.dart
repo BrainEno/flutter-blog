@@ -33,8 +33,15 @@ class PlatformSpeechEngine implements SpeechEngine {
         if (raw is! Map) continue;
         final id = raw['id'];
         final language = raw['language'];
+        final name = raw['name'];
         if (id is String && language is String && id.isNotEmpty) {
-          voices.add(SpeechVoice(id: id, language: language));
+          voices.add(
+            SpeechVoice(
+              id: id,
+              language: language,
+              displayName: name is String && name.trim().isNotEmpty ? name : id,
+            ),
+          );
         }
       }
     }

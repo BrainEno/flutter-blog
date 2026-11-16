@@ -31,6 +31,38 @@ class DebugNetworkPolicyTests(unittest.TestCase):
             app = ET.parse(root / variant / 'AndroidManifest.xml').getroot().find('application')
             self.assertTrue(app is None or app.get(android_name) != 'true')
 
+    def test_android_private_data_backup_is_disabled_and_explicitly_excluded(self):
+        android_name = '{http://schemas.android.com/apk/res/android}'
+        manifest = ET.parse(ROOT / 'android/app/src/main/AndroidManifest.xml').getroot()
+        application = manifest.find('application')
+        self.assertIsNotNone(application)
+        self.assertEqual(application.get(f'{android_name}allowBackup'), 'false')
+        self.assertEqual(application.get(f'{android_name}fullBackupContent'), '@xml/backup_rules')
+        self.assertEqual(application.get(f'{android_name}dataExtractionRules'), '@xml/data_extraction_rules')
+
+        resources = ROOT / 'android/app/src/main/res/xml'
+        backup = ET.parse(resources / 'backup_rules.xml').getroot()
+        self.assertEqual(backup.tag, 'full-backup-content')
+        expected_domains = {'root', 'file', 'database', 'sharedpref', 'external'}
+        self.assertEqual(
+            {(node.get('domain'), node.get('path')) for node in backup.findall('exclude')},
+            {(domain, '.') for domain in expected_domains},
+        )
+
+        extraction = ET.parse(resources / 'data_extraction_rules.xml').getroot()
+        self.assertEqual(extraction.tag, 'data-extraction-rules')
+        for section_name in ('cloud-backup', 'device-transfer'):
+            section = extraction.find(section_name)
+            self.assertIsNotNone(section, section_name)
+            self.assertEqual(
+                {(node.get('domain'), node.get('path')) for node in section.findall('exclude')},
+                {(domain, '.') for domain in expected_domains},
+            )
+        self.assertEqual(
+            extraction.find('cloud-backup').get('disableIfNoEncryptionCapabilities'),
+            'true',
+        )
+
     def test_permissions_match_actual_mobile_capabilities(self):
         android_name = '{http://schemas.android.com/apk/res/android}name'
         root = ET.parse(ROOT / 'android/app/src/main/AndroidManifest.xml').getroot()

@@ -7,7 +7,7 @@ import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/views/article_view_recorder.dart';
-import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
+import 'package:belog/features/blog/domain/read_aloud/read_aloud_settings.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';

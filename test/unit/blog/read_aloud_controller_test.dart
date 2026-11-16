@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:belog/features/blog/domain/read_aloud/read_aloud_settings.dart';
 import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
+import 'package:belog/features/blog/presentation/read_aloud/read_aloud_sleep_timer.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controller.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
@@ -15,13 +17,34 @@ ReadAloudController makeReader(
   String title = 'Title',
   String body = 'Hello world again.\n\n中文段落。',
   void Function(int, int)? scroll,
+  ReadAloudTimerScheduler? sleepTimerScheduler,
 }) => ReadAloudController(
   document: ReadAloudDocument.parse(title, body),
   coordinator: coordinator ?? SpeechCoordinator(engine),
   preferences: preferences,
   fallbackLanguage: 'en',
   onFollowScroll: scroll,
+  sleepTimerScheduler: sleepTimerScheduler,
 );
+
+class FakeSleepTimerHandle implements ReadAloudTimerHandle {
+  FakeSleepTimerHandle(this.callback);
+  final void Function() callback;
+  bool cancelled = false;
+
+  @override
+  void cancel() => cancelled = true;
+}
+
+class FakeSleepTimerScheduler {
+  final handles = <FakeSleepTimerHandle>[];
+
+  ReadAloudTimerHandle call(Duration delay, void Function() callback) {
+    final handle = FakeSleepTimerHandle(callback);
+    handles.add(handle);
+    return handle;
+  }
+}
 
 void main() {
   test(
@@ -199,7 +222,7 @@ void main() {
     () async {
       final engine = FakeSpeechEngine();
       final preferences = FakeReadAloudPreferences()
-        ..loadGate = Completer<bool>();
+        ..loadGate = Completer<ReadAloudSettings>();
       final reader = makeReader(engine, preferences);
       addTearDown(() async {
         reader.dispose();
@@ -208,7 +231,7 @@ void main() {
       });
       final initialization = reader.initialize();
       reader.setFollow(false);
-      preferences.loadGate!.complete(true);
+      preferences.loadGate!.complete(ReadAloudSettings(follow: true, speed: 1));
       await initialization;
       expect(reader.follow, isFalse);
       preferences.failSave = true;
@@ -303,6 +326,79 @@ void main() {
       expect(second.phase, ReadAloudPhase.playing);
       await coordinator.stopIfCurrent(second);
       expect(second.notice, ReadAloudNotice.stopped);
+    },
+  );
+
+  test(
+    'restored voice and rate preferences are applied and remain local',
+    () async {
+      final engine = FakeSpeechEngine();
+      final preferences = FakeReadAloudPreferences()
+        ..settings = ReadAloudSettings(
+          follow: false,
+          speed: 1.25,
+          preferredVoiceIds: const {'en': 'english-uk', 'zh-CN': 'chinese'},
+        );
+      final reader = makeReader(engine, preferences);
+      addTearDown(() async {
+        reader.dispose();
+        await flushSpeech();
+        await engine.close();
+      });
+
+      await reader.initialize();
+      expect(reader.follow, isFalse);
+      expect(reader.speed, 1.25);
+      expect(reader.voiceChoices.keys, containsAll(['en', 'zh-CN']));
+      reader.togglePlayback();
+      await flushSpeech();
+      expect(engine.calls.single.voice?.id, 'english-uk');
+      expect(engine.calls.single.rate, 1.25);
+
+      reader.setSpeed(1.5);
+      expect(preferences.speedWrites, [1.5]);
+      reader.setPreferredVoice('en', 'english');
+      await flushSpeech();
+      expect(preferences.voiceWrites, [('en', 'english')]);
+      expect(engine.calls.last.voice?.id, 'english');
+      reader.setPreferredVoice('en', 'missing'); // Never send an unknown ID.
+      expect(preferences.voiceWrites, [('en', 'english')]);
+    },
+  );
+
+  test(
+    'sleep timer stops the current reader once and cannot affect it after stop',
+    () async {
+      final engine = FakeSpeechEngine();
+      final scheduler = FakeSleepTimerScheduler();
+      final reader = makeReader(
+        engine,
+        FakeReadAloudPreferences(),
+        sleepTimerScheduler: scheduler.call,
+      );
+      addTearDown(() async {
+        reader.dispose();
+        await flushSpeech();
+        await engine.close();
+      });
+      await reader.initialize();
+      reader.togglePlayback();
+      await flushSpeech();
+      reader.setSleepTimer(ReadAloudSleepTimerOption.fiveMinutes);
+      expect(reader.hasSleepTimer, isTrue);
+      expect(scheduler.handles, hasLength(1));
+      scheduler.handles.single.callback();
+      await flushSpeech();
+      expect(reader.phase, ReadAloudPhase.idle);
+      expect(reader.notice, ReadAloudNotice.sleepTimerFinished);
+      expect(reader.hasSleepTimer, isFalse);
+
+      reader.setSleepTimer(ReadAloudSleepTimerOption.tenMinutes);
+      final stale = scheduler.handles.last;
+      reader.stop();
+      expect(stale.cancelled, isTrue);
+      stale.callback();
+      expect(reader.notice, ReadAloudNotice.stopped);
     },
   );
 }

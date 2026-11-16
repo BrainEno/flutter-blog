@@ -1,14 +1,16 @@
 import 'dart:async';
 
 import 'package:belog/core/utils/app_logger.dart';
+import 'package:belog/features/blog/domain/read_aloud/read_aloud_settings.dart';
 import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.dart';
+import 'package:belog/features/blog/presentation/read_aloud/read_aloud_sleep_timer.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:flutter/foundation.dart';
 
 enum ReadAloudPhase { idle, playing, paused }
 
-enum ReadAloudNotice { hint, stopped, finished, error }
+enum ReadAloudNotice { hint, stopped, finished, sleepTimerFinished, error }
 
 /// A word range, or the whole block when the voice supplies no boundaries.
 class ReadAloudHighlight {
@@ -27,48 +29,76 @@ class ReadAloudController extends ChangeNotifier implements SpeechOwner {
     required this.preferences,
     required this.fallbackLanguage,
     this.onFollowScroll,
+    ReadAloudTimerScheduler? sleepTimerScheduler,
+    DateTime Function()? now,
   }) : highlights = List.generate(
          document.blocks.length,
          (_) => ValueNotifier<ReadAloudHighlight?>(null),
+       ),
+       _sleepTimer = ReadAloudSleepTimer(
+         scheduler: sleepTimerScheduler,
+         now: now,
        ) {
     _subscription = coordinator.engine.events.listen(_onSpeechEvent);
   }
 
-  static const speeds = <double>[0.5, 0.75, 1, 1.25, 1.5, 2];
+  static const speeds = supportedSpeechRates;
   final ReadAloudDocument document;
   final SpeechCoordinator coordinator;
   final ReadAloudPreferences preferences;
   final String fallbackLanguage;
   final void Function(int blockIndex, int spokenOffset)? onFollowScroll;
   final List<ValueNotifier<ReadAloudHighlight?>> highlights;
+  final ReadAloudSleepTimer _sleepTimer;
   late final StreamSubscription<SpeechEvent> _subscription;
 
   ReadAloudPhase phase = ReadAloudPhase.idle;
   ReadAloudNotice notice = ReadAloudNotice.hint;
   bool available = false;
-  bool follow = true;
-  double speed = 1;
+  ReadAloudSettings _settings = const ReadAloudSettings.defaults();
   double _progress = 0;
   double? _preview;
   List<SpeechVoice> _voices = const [];
   int _activeIndex = 0;
   int _offset = 0;
   int _run = 0;
-  int _followVersion = 0;
+  int _settingsVersion = 0;
   int? _markedBlock;
   int? _wordEnd;
   String? _utteranceId;
   bool _disposed = false;
 
+  bool get follow => _settings.follow;
+  double get speed => _settings.speed;
   double get progress => _preview ?? _progress;
   int get percent => (progress * 100).round();
+  ReadAloudSleepTimerOption get sleepTimerOption => _sleepTimer.option;
+  Duration? get sleepTimerRemaining => _sleepTimer.remaining;
+  bool get hasSleepTimer => _sleepTimer.isActive;
+  List<SpeechVoice> get voices => List<SpeechVoice>.unmodifiable(_voices);
+
+  /// Only currently spoken language families appear in the picker. A single
+  /// article can contain Chinese and English chunks and therefore show both.
+  Map<String, List<SpeechVoice>> get voiceChoices =>
+      speechVoiceChoicesForLanguages(_spokenLanguages(), _voices);
+
+  String? preferredVoiceIdFor(String language) =>
+      _settings.preferredVoiceIdFor(language);
+
+  SpeechVoice? resolvedVoiceFor(String language) => resolveSpeechVoice(
+    voices: _voices,
+    language: language,
+    settings: _settings,
+  );
 
   Future<void> initialize() async {
     if (!document.hasBody || document.chunks.isEmpty) return;
-    final followVersion = _followVersion;
+    final settingsVersion = _settingsVersion;
     try {
-      final value = await preferences.loadFollow();
-      if (!_disposed && followVersion == _followVersion) follow = value;
+      final value = await preferences.load();
+      if (!_disposed && settingsVersion == _settingsVersion) {
+        _settings = value.copyWith();
+      }
     } catch (_) {
       // The default remains enabled; persistence is only a convenience.
     }
@@ -114,24 +144,38 @@ class ReadAloudController extends ChangeNotifier implements SpeechOwner {
   }
 
   void stop({bool announce = true}) {
+    _stop(
+      announce ? ReadAloudNotice.stopped : ReadAloudNotice.hint,
+      clearSleepTimer: true,
+    );
+  }
+
+  void _stop(ReadAloudNotice terminalNotice, {required bool clearSleepTimer}) {
     if (_disposed) return;
     _run++;
     _utteranceId = null;
     phase = ReadAloudPhase.idle;
-    notice = announce ? ReadAloudNotice.stopped : ReadAloudNotice.hint;
+    notice = terminalNotice;
     _activeIndex = 0;
     _offset = 0;
     _progress = 0;
     _preview = null;
+    if (clearSleepTimer) _sleepTimer.clear();
     _clearHighlight();
     notifyListeners();
     _release();
   }
 
   void setSpeed(double value) {
-    if (!speeds.contains(value) || speed == value || _disposed) return;
-    speed = value;
+    final safe = sanitizeSpeechRate(value);
+    if (speed == safe || _disposed) return;
+    _settingsVersion++;
+    _settings = _settings.copyWith(speed: safe);
     notifyListeners();
+    _persist(
+      preferences.saveSpeed(safe),
+      'saving the reading speed preference failed',
+    );
     // A new utterance makes the change audible immediately. Paused playback
     // stays silent and uses the new speed when resumed.
     if (phase == ReadAloudPhase.playing) _speakCurrent();
@@ -139,8 +183,8 @@ class ReadAloudController extends ChangeNotifier implements SpeechOwner {
 
   void setFollow(bool value) {
     if (follow == value || _disposed) return;
-    follow = value;
-    _followVersion++;
+    _settingsVersion++;
+    _settings = _settings.copyWith(follow: value);
     if (!follow) {
       _clearHighlight();
     } else if (phase != ReadAloudPhase.idle) {
@@ -152,14 +196,64 @@ class ReadAloudController extends ChangeNotifier implements SpeechOwner {
       }
     }
     notifyListeners();
-    unawaited(
-      preferences.saveFollow(value).catchError((
-        Object error,
-        StackTrace stack,
-      ) {
-        AppLogger.debug('saving the reading-follow preference failed');
-      }),
+    _persist(
+      preferences.saveFollow(value),
+      'saving the reading-follow preference failed',
     );
+  }
+
+  /// Select one installed voice for all passages requesting [language]. Null
+  /// returns that language to the operating-system default. A stale ID or an
+  /// ID for another language is ignored rather than being passed to native TTS.
+  void setPreferredVoice(String language, String? voiceId) {
+    if (_disposed) return;
+    final normalizedLanguage = normalizeSpeechLanguage(language);
+    if (normalizedLanguage.isEmpty) return;
+    final normalizedVoiceId = sanitizeSpeechVoiceId(voiceId);
+    final choices = voiceChoices[normalizedLanguage] ?? const <SpeechVoice>[];
+    if (normalizedVoiceId != null &&
+        !choices.any((voice) => voice.id == normalizedVoiceId)) {
+      return;
+    }
+    if (_settings.preferredVoiceIdFor(normalizedLanguage) ==
+        normalizedVoiceId) {
+      return;
+    }
+    _settingsVersion++;
+    _settings = _settings.withPreferredVoice(
+      normalizedLanguage,
+      normalizedVoiceId,
+    );
+    notifyListeners();
+    _persist(
+      preferences.savePreferredVoice(normalizedLanguage, normalizedVoiceId),
+      'saving the reading voice preference failed',
+    );
+    if (phase == ReadAloudPhase.playing &&
+        _activeIndex < document.chunks.length &&
+        normalizeSpeechLanguage(
+              speechLanguage(
+                document.chunks[_activeIndex].text,
+                fallbackLanguage,
+              ),
+            ) ==
+            normalizedLanguage) {
+      _speakCurrent();
+    }
+  }
+
+  /// Selecting a timer never starts playback by itself. The deadline continues
+  /// while paused, matching a real sleep timer; stop, finish, a route change
+  /// and disposal clear it so it cannot affect another article.
+  void setSleepTimer(ReadAloudSleepTimerOption option) {
+    if (_disposed) return;
+    _sleepTimer.select(option, _onSleepTimerExpired);
+    notifyListeners();
+  }
+
+  void _onSleepTimerExpired() {
+    if (_disposed) return;
+    _stop(ReadAloudNotice.sleepTimerFinished, clearSleepTimer: false);
   }
 
   void previewSeek(double value) {
@@ -238,7 +332,7 @@ class ReadAloudController extends ChangeNotifier implements SpeechOwner {
     _offsetAtStart = offset;
     _wordEnd = null;
     final language = speechLanguage(chunk.text, fallbackLanguage);
-    final voice = matchingSpeechVoice(_voices, language);
+    final voice = resolvedVoiceFor(language);
     _setActualProgress();
     _showPassage(scroll: scroll);
     notifyListeners();
@@ -248,8 +342,8 @@ class ReadAloudController extends ChangeNotifier implements SpeechOwner {
             this,
             () => !_disposed && _run == run && phase == ReadAloudPhase.playing,
             (engine, valid) async {
-              // Pause/seek/rate changes all cancel the old platform utterance.
-              // Recheck after every await before touching the shared engine.
+              // Pause/seek/rate/voice changes all cancel the old platform
+              // utterance. Recheck after every await before using shared TTS.
               await engine.stop();
               if (!valid()) return;
               await engine.speak(
@@ -316,6 +410,16 @@ class ReadAloudController extends ChangeNotifier implements SpeechOwner {
 
   int _offsetAtStart = 0;
 
+  Iterable<String> _spokenLanguages() sync* {
+    final values = <String>{};
+    for (final chunk in document.chunks) {
+      final language = normalizeSpeechLanguage(
+        speechLanguage(chunk.text, fallbackLanguage),
+      );
+      if (language.isNotEmpty && values.add(language)) yield language;
+    }
+  }
+
   void _setActualProgress() {
     if (_activeIndex >= document.chunks.length) {
       _progress = 1;
@@ -372,6 +476,7 @@ class ReadAloudController extends ChangeNotifier implements SpeechOwner {
     _offset = 0;
     _preview = null;
     _progress = 1;
+    _sleepTimer.clear();
     _clearHighlight();
     notifyListeners();
     _release();
@@ -386,9 +491,18 @@ class ReadAloudController extends ChangeNotifier implements SpeechOwner {
     _offset = 0;
     _preview = null;
     _progress = 0;
+    _sleepTimer.clear();
     _clearHighlight();
     notifyListeners();
     _release();
+  }
+
+  void _persist(Future<void> pending, String message) {
+    unawaited(
+      pending.catchError((Object error, StackTrace stack) {
+        AppLogger.debug(message);
+      }),
+    );
   }
 
   void _release() {
@@ -410,6 +524,7 @@ class ReadAloudController extends ChangeNotifier implements SpeechOwner {
     _offset = 0;
     _preview = null;
     _progress = 0;
+    _sleepTimer.clear();
     _clearHighlight();
     notifyListeners();
   }
@@ -419,6 +534,7 @@ class ReadAloudController extends ChangeNotifier implements SpeechOwner {
     _disposed = true;
     _run++;
     _utteranceId = null;
+    _sleepTimer.dispose();
     _release();
     unawaited(_subscription.cancel());
     for (final highlight in highlights) {

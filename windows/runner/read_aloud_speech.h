@@ -24,6 +24,7 @@ class ReadAloudSpeech {
   struct Voice {
     std::string id;
     std::string language;
+    std::string name;
     Microsoft::WRL::ComPtr<ISpObjectToken> token;
   };
 
