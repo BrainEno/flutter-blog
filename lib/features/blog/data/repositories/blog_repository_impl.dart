@@ -13,6 +13,7 @@ import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
 import 'package:belog/features/blog/domain/entities/tag_ref.dart';
+import 'package:belog/features/blog/domain/offline_library/offline_library.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:belog/core/common/entities/image_upload.dart';
@@ -294,6 +295,28 @@ class BlogRepositoryImpl implements BlogRepository {
       return right(await blogRemoteDataSource.searchBlogs(query));
     } catch (error) {
       return left(mapErrorToFailure(error));
+    }
+  }
+
+  @override
+  Future<Either<Failure, OfflineLibrarySnapshot>> getOfflineLibrary() async {
+    try {
+      // A cache library is deliberately independent from ConnectionChecker.
+      // Offline means this is the one place that should still work, and an
+      // extra health probe would turn a local catalog into network activity.
+      return right(await blogLocalDataSource.inspectOfflineLibrary());
+    } catch (error) {
+      return left(Failure.storage(cause: error));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> clearOfflineLibrary() async {
+    try {
+      await blogLocalDataSource.clearOfflineLibrary();
+      return right(null);
+    } catch (error) {
+      return left(Failure.storage(cause: error));
     }
   }
 
