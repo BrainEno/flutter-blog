@@ -237,7 +237,7 @@ Future<void> initDependencies() async {
     () => NotionImportRepositoryImpl(apiClient),
   );
   _initAuth(sessionManager, apiClient, uri);
-  await _initBlog(apiClient, sessionManager);
+  await _initBlog(apiClient, sessionManager, uri);
   _initComments(apiClient, sessionManager);
   _initAuthors(apiClient, uri);
   _initCategories(uri);
@@ -314,7 +314,7 @@ Future<void> initDependencies() async {
   );
   // Device-local reading history (issue #22); never synced anywhere.
   serviceLocator.registerLazySingleton<ReadingHistoryStore>(
-    () => SqliteReadingHistoryStore(database),
+    () => SqliteReadingHistoryStore(database, apiBaseUrl: uri),
   );
   serviceLocator.registerLazySingleton<ReadAloudPreferences>(
     () => SqliteReadAloudPreferences(database),
@@ -427,6 +427,7 @@ void _initAuth(
 Future<void> _initBlog(
   NowaveApiClient apiClient,
   NowaveSessionManager sessionManager,
+  Uri apiBaseUrl,
 ) async {
   serviceLocator.registerLazySingleton<RecordArticleView>(
     () => RecordArticleView(
@@ -447,6 +448,7 @@ Future<void> _initBlog(
     ..registerFactory<BlogLocalDataSource>(
       () => SqliteBlogCache(
         serviceLocator<AppDatabase>(),
+        apiBaseUrl: apiBaseUrl,
         contentLocale: serviceLocator<ContentLocale>(),
       ),
     )

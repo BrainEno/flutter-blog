@@ -63,7 +63,10 @@ void main() {
   });
 
   test('deleting a cached blog drops only that row', () async {
-    final cache = SqliteBlogCache(db);
+    final cache = SqliteBlogCache(
+      db,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    );
     await cache.uploadLocalBlogs(blogs: [blog('slug-1', 'one')]);
     await cache.uploadLocalBlogs(blogs: [blog('slug-2', 'two')]);
 
@@ -94,7 +97,10 @@ void main() {
     );
     await drafts.save(draft);
     expect((await drafts.load('a', userId: 'user-a'))!.content, 'text');
-    final cache = SqliteBlogCache(db);
+    final cache = SqliteBlogCache(
+      db,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    );
     await cache.uploadLocalBlogs(blogs: [blog('1', 'old')]);
     await cache.uploadLocalBlogs(
       blogs: [blog('1', 'new'), blog('2', 'second')],
@@ -291,10 +297,19 @@ void main() {
       columns.map((row) => row.read<String>('name')),
       contains('article_id'),
     );
-    final cached = await SqliteBlogCache(migrated).loadBlogs();
-    expect(cached.single.id, 'old-id');
-    expect(cached.single.title, '旧文');
-    expect(cached.single.articleId, '');
+    final cached = await SqliteBlogCache(
+      migrated,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    ).loadBlogs();
+    expect(cached, isEmpty);
+    final legacy = await migrated
+        .customSelect(
+          "SELECT id, title, article_id FROM blog_cache WHERE backend = ''",
+        )
+        .getSingle();
+    expect(legacy.read<String>('id'), 'old-id');
+    expect(legacy.read<String>('title'), '旧文');
+    expect(legacy.read<String>('article_id'), '');
   });
 
   test('a leftover default.isar is reported once and left untouched', () async {

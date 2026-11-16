@@ -38,7 +38,10 @@ void main() {
     'real SQLite cache paginates offline and refreshes on reconnection',
     () async {
       final database = AppDatabase(NativeDatabase.memory());
-      final cache = SqliteBlogCache(database);
+      final cache = SqliteBlogCache(
+        database,
+        apiBaseUrl: Uri.parse('https://api.example.invalid'),
+      );
       final remote = _Remote();
       final connection = _Connection();
       var online = false;
@@ -93,7 +96,10 @@ void main() {
     'losing connectivity during online paging retains the list until refresh',
     () async {
       final database = AppDatabase(NativeDatabase.memory());
-      final cache = SqliteBlogCache(database);
+      final cache = SqliteBlogCache(
+        database,
+        apiBaseUrl: Uri.parse('https://api.example.invalid'),
+      );
       final remote = _Remote();
       final connection = _Connection();
       var online = true;

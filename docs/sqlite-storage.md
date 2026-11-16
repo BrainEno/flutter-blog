@@ -15,8 +15,9 @@ session copy, profile cache and app metadata all live in `belog.sqlite`.
 
 ## Schema versions
 
-`schemaVersion` is 10. Migrations only ever add tables/columns/indexes; no user
-data is rewritten or dropped.
+`schemaVersion` is 17. The v17 migration rebuilds cache and history tables to
+add backend keys while retaining all old row values in an unattributed
+namespace. It does not assign these rows to the currently configured server.
 
 | Version | Change |
 | --- | --- |
@@ -30,10 +31,29 @@ data is rewritten or dropped.
 | 8 | `publish_queue` and its due index: publishes the server has not accepted yet ([发布队列](publish-queue.md)) |
 | 9 | `publish_queue.cover_url`: the cover a queued send already uploaded, so a retry reuses the asset instead of uploading it again |
 | 10 | `publish_queue.kind` and `target_id`: the queue now carries edits of published articles, not only new ones |
+| 11 | `publish_queue.locale` |
+| 12 | Category selections in drafts and queue |
+| 13 | Categories in cached articles |
+| 14 | Account/backend/edition-scoped structured body recovery |
+| 15 | Structured recovery metadata |
+| 16 | Exclusive structured intermediate text buffer |
+| 17 | Backend-scoped article cache and reading history, and cache access index |
 
-Downgrade is not supported: an older build opening a v10 file may show rows in
-the wrong scope. Back up the app data directory before experimenting with
-older builds.
+The production file connection sets SQLite WAL and a 5000 ms busy timeout before
+migrations. New cache writes prune least-recently-accessed entries to 250 per
+backend and content language. Access is tracked best-effort: if a touch cannot
+be written, the offline read still succeeds, but the row may be evicted earlier.
+This is a row-count limit, not a byte quota or TTL; large individual articles,
+multiple backends and the preserved legacy namespace can still consume space.
+
+Older cache and history records do not identify their backend. They remain in an
+unattributed namespace and are not displayed or cleared by any normal backend
+session. This prevents cross-server disclosure but means old offline articles
+and history will not appear after upgrade; old history remains on disk and is
+not deleted by sign-out. No automatic owner assignment or cleanup is attempted.
+Back up the app data directory before migration. Downgrade and WAL operation on
+real devices have not been verified; older clients may not understand v17 and
+must not be assumed safe to open the upgraded file.
 
 ## Isar is gone (#107)
 

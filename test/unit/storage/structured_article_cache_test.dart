@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_blog_cache.dart';
+import 'package:belog/features/blog/data/datasources/article_document_codec.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_draft_store.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/article_document.dart';
@@ -43,14 +44,34 @@ void main() {
 
     final db = AppDatabase(NativeDatabase(file));
     try {
-      final cache = SqliteBlogCache(db);
-      final row = await cache.loadBlogById('old');
-      expect(row?.content, '# Old Markdown');
-      expect(row?.document, isNull);
-      expect(row?.documentJson, isNull);
-      final oldRemote = await cache.loadBlogById('remote');
-      expect(oldRemote?.content, 'flattened text');
-      expect(oldRemote?.document?.supported, isFalse);
+      final cache = SqliteBlogCache(
+        db,
+        apiBaseUrl: Uri.parse('https://api.example.invalid'),
+      );
+      expect(await cache.loadBlogById('old'), isNull);
+      expect(await cache.loadBlogById('remote'), isNull);
+      final legacy = await db
+          .customSelect(
+            "SELECT id, content, document_json, categories_json FROM blog_cache WHERE backend = '' ORDER BY id",
+          )
+          .get();
+      expect(legacy, hasLength(2));
+      final row = legacy.first;
+      expect(row.read<String>('content'), '# Old Markdown');
+      expect(
+        decodeCachedArticleDocument(row.readNullable<String>('document_json')),
+        isNull,
+      );
+      expect(row.readNullable<String>('document_json'), isNull);
+      final oldRemote = legacy.last;
+      expect(oldRemote.read<String>('content'), 'flattened text');
+      expect(
+        decodeCachedArticleDocument(
+          oldRemote.readNullable<String>('document_json'),
+        )?.supported,
+        isFalse,
+      );
+      expect(row.readNullable<String>('categories_json'), isNull);
       final drafts = SqliteBlogDraftStore(
         db,
         apiBaseUrl: Uri.parse('https://api.example.invalid'),
@@ -71,7 +92,7 @@ void main() {
         (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
           'user_version',
         ),
-        16,
+        17,
       );
       expect(
         (await db.customSelect('PRAGMA table_info(blog_cache)').get()).map(
@@ -87,7 +108,7 @@ void main() {
         ),
         contains('categories_json'),
       );
-      expect((await cache.loadBlogById('old'))?.categories, isEmpty);
+      expect(row.readNullable<String>('categories_json'), isNull);
     } finally {
       await db.close();
       await dir.delete(recursive: true);
@@ -99,7 +120,10 @@ void main() {
     () async {
       final db = AppDatabase(NativeDatabase.memory());
       try {
-        final cache = SqliteBlogCache(db);
+        final cache = SqliteBlogCache(
+          db,
+          apiBaseUrl: Uri.parse('https://api.example.invalid'),
+        );
         final rich = BlogModel.fromNowaveArticle(structuredArticle());
         await cache.uploadLocalBlogs(blogs: [rich]);
         final cached = await cache.loadBlogById('structured');
@@ -146,7 +170,10 @@ void main() {
   test('the categories an article sits in survive the cache', () async {
     final db = AppDatabase(NativeDatabase.memory());
     try {
-      final cache = SqliteBlogCache(db);
+      final cache = SqliteBlogCache(
+        db,
+        apiBaseUrl: Uri.parse('https://api.example.invalid'),
+      );
       await cache.uploadLocalBlogs(
         blogs: [
           BlogModel.fromNowaveArticle({

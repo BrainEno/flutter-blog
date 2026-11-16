@@ -39,7 +39,10 @@ void main() {
   });
 
   test('pages are bounded and deterministic for equal timestamps', () async {
-    final cache = SqliteBlogCache(db);
+    final cache = SqliteBlogCache(
+      db,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    );
     await cache.uploadLocalBlogs(
       blogs: [
         _blog('oldest', updatedAt: DateTime.utc(2024)),
@@ -73,7 +76,7 @@ void main() {
     final plan = await db
         .customSelect(
           'EXPLAIN QUERY PLAN SELECT * FROM blog_cache '
-          "WHERE content_locale = 'zh-CN' "
+          "WHERE backend = 'https://api.example.invalid' AND content_locale = 'zh-CN' "
           'ORDER BY updated_at DESC, id ASC LIMIT 10 OFFSET 10',
         )
         .get();
@@ -86,13 +89,27 @@ void main() {
   test(
     'later pages can access rows beyond the old 500-result read cap',
     () async {
-      final cache = SqliteBlogCache(db);
-      await cache.uploadLocalBlogs(
-        blogs: List.generate(
-          503,
-          (i) => _blog('item-${i.toString().padLeft(3, '0')}'),
-        ),
+      final cache = SqliteBlogCache(
+        db,
+        apiBaseUrl: Uri.parse('https://api.example.invalid'),
       );
+      // Seed an over-cap legacy fixture directly to test the reader's
+      // pagination independently of the new write-time eviction policy.
+      for (var i = 0; i < 503; i++) {
+        final blog = _blog('item-${i.toString().padLeft(3, '0')}');
+        await db.upsertBlogRow(
+          backend: 'https://api.example.invalid',
+          id: blog.id,
+          contentLocale: 'zh-CN',
+          title: blog.title,
+          content: blog.content,
+          posterId: blog.posterId,
+          imageUrl: blog.imageUrl,
+          tags: blog.tags,
+          updatedAt: blog.updatedAt,
+          articleId: blog.articleId,
+        );
+      }
 
       expect(await cache.loadBlogs(), hasLength(500));
       final last = await cache.loadBlogs(limit: 10, offset: 500);
@@ -102,7 +119,10 @@ void main() {
   );
 
   test('search still treats wildcard characters literally', () async {
-    final cache = SqliteBlogCache(db);
+    final cache = SqliteBlogCache(
+      db,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    );
     await cache.uploadLocalBlogs(
       blogs: [
         _blog('literal', title: '100%_MATCH'),
@@ -117,7 +137,10 @@ void main() {
   });
 
   test('rejects unbounded or negative pagination arguments', () async {
-    final cache = SqliteBlogCache(db);
+    final cache = SqliteBlogCache(
+      db,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    );
     await expectLater(cache.loadBlogs(limit: 0), throwsRangeError);
     await expectLater(cache.loadBlogs(limit: 501), throwsRangeError);
     await expectLater(cache.loadBlogs(offset: -1), throwsRangeError);
@@ -131,7 +154,10 @@ void main() {
       ['draft-blog', 'unsent', 'draft body', '["draft"]', 1],
     );
     await db.writeMetadata('test-marker', 'preserved');
-    await SqliteBlogCache(db).uploadLocalBlogs(blogs: [_blog('cached')]);
+    await SqliteBlogCache(
+      db,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    ).uploadLocalBlogs(blogs: [_blog('cached')]);
     await db.customStatement(
       'INSERT INTO reading_history(user_id, blog_id, title, read_at) VALUES (?, ?, ?, ?)',
       ['user', 'cached', 'history', 1700000000000000],
@@ -174,8 +200,16 @@ void main() {
       1,
     );
 
+    final scopedCache = SqliteBlogCache(
+      db,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    );
+    expect(await scopedCache.loadBlogs(limit: 10), isEmpty);
     expect(
-      (await SqliteBlogCache(db).loadBlogs(limit: 10)).single.id,
+      (await db
+              .customSelect("SELECT id FROM blog_cache WHERE backend = ''")
+              .getSingle())
+          .read<String>('id'),
       'cached',
     );
     expect(
@@ -195,13 +229,23 @@ void main() {
         'user_version',
       ),
       // The upgrade runs every later step too, so this is the current schema.
-      16,
+      17,
     );
 
     await db.close();
     db = AppDatabase(NativeDatabase(file));
     expect(
-      (await SqliteBlogCache(db).loadBlogs(limit: 10)).single.content,
+      await SqliteBlogCache(
+        db,
+        apiBaseUrl: Uri.parse('https://api.example.invalid'),
+      ).loadBlogs(limit: 10),
+      isEmpty,
+    );
+    expect(
+      (await db
+              .customSelect("SELECT content FROM blog_cache WHERE backend = ''")
+              .getSingle())
+          .read<String>('content'),
       'body cached',
     );
   });
