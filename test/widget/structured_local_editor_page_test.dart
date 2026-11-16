@@ -310,14 +310,14 @@ void main() {
   ) async {
     await _open(tester, h);
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('image-one')),
+      find.byKey(const ValueKey<Object?>('image-one')),
       200,
     );
     await tester.pumpAndSettle();
     await _tapVisible(
       tester,
       find.descendant(
-        of: find.byKey(const ValueKey('image-one')),
+        of: find.byKey(const ValueKey<Object?>('image-one')),
         matching: find.byTooltip('Edit local block properties'),
       ),
     );
@@ -338,14 +338,14 @@ void main() {
   testWidgets('unapplied form warns before discard', (tester) async {
     await _open(tester, h);
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('image-one')),
+      find.byKey(const ValueKey<Object?>('image-one')),
       200,
     );
     await tester.pumpAndSettle();
     await _tapVisible(
       tester,
       find.descendant(
-        of: find.byKey(const ValueKey('image-one')),
+        of: find.byKey(const ValueKey<Object?>('image-one')),
         matching: find.byTooltip('Edit local block properties'),
       ),
     );
@@ -364,14 +364,14 @@ void main() {
   testWidgets('changed snapshot disables a pending form', (tester) async {
     await _open(tester, h);
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('image-one')),
+      find.byKey(const ValueKey<Object?>('image-one')),
       200,
     );
     await tester.pumpAndSettle();
     await _tapVisible(
       tester,
       find.descendant(
-        of: find.byKey(const ValueKey('image-one')),
+        of: find.byKey(const ValueKey<Object?>('image-one')),
         matching: find.byTooltip('Edit local block properties'),
       ),
     );
@@ -394,14 +394,14 @@ void main() {
   ) async {
     await _open(tester, h);
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('image-one')),
+      find.byKey(const ValueKey<Object?>('image-one')),
       200,
     );
     await tester.pumpAndSettle();
     await _tapVisible(
       tester,
       find.descendant(
-        of: find.byKey(const ValueKey('image-one')),
+        of: find.byKey(const ValueKey<Object?>('image-one')),
         matching: find.byTooltip('Edit local block properties'),
       ),
     );
