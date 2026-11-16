@@ -305,6 +305,120 @@ void main() {
     );
   }
 
+  testWidgets('image form applies only after confirmation and saves locally', (
+    tester,
+  ) async {
+    await _open(tester, h);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<Object?>('image-one')),
+      200,
+    );
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.descendant(
+        of: find.byKey(const ValueKey<Object?>('image-one')),
+        matching: find.byTooltip('Edit local block properties'),
+      ),
+    );
+    expect(find.textContaining('This form is temporary'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('structured-image-alt')),
+      'New alt',
+    );
+    expect(h.session.state.body!.blocks[1]['alt'], 'First image alt');
+    await _tapVisible(tester, find.text('Apply to local recovery'));
+    expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+    final saved = (await h.inner.load(_key))!.body.blocks[1];
+    expect(saved['alt'], 'New alt');
+    expect(saved['src'], '/media/one.png');
+    expect(saved['caption'], 'First caption');
+  });
+
+  testWidgets('unapplied form warns before discard', (tester) async {
+    await _open(tester, h);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<Object?>('image-one')),
+      200,
+    );
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.descendant(
+        of: find.byKey(const ValueKey<Object?>('image-one')),
+        matching: find.byTooltip('Edit local block properties'),
+      ),
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('structured-image-alt')),
+      'temporary',
+    );
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Discard temporary form?'), findsOneWidget);
+    await tester.tap(find.text('Discard form'));
+    await tester.pumpAndSettle();
+    expect(h.session.state.body!.blocks[1]['alt'], 'First image alt');
+  });
+
+  testWidgets('changed snapshot disables a pending form', (tester) async {
+    await _open(tester, h);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<Object?>('image-one')),
+      200,
+    );
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.descendant(
+        of: find.byKey(const ValueKey<Object?>('image-one')),
+        matching: find.byTooltip('Edit local block properties'),
+      ),
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('structured-image-alt')),
+      'temporary',
+    );
+    expect(h.session.edit((body) => body.move('image-one', 0)), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('no longer editable'), findsOneWidget);
+    final button = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Apply to local recovery'),
+    );
+    expect(button.onPressed, isNull);
+    expect(h.session.state.body!.blocks.first['alt'], 'First image alt');
+  });
+
+  testWidgets('account switch clears temporary form without applying', (
+    tester,
+  ) async {
+    await _open(tester, h);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<Object?>('image-one')),
+      200,
+    );
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.descendant(
+        of: find.byKey(const ValueKey<Object?>('image-one')),
+        matching: find.byTooltip('Edit local block properties'),
+      ),
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('structured-image-alt')),
+      'private temporary value',
+    );
+    h.identity.switchUser('other');
+    await tester.pumpAndSettle();
+    expect(find.text('private temporary value'), findsNothing);
+    expect(
+      find.text('The account changed. This session is no longer available.'),
+      findsOneWidget,
+    );
+    expect(h.session.state.body, isNull);
+  });
+
   testWidgets(
     'reorders and toggles first run without losing IDs, links or image details',
     (tester) async {
