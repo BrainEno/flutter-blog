@@ -112,6 +112,22 @@ class PublishQueueRunner implements PublishQueueDrainer {
       );
       return false;
     }
+    final expectedRevision = entry.expectedRevision;
+    if (entry.kind == PublishQueueKind.edit && expectedRevision == null) {
+      // This is a legacy row, created before conditional writes existed. It
+      // cannot be upgraded by reading a fresh revision: that would authorize
+      // stale local text to overwrite remote work. Keep it visible for the
+      // author and require an explicit review in the editor.
+      await _fail(
+        entry,
+        const Failure(
+          '这条离线编辑没有可验证的文章版本，请打开文章核对后再保存',
+          kind: FailureKind.validation,
+          code: 'article.revisionRequired',
+        ),
+      );
+      return false;
+    }
 
     // The editor may already have selected a library asset, or an earlier
     // attempt may have uploaded the cover. Reuse that URL instead of uploading
@@ -139,6 +155,7 @@ class PublishQueueRunner implements PublishQueueDrainer {
                 tags: entry.tags,
                 uploadedCoverUrl: coverUrl,
                 categoryIds: entry.categoryIds,
+                expectedRevision: expectedRevision!,
                 sessionFence: fence,
               )
             : await repository.editBlog(
@@ -149,6 +166,7 @@ class PublishQueueRunner implements PublishQueueDrainer {
                 uploadedCoverUrl: coverUrl,
                 locale: locale,
                 categoryIds: entry.categoryIds,
+                expectedRevision: expectedRevision!,
                 sessionFence: fence,
               );
       } else {

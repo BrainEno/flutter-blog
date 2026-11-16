@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/locale_bloc.dart';
@@ -213,7 +215,7 @@ class Harness {
   late final ThemeBloc themeBloc;
   late final AppUserCubit appUserCubit;
   late final AuthBloc authBloc;
-  GoRouter? router;
+  AppRouterHandle? router;
 
   Harness() {
     // Every author page stubs the article read with `any(named: 'kind')`, and
@@ -387,10 +389,12 @@ class Harness {
   }
 
   GoRouter buildRouter({String initialLocation = '/'}) {
-    return router = createAppRouter(
+    final handle = createAppRouter(
       appUserCubit: appUserCubit,
       initialLocation: initialLocation,
     );
+    router = handle;
+    return handle.router;
   }
 
   Future<void> pump(
@@ -399,8 +403,7 @@ class Harness {
     double textScale = 1,
     bool disableAnimations = false,
   }) async {
-    final currentRouter = router;
-    assert(currentRouter != null, 'call buildRouter before pump');
+    final currentRouter = router!;
     await tester.pumpWidget(
       MultiBlocProvider(
         providers: [
@@ -413,7 +416,7 @@ class Harness {
           locale: locale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          routerConfig: currentRouter,
+          routerConfig: currentRouter.router,
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(
               textScaler: TextScaler.linear(textScale),
@@ -437,6 +440,37 @@ class Harness {
 
 void main() {
   setUp(() => GetIt.instance.reset());
+
+  test(
+    'disposing a router handle cancels its refresh stream exactly once',
+    () async {
+      var cancellations = 0;
+      final signals = StreamController<void>.broadcast(
+        onCancel: () => cancellations++,
+      );
+      final user = AppUserCubit();
+      final handle = createAppRouter(
+        appUserCubit: user,
+        refreshStreamForTesting: signals.stream,
+      );
+      addTearDown(handle.dispose);
+      addTearDown(signals.close);
+      addTearDown(user.close);
+
+      expect(signals.hasListener, isTrue);
+
+      handle.dispose();
+      // Stream cancellation can complete in the next microtask when a stream
+      // provides an asynchronous onCancel callback.
+      await Future<void>.delayed(Duration.zero);
+      expect(cancellations, 1);
+      expect(signals.hasListener, isFalse);
+
+      handle.dispose();
+      await Future<void>.delayed(Duration.zero);
+      expect(cancellations, 1);
+    },
+  );
 
   testWidgets('each tab keeps its own stack across tab switches', (
     tester,
@@ -595,7 +629,7 @@ void main() {
     expect(find.byType(PasswordRecoveryPage), findsOneWidget);
     expect(find.byType(LoginPage), findsNothing);
 
-    harness.router!.go('/reset-password');
+    harness.router!.router.go('/reset-password');
     await tester.pumpAndSettle();
     expect(find.byType(PasswordResetPage), findsOneWidget);
     expect(find.byType(LoginPage), findsNothing);
@@ -694,7 +728,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(BlogPage), findsOneWidget);
 
-    harness.router!.go('nowave://article/abc');
+    harness.router!.router.go('nowave://article/abc');
     await tester.pumpAndSettle();
 
     expect(find.byType(BlogViewerPage), findsOneWidget);
@@ -712,7 +746,7 @@ void main() {
     await harness.pump(tester);
     await tester.pumpAndSettle();
 
-    harness.router!.go('https://someone-else.example/articles/abc');
+    harness.router!.router.go('https://someone-else.example/articles/abc');
     await tester.pumpAndSettle();
 
     expect(find.byType(BlogViewerPage), findsNothing);
@@ -1037,7 +1071,7 @@ void main() {
     verify(() => harness.remote.restoreArticle('deleted-uuid')).called(1);
     expect(find.text('回收站是空的'), findsOneWidget);
 
-    harness.router!.pop();
+    harness.router!.router.pop();
     await tester.pumpAndSettle();
     expect(find.byType(UserBlogsPage), findsOneWidget);
     expect(find.text('恢复的文章'), findsOneWidget);
@@ -1280,7 +1314,7 @@ void main() {
     await harness.pump(tester);
     await tester.pumpAndSettle();
 
-    harness.router!.go('/editor');
+    harness.router!.router.go('/editor');
     await tester.pumpAndSettle();
     expect(find.byType(LoginPage), findsOneWidget);
   });

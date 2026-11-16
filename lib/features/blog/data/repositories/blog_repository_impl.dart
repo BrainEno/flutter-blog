@@ -9,6 +9,7 @@ import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dar
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/data/repositories/blog_feed_loader.dart';
 import 'package:belog/features/blog/domain/entities/article_editions.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/domain/entities/deleted_blog.dart';
@@ -215,9 +216,16 @@ class BlogRepositoryImpl implements BlogRepository {
   }
 
   @override
-  Future<Either<Failure, Blog>> getBlogById(String blogId) async {
+  Future<Either<Failure, Blog>> getBlogById(
+    String blogId, {
+    bool requireFresh = false,
+  }) async {
     try {
       if (!await connectionChecker.isConnected) {
+        // A reader can still use its saved copy offline. Conflict review is a
+        // different promise: its displayed revision must have come from a new
+        // server response, not the cache that may have caused the conflict.
+        if (requireFresh) return left(Failure.networkOffline());
         try {
           final cached = await blogLocalDataSource.loadBlogById(blogId);
           return cached == null
@@ -232,7 +240,9 @@ class BlogRepositoryImpl implements BlogRepository {
         blog = await blogRemoteDataSource.getBlogById(blogId);
       } catch (error) {
         final failure = mapErrorToFailure(error);
-        if (failure.kind != FailureKind.network) return left(failure);
+        if (requireFresh || failure.kind != FailureKind.network) {
+          return left(failure);
+        }
         try {
           final cached = await blogLocalDataSource.loadBlogById(blogId);
           return cached == null
@@ -245,6 +255,9 @@ class BlogRepositoryImpl implements BlogRepository {
       try {
         await blogLocalDataSource.uploadLocalBlogs(blogs: [blog]);
       } catch (error) {
+        // The review already has the exact remote response. Do not replace it
+        // with a cache error and tempt the caller to use an older local row.
+        if (requireFresh) return right(blog);
         return left(Failure.storage(cause: error));
       }
       return right(blog);
@@ -402,6 +415,7 @@ class BlogRepositoryImpl implements BlogRepository {
   @override
   Future<Either<Failure, Blog>> editBlog({
     required String blogId,
+    ArticleRevision? expectedRevision,
     required String title,
     required String content,
     required List<String> tags,
@@ -412,6 +426,16 @@ class BlogRepositoryImpl implements BlogRepository {
     List<String>? categoryIds,
   }) async {
     try {
+      final condition = expectedRevision;
+      if (condition == null) {
+        return left(
+          const Failure(
+            '服务器没有提供可验证的文章版本，请刷新并使用支持此功能的服务',
+            kind: FailureKind.validation,
+            code: 'article.revisionRequired',
+          ),
+        );
+      }
       if (!await (connectionChecker.isConnected)) {
         return left(Failure.networkOffline());
       }
@@ -440,6 +464,30 @@ class BlogRepositoryImpl implements BlogRepository {
                     sessionFence: sessionFence,
                     locale: edition,
                   ));
+      // Do not let a read immediately before the write refresh the author's
+      // version condition. It exists only to preserve server-only metadata;
+      // comparing it here avoids uploading a new cover when another device is
+      // already known to have changed the work. The PUT still carries the
+      // original condition, because this check is not atomic.
+      final currentRevision = blogToUpdate.articleRevision;
+      if (currentRevision == null) {
+        return left(
+          const Failure(
+            '服务器没有提供可验证的文章版本，请刷新并使用支持此功能的服务',
+            kind: FailureKind.validation,
+            code: 'article.revisionRequired',
+          ),
+        );
+      }
+      if (currentRevision != condition) {
+        return left(
+          const Failure(
+            '文章已在其他位置更新，请先核对最新内容',
+            kind: FailureKind.validation,
+            code: 'article.versionConflict',
+          ),
+        );
+      }
       if (!blogToUpdate.plainEditorCompatible ||
           blogToUpdate.serverSummary == null) {
         // Reject before uploading a cover or mutating anything: flattening a
@@ -468,10 +516,12 @@ class BlogRepositoryImpl implements BlogRepository {
       final blogUpdated = sessionFence == null
           ? await blogRemoteDataSource.editBlog(
               blogToUpdate,
+              expectedRevision: condition,
               categoryIds: categoryIds,
             )
           : await blogRemoteDataSource.editBlog(
               blogToUpdate,
+              expectedRevision: condition,
               sessionFence: sessionFence,
               categoryIds: categoryIds,
             );

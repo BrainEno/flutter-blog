@@ -18,8 +18,10 @@ import 'package:belog/features/blog/domain/notion_export/notion_export.dart';
 import 'package:belog/features/blog/presentation/editor/notion_export_sheet.dart';
 import 'package:belog/features/blog/presentation/editor/notion_import_sheet.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
+import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
 import 'package:belog/features/blog/domain/usecase/get_categories.dart';
@@ -30,6 +32,7 @@ import 'package:belog/core/usecase/usecase.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
+import 'package:belog/features/blog/presentation/editor/article_conflict_review_sheet.dart';
 import 'package:belog/features/blog/presentation/editor/auto_save_banner.dart';
 import 'package:belog/features/blog/presentation/editor/editor_app_bar.dart';
 import 'package:belog/features/blog/presentation/editor/editor_form.dart';
@@ -62,6 +65,10 @@ class BlogEditorPage extends StatefulWidget {
   /// server; production resolves the shared, credential-free use case.
   final GetCategories? getCategories;
 
+  /// Fresh article read used only for an explicit conditional-write conflict
+  /// review. The user must opt in before its revision can rebase a draft.
+  final GetBlogById? getBlogById;
+
   /// The private media-library read. Injectable so picker tests can stay local.
   final GetUserMediaLibraryPage? getUserMediaLibraryPage;
   final NotionImportRepository? notionImportRepository;
@@ -75,6 +82,7 @@ class BlogEditorPage extends StatefulWidget {
     this.publishQueueStore,
     this.publishQueueDrainer,
     this.getCategories,
+    this.getBlogById,
     this.getUserMediaLibraryPage,
     this.notionImportRepository,
     this.notionExportRepository,
@@ -166,6 +174,13 @@ class _BlogEditorState extends State<BlogEditorPage> {
   /// a second copy of it.
   late final Blog? _target;
 
+  /// Condition captured from the article/draft that seeded the editor. It is
+  /// only replaced after the author explicitly reviews a freshly fetched
+  /// article in the conflict sheet; it is never refreshed silently at send.
+  ArticleRevision? _expectedRevision;
+  bool _hasVersionConflict = false;
+  bool _reviewingVersionConflict = false;
+
   @override
   void initState() {
     super.initState();
@@ -173,6 +188,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
     _userCubit = context.read<AppUserCubit>();
     _session = widget.sessionIdentity ?? GetIt.instance<NowaveSessionManager>();
     _target = widget.blog ?? _queuedEditTarget();
+    _expectedRevision =
+        widget.queueEntry?.expectedRevision ?? _target?.authoringRevision;
     final userState = _userCubit.state;
     _draftOwnerId = userState is AppUserLoggedIn ? userState.user.id : null;
     _editorGeneration = _session.sessionGeneration;
@@ -427,13 +444,16 @@ class _BlogEditorState extends State<BlogEditorPage> {
       titleController.text.trim().isEmpty &&
       contentController.text.trim().isEmpty;
 
-  BlogDraft _currentDraft() => BlogDraft(
+  BlogDraft _currentDraft({ArticleRevision? expectedRevision}) => BlogDraft(
     userId: _draftOwnerId!,
     blogId: _target?.id,
     title: titleController.text,
     content: contentController.text,
     tags: List.of(selectedTags),
     categoryIds: _categoryTouched ? List.of(_selectedCategoryIds) : null,
+    expectedRevision: _target == null
+        ? null
+        : (expectedRevision ?? _expectedRevision),
     updatedAt: DateTime.now(),
   );
 
@@ -497,6 +517,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
             titleController.text = draft.title;
             contentController.text = draft.content;
             selectedTags = List.from(draft.tags);
+            // The draft's own base wins even when a newly loaded list row has
+            // a revision. Adopting the latter would authorize stale text.
+            if (_target != null) _expectedRevision = draft.expectedRevision;
             final draftCategoryIds = draft.categoryIds;
             if (draftCategoryIds != null) {
               _categoryTouched = true;
@@ -642,11 +665,17 @@ class _BlogEditorState extends State<BlogEditorPage> {
     }
     return Blog(
       id: targetId!,
+      // The repository still performs its metadata-preserving article read
+      // before writing. The queue model only exists so the editor retains the
+      // original condition and remains visibly in edit, not create, mode. Its
+      // revision is held independently in [_expectedRevision], not in a data
+      // model: presentation must not depend on the feature data layer.
       title: entry.title,
       content: entry.content,
       posterId: entry.userId,
       imageUrl: entry.coverUrl ?? '',
       tags: entry.tags,
+      locale: entry.locale ?? '',
       updatedAt: entry.updatedAt,
     );
   }
@@ -728,6 +757,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
         kind: target == null ? PublishQueueKind.create : PublishQueueKind.edit,
         targetId: target?.id,
         categoryIds: snapshot.categoryIds,
+        expectedRevision: target == null ? null : _expectedRevision,
         // Persist the edition with the edit: a retry days later must not guess
         // the language from whatever the app displays then.
         locale: target?.locale,
@@ -757,6 +787,31 @@ class _BlogEditorState extends State<BlogEditorPage> {
     // articles as plain content blocks.
     if (!formKey.currentState!.validate()) {
       showSnackBar(context, context.l10n.editorRequiredFields);
+      return;
+    }
+    if (_target != null && _expectedRevision == null) {
+      // Older deployments and legacy drafts may not carry the server's exact
+      // bigint revision. Persist the text best-effort, but never send the old
+      // unguarded PUT merely because a revision is missing.
+      try {
+        await _draftStore.save(_currentDraft());
+        _hasUnsavedEdits = false;
+      } catch (_) {
+        // The more important invariant remains that no remote request starts.
+      }
+      if (mounted && _isCurrentEditor) {
+        showSnackBar(
+          context,
+          localizedFailure(
+            context.l10n,
+            const Failure(
+              '服务器没有提供可验证的文章版本',
+              kind: FailureKind.validation,
+              code: 'article.revisionRequired',
+            ),
+          ),
+        );
+      }
       return;
     }
     _autoSaveTimer?.cancel();
@@ -809,6 +864,7 @@ class _BlogEditorState extends State<BlogEditorPage> {
       context.read<BlogUploadBloc>().add(
         UpdateBlogEvent(
           blogId: _target.id,
+          expectedRevision: _expectedRevision!,
           image: publishImage,
           uploadedCoverUrl: publishCoverUrl,
           title: draft.title.trim(),
@@ -826,6 +882,20 @@ class _BlogEditorState extends State<BlogEditorPage> {
 
   /// Reports a failed publish, keeping it in the queue when that is the only
   /// way the user does not lose the article (issue #23).
+  /// A stale conditional write is never queued. A transport retry is safe only
+  /// while it carries the original condition; once the server positively says
+  /// it differs, automatically retrying can only hide the conflict from the
+  /// author. The exact draft was stored before dispatch and stays on screen.
+  Future<void> _reportVersionConflict(BlogUploadVersionConflict failure) async {
+    _publishStartedAt = null;
+    _publishedDraftSnapshot = null;
+    _publishImageSnapshot = null;
+    _publishCoverUrlSnapshot = null;
+    if (!mounted || !_isCurrentEditor) return;
+    setState(() => _hasVersionConflict = true);
+    showSnackBar(context, localizedFailure(context.l10n, failure.failure));
+  }
+
   Future<void> _reportPublishFailure(BlogUploadFailure failure) async {
     if (_isWorthQueueing(failure.failure.kind) && await _queueFailedPublish()) {
       if (!mounted || !_isCurrentEditor) return;
@@ -843,6 +913,72 @@ class _BlogEditorState extends State<BlogEditorPage> {
     if (_hasUnsavedEdits && _draftsReady) _scheduleAutoSave();
     if (!mounted || !_isCurrentEditor) return;
     showSnackBar(context, localizedFailure(context.l10n, failure.failure));
+  }
+
+  /// Reads the newest article only after the author asks to review a conflict.
+  /// Merely reading it never changes controllers or [_expectedRevision]. The
+  /// author must inspect the three-way sheet and explicitly choose rebase; the
+  /// rebased local draft is saved before the new condition is enabled.
+  Future<void> _reviewVersionConflict() async {
+    final target = _target;
+    if (target == null ||
+        !_isCurrentEditor ||
+        !_hasVersionConflict ||
+        _reviewingVersionConflict) {
+      return;
+    }
+    setState(() => _reviewingVersionConflict = true);
+    try {
+      final getBlog = widget.getBlogById ?? GetIt.instance<GetBlogById>();
+      final result = await getBlog(
+        GetBlogByIdParams(blogId: target.id, requireFresh: true),
+      );
+      if (!mounted || !_isCurrentEditor) return;
+      Blog? latest;
+      Failure? failure;
+      result.fold((error) => failure = error, (value) => latest = value);
+      if (failure != null || latest == null || latest!.id != target.id) {
+        showSnackBar(context, context.l10n.articleConflictUnavailable);
+        return;
+      }
+      if (latest!.authoringRevision == null) {
+        showSnackBar(context, context.l10n.articleConflictMissingRevision);
+        return;
+      }
+      final choice = await showArticleConflictReviewSheet(
+        context,
+        openedArticle: target,
+        localDraft: _currentDraft(),
+        latestArticle: latest!,
+      );
+      if (!mounted ||
+          !_isCurrentEditor ||
+          choice != ArticleConflictReviewChoice.rebase) {
+        return;
+      }
+      final revision = latest!.authoringRevision!;
+      final rebasedDraft = _currentDraft(expectedRevision: revision);
+      try {
+        await _draftStore.save(rebasedDraft);
+      } catch (_) {
+        if (mounted && _isCurrentEditor) {
+          showSnackBar(context, context.l10n.draftSaveFailed);
+        }
+        return;
+      }
+      if (!mounted || !_isCurrentEditor) return;
+      setState(() {
+        _expectedRevision = revision;
+        _hasVersionConflict = false;
+        _hasUnsavedEdits = false;
+        _autoSaveStatus = AutoSaveStatus.saved;
+      });
+      showSnackBar(context, context.l10n.articleConflictRebased);
+    } finally {
+      if (mounted && _isCurrentEditor) {
+        setState(() => _reviewingVersionConflict = false);
+      }
+    }
   }
 
   Future<void> saveDraft() async {
@@ -912,7 +1048,9 @@ class _BlogEditorState extends State<BlogEditorPage> {
       body: BlocConsumer<BlogUploadBloc, BlogUploadState>(
         listener: (context, state) {
           if (!_isCurrentEditor) return;
-          if (state is BlogUploadFailure) {
+          if (state is BlogUploadVersionConflict) {
+            unawaited(_reportVersionConflict(state));
+          } else if (state is BlogUploadFailure) {
             unawaited(_reportPublishFailure(state));
           } else if (state is BlogUploadSuccess) {
             // No manual imageCache eviction needed: covers use immutable
@@ -950,6 +1088,10 @@ class _BlogEditorState extends State<BlogEditorPage> {
             blog: _target,
             hasUnclaimedDrafts: _hasUnclaimedDrafts,
             resumedFromQueue: widget.queueEntry != null,
+            hasVersionConflict: _hasVersionConflict,
+            onReviewVersionConflict: _reviewingVersionConflict
+                ? null
+                : () => unawaited(_reviewVersionConflict()),
             autoSaveStatus: _autoSaveStatus,
             onPickCover: selectImage,
             onChooseCoverFromLibrary: () => unawaited(selectCoverFromLibrary()),

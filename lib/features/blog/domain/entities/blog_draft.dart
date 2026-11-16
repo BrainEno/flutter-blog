@@ -1,3 +1,5 @@
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
+
 /// Local draft of a blog article.
 ///
 /// Pure Dart domain entity: it must stay free of persistence annotations. A
@@ -24,6 +26,13 @@ class BlogDraft {
 
   final DateTime updatedAt;
 
+  /// The precise server revision the author was editing against.
+  ///
+  /// This deliberately travels with the local text. Restoring a draft based on
+  /// an older article must not silently adopt a newer list/cache revision and
+  /// overwrite the remote work that arrived while the draft was dormant.
+  final ArticleRevision? expectedRevision;
+
   BlogDraft({
     this.id,
     required this.userId,
@@ -32,6 +41,7 @@ class BlogDraft {
     required this.content,
     required List<String> tags,
     required this.updatedAt,
+    this.expectedRevision,
     List<String>? categoryIds,
   }) : tags = List.unmodifiable(tags),
        categoryIds = categoryIds == null

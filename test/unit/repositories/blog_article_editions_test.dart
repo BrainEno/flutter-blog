@@ -5,10 +5,13 @@ import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dar
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart';
 import 'package:belog/features/blog/domain/entities/article_editions.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class _Remote extends Mock implements BlogRemoteDataSource {}
+
+final _revision = ArticleRevision.parse('7')!;
 
 class _Local extends Mock implements BlogLocalDataSource {}
 
@@ -17,6 +20,7 @@ class _Connection extends Mock implements ConnectionChecker {}
 BlogModel _blog(String locale) => BlogModel(
   id: 'slug',
   articleId: 'server-id',
+  articleRevision: _revision,
   title: 'Title',
   content: 'Content',
   posterId: 'author',
@@ -102,6 +106,7 @@ void main() {
     final original = BlogModel.fromNowaveArticle({
       'id': 'server-id',
       'slug': 'slug',
+      'revision': '7',
       'title': 'Title',
       'summary': 'summary',
       'authorId': 'author',
@@ -118,11 +123,15 @@ void main() {
     ).thenAnswer((_) async => original);
     // An empty cover URL means "keep the current cover", so no upload runs.
     when(
-      () => remote.editBlog(any()),
+      () => remote.editBlog(
+        any(),
+        expectedRevision: any(named: 'expectedRevision'),
+      ),
     ).thenAnswer((_) async => original.copyWith(title: 'New'));
 
     final result = await repository.editBlog(
       blogId: 'slug',
+      expectedRevision: _revision,
       title: 'New',
       content: 'Body',
       tags: const [],
@@ -131,7 +140,9 @@ void main() {
 
     expect(result.isRight(), isTrue);
     verify(() => remote.getBlogById('slug', locale: 'en')).called(1);
-    final written = verify(() => remote.editBlog(captureAny())).captured.single;
+    final written = verify(
+      () => remote.editBlog(captureAny(), expectedRevision: _revision),
+    ).captured.single;
     expect((written as BlogModel).locale, 'en');
   });
 

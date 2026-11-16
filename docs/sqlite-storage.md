@@ -15,9 +15,13 @@ session copy, profile cache and app metadata all live in `belog.sqlite`.
 
 ## Schema versions
 
-`schemaVersion` is 17. The v17 migration rebuilds cache and history tables to
+`schemaVersion` is 18. The v17 migration rebuilds cache and history tables to
 add backend keys while retaining all old row values in an unattributed
 namespace. It does not assign these rows to the currently configured server.
+The v18 migration adds nullable TEXT `article_revision` / `expected_revision`
+columns to public cache, account drafts and queued edits. Values are opaque
+no-wave decimal int64 strings; NULL means an old or unsupported source and
+authoring fails closed rather than issuing an unconditional update.
 
 | Version | Change |
 | --- | --- |
@@ -38,6 +42,7 @@ namespace. It does not assign these rows to the currently configured server.
 | 15 | Structured recovery metadata |
 | 16 | Exclusive structured intermediate text buffer |
 | 17 | Backend-scoped article cache and reading history, and cache access index |
+| 18 | Opaque no-wave article revision strings in cache, account drafts and queued edits; safe conditional update recovery |
 
 The production file connection sets SQLite WAL and a 5000 ms busy timeout before
 migrations. New cache writes prune least-recently-accessed entries to 250 per
@@ -72,7 +77,7 @@ not deleted by sign-out. When such history exists, the history page offers an
 explicit device-wide deletion with a warning that it may include other accounts.
 No automatic owner assignment or cleanup is attempted.
 Back up the app data directory before migration. Downgrade and WAL operation on
-real devices have not been verified; older clients may not understand v17 and
+real devices have not been verified; older clients may not understand v18 and
 must not be assumed safe to open the upgraded file.
 
 ## Isar is gone (#107)

@@ -12,7 +12,6 @@ import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/router/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
 /// Root widget: theme, localization and routing.
 ///
@@ -37,7 +36,7 @@ class NoWaveApp extends StatefulWidget {
 }
 
 class _NoWaveAppState extends State<NoWaveApp> {
-  late final GoRouter _router = createAppRouter(
+  late final AppRouterHandle _router = createAppRouter(
     appUserCubit: serviceLocator<AppUserCubit>(),
     // A cold start from `nowave://article/<slug>` arrives here as the whole
     // URL (issue #21); the reader is the first frame, not a 404.
@@ -60,7 +59,7 @@ class _NoWaveAppState extends State<NoWaveApp> {
           builder: (context, state) {
             return MaterialApp.router(
               debugShowCheckedModeBanner: false,
-              routerConfig: _router,
+              routerConfig: _router.router,
               scaffoldMessengerKey: rootScaffoldMessengerKey,
               themeMode: state.themeMode,
               theme: AppTheme.lightThemeMode,

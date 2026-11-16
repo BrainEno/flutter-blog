@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_draft_store.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,18 +10,21 @@ import 'package:sqlite3/sqlite3.dart' as raw;
 
 final _firstBackend = Uri.parse('https://first.example.invalid/api-root/');
 final _secondBackend = Uri.parse('https://second.example.invalid/api-root');
+final _revision = ArticleRevision.parse('9223372036854775807')!;
 
 BlogDraft _draft(
   String userId,
   String? blogId,
   String title, {
   int year = 2024,
+  ArticleRevision? expectedRevision,
 }) => BlogDraft(
   userId: userId,
   blogId: blogId,
   title: title,
   content: '$title body',
   tags: const ['test'],
+  expectedRevision: expectedRevision,
   updatedAt: DateTime.utc(year),
 );
 
@@ -64,6 +68,61 @@ void main() {
       expect((await first.load('same-slug', userId: 'bob'))?.title, 'B edit');
     },
   );
+
+  test('a draft round-trips an opaque server revision exactly', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final store = SqliteBlogDraftStore(db, apiBaseUrl: _firstBackend);
+    final draft = _draft(
+      'alice',
+      'article',
+      'conditioned',
+      expectedRevision: _revision,
+    );
+
+    await store.save(draft);
+
+    expect(
+      (await store.load('article', userId: 'alice'))?.expectedRevision,
+      _revision,
+    );
+  });
+
+  test('v17 drafts gain a nullable revision without changing old text', () async {
+    final dir = await Directory.systemTemp.createTemp('belog-draft-v17-');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/legacy.sqlite');
+    final old = raw.sqlite3.open(file.path);
+    old.execute('PRAGMA user_version = 17');
+    old.execute(
+      'CREATE TABLE account_drafts ('
+      'id INTEGER PRIMARY KEY AUTOINCREMENT, backend TEXT NOT NULL, '
+      'user_id TEXT NOT NULL, blog_id TEXT, title TEXT NOT NULL, '
+      'content TEXT NOT NULL, tags TEXT NOT NULL, category_ids TEXT, '
+      'updated_at INTEGER NOT NULL)',
+    );
+    old.execute(
+      "INSERT INTO account_drafts(backend, user_id, blog_id, title, content, tags, updated_at) "
+      "VALUES ('https://first.example.invalid/api-root', 'alice', 'article', 'old', 'body', '[]', 1)",
+    );
+    old.close();
+
+    final db = AppDatabase(NativeDatabase(file));
+    addTearDown(db.close);
+    final store = SqliteBlogDraftStore(db, apiBaseUrl: _firstBackend);
+
+    final migrated = await store.load('article', userId: 'alice');
+    expect(migrated?.title, 'old');
+    expect(migrated?.expectedRevision, isNull);
+
+    await store.save(
+      _draft('alice', 'article', 'new text', expectedRevision: _revision),
+    );
+    expect(
+      (await store.load('article', userId: 'alice'))?.expectedRevision,
+      _revision,
+    );
+  });
 
   test('backend path is scoped and credentials are not stored', () async {
     final db = AppDatabase(NativeDatabase.memory());
@@ -266,7 +325,7 @@ void main() {
         final version = await db
             .customSelect('PRAGMA user_version')
             .getSingle();
-        expect(version.read<int>('user_version'), 17);
+        expect(version.read<int>('user_version'), 18);
       } finally {
         await db.close();
       }

@@ -36,6 +36,16 @@ void main() {
     expect(localizedFailure(en, presented), localizedFailure(en, failure));
   });
 
+  test('article version conflicts use the draft-preserving guidance', () {
+    const failure = Failure(
+      'fallback',
+      kind: FailureKind.validation,
+      code: 'article.versionConflict',
+    );
+    expect(localizedFailure(zh, failure), zh.errorArticleVersionConflict);
+    expect(localizedFailure(en, failure), en.errorArticleVersionConflict);
+  });
+
   test('operation-specific wording retains the stable offline code', () {
     final failure = Failure(
       '无法连接到网络，关注未同步',

@@ -1,6 +1,7 @@
 import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/update_blog.dart';
 import 'package:belog/features/blog/domain/usecase/upload_blog.dart';
@@ -61,6 +62,7 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
     final res = await _updateBlog(
       UpdateBlogParams(
         blogId: event.blogId,
+        expectedRevision: event.expectedRevision,
         image: event.image,
         uploadedCoverUrl: event.uploadedCoverUrl,
         title: event.title,
@@ -71,10 +73,14 @@ class BlogUploadBloc extends Bloc<BlogUploadEvent, BlogUploadState> {
         categoryIds: event.categoryIds,
       ),
     );
-    res.fold(
-      (failure) => emit(BlogUploadFailure(failure.forPresentation())),
-      (_) => emit(BlogUploadSuccess()),
-    );
+    res.fold((failure) {
+      final visible = failure.forPresentation();
+      emit(
+        visible.code == 'article.versionConflict'
+            ? BlogUploadVersionConflict(visible)
+            : BlogUploadFailure(visible),
+      );
+    }, (_) => emit(BlogUploadSuccess()));
   }
 
   void _onDeleteBlog(

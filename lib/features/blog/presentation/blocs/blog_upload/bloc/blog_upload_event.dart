@@ -52,6 +52,11 @@ class UploadBlogEvent extends BlogUploadEvent {
 
 class UpdateBlogEvent extends BlogUploadEvent {
   final String blogId;
+
+  /// Original/rebased server revision for the conditional PUT. This is
+  /// intentionally required: an editor without it must retain the draft and
+  /// ask for a refresh rather than falling back to the old unconditional PUT.
+  final ArticleRevision expectedRevision;
   final ImageUpload? image; // Optional, only if updating image
 
   /// An existing immutable media asset selected from the user's library.
@@ -72,6 +77,7 @@ class UpdateBlogEvent extends BlogUploadEvent {
 
   const UpdateBlogEvent({
     required this.blogId,
+    required this.expectedRevision,
     this.image,
     this.uploadedCoverUrl,
     required this.title,
@@ -85,6 +91,7 @@ class UpdateBlogEvent extends BlogUploadEvent {
   @override
   List<Object?> get props => [
     blogId,
+    expectedRevision,
     image,
     uploadedCoverUrl,
     title,

@@ -211,7 +211,7 @@ void main() {
       await harness.pump(tester);
       await tester.pumpAndSettle();
       final model = BlogModel.fromNowaveArticle(structuredArticle());
-      harness.router!.push('/view/structured', extra: model);
+      harness.router!.router.push('/view/structured', extra: model);
       await tester.pumpAndSettle();
       expect(find.text('First caption'), findsOneWidget);
       expect(find.text('Second caption'), findsOneWidget);

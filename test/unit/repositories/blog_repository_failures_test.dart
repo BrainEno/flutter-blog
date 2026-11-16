@@ -76,6 +76,47 @@ void main() {
     },
   );
 
+  test('a fresh conflict review refuses an offline cache revision', () async {
+    when(() => connection.isConnected).thenAnswer((_) async => false);
+
+    final result = await repository.getBlogById('slug', requireFresh: true);
+
+    expect(result.getLeft().toNullable()?.code, 'network.offline');
+    verifyNever(() => local.loadBlogById(any()));
+    verifyNever(() => remote.getBlogById(any()));
+  });
+
+  test(
+    'a fresh conflict review never falls back after a remote network error',
+    () async {
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      when(
+        () => remote.getBlogById('slug'),
+      ).thenThrow(const SocketException('lost'));
+
+      final result = await repository.getBlogById('slug', requireFresh: true);
+
+      expect(result.getLeft().toNullable()?.kind, FailureKind.network);
+      verifyNever(() => local.loadBlogById(any()));
+    },
+  );
+
+  test(
+    'a fresh conflict review keeps its remote response if cache write fails',
+    () async {
+      final blog = _blog();
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      when(() => remote.getBlogById('slug')).thenAnswer((_) async => blog);
+      when(
+        () => local.uploadLocalBlogs(blogs: any(named: 'blogs')),
+      ).thenThrow(StateError('private'));
+
+      final result = await repository.getBlogById('slug', requireFresh: true);
+
+      expect(result.getRight().toNullable(), same(blog));
+    },
+  );
+
   test('probe failures follow the repository Failure contract', () async {
     when(() => connection.isConnected).thenThrow(const SocketException('lost'));
 

@@ -5,6 +5,7 @@ import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/core/storage/backend_key.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_publish_queue_store.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +13,7 @@ import 'package:sqlite3/sqlite3.dart' as raw;
 
 final _firstBackend = Uri.parse('https://first.example.invalid/api-root/');
 final _secondBackend = Uri.parse('https://second.example.invalid/api-root');
+final _revision = ArticleRevision.parse('9223372036854775807')!;
 
 void main() {
   late AppDatabase db;
@@ -75,6 +77,7 @@ void main() {
         coverUrl: coverUrl,
         kind: PublishQueueKind.edit,
         targetId: 'article-1',
+        expectedRevision: _revision,
         locale: 'zh-CN',
       );
 
@@ -83,6 +86,7 @@ void main() {
       final stored = (await store.entries(userId: 'alice')).single;
       expect(stored.coverUrl, coverUrl);
       expect(stored.targetId, 'article-1');
+      expect(stored.expectedRevision, _revision);
       expect(stored.locale, 'zh-CN');
     },
   );
@@ -522,7 +526,7 @@ void main() {
     final version = await upgraded
         .customSelect('PRAGMA user_version')
         .getSingle();
-    expect(version.read<int>('user_version'), 17);
+    expect(version.read<int>('user_version'), 18);
   });
 
   test('a pre-v8 database gains the queue with cover_url', () async {
@@ -576,6 +580,7 @@ void main() {
       idempotencyKey: 'key-edit',
       kind: PublishQueueKind.edit,
       targetId: 'my-slug',
+      expectedRevision: _revision,
     );
     expect(entry.kind, PublishQueueKind.edit);
     expect(entry.targetId, 'my-slug');
@@ -603,6 +608,22 @@ void main() {
         tags: const [],
         idempotencyKey: 'key-1',
         kind: PublishQueueKind.edit,
+      ),
+      throwsArgumentError,
+    );
+    expect(await store.entries(userId: 'alice'), isEmpty);
+  });
+
+  test('an edit without an original revision is refused', () async {
+    expect(
+      () => store.enqueue(
+        userId: 'alice',
+        title: 'unfenced edit',
+        content: 'body',
+        tags: const [],
+        idempotencyKey: 'key-unfenced',
+        kind: PublishQueueKind.edit,
+        targetId: 'my-slug',
       ),
       throwsArgumentError,
     );
@@ -659,6 +680,7 @@ void main() {
     final row = (await legacyStore.entries(userId: 'alice')).single;
     expect(row.kind, PublishQueueKind.create);
     expect(row.targetId, isNull);
+    expect(row.expectedRevision, isNull);
     expect(row.coverUrl, 'https://cdn/v9.png');
 
     // The v9 row predates editions, so nothing is recorded and a retry falls
@@ -674,6 +696,7 @@ void main() {
       idempotencyKey: 'key-edit',
       kind: PublishQueueKind.edit,
       targetId: 'my-slug',
+      expectedRevision: _revision,
       locale: 'en',
     );
     expect(edit.targetId, 'my-slug');
@@ -690,6 +713,7 @@ void main() {
       idempotencyKey: 'key-edit',
       kind: PublishQueueKind.edit,
       targetId: 'my-slug',
+      expectedRevision: _revision,
       locale: ' zh-TW ',
     );
 
@@ -709,6 +733,7 @@ void main() {
       idempotencyKey: 'key-edit',
       kind: PublishQueueKind.edit,
       targetId: 'my-slug',
+      expectedRevision: _revision,
       locale: '   ',
     );
 

@@ -4,6 +4,8 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
@@ -19,6 +21,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:mocktail/mocktail.dart';
+
+final _revision = ArticleRevision.parse('7')!;
 
 /// Records the events the editor dispatches instead of publishing anything.
 class _RecordingUploadBloc extends Mock implements BlogUploadBloc {
@@ -101,8 +105,10 @@ User _user(String id) => User(
   updatedAt: DateTime.utc(2024),
 );
 
-Blog _blog(List<String> categoryIds) => Blog(
+Blog _blog(List<String> categoryIds) => BlogModel(
   id: 'a-slug',
+  articleId: 'article-a-slug',
+  articleRevision: _revision,
   title: '已发布标题',
   content: '已发布正文',
   posterId: 'author',

@@ -109,21 +109,48 @@ final RouteObserver<ModalRoute<void>> profileRouteObserver =
 /// search, viewer, about and the auth pages) stays public.
 const List<String> _protectedPrefixes = ['/saved', '/profile', '/editor'];
 
-/// Builds the app [GoRouter].
+/// Owns a router and the stream subscription that drives its redirects.
+///
+/// GoRouter removes a refresh listener on dispose, but it does not own the
+/// [ChangeNotifier] passed in as that listener. Keeping both values in this
+/// handle makes the subscription lifetime explicit and prevents every rebuild
+/// of the root app from leaving an auth-stream listener behind.
+class AppRouterHandle {
+  AppRouterHandle._(this.router, this._refresh);
+
+  final GoRouter router;
+  final _StreamListenable _refresh;
+  bool _disposed = false;
+
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    router.dispose();
+    _refresh.dispose();
+  }
+}
+
+/// Builds the app router and its owned refresh bridge.
 ///
 /// Auth state comes from [appUserCubit]: every change re-runs [GoRouter]
 /// redirects via [refreshListenable], which is what sends freshly signed-out
 /// users away from protected routes and returns signed-in users to the
 /// location they were trying to open.
-GoRouter createAppRouter({
+AppRouterHandle createAppRouter({
   required AppUserCubit appUserCubit,
   String initialLocation = '/',
+  // Allows the lifecycle contract to be observed with a controlled broadcast
+  // stream. Production never passes this and always follows AppUserCubit.
+  Stream<dynamic>? refreshStreamForTesting,
 }) {
-  return GoRouter(
+  final refresh = _StreamListenable(
+    refreshStreamForTesting ?? appUserCubit.stream,
+  );
+  final router = GoRouter(
     navigatorKey: rootNavigatorKey,
     observers: [rootReadAloudRouteObserver],
     initialLocation: initialLocation,
-    refreshListenable: _StreamListenable(appUserCubit.stream),
+    refreshListenable: refresh,
     errorBuilder: (context, state) => Scaffold(
       body: Center(
         child: Padding(
@@ -397,6 +424,7 @@ GoRouter createAppRouter({
       ),
     ],
   );
+  return AppRouterHandle._(router, refresh);
 }
 
 /// The viewer route, nested inside every tab branch so it pushes onto that
@@ -560,16 +588,25 @@ GoRoute editorRoute() {
 /// so [GoRouter] re-runs its redirect whenever the auth state changes.
 class _StreamListenable extends ChangeNotifier {
   _StreamListenable(Stream<dynamic> stream) {
-    _subscription = stream.asBroadcastStream().listen((dynamic _) {
-      notifyListeners();
+    // AppUserCubit exposes a broadcast stream. Listening to it directly is
+    // deliberate: cancelling this subscription must detach from the source,
+    // rather than merely pausing an `asBroadcastStream` wrapper forever.
+    _subscription = stream.listen((dynamic _) {
+      if (!_disposed) notifyListeners();
     });
   }
 
   late final StreamSubscription<dynamic> _subscription;
+  bool _disposed = false;
 
   @override
   void dispose() {
-    _subscription.cancel();
+    if (_disposed) return;
+    _disposed = true;
+    // Cancellation detaches synchronously from a broadcast stream. The future
+    // only waits for an asynchronous onCancel hook, so ChangeNotifier's sync
+    // dispose contract is still honoured without leaving a listener alive.
+    unawaited(_subscription.cancel());
     super.dispose();
   }
 }

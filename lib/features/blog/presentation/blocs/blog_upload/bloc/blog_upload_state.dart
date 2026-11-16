@@ -32,6 +32,13 @@ class BlogUploadFailure extends BlogUploadState {
   List<Object> get props => [error];
 }
 
+/// A server or preflight version mismatch. Kept distinct from an ordinary
+/// failure so the editor can preserve the draft and open the comparison flow
+/// instead of queueing/retrying the stale update.
+class BlogUploadVersionConflict extends BlogUploadFailure {
+  const BlogUploadVersionConflict(super.failure);
+}
+
 class BlogDeleteLoading extends BlogUploadState {
   @override
   List<Object> get props => [];

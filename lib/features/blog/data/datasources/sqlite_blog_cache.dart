@@ -6,6 +6,7 @@ import 'package:belog/core/storage/backend_key.dart';
 import 'package:belog/features/blog/data/datasources/article_document_codec.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
 import 'package:belog/features/blog/domain/offline_library/offline_library.dart';
 import 'package:drift/drift.dart';
@@ -55,6 +56,7 @@ class SqliteBlogCache implements BlogLocalDataSource {
           posterAvatar: blog.posterAvatar,
           documentJson: blog.documentJson,
           categoriesJson: _encodeCategories(blog.categories),
+          articleRevision: blog.articleRevision?.value,
         );
       }
       await database.customStatement(
@@ -235,6 +237,9 @@ class SqliteBlogCache implements BlogLocalDataSource {
     return BlogModel(
       id: data['id']! as String,
       articleId: data['article_id'] as String? ?? '',
+      // Old rows and corrupt values both become unavailable conditions. An
+      // editor then retains its text and refuses the unconditional legacy PUT.
+      articleRevision: ArticleRevision.parse(data['article_revision']),
       documentJson: data['document_json'] as String?,
       document: decodeCachedArticleDocument(data['document_json'] as String?),
       title: data['title']! as String,
