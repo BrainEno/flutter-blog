@@ -1,4 +1,3 @@
-import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
@@ -23,7 +22,7 @@ class OfflineLibraryArticleTile extends StatelessWidget {
     required this.onTap,
   }) : result = null;
 
-  const OfflineLibraryArticleTile.search({
+  OfflineLibraryArticleTile.search({
     super.key,
     required OfflineLibrarySearchResult this.result,
     required this.index,

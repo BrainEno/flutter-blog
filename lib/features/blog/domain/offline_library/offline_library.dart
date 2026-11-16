@@ -114,33 +114,3 @@ class OfflineLibrarySearchResult {
 
   bool get hasBodyExcerpt => bodyExcerpt != null && bodyExcerpt!.isNotEmpty;
 }
-
-/// The result of parsing local search input before any cache scan begins.
-///
-/// A bad query is a local validation answer, not an exception. That lets the
-/// UI explain the limit and, importantly, avoids scanning article bodies for
-/// accidental enormous pasted input.
-class OfflineLibraryQueryParseResult {
-  const OfflineLibraryQueryParseResult._({this.query, this.issue});
-
-  const OfflineLibraryQueryParseResult.valid(OfflineLibraryQuery value)
-    : this._(query: value);
-
-  const OfflineLibraryQueryParseResult.invalid(OfflineLibraryQueryIssue value)
-    : this._(issue: value);
-
-  final OfflineLibraryQuery? query;
-  final OfflineLibraryQueryIssue? issue;
-
-  bool get isValid => query != null;
-}
-
-/// Reasons a local query is not scanned.
-enum OfflineLibraryQueryIssue {
-  empty,
-  tooLong,
-  tooManyTerms,
-  termTooLong,
-  unclosedQuote,
-  invalidQuote,
-}

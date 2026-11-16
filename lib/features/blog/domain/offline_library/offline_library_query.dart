@@ -1,5 +1,3 @@
-import 'dart:collection';
-
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/offline_library/offline_library.dart';
 
@@ -157,7 +155,7 @@ class OfflineLibraryQuery {
     final tags = <String>[for (final tag in article.tags) _fold(tag)];
     final body = _fold(article.content);
 
-    final fields = LinkedHashSet<OfflineLibraryMatchField>();
+    final fields = <OfflineLibraryMatchField>{};
     var score = 0;
     int? firstBodyOffset;
 
@@ -247,7 +245,7 @@ class OfflineLibraryQuery {
   /// are UTF-16 safe so a shortened excerpt cannot strand an emoji surrogate.
   static String _bodyExcerpt(String rawBody, int matchOffset) {
     if (rawBody.isEmpty) return '';
-    final safeOffset = matchOffset.clamp(0, rawBody.length) as int;
+    final safeOffset = matchOffset.clamp(0, rawBody.length);
     const before = 76;
     const after = 132;
     final rawStart = safeOffset > before ? safeOffset - before : 0;
@@ -300,6 +298,36 @@ class _ArticleMatch {
   final Set<OfflineLibraryMatchField> fields;
   final int score;
   final String? bodyExcerpt;
+}
+
+/// The result of parsing local search input before any cache scan begins.
+///
+/// A bad query is a local validation answer, not an exception. That lets the
+/// UI explain the limit and, importantly, avoids scanning article bodies for
+/// accidental enormous pasted input.
+class OfflineLibraryQueryParseResult {
+  const OfflineLibraryQueryParseResult._({this.query, this.issue});
+
+  const OfflineLibraryQueryParseResult.valid(OfflineLibraryQuery value)
+    : this._(query: value);
+
+  const OfflineLibraryQueryParseResult.invalid(OfflineLibraryQueryIssue value)
+    : this._(issue: value);
+
+  final OfflineLibraryQuery? query;
+  final OfflineLibraryQueryIssue? issue;
+
+  bool get isValid => query != null;
+}
+
+/// Reasons a local query is not scanned.
+enum OfflineLibraryQueryIssue {
+  empty,
+  tooLong,
+  tooManyTerms,
+  termTooLong,
+  unclosedQuote,
+  invalidQuote,
 }
 
 String _fold(String value) => value.toLowerCase();
