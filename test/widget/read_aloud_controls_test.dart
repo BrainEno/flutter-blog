@@ -3,6 +3,7 @@ import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controller.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controls.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.dart';
+import 'package:belog/features/blog/presentation/read_aloud/read_aloud_voice_picker.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
 import 'package:belog/l10n/app_localizations.dart';
@@ -295,7 +296,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('read-aloud-voice-english-uk')));
     await tester.pump();
     expect(prefs.voiceWrites, [('en', 'english-uk')]);
-    await tester.pageBack();
+    Navigator.of(tester.element(find.byType(ReadAloudVoicePicker))).pop();
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('read-aloud-sleep-timer')));

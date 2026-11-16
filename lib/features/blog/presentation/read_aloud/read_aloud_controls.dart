@@ -119,6 +119,35 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                       ),
                     ],
                   ),
+                  Tooltip(
+                    message: l10n.readAloudFollowHint,
+                    child: MergeSemantics(
+                      child: InkWell(
+                        onTap: () => controller.setFollow(!controller.follow),
+                        child: Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Checkbox(
+                              key: const ValueKey('read-aloud-follow'),
+                              value: controller.follow,
+                              onChanged: (value) =>
+                                  controller.setFollow(value ?? false),
+                            ),
+                            Text(l10n.readAloudFollow),
+                            const SizedBox(width: NoWaveSpacing.small),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: NoWaveSpacing.xs),
+              Wrap(
+                spacing: NoWaveSpacing.small,
+                runSpacing: NoWaveSpacing.xs,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
                   if (controller.voiceChoices.isNotEmpty)
                     TextButton.icon(
                       key: const ValueKey('read-aloud-voice'),
@@ -171,27 +200,6 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                                     )
                                   : l10n.readAloudSleepTimer,
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Tooltip(
-                    message: l10n.readAloudFollowHint,
-                    child: MergeSemantics(
-                      child: InkWell(
-                        onTap: () => controller.setFollow(!controller.follow),
-                        child: Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            Checkbox(
-                              key: const ValueKey('read-aloud-follow'),
-                              value: controller.follow,
-                              onChanged: (value) =>
-                                  controller.setFollow(value ?? false),
-                            ),
-                            Text(l10n.readAloudFollow),
-                            const SizedBox(width: NoWaveSpacing.small),
                           ],
                         ),
                       ),
