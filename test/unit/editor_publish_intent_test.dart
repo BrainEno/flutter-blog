@@ -14,6 +14,7 @@ class _MockPublishQueueStore extends Mock implements PublishQueueStore {}
 void main() {
   setUpAll(() {
     registerFallbackValue(<String>[]);
+    registerFallbackValue(PublishQueueKind.create);
   });
 
   final draft = BlogDraft(
