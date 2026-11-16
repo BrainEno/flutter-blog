@@ -35,6 +35,8 @@ void main() {
     'features/blog/presentation/pages/blog_editor_page.dart': 'autosave dwell',
     'features/blog/presentation/pages/search_blog_page.dart':
         'input debounce, and how long a failure notice stays',
+    'features/blog/presentation/read_aloud/read_aloud_sleep_timer.dart':
+        'session-only sleep-timer deadlines',
     'features/user/presentation/pages/author_search_page.dart':
         'input debounce',
     'features/messages/presentation/pages/message_participants_sheet.dart':

@@ -3,6 +3,7 @@ import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controller.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controls.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.dart';
+import 'package:belog/features/blog/presentation/read_aloud/read_aloud_sleep_timer.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_voice_picker.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
@@ -305,6 +306,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(reader.hasSleepTimer, isTrue);
     expect(find.textContaining('Stops in'), findsOneWidget);
+    // Widget-test fake time verifies no asynchronous countdown is left behind;
+    // production disposal also clears this session-only timer.
+    reader.setSleepTimer(ReadAloudSleepTimerOption.off);
   });
 
   testWidgets(

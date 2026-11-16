@@ -56,6 +56,11 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
           },
         };
         final scheme = Theme.of(context).colorScheme;
+        final sleepTimerStatus = controller.hasSleepTimer
+            ? l10n.readAloudSleepTimerActive(
+                (controller.sleepTimerRemaining?.inMinutes ?? 0) + 1,
+              )
+            : l10n.readAloudSleepTimer;
         return Container(
           key: const ValueKey('read-aloud-controls'),
           margin: const EdgeInsets.only(bottom: NoWaveSpacing.section),
@@ -179,34 +184,34 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                             ),
                           ),
                       ],
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: NoWaveSpacing.small,
-                          vertical: NoWaveSpacing.xs,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.timer_outlined),
-                            const SizedBox(width: NoWaveSpacing.xs),
-                            Text(
-                              controller.hasSleepTimer
-                                  ? l10n.readAloudSleepTimerActive(
-                                      (controller
-                                                  .sleepTimerRemaining
-                                                  ?.inMinutes ??
-                                              0) +
-                                          1,
-                                    )
-                                  : l10n.readAloudSleepTimer,
-                            ),
-                          ],
+                      // Keep the trigger icon-only: at 2× text the English
+                      // countdown label is wider than a narrow phone. The
+                      // localized status remains visible below and is also the
+                      // semantic label, so compact layout never hides state.
+                      child: Semantics(
+                        label: sleepTimerStatus,
+                        button: true,
+                        child: ExcludeSemantics(
+                          child: Padding(
+                            padding: const EdgeInsets.all(NoWaveSpacing.small),
+                            child: const Icon(Icons.timer_outlined),
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ],
               ),
+              if (controller.hasSleepTimer)
+                Padding(
+                  padding: const EdgeInsets.only(top: NoWaveSpacing.xs),
+                  child: Text(
+                    sleepTimerStatus,
+                    style: NoWaveTypography.meta(context).copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               Semantics(
                 liveRegion:
                     !active && controller.notice != ReadAloudNotice.hint,
