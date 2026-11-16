@@ -135,7 +135,8 @@ class _StructuredRecoveryCatalogPageState
       StructuredRecoveryBufferKind? kind;
       if (store is StructuredRecoveryBufferInspector) {
         try {
-          kind = await store.inspectBuffer(key: entry.key!, rowId: entry.rowId);
+          kind = await (store as StructuredRecoveryBufferInspector)
+              .inspectBuffer(key: entry.key!, rowId: entry.rowId);
         } on Object {
           kind = StructuredRecoveryBufferKind.unknown;
         }
