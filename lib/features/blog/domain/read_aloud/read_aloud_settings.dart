@@ -18,7 +18,7 @@ const defaultSpeechRate = 1.0;
 class ReadAloudSettings {
   ReadAloudSettings({
     required this.follow,
-    required this.speed,
+    required double speed,
     Map<String, String> preferredVoiceIds = const {},
   }) : speed = sanitizeSpeechRate(speed),
        preferredVoiceIds = UnmodifiableMapView(

@@ -75,8 +75,9 @@ class SqliteReadAloudPreferences implements ReadAloudPreferences {
   }
 
   Map<String, String> _readVoiceIds(String? raw) {
-    if (raw == null || raw.isEmpty || raw.length > 8192)
+    if (raw == null || raw.isEmpty || raw.length > 8192) {
       return <String, String>{};
+    }
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return <String, String>{};
