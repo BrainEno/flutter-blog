@@ -311,7 +311,10 @@ void main() {
     await _open(tester, h);
     await _tapVisible(
       tester,
-      find.byTooltip('Edit local block properties').at(1),
+      find.descendant(
+        of: find.byKey(const ValueKey('image-one')),
+        matching: find.byTooltip('Edit local block properties'),
+      ),
     );
     expect(find.textContaining('This form is temporary'), findsOneWidget);
     await tester.enterText(
@@ -331,7 +334,10 @@ void main() {
     await _open(tester, h);
     await _tapVisible(
       tester,
-      find.byTooltip('Edit local block properties').at(1),
+      find.descendant(
+        of: find.byKey(const ValueKey('image-one')),
+        matching: find.byTooltip('Edit local block properties'),
+      ),
     );
     await tester.enterText(
       find.byKey(const ValueKey('structured-image-alt')),
@@ -349,7 +355,10 @@ void main() {
     await _open(tester, h);
     await _tapVisible(
       tester,
-      find.byTooltip('Edit local block properties').at(1),
+      find.descendant(
+        of: find.byKey(const ValueKey('image-one')),
+        matching: find.byTooltip('Edit local block properties'),
+      ),
     );
     await tester.enterText(
       find.byKey(const ValueKey('structured-image-alt')),
@@ -371,7 +380,10 @@ void main() {
     await _open(tester, h);
     await _tapVisible(
       tester,
-      find.byTooltip('Edit local block properties').at(1),
+      find.descendant(
+        of: find.byKey(const ValueKey('image-one')),
+        matching: find.byTooltip('Edit local block properties'),
+      ),
     );
     await tester.enterText(
       find.byKey(const ValueKey('structured-image-alt')),
