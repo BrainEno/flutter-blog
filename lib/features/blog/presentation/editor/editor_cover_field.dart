@@ -144,11 +144,14 @@ class EditorCoverField extends StatelessWidget {
         ? AppPalette.surfaceOnInk.withAlpha((0.3 * 255).toInt())
         : AppPalette.surfaceOnPaper.withAlpha((0.15 * 255).toInt());
     return DottedBorder(
-      color: dashedColor,
-      radius: const Radius.circular(12),
-      borderType: BorderType.RRect,
-      dashPattern: const [6, 3],
-      strokeCap: StrokeCap.round,
+      // dotted_border 3 moves paint configuration into one typed options
+      // object. Keep the former rounded, softly dashed visual treatment.
+      options: RoundedRectDottedBorderOptions(
+        color: dashedColor,
+        radius: const Radius.circular(12),
+        dashPattern: const [6, 3],
+        strokeCap: StrokeCap.round,
+      ),
       child: Container(
         constraints: const BoxConstraints(minHeight: 250),
         width: double.infinity,
