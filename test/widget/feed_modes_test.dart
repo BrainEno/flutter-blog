@@ -238,11 +238,12 @@ void main() {
     final loaded = feed.state as BlogLoaded;
     expect(loaded.kind, BlogFeedKind.popular);
     expect(loaded.depthLimited, isTrue);
-    expect(
-      requests.map((request) => request.page),
-      [1, 1, 2, 3],
-      reason: 'the refused page is never requested',
-    );
+    expect(requests.map((request) => request.page), [
+      1,
+      1,
+      2,
+      3,
+    ], reason: 'the refused page is never requested');
     expect(find.text(l10n.feedNoMore), findsNothing);
 
     await tester.scrollUntilVisible(
