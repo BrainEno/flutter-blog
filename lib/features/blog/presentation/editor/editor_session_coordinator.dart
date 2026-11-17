@@ -855,7 +855,7 @@ class _EditorSessionCoordinatorState extends State<EditorSessionCoordinator> {
       onImportNotion: () => unawaited(_notion.openImport(context)),
       onExportNotion: _target == null
           ? null
-          : () => unawaited(_notion.openExport(context, _target?.id)),
+          : () => unawaited(_notion.openExport(context, _target.id)),
       onUploadState: _onUploadState,
       form: !current
           ? null
