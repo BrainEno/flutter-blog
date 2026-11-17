@@ -8,6 +8,7 @@ required_files=(
   docs/agent-development.md
   docs/ci-observability.md
   .github/pull_request_template.md
+  .github/dependabot.yml
   .github/workflows/ci.yml
   .github/workflows/dart.yml
   tool/ci/check_env_asset_contract.sh
@@ -43,7 +44,7 @@ done
 
 ci="$root/.github/workflows/ci.yml"
 if [[ -f "$ci" ]]; then
-  for token in 'pull_request:' 'permissions:' 'flutter analyze --fatal-infos' 'flutter test --coverage' 'flutter build apk --release' 'upload-artifact@'; do
+  for token in 'pull_request:' 'permissions:' 'dart format --output=none --set-exit-if-changed .' 'flutter analyze --fatal-infos' 'flutter test --coverage' 'flutter build apk --release' 'upload-artifact@'; do
     if ! grep -Fq -- "$token" "$ci"; then
       echo "::error::CI workflow is missing expected guardrail/check: $token"
       failed=1
@@ -57,12 +58,33 @@ if [[ -f "$ci" ]]; then
     echo '::error::Critical quality checks must not be forced green with continue-on-error.'
     failed=1
   fi
+  if grep -Fq 'non-blocking until legacy formatting debt' "$ci"; then
+    echo '::error::Repository-wide Dart formatting must be a blocking CI gate.'
+    failed=1
+  fi
 fi
 release="$root/.github/workflows/dart.yml"
 if [[ -f "$release" ]]; then
   for forbidden in 'svenstaro/upload-release-action' 'tag: v1.9' 'overwrite: true'; do
     if grep -Fq -- "$forbidden" "$release"; then
       echo "::error::Unsafe legacy release behavior remains in dart.yml: $forbidden"
+      failed=1
+    fi
+  done
+  if grep -Fq 'pull_request:' "$release"; then
+    echo '::error::dart.yml must be manually dispatched; ci.yml owns PR Android release validation.'
+    failed=1
+  fi
+  if ! grep -Fq 'workflow_dispatch:' "$release"; then
+    echo '::error::dart.yml must retain its explicit manual validation trigger.'
+    failed=1
+  fi
+fi
+dependabot="$root/.github/dependabot.yml"
+if [[ -f "$dependabot" ]]; then
+  for token in 'package-ecosystem: pub' 'package-ecosystem: github-actions' 'interval: weekly'; do
+    if ! grep -Fq -- "$token" "$dependabot"; then
+      echo "::error::Dependabot configuration is missing expected update policy: $token"
       failed=1
     fi
   done

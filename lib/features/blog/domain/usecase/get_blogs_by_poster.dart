@@ -17,7 +17,5 @@ class GetBlogsByPoster implements UseCase<List<Blog>, GetBlogsByPosterParams> {
 class GetBlogsByPosterParams {
   final String userId;
 
-  GetBlogsByPosterParams({
-    required this.userId,
-  });
+  GetBlogsByPosterParams({required this.userId});
 }

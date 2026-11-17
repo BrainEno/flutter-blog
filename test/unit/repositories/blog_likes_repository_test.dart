@@ -34,21 +34,24 @@ void main() {
     verifyNever(() => remote.toggleLikeBlog(any(), any()));
   });
 
-  test('offline status and list return failures without server calls',
-      () async {
-    when(() => connection.isConnected).thenAnswer((_) async => false);
-    final status = await repository.isBlogLiked('user', 'blog');
-    final list = await repository.getUserLikedBlogs('user');
-    expect(status.isLeft(), isTrue);
-    expect(list.isLeft(), isTrue);
-    verifyNever(() => remote.isBlogLikedByUser(any(), any()));
-    verifyNever(() => remote.getUserLikedBlogs(any()));
-  });
+  test(
+    'offline status and list return failures without server calls',
+    () async {
+      when(() => connection.isConnected).thenAnswer((_) async => false);
+      final status = await repository.isBlogLiked('user', 'blog');
+      final list = await repository.getUserLikedBlogs('user');
+      expect(status.isLeft(), isTrue);
+      expect(list.isLeft(), isTrue);
+      verifyNever(() => remote.isBlogLikedByUser(any(), any()));
+      verifyNever(() => remote.getUserLikedBlogs(any()));
+    },
+  );
 
   test('list server exception is returned rather than thrown', () async {
     when(() => connection.isConnected).thenAnswer((_) async => true);
-    when(() => remote.getUserLikedBlogs('user'))
-        .thenThrow(const ServerException('server unavailable'));
+    when(
+      () => remote.getUserLikedBlogs('user'),
+    ).thenThrow(const ServerException('server unavailable'));
     final result = await repository.getUserLikedBlogs('user');
     result.fold(
       (failure) => expect(failure.message, 'server unavailable'),
@@ -56,50 +59,62 @@ void main() {
     );
   });
 
-  test('unexpected connectivity and datasource errors become safe failures',
-      () async {
-    when(() => connection.isConnected).thenThrow(StateError('private details'));
-    final toggle = await repository.toggleLikeBlog('user', 'blog');
-    toggle.fold(
-      (failure) => expect(failure.message, isNot(contains('private details'))),
-      (_) => fail('expected failure'),
-    );
-    when(() => connection.isConnected).thenAnswer((_) async => true);
-    when(() => remote.isBlogLikedByUser('user', 'blog'))
-        .thenThrow(StateError('private details'));
-    when(() => remote.getUserLikedBlogs('user'))
-        .thenThrow(StateError('private details'));
-    final status = await repository.isBlogLiked('user', 'blog');
-    final list = await repository.getUserLikedBlogs('user');
-    status.fold(
-      (failure) => expect(failure.message, isNot(contains('private details'))),
-      (_) => fail('expected failure'),
-    );
-    list.fold(
-      (failure) => expect(failure.message, isNot(contains('private details'))),
-      (_) => fail('expected failure'),
-    );
-  });
+  test(
+    'unexpected connectivity and datasource errors become safe failures',
+    () async {
+      when(
+        () => connection.isConnected,
+      ).thenThrow(StateError('private details'));
+      final toggle = await repository.toggleLikeBlog('user', 'blog');
+      toggle.fold(
+        (failure) =>
+            expect(failure.message, isNot(contains('private details'))),
+        (_) => fail('expected failure'),
+      );
+      when(() => connection.isConnected).thenAnswer((_) async => true);
+      when(
+        () => remote.isBlogLikedByUser('user', 'blog'),
+      ).thenThrow(StateError('private details'));
+      when(
+        () => remote.getUserLikedBlogs('user'),
+      ).thenThrow(StateError('private details'));
+      final status = await repository.isBlogLiked('user', 'blog');
+      final list = await repository.getUserLikedBlogs('user');
+      status.fold(
+        (failure) =>
+            expect(failure.message, isNot(contains('private details'))),
+        (_) => fail('expected failure'),
+      );
+      list.fold(
+        (failure) =>
+            expect(failure.message, isNot(contains('private details'))),
+        (_) => fail('expected failure'),
+      );
+    },
+  );
 
   test('online results and known errors keep their contracts', () async {
     when(() => connection.isConnected).thenAnswer((_) async => true);
-    when(() => remote.toggleLikeBlog('user', 'blog'))
-        .thenAnswer((_) async => true);
-    when(() => remote.isBlogLikedByUser('user', 'blog'))
-        .thenAnswer((_) async => false);
-    when(() => remote.getUserLikedBlogs('user'))
-        .thenAnswer((_) async => <BlogModel>[]);
+    when(
+      () => remote.toggleLikeBlog('user', 'blog'),
+    ).thenAnswer((_) async => true);
+    when(
+      () => remote.isBlogLikedByUser('user', 'blog'),
+    ).thenAnswer((_) async => false);
+    when(
+      () => remote.getUserLikedBlogs('user'),
+    ).thenAnswer((_) async => <BlogModel>[]);
     expect((await repository.toggleLikeBlog('user', 'blog')).isRight(), isTrue);
-    (await repository.isBlogLiked('user', 'blog')).fold(
-      (_) => fail('expected success'),
-      (liked) => expect(liked, isFalse),
-    );
-    (await repository.getUserLikedBlogs('user')).fold(
-      (_) => fail('expected success'),
-      (blogs) => expect(blogs, isEmpty),
-    );
-    when(() => remote.toggleLikeBlog('user', 'blog'))
-        .thenThrow(const ServerException('rejected'));
+    (await repository.isBlogLiked(
+      'user',
+      'blog',
+    )).fold((_) => fail('expected success'), (liked) => expect(liked, isFalse));
+    (await repository.getUserLikedBlogs(
+      'user',
+    )).fold((_) => fail('expected success'), (blogs) => expect(blogs, isEmpty));
+    when(
+      () => remote.toggleLikeBlog('user', 'blog'),
+    ).thenThrow(const ServerException('rejected'));
     (await repository.toggleLikeBlog('user', 'blog')).fold(
       (failure) => expect(failure.message, 'rejected'),
       (_) => fail('expected failure'),

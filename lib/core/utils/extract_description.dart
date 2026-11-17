@@ -1,5 +1,8 @@
-String extractDescription(String content,
-    {int maxLines = 5, int maxChars = 100}) {
+String extractDescription(
+  String content, {
+  int maxLines = 5,
+  int maxChars = 100,
+}) {
   List<String> lines = content.split(RegExp(r'\r?\n'));
   List<String> extractedLines = [];
   int charCount = 0;
