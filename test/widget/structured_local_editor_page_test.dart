@@ -258,6 +258,13 @@ Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _historyAction(WidgetTester tester, String key) async {
+  await tester.tap(find.byKey(const ValueKey('structured-history-menu')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(ValueKey(key)));
+  await tester.pumpAndSettle();
+}
+
 Future<void> _scrollToStatus(WidgetTester tester) async {
   await tester.drag(find.byType(ListView), const Offset(0, 2000));
   await tester.pumpAndSettle();
@@ -351,21 +358,41 @@ void main() {
     );
   });
 
+  testWidgets('history menu does not undo a body changed while it was open', (
+    tester,
+  ) async {
+    await _open(tester, h);
+    expect(
+      h.session.edit((body) => body.replacePlainText('paragraph', 'first')),
+      isTrue,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('structured-history-menu')));
+    await tester.pumpAndSettle();
+    expect(
+      h.session.edit((body) => body.replacePlainText('paragraph', 'newer')),
+      isTrue,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('structured-history-undo')));
+    await tester.pumpAndSettle();
+    expect(
+      h.session.state.body!.blocks.singleWhere(
+        (block) => block['id'] == 'paragraph',
+      )['text'],
+      'newer',
+    );
+  });
+
   testWidgets('body undo and redo persist through local recovery CAS', (
     tester,
   ) async {
     await _open(tester, h);
     await _tapVisible(tester, find.byTooltip('Move block down').first);
     expect(h.session.state.body!.blocks.first['id'], 'image-one');
-    await _tapVisible(
-      tester,
-      find.byKey(const ValueKey('structured-history-undo')),
-    );
+    await _historyAction(tester, 'structured-history-undo');
     expect(h.session.state.body!.blocks.first['id'], 'heading');
-    await _tapVisible(
-      tester,
-      find.byKey(const ValueKey('structured-history-redo')),
-    );
+    await _historyAction(tester, 'structured-history-redo');
     expect(h.session.state.body!.blocks.first['id'], 'image-one');
     expect(await h.session.flush(), LocalStructuredFlushResult.saved);
     expect((await h.inner.load(_key))!.body.blocks.first['id'], 'image-one');
@@ -382,10 +409,7 @@ void main() {
         isTrue,
       );
       await tester.pumpAndSettle();
-      await _tapVisible(
-        tester,
-        find.byKey(const ValueKey('structured-history-open')),
-      );
+      await _historyAction(tester, 'structured-history-open');
       expect(find.textContaining('not metadata or the server'), findsOneWidget);
       expect(
         find.textContaining('Current body → selected snapshot'),
@@ -427,10 +451,7 @@ void main() {
         isTrue,
       );
       await tester.pumpAndSettle();
-      await _tapVisible(
-        tester,
-        find.byKey(const ValueKey('structured-history-open')),
-      );
+      await _historyAction(tester, 'structured-history-open');
       await _tapVisible(tester, find.text('Restore selected block contents'));
       expect(find.textContaining('without moving'), findsNothing);
       expect(
@@ -480,10 +501,7 @@ void main() {
       isTrue,
     );
     await tester.pumpAndSettle();
-    await _tapVisible(
-      tester,
-      find.byKey(const ValueKey('structured-history-open')),
-    );
+    await _historyAction(tester, 'structured-history-open');
     await _tapVisible(tester, find.text('Restore selected block contents'));
     await _tapVisible(tester, find.text('Select all'));
     await _tapVisible(tester, find.text('Preview selected changes'));
