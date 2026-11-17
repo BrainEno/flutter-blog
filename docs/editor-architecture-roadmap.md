@@ -24,8 +24,14 @@ range、rich-text 的本地操作，以及从损坏/不支持正文中恢复作�
 
 ## 已落地的协调边界
 
-`BlogEditorPage` 仍负责路由、对话框、控制器和画面状态；以下不可变的工作已从
-它抽出，避免异步流程重新拼接不一致的请求：
+`BlogEditorPage` 是保留原有构造参数的路由组合入口；
+`EditorSessionCoordinator` 持有控制器、恢复、账号围栏、异步对话框、发布和
+草稿状态，并将显示交给无持久化副作用的 `EditorScreen` / `EditorForm`。
+`EditorSessionFence` 单独定义当前账号及 generation 匹配规则，方便独立测试；
+`EditorNotionCoordinator` 管理单个 Notion 弹层及其精确路由，账号失效时移除该路由。
+此次主要迁移原有协调逻辑，不改变 Markdown、草稿或队列协议。协调器仍然较大，
+后续应分步抽出草稿、媒体和冲突协调服务并保留既有行为测试，不能仅将文件
+搬走就声称编排复杂度已经消失。以下不可变工作避免异步流程拼接不同请求：
 
 - `EditorPublishIntent` 同时生成 `BlogUploadBloc` 事件和离线 queue 行；文本、
   标签、分类三态（未触碰 / 清空 / 选择）、封面、目标语言、session generation、
@@ -34,7 +40,7 @@ range、rich-text 的本地操作，以及从损坏/不支持正文中恢复作�
   `blog_remote_article_reads.dart`，创建、上传、条件更新、删除和恢复位于
   `blog_remote_article_writes.dart`。两者仍共享原来的错误映射、语言和 session
   fence，因此此次拆分不改变 REST 契约。
-- 自动草稿、冲突核对和队列行仍只有 `BlogEditorPage` 这一处协调。成功只能清理
+- 自动草稿、冲突核对和队列行仍只有 `EditorSessionCoordinator` 这一处协调。成功只能清理
   “本次发布前保存的精确 draft”，不能清理作者在请求期间继续输入的内容。
 
 ## 收敛顺序

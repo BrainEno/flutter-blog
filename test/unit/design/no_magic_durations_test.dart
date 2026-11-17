@@ -32,7 +32,8 @@ void main() {
         'cursor arithmetic: one millisecond of inclusive bound',
     'features/blog/data/publish/publish_queue_runner.dart':
         'publish retry schedule',
-    'features/blog/presentation/pages/blog_editor_page.dart': 'autosave dwell',
+    'features/blog/presentation/editor/editor_session_coordinator.dart':
+        'autosave dwell',
     'features/blog/presentation/pages/search_blog_page.dart':
         'input debounce, and how long a failure notice stays',
     'features/blog/presentation/read_aloud/read_aloud_sleep_timer.dart':
