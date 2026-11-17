@@ -11,6 +11,7 @@ import 'package:belog/features/blog/domain/entities/structured_edition_read.dart
 import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_text_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_comparison_page.dart';
+import 'package:belog/features/blog/presentation/editor/structured_body_history_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_recovery_review_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_block_properties_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_insert_page.dart';
@@ -129,6 +130,29 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
     );
     if (!mounted || !confirmed) return;
     _edit((body) => body.remove(id));
+  }
+
+  StructuredBodyHistorySeed? _historySeed() {
+    final view = widget.session.captureBodyHistory();
+    return view == null ? null : StructuredBodyHistorySeed(view);
+  }
+
+  Future<void> _openHistory() async {
+    if (_busy || _exiting) return;
+    final seed = _historySeed();
+    if (seed == null) return;
+    setState(() => _busy = true);
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              StructuredBodyHistoryPage(session: widget.session, seed: seed),
+        ),
+      );
+    } finally {
+      seed.clear();
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _openComparison() async {
@@ -449,7 +473,9 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
         ),
       );
     }
-    final editable = state.phase == LocalStructuredPhase.editing && !_busy;
+    final editable =
+        state.phase == LocalStructuredPhase.editing && !_busy && !_exiting;
+    final history = editable ? widget.session.captureBodyHistory() : null;
     return ListView(
       padding: const EdgeInsets.all(NoWaveSpacing.page),
       children: [
@@ -464,6 +490,33 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
         if (_comparisonText(context, state.baseComparison)
             case final String message)
           Text(message),
+        Text(l10n.structuredHistoryShortNote),
+        Wrap(
+          children: [
+            TextButton.icon(
+              key: const ValueKey('structured-history-undo'),
+              onPressed: history?.canUndo == true
+                  ? () => widget.session.undoBody()
+                  : null,
+              icon: const Icon(Icons.undo),
+              label: Text(l10n.structuredHistoryUndo),
+            ),
+            TextButton.icon(
+              key: const ValueKey('structured-history-redo'),
+              onPressed: history?.canRedo == true
+                  ? () => widget.session.redoBody()
+                  : null,
+              icon: const Icon(Icons.redo),
+              label: Text(l10n.structuredHistoryRedo),
+            ),
+            TextButton.icon(
+              key: const ValueKey('structured-history-open'),
+              onPressed: history != null ? _openHistory : null,
+              icon: const Icon(Icons.history),
+              label: Text(l10n.structuredHistoryTitle),
+            ),
+          ],
+        ),
         // This view is for an adopted recovery; the separate local recovery
         // review remains available before the author chooses to resume it.
         OutlinedButton.icon(

@@ -351,6 +351,168 @@ void main() {
     );
   });
 
+  testWidgets('body undo and redo persist through local recovery CAS', (
+    tester,
+  ) async {
+    await _open(tester, h);
+    await _tapVisible(tester, find.byTooltip('Move block down').first);
+    expect(h.session.state.body!.blocks.first['id'], 'image-one');
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('structured-history-undo')),
+    );
+    expect(h.session.state.body!.blocks.first['id'], 'heading');
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('structured-history-redo')),
+    );
+    expect(h.session.state.body!.blocks.first['id'], 'image-one');
+    expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+    expect((await h.inner.load(_key))!.body.blocks.first['id'], 'image-one');
+  });
+
+  testWidgets(
+    'history preview needs confirmation and restores only selected body',
+    (tester) async {
+      await _open(tester, h);
+      expect(
+        h.session.edit(
+          (body) => body.replacePlainText('paragraph', 'edited in session'),
+        ),
+        isTrue,
+      );
+      await tester.pumpAndSettle();
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('structured-history-open')),
+      );
+      expect(find.textContaining('not metadata or the server'), findsOneWidget);
+      expect(
+        find.textContaining('Current body → selected snapshot'),
+        findsOneWidget,
+      );
+      await _tapVisible(tester, find.text('Restore local snapshot'));
+      expect(find.text('Restore this local body?'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(
+        h.session.state.body!.blocks.singleWhere(
+          (block) => block['id'] == 'paragraph',
+        )['text'],
+        'edited in session',
+      );
+      await _tapVisible(tester, find.text('Restore local snapshot'));
+      await tester.tap(find.text('Restore local snapshot').last);
+      await tester.pumpAndSettle();
+      expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+      expect(
+        (await h.inner.load(_key))!.body.blocks.singleWhere(
+          (block) => block['id'] == 'paragraph',
+        )['text'],
+        'literal **asterisks**',
+      );
+      expect(h.session.captureBodyHistory()!.canRedo, isTrue);
+    },
+  );
+
+  testWidgets(
+    'selected-block preview is local and rejects stale account confirmation',
+    (tester) async {
+      await _open(tester, h);
+      expect(
+        h.session.edit(
+          (body) =>
+              body.replacePlainText('paragraph', 'private edited content'),
+        ),
+        isTrue,
+      );
+      await tester.pumpAndSettle();
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('structured-history-open')),
+      );
+      await _tapVisible(tester, find.text('Restore selected block contents'));
+      expect(find.textContaining('without moving'), findsNothing);
+      expect(
+        find.textContaining('unselected blocks and metadata'),
+        findsOneWidget,
+      );
+      await tester.dragUntilVisible(
+        find.byKey(const ValueKey('history-select-paragraph')),
+        find.byType(ListView).last,
+        const Offset(0, -300),
+      );
+      await tester.tap(find.byKey(const ValueKey('history-select-paragraph')));
+      await tester.pumpAndSettle();
+      await tester.dragUntilVisible(
+        find.text('Preview selected changes'),
+        find.byType(ListView).last,
+        const Offset(0, 300),
+      );
+      await tester.tap(find.text('Preview selected changes'));
+      await tester.pumpAndSettle();
+      await tester.dragUntilVisible(
+        find.text('Apply selected blocks'),
+        find.byType(ListView).last,
+        const Offset(0, -300),
+      );
+      await tester.tap(find.text('Apply selected blocks'));
+      await tester.pumpAndSettle();
+      expect(find.text('Apply selected block contents?'), findsOneWidget);
+      h.identity.switchUser('other');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Apply selected blocks').last);
+      await tester.pumpAndSettle();
+      expect(h.session.state.phase, LocalStructuredPhase.invalidated);
+      expect(h.session.state.body, isNull);
+      expect(find.textContaining('private edited content'), findsNothing);
+    },
+  );
+
+  testWidgets('batch selection preview applies one locally saved edit', (
+    tester,
+  ) async {
+    await _open(tester, h);
+    expect(
+      h.session.edit(
+        (body) => body.replacePlainText('paragraph', 'local batch change'),
+      ),
+      isTrue,
+    );
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('structured-history-open')),
+    );
+    await _tapVisible(tester, find.text('Restore selected block contents'));
+    await _tapVisible(tester, find.text('Select all'));
+    await _tapVisible(tester, find.text('Preview selected changes'));
+    await tester.dragUntilVisible(
+      find.text('Apply selected blocks'),
+      find.byType(ListView).last,
+      const Offset(0, -300),
+    );
+    expect(find.textContaining('Nothing has been saved yet'), findsOneWidget);
+    expect(
+      h.session.state.body!.blocks.singleWhere(
+        (block) => block['id'] == 'paragraph',
+      )['text'],
+      'local batch change',
+    );
+    await tester.tap(find.text('Apply selected blocks'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Apply selected blocks').last);
+    await tester.pumpAndSettle();
+    expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+    expect(
+      (await h.inner.load(_key))!.body.blocks.singleWhere(
+        (block) => block['id'] == 'paragraph',
+      )['text'],
+      'literal **asterisks**',
+    );
+    expect(h.session.captureBodyHistory()!.canUndo, isTrue);
+  });
+
   testWidgets('insert block is temporary until explicitly applied and saved', (
     tester,
   ) async {
