@@ -6,6 +6,9 @@ import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_structured_body_recovery_store.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
+import 'package:belog/features/blog/domain/editing/structured_body_transfer.dart';
+import 'package:belog/features/blog/presentation/editor/structured_transfer_export_page.dart';
+import 'package:belog/features/blog/presentation/editor/structured_transfer_import_page.dart';
 import 'package:belog/features/blog/domain/entities/structured_body_recovery.dart';
 import 'package:belog/features/blog/domain/entities/structured_edition_read.dart';
 import 'package:belog/features/blog/domain/entities/structured_session_metadata.dart';
@@ -274,6 +277,45 @@ void main() {
   late _Harness h;
   setUp(() => h = _Harness());
   tearDown(() async => h.dispose());
+
+  testWidgets(
+    'clipboard read is explicit and late result is discarded on account switch',
+    (tester) async {
+      await h.session.open();
+      final capture = StructuredTransferCapture.take(h.session)!;
+      final pending = Completer<String?>();
+      var reads = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: StructuredTransferImportPage(
+            session: h.session,
+            seed: StructuredTransferSeed(capture),
+            readText: () {
+              reads++;
+              return pending.future;
+            },
+          ),
+        ),
+      );
+      expect(reads, 0);
+      await tester.tap(find.text('Read body from clipboard'));
+      await tester.pump();
+      expect(reads, 1);
+      h.identity.switchUser('other');
+      await tester.pump();
+      pending.complete('private data');
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'This body or session changed. Return to the editor and start again.',
+        ),
+        findsOneWidget,
+      );
+      expect(h.session.state.body, isNull);
+    },
+  );
 
   for (final locale in [const Locale('en'), const Locale('zh')]) {
     testWidgets(

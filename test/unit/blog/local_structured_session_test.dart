@@ -6,6 +6,7 @@ import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_structured_body_recovery_store.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
+import 'package:belog/features/blog/domain/editing/structured_body_transfer.dart';
 import 'package:belog/features/blog/domain/editing/structured_inline_selection.dart';
 import 'package:belog/features/blog/domain/editing/structured_inline_replacement.dart';
 import 'package:belog/features/blog/domain/entities/structured_body_recovery.dart';
@@ -291,6 +292,108 @@ void main() {
   });
   tearDown(() async {
     await h.dispose();
+  });
+
+  group('body transfer', () {
+    test(
+      'preview replacement is local, preserves metadata and rejects reuse',
+      () async {
+        final session = h.session();
+        await session.open();
+        final capture = StructuredTransferCapture.take(session)!;
+        final metadata = session.state.metadata;
+        final imported = capture.body.replacePlainText('paragraph', 'imported');
+        final preview = StructuredTransferPreview.create(
+          session: session,
+          capture: capture,
+          imported: imported,
+        )!;
+        expect(_text(session.state.body), isNot('imported'));
+        expect(preview.apply(session), StructuredTransferApplyResult.accepted);
+        expect(_text(session.state.body), 'imported');
+        expect(session.state.metadata, same(metadata));
+        expect(preview.apply(session), StructuredTransferApplyResult.stale);
+        expect(await session.flush(), LocalStructuredFlushResult.saved);
+        expect(_text((await h.inner.load(_key))!.body), 'imported');
+        expect(session.captureBodyHistory()!.canUndo, isTrue);
+      },
+    );
+    test(
+      'selected shared blocks are atomic, leave order and other content alone',
+      () async {
+        final session = h.session();
+        await session.open();
+        final capture = StructuredTransferCapture.take(session)!;
+        final imported = capture.body
+            .replacePlainText('paragraph', 'selected')
+            .move('image-two', 1);
+        final preview = StructuredTransferPreview.create(
+          session: session,
+          capture: capture,
+          imported: imported,
+        )!;
+        expect(
+          preview.applySelected(session, {'missing'}),
+          StructuredTransferApplyResult.invalid,
+        );
+        expect(identical(session.state.body, capture.body), isTrue);
+        expect(
+          preview.applySelected(session, {'paragraph'}),
+          StructuredTransferApplyResult.accepted,
+        );
+        expect(_text(session.state.body), 'selected');
+        expect(
+          session.state.body!.blocks.map((b) => b['id']).toList(),
+          capture.body.blocks.map((b) => b['id']).toList(),
+        );
+        expect(await session.flush(), LocalStructuredFlushResult.saved);
+      },
+    );
+    test('preview cannot apply after body or account changes', () async {
+      final session = h.session();
+      await session.open();
+      final capture = StructuredTransferCapture.take(session)!;
+      final imported = capture.body.replacePlainText(
+        'paragraph',
+        'old preview',
+      );
+      final preview = StructuredTransferPreview.create(
+        session: session,
+        capture: capture,
+        imported: imported,
+      )!;
+      expect(
+        session.edit((body) => body.replacePlainText('paragraph', 'new edit')),
+        isTrue,
+      );
+      expect(preview.apply(session), StructuredTransferApplyResult.stale);
+      final newer = StructuredTransferCapture.take(session)!;
+      final other = StructuredTransferPreview.create(
+        session: session,
+        capture: newer,
+        imported: imported,
+      )!;
+      h.identity.switchTo('other');
+      expect(
+        other.applySelected(session, {'paragraph'}),
+        StructuredTransferApplyResult.stale,
+      );
+      expect(session.state.body, isNull);
+    });
+    test('unchanged import does not create history', () async {
+      final session = h.session();
+      await session.open();
+      final capture = StructuredTransferCapture.take(session)!;
+      final before = session.captureBodyHistory()!;
+      final preview = StructuredTransferPreview.create(
+        session: session,
+        capture: capture,
+        imported: capture.body,
+      )!;
+      expect(preview.apply(session), StructuredTransferApplyResult.unchanged);
+      expect(session.captureBodyHistory()!.generation, before.generation);
+      expect(h.store.creates, 0);
+    });
   });
 
   group('comparison capture', () {
