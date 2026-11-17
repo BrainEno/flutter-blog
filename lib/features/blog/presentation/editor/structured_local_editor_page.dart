@@ -7,11 +7,14 @@ import 'package:belog/core/l10n/edition_l10n.dart';
 import 'package:belog/core/utils/well_formed_utf16.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
+import 'package:belog/features/blog/domain/editing/structured_body_transfer.dart';
 import 'package:belog/features/blog/domain/entities/structured_edition_read.dart';
 import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_text_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_comparison_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_body_history_page.dart';
+import 'package:belog/features/blog/presentation/editor/structured_transfer_export_page.dart';
+import 'package:belog/features/blog/presentation/editor/structured_transfer_import_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_recovery_review_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_block_properties_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_insert_page.dart';
@@ -19,7 +22,7 @@ import 'package:belog/features/blog/presentation/editor/structured_list_page.dar
 import 'package:belog/features/blog/presentation/editor/structured_local_inline_page.dart';
 import 'package:flutter/material.dart';
 
-enum _BodyHistoryAction { undo, redo, review }
+enum _BodyHistoryAction { undo, redo, review, exportBody, importBody }
 
 /// A deliberately limited local-only editor. It never constructs a server
 /// request. Plain text uses a separate local session with explicit recovery.
@@ -37,6 +40,7 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
   late StreamSubscription<LocalStructuredState> _subscription;
   bool _readingState = false;
   int? _historyMenuGeneration;
+  StructuredArticleDraft? _historyMenuBody;
   bool _busy = false;
   bool _exiting = false;
 
@@ -45,6 +49,10 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _subscription = widget.session.changes.listen((state) {
+      if (!identical(state.body, _historyMenuBody)) {
+        _historyMenuBody = null;
+        _historyMenuGeneration = null;
+      }
       // A getter can discover a missed identity event while build is already
       // reading the new state. In that case this build itself is the update.
       if (mounted && !_readingState) setState(() {});
@@ -65,6 +73,8 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _historyMenuBody = null;
+    _historyMenuGeneration = null;
     unawaited(_subscription.cancel());
     // Unexpected external route removal cannot silently delete the saved row.
     // A failed in-memory write still requires an explicit user decision.
@@ -150,6 +160,36 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
         MaterialPageRoute<void>(
           builder: (_) =>
               StructuredBodyHistoryPage(session: widget.session, seed: seed),
+        ),
+      );
+    } finally {
+      seed.clear();
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  StructuredTransferSeed? _transferSeed() {
+    final capture = StructuredTransferCapture.take(widget.session);
+    return capture == null ? null : StructuredTransferSeed(capture);
+  }
+
+  Future<void> _openTransfer({required bool import}) async {
+    if (_busy || _exiting) return;
+    final seed = _transferSeed();
+    if (seed == null) return;
+    setState(() => _busy = true);
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => import
+              ? StructuredTransferImportPage(
+                  session: widget.session,
+                  seed: seed,
+                )
+              : StructuredTransferExportPage(
+                  session: widget.session,
+                  seed: seed,
+                ),
         ),
       );
     } finally {
@@ -391,18 +431,33 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
               key: const ValueKey('structured-history-menu'),
               tooltip: l10n.structuredHistoryTitle,
               enabled:
-                  state.phase == LocalStructuredPhase.editing &&
+                  state.body != null &&
+                  const {
+                    LocalStructuredPhase.editing,
+                    LocalStructuredPhase.saveFailed,
+                    LocalStructuredPhase.conflict,
+                  }.contains(state.phase) &&
                   !_busy &&
                   !_exiting,
               icon: const Icon(Icons.history),
               onSelected: (action) {
                 final generation = _historyMenuGeneration;
+                final selectedBody = _historyMenuBody;
                 _historyMenuGeneration = null;
-                final history = widget.session.captureBodyHistory();
+                _historyMenuBody = null;
+                final current = widget.session.state;
                 if (_busy ||
                     _exiting ||
-                    generation == null ||
-                    history?.generation != generation) {
+                    selectedBody == null ||
+                    !identical(current.body, selectedBody)) {
+                  return;
+                }
+                if (action == _BodyHistoryAction.exportBody) {
+                  unawaited(_openTransfer(import: false));
+                  return;
+                }
+                final history = widget.session.captureBodyHistory();
+                if (generation == null || history?.generation != generation) {
                   return;
                 }
                 switch (action) {
@@ -412,12 +467,20 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
                     widget.session.redoBody();
                   case _BodyHistoryAction.review:
                     unawaited(_openHistory());
+                  case _BodyHistoryAction.importBody:
+                    unawaited(_openTransfer(import: true));
+                  case _BodyHistoryAction.exportBody:
+                    break;
                 }
               },
-              onCanceled: () => _historyMenuGeneration = null,
+              onCanceled: () {
+                _historyMenuGeneration = null;
+                _historyMenuBody = null;
+              },
               itemBuilder: (context) {
                 final history = widget.session.captureBodyHistory();
                 _historyMenuGeneration = history?.generation;
+                _historyMenuBody = widget.session.state.body;
                 return [
                   PopupMenuItem(
                     key: const ValueKey('structured-history-undo'),
@@ -436,6 +499,19 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
                     value: _BodyHistoryAction.review,
                     enabled: history != null,
                     child: Text(l10n.structuredHistoryTitle),
+                  ),
+                  const PopupMenuDivider(),
+                  PopupMenuItem(
+                    key: const ValueKey('structured-transfer-export'),
+                    value: _BodyHistoryAction.exportBody,
+                    enabled: _historyMenuBody != null,
+                    child: Text(l10n.structuredTransferExportTitle),
+                  ),
+                  PopupMenuItem(
+                    key: const ValueKey('structured-transfer-import'),
+                    value: _BodyHistoryAction.importBody,
+                    enabled: history != null,
+                    child: Text(l10n.structuredTransferImportTitle),
                   ),
                 ];
               },
