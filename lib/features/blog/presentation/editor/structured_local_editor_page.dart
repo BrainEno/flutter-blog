@@ -10,6 +10,7 @@ import 'package:belog/features/blog/domain/editing/structured_article_draft.dart
 import 'package:belog/features/blog/domain/entities/structured_edition_read.dart';
 import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_text_page.dart';
+import 'package:belog/features/blog/presentation/editor/structured_comparison_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_block_properties_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_insert_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_list_page.dart';
@@ -127,6 +128,25 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
     );
     if (!mounted || !confirmed) return;
     _edit((body) => body.remove(id));
+  }
+
+  Future<void> _openComparison() async {
+    if (_busy || _exiting) return;
+    final capture = widget.session.captureComparison();
+    if (capture == null) return;
+    final seed = StructuredComparisonSeed(capture);
+    setState(() => _busy = true);
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              StructuredComparisonPage(session: widget.session, seed: seed),
+        ),
+      );
+    } finally {
+      seed.clear();
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _openText(String blockId) async {
@@ -399,6 +419,11 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
         if (_comparisonText(context, state.baseComparison)
             case final String message)
           Text(message),
+        OutlinedButton.icon(
+          onPressed: _busy || _exiting ? null : _openComparison,
+          icon: const Icon(Icons.compare_arrows),
+          label: Text(l10n.structuredCompareTitle),
+        ),
         if (state.phase == LocalStructuredPhase.saveFailed)
           TextButton(
             onPressed: () => widget.session.retrySave(),
