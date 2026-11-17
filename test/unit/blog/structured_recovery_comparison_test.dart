@@ -18,52 +18,55 @@ StructuredBlockChange _change(
 ) => comparison.changes.singleWhere((change) => change.id == id);
 
 void main() {
-  test('reports added removed moved and modified blocks without pairing IDs', () {
-    final base = _body();
-    final heading = Map<String, Object?>.of(base.blocks.first)..['level'] = 3;
-    var local = base.replace('heading', heading);
-    local = local.move('image-two', 1);
-    local = local.remove('quote');
-    local = local.insert(3, {
-      'id': 'new-paragraph',
-      'type': 'paragraph',
-      'text': 'A strictly local addition',
-    });
+  test(
+    'reports added removed moved and modified blocks without pairing IDs',
+    () {
+      final base = _body();
+      final heading = Map<String, Object?>.of(base.blocks.first)..['level'] = 3;
+      var local = base.replace('heading', heading);
+      local = local.move('image-two', 1);
+      local = local.remove('quote');
+      local = local.insert(3, {
+        'id': 'new-paragraph',
+        'type': 'paragraph',
+        'text': 'A strictly local addition',
+      });
 
-    final comparison = StructuredRecoveryComparison.compare(
-      base: base,
-      local: local,
-    );
+      final comparison = StructuredRecoveryComparison.compare(
+        base: base,
+        local: local,
+      );
 
-    expect(comparison.baseVersion, 1);
-    expect(comparison.localVersion, 1);
-    expect(comparison.addedCount, 1);
-    expect(comparison.removedCount, 1);
-    expect(comparison.movedCount, 4);
-    expect(comparison.modifiedCount, 1);
+      expect(comparison.baseVersion, 1);
+      expect(comparison.localVersion, 1);
+      expect(comparison.addedCount, 1);
+      expect(comparison.removedCount, 1);
+      expect(comparison.movedCount, 4);
+      expect(comparison.modifiedCount, 1);
 
-    final added = _change(comparison, 'new-paragraph');
-    expect(added.kinds, {StructuredBlockChangeKind.added});
-    expect(added.base, isNull);
-    expect(added.local!.position, 3);
+      final added = _change(comparison, 'new-paragraph');
+      expect(added.kinds, {StructuredBlockChangeKind.added});
+      expect(added.base, isNull);
+      expect(added.local!.position, 3);
 
-    final removed = _change(comparison, 'quote');
-    expect(removed.kinds, {StructuredBlockChangeKind.removed});
-    expect(removed.base!.position, 3);
-    expect(removed.local, isNull);
+      final removed = _change(comparison, 'quote');
+      expect(removed.kinds, {StructuredBlockChangeKind.removed});
+      expect(removed.base!.position, 3);
+      expect(removed.local, isNull);
 
-    final moved = _change(comparison, 'image-two');
-    expect(moved.kinds, {StructuredBlockChangeKind.moved});
-    expect(moved.base!.position, 5);
-    expect(moved.local!.position, 1);
+      final moved = _change(comparison, 'image-two');
+      expect(moved.kinds, {StructuredBlockChangeKind.moved});
+      expect(moved.base!.position, 5);
+      expect(moved.local!.position, 1);
 
-    final modified = _change(comparison, 'heading');
-    expect(modified.kinds, {StructuredBlockChangeKind.modified});
-    expect(modified.fields, hasLength(1));
-    expect(modified.fields.single.field, 'level');
-    expect(modified.fields.single.before, 2);
-    expect(modified.fields.single.after, 3);
-  });
+      final modified = _change(comparison, 'heading');
+      expect(modified.kinds, {StructuredBlockChangeKind.modified});
+      expect(modified.fields, hasLength(1));
+      expect(modified.fields.single.field, 'level');
+      expect(modified.fields.single.before, 2);
+      expect(modified.fields.single.after, 3);
+    },
+  );
 
   test('keeps missing optional fields distinct from an explicit value', () {
     final base = _body();
@@ -76,7 +79,9 @@ void main() {
       StructuredRecoveryComparison.compare(base: base, local: local),
       'image-one',
     );
-    final caption = change.fields.singleWhere((field) => field.field == 'caption');
+    final caption = change.fields.singleWhere(
+      (field) => field.field == 'caption',
+    );
     final alt = change.fields.singleWhere((field) => field.field == 'alt');
 
     expect(caption.hadBefore, isTrue);

@@ -18,8 +18,8 @@ class StructuredRecoveryReviewSeed {
   StructuredRecoveryReviewSeed({
     required StructuredArticleDraft base,
     required StructuredArticleDraft local,
-    required this.remoteStatus,
-    required this.baseComparison,
+    required StructuredEditionReadStatus? remoteStatus,
+    required StructuredBaseComparison? baseComparison,
   }) : _snapshot = StructuredRecoveryReviewSnapshot._(
          base: base,
          local: local,
@@ -220,8 +220,7 @@ class _StructuredRecoveryReviewPageState
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: NoWaveSpacing.small),
-          for (final change in comparison.changes)
-            _ChangeCard(change: change),
+          for (final change in comparison.changes) _ChangeCard(change: change),
         ],
       ],
     );
@@ -245,7 +244,8 @@ class _StructuredRecoveryReviewPageState
       };
     }
     if (snapshot.remoteStatus == StructuredEditionReadStatus.unavailable ||
-        snapshot.remoteStatus == StructuredEditionReadStatus.notInAuthorWindow) {
+        snapshot.remoteStatus ==
+            StructuredEditionReadStatus.notInAuthorWindow) {
       return l10n.structuredReviewRemoteUnavailable;
     }
     return l10n.structuredReviewRemoteUnknown;
@@ -275,17 +275,18 @@ class _SummaryCard extends StatelessWidget {
             _count(l10n.structuredReviewRemoved, comparison.removedCount),
             _count(l10n.structuredReviewMoved, comparison.movedCount),
             _count(l10n.structuredReviewModified, comparison.modifiedCount),
-            _count(l10n.structuredReviewUnchanged, comparison.unchangedBlockCount),
+            _count(
+              l10n.structuredReviewUnchanged,
+              comparison.unchangedBlockCount,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _count(String label, int count) => Semantics(
-    label: '$label: $count',
-    child: Text('$label: $count'),
-  );
+  Widget _count(String label, int count) =>
+      Semantics(label: '$label: $count', child: Text('$label: $count'));
 }
 
 class _ChangeCard extends StatelessWidget {
@@ -358,10 +359,7 @@ class _ChangeCard extends StatelessWidget {
     );
   }
 
-  Widget _fieldChange(
-    BuildContext context,
-    StructuredBlockFieldChange field,
-  ) {
+  Widget _fieldChange(BuildContext context, StructuredBlockFieldChange field) {
     final l10n = context.l10n;
     return Padding(
       padding: const EdgeInsets.only(top: NoWaveSpacing.small),
@@ -369,8 +367,12 @@ class _ChangeCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(_fieldLabel(l10n, field.field)),
-          Text('${l10n.structuredReviewBefore}: ${_value(context, field.hadBefore, field.before)}'),
-          Text('${l10n.structuredReviewAfter}: ${_value(context, field.hasAfter, field.after)}'),
+          Text(
+            '${l10n.structuredReviewBefore}: ${_value(context, field.hadBefore, field.before)}',
+          ),
+          Text(
+            '${l10n.structuredReviewAfter}: ${_value(context, field.hasAfter, field.after)}',
+          ),
         ],
       ),
     );
@@ -404,7 +406,10 @@ class _ChangeCard extends StatelessWidget {
                       child: Text(_fieldLabel(l10n, entry.key)),
                     ),
                     const SizedBox(width: NoWaveSpacing.small),
-                    Expanded(flex: 3, child: Text(_value(context, true, entry.value))),
+                    Expanded(
+                      flex: 3,
+                      child: Text(_value(context, true, entry.value)),
+                    ),
                   ],
                 ),
               ),
@@ -468,7 +473,8 @@ String _formatValue(BuildContext context, Object? value, {int depth = 0}) {
     final entries = value.entries
         .where((entry) => entry.key is String)
         .map(
-          (entry) => '${entry.key}: '
+          (entry) =>
+              '${entry.key}: '
               '${_formatValue(context, entry.value, depth: depth + 1)}',
         );
     return '{${entries.join(', ')}}';

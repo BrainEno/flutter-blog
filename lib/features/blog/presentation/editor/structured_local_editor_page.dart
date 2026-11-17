@@ -289,10 +289,8 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
     try {
       await Navigator.of(context).push<void>(
         MaterialPageRoute<void>(
-          builder: (_) => StructuredRecoveryReviewPage(
-            session: widget.session,
-            seed: seed,
-          ),
+          builder: (_) =>
+              StructuredRecoveryReviewPage(session: widget.session, seed: seed),
         ),
       );
     } finally {
