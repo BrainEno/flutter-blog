@@ -991,7 +991,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.textContaining('local recovery changed while this review was opening'),
+      find.textContaining(
+        'local recovery changed while this review was opening',
+      ),
       findsOneWidget,
     );
     expect(find.text('Moved blocks: 5'), findsNothing);
