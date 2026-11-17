@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
+import 'package:belog/features/blog/domain/editing/structured_body_history.dart';
+import 'package:belog/features/blog/domain/editing/structured_history_patch.dart';
 import 'package:belog/features/blog/domain/editing/structured_comparison.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_text_session.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_rich_text_session.dart';
@@ -73,6 +75,10 @@ class LocalStructuredState {
   final bool hasUnsavedChanges;
   final bool recoveryAvailable;
 }
+
+/// Outcome of restoring the exact content of one existing block from a
+/// captured history entry. No outcome implies a durable save or remote write.
+enum LocalHistoryBlockRestoreResult { accepted, unchanged, stale, invalid }
 
 enum LocalStructuredFlushResult {
   saved,
@@ -166,6 +172,8 @@ class LocalStructuredSession {
   bool _discarding = false;
   bool _closing = false;
   bool _handoff = false;
+  bool _startingWrite = false;
+  final _bodyHistory = StructuredBodyHistory();
   bool _invalidated = false;
   int _openGeneration = 0;
 
@@ -211,6 +219,7 @@ class LocalStructuredSession {
       _invalidated = true;
       _openGeneration++;
       _remote = null;
+      _bodyHistory.clear();
       // The writer owns admitted edits under the original key. Keep its CAS
       // token and base privately until it finishes, never in the public state.
       _set(const LocalStructuredState(phase: LocalStructuredPhase.invalidated));
@@ -264,6 +273,7 @@ class LocalStructuredSession {
       if (!_checkIdentity() || generation != _openGeneration) return;
       if (result.status == StructuredSessionOpenStatus.obsolete) {
         _invalidated = true;
+        _bodyHistory.clear();
         _set(
           const LocalStructuredState(phase: LocalStructuredPhase.invalidated),
         );
@@ -327,6 +337,7 @@ class LocalStructuredSession {
     }
     _base = edition.body;
     _baseMetadata = edition.metadata;
+    _bodyHistory.initialize(edition.body);
     _set(
       LocalStructuredState(
         phase: LocalStructuredPhase.editing,
@@ -350,6 +361,7 @@ class LocalStructuredSession {
     final recovery = _recovery!;
     _base = recovery.base;
     _baseMetadata = recovery.baseMetadata;
+    _bodyHistory.initialize(recovery.body);
     _set(
       LocalStructuredState(
         phase: LocalStructuredPhase.editing,
@@ -432,7 +444,132 @@ class LocalStructuredSession {
     // An operation can synchronously trigger a route or identity change, or
     // even another edit. Never resurrect its stale body after that event.
     if (!_canEdit() || !identical(_state, before)) return false;
+    final recorded = _bodyHistory.record(before.body!, next);
+    if (recorded == null) return false;
+    if (!recorded) return true;
     return _accept(_Edit(next, before.metadata));
+  }
+
+  /// Captures an in-memory body timeline only while this session can edit.
+  /// Callers must drop the result immediately on a body or identity change.
+  /// It is not a persistent revision history or a local CAS token.
+  StructuredHistoryView? captureBodyHistory() {
+    if (!_canEdit()) return null;
+    final body = _state.body;
+    return body == null ? null : _bodyHistory.capture(body);
+  }
+
+  /// Moves to an exact captured history entry, then admits the selected body
+  /// through the same serialized CAS writer as every regular edit. The current
+  /// metadata is retained. A stale capture, changed identity, failure, conflict,
+  /// or closed/handoff session refuses the operation without writing anything.
+  bool selectBodyHistory({
+    required StructuredArticleDraft current,
+    required int generation,
+    required int entryId,
+  }) {
+    if (!_canEdit() || !identical(_state.body, current)) return false;
+    final next = _bodyHistory.select(
+      current: current,
+      generation: generation,
+      entryId: entryId,
+    );
+    if (next == null) return false;
+    return _accept(_Edit(next, _state.metadata));
+  }
+
+  /// Restore the selected historical block's complete validated contents in
+  /// place. IDs and current position remain fixed; neither a missing block nor
+  /// a changed history is guessed. This is a new edit and drops redo history.
+  LocalHistoryBlockRestoreResult restoreBodyHistoryBlock({
+    required StructuredArticleDraft current,
+    required int generation,
+    required int entryId,
+    required String blockId,
+  }) {
+    final view = captureBodyHistory();
+    if (view == null ||
+        view.generation != generation ||
+        !identical(view.current.body, current)) {
+      return LocalHistoryBlockRestoreResult.stale;
+    }
+    final selected = view.entries.where((entry) => entry.id == entryId);
+    if (selected.length != 1) return LocalHistoryBlockRestoreResult.stale;
+    final before = current.blocks.where((block) => block['id'] == blockId);
+    final after = selected.single.body.blocks.where(
+      (block) => block['id'] == blockId,
+    );
+    if (before.length != 1 || after.length != 1) {
+      return LocalHistoryBlockRestoreResult.stale;
+    }
+    if (structuredComparisonJsonEquals(before.single, after.single)) {
+      return LocalHistoryBlockRestoreResult.unchanged;
+    }
+    try {
+      final result = current.replace(blockId, after.single);
+      if (!edit((body) => result)) return LocalHistoryBlockRestoreResult.stale;
+      return LocalHistoryBlockRestoreResult.accepted;
+    } on FormatException {
+      // Mixing snapshots may exceed the current schema's document-size bound
+      // or use inline content incompatible with the current document version.
+      return LocalHistoryBlockRestoreResult.invalid;
+    } on ArgumentError {
+      return LocalHistoryBlockRestoreResult.invalid;
+    }
+  }
+
+  /// Rebuild a previewed batch from captured history under the current fence.
+  /// Never accept a caller-provided result body: it could have been generated
+  /// for a different target or before a later edit. This remains one local edit
+  /// and goes through the existing CAS writer; metadata is not rolled back.
+  LocalHistoryBlockRestoreResult restoreBodyHistoryBlocks({
+    required StructuredArticleDraft current,
+    required int generation,
+    required int entryId,
+    required Set<String> blockIds,
+  }) {
+    final view = captureBodyHistory();
+    if (view == null ||
+        view.generation != generation ||
+        !identical(view.current.body, current)) {
+      return LocalHistoryBlockRestoreResult.stale;
+    }
+    final matches = view.entries.where((entry) => entry.id == entryId);
+    if (matches.length != 1) return LocalHistoryBlockRestoreResult.stale;
+    try {
+      final plan = StructuredHistoryPatch.prepare(
+        current: current,
+        source: matches.single.body,
+        blockIds: blockIds,
+      );
+      return edit((body) => plan.result)
+          ? LocalHistoryBlockRestoreResult.accepted
+          : LocalHistoryBlockRestoreResult.stale;
+    } on FormatException {
+      return LocalHistoryBlockRestoreResult.invalid;
+    } on ArgumentError {
+      return LocalHistoryBlockRestoreResult.invalid;
+    }
+  }
+
+  bool undoBody() {
+    final view = captureBodyHistory();
+    if (view == null || !view.canUndo) return false;
+    return selectBodyHistory(
+      current: view.current.body,
+      generation: view.generation,
+      entryId: view.entries[view.currentIndex - 1].id,
+    );
+  }
+
+  bool redoBody() {
+    final view = captureBodyHistory();
+    if (view == null || !view.canRedo) return false;
+    return selectBodyHistory(
+      current: view.current.body,
+      generation: view.generation,
+      entryId: view.entries[view.currentIndex + 1].id,
+    );
   }
 
   /// Replace metadata intentionally. Null is not an implicit reset: older
@@ -446,12 +583,20 @@ class LocalStructuredSession {
       _checkIdentity() &&
       !_closing &&
       !_handoff &&
+      !_startingWrite &&
       (_state.phase == LocalStructuredPhase.editing) &&
       !_discarding;
 
   bool _accept(_Edit edit) {
     _pending = edit;
-    _startWriter();
+    // A synchronous store callback must not admit an edit against the old
+    // public body while the new body is being put into the writer.
+    _startingWrite = true;
+    try {
+      _startWriter();
+    } finally {
+      _startingWrite = false;
+    }
     // A custom store can synchronously trigger an identity change when the
     // operation starts. The admitted write keeps its old key, but its state
     // must never become visible to the replacement account.
@@ -776,6 +921,7 @@ class LocalStructuredSession {
     }
     await _identitySubscription.cancel();
     _remote = null;
+    _bodyHistory.clear();
     _recovery = null;
     _base = null;
     _baseMetadata = null;

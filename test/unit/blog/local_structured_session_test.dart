@@ -331,6 +331,214 @@ void main() {
     });
   });
 
+  group('bounded session body history', () {
+    test(
+      'undo and redo coalesce through CAS while retaining current metadata',
+      () async {
+        h.store.createGate = Completer<void>();
+        final session = h.session();
+        await session.open();
+        final original = session.state.body!;
+        expect(session.captureBodyHistory()!.canUndo, isFalse);
+        expect(
+          session.edit((body) => body.replacePlainText('paragraph', 'one')),
+          isTrue,
+        );
+        await h.store.createStarted.future;
+        expect(
+          session.edit((body) => body.replacePlainText('paragraph', 'two')),
+          isTrue,
+        );
+        expect(
+          session.editMetadata(_metadata(title: 'current metadata')),
+          isTrue,
+        );
+        expect(session.undoBody(), isTrue);
+        expect(_text(session.state.body), 'one');
+        expect(session.undoBody(), isTrue);
+        expect(identical(session.state.body, original), isTrue);
+        expect(session.redoBody(), isTrue);
+        expect(_text(session.state.body), 'one');
+        expect(session.state.metadata!.title, 'current metadata');
+        h.store.createGate!.complete();
+        expect(await session.flush(), LocalStructuredFlushResult.saved);
+        final saved = (await h.inner.load(_key))!;
+        expect(_text(saved.body), 'one');
+        expect(saved.sessionMetadata!.title, 'current metadata');
+        expect(session.captureBodyHistory()!.canRedo, isTrue);
+      },
+    );
+
+    test(
+      'failure and conflict reject history writes until retry, preserve other row',
+      () async {
+        h.store.createError = StateError('disk failure');
+        final session = h.session();
+        await session.open();
+        session.edit((body) => body.replacePlainText('paragraph', 'unsaved'));
+        expect(await session.flush(), LocalStructuredFlushResult.failed);
+        expect(session.captureBodyHistory(), isNull);
+        expect(session.undoBody(), isFalse);
+        expect(_text(session.state.body), 'unsaved');
+        h.store.createError = null;
+        expect(session.retrySave(), isTrue);
+        expect(await session.flush(), LocalStructuredFlushResult.saved);
+        expect(session.undoBody(), isTrue);
+        expect(await session.flush(), LocalStructuredFlushResult.saved);
+        expect(
+          _text((await h.inner.load(_key))!.body),
+          'literal **asterisks**',
+        );
+      },
+    );
+
+    test('undo conflict never overwrites a competing row', () async {
+      final session = h.session();
+      await session.open();
+      session.edit((body) => body.replacePlainText('paragraph', 'one'));
+      expect(await session.flush(), LocalStructuredFlushResult.saved);
+      final expected = (await h.inner.load(_key))!;
+      final other = await h.inner.replace(
+        expected: expected,
+        body: _body().replacePlainText('paragraph', 'other'),
+        updatedAt: _time,
+      );
+      expect(other, isNotNull);
+      expect(session.undoBody(), isTrue);
+      expect(await session.flush(), LocalStructuredFlushResult.conflict);
+      expect(_text((await h.inner.load(_key))!.body), 'other');
+      expect(_text(session.state.body), 'literal **asterisks**');
+      expect(session.redoBody(), isFalse);
+    });
+
+    test('stale captures and account changes cannot restore history', () async {
+      final session = h.session();
+      await session.open();
+      session.edit((body) => body.replacePlainText('paragraph', 'one'));
+      final capture = session.captureBodyHistory()!;
+      session.edit((body) => body.replacePlainText('paragraph', 'two'));
+      expect(
+        session.selectBodyHistory(
+          current: capture.current.body,
+          generation: capture.generation,
+          entryId: capture.entries.first.id,
+        ),
+        isFalse,
+      );
+      expect(
+        session.restoreBodyHistoryBlocks(
+          current: capture.current.body,
+          generation: capture.generation,
+          entryId: capture.entries.first.id,
+          blockIds: {'paragraph'},
+        ),
+        LocalHistoryBlockRestoreResult.stale,
+      );
+      h.identity.switchTo('other');
+      expect(session.captureBodyHistory(), isNull);
+      expect(session.undoBody(), isFalse);
+      expect(session.state.body, isNull);
+    });
+
+    test(
+      'batch block restore creates one edit and preserves metadata and order',
+      () async {
+        final session = h.session();
+        await session.open();
+        session.edit((body) => body.replacePlainText('paragraph', 'changed'));
+        session.edit((body) => body.move('image-two', 0));
+        session.editMetadata(_metadata(title: 'retained'));
+        final view = session.captureBodyHistory()!;
+        final order = session.state.body!.blocks
+            .map((block) => block['id'])
+            .toList();
+        expect(
+          session.restoreBodyHistoryBlocks(
+            current: view.current.body,
+            generation: view.generation,
+            entryId: view.entries.first.id,
+            blockIds: {'paragraph'},
+          ),
+          LocalHistoryBlockRestoreResult.accepted,
+        );
+        expect(_text(session.state.body), 'literal **asterisks**');
+        expect(session.state.body!.blocks.map((block) => block['id']), order);
+        expect(session.state.metadata!.title, 'retained');
+        expect(await session.flush(), LocalStructuredFlushResult.saved);
+        expect(
+          _text((await h.inner.load(_key))!.body),
+          'literal **asterisks**',
+        );
+        expect(session.undoBody(), isTrue);
+        expect(_text(session.state.body), 'changed');
+      },
+    );
+
+    test(
+      'no-op and failed batch never alter timeline or create a row',
+      () async {
+        final session = h.session();
+        await session.open();
+        expect(session.edit((body) => body), isTrue);
+        final view = session.captureBodyHistory()!;
+        expect(view.entries.length, 1);
+        expect(h.store.creates, 0);
+        expect(
+          session.restoreBodyHistoryBlocks(
+            current: view.current.body,
+            generation: view.generation,
+            entryId: view.current.id,
+            blockIds: {'paragraph'},
+          ),
+          LocalHistoryBlockRestoreResult.invalid,
+        );
+        expect(session.captureBodyHistory()!.generation, view.generation);
+        expect(await h.inner.load(_key), isNull);
+      },
+    );
+
+    test(
+      'synchronous store reentry cannot corrupt timeline or overwrite admission',
+      () async {
+        final session = h.session();
+        await session.open();
+        bool? nested;
+        h.store.onCreate = () {
+          nested = session.edit(
+            (body) => body.replacePlainText('paragraph', 'nested'),
+          );
+        };
+        expect(
+          session.edit((body) => body.replacePlainText('paragraph', 'outer')),
+          isTrue,
+        );
+        expect(nested, isFalse);
+        expect(await session.flush(), LocalStructuredFlushResult.saved);
+        expect(_text((await h.inner.load(_key))!.body), 'outer');
+        expect(session.undoBody(), isTrue);
+        expect(await session.flush(), LocalStructuredFlushResult.saved);
+        expect(
+          _text((await h.inner.load(_key))!.body),
+          'literal **asterisks**',
+        );
+      },
+    );
+
+    test(
+      'history is available only after recovery adoption and ends with close',
+      () async {
+        await h.seed();
+        final session = h.session();
+        await session.open();
+        expect(session.captureBodyHistory(), isNull);
+        expect(session.resumeRecovery(), isTrue);
+        expect(session.captureBodyHistory()!.entries.length, 1);
+        expect(await session.close(), isTrue);
+        expect(session.captureBodyHistory(), isNull);
+      },
+    );
+  });
+
   group('isolated inline replacement with the fenced local coordinator', () {
     test('saves exact replaced runs and keeps all other data', () async {
       final session = h.session();

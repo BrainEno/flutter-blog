@@ -11,12 +11,15 @@ import 'package:belog/features/blog/domain/entities/structured_edition_read.dart
 import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_text_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_comparison_page.dart';
+import 'package:belog/features/blog/presentation/editor/structured_body_history_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_recovery_review_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_block_properties_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_insert_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_list_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_inline_page.dart';
 import 'package:flutter/material.dart';
+
+enum _BodyHistoryAction { undo, redo, review }
 
 /// A deliberately limited local-only editor. It never constructs a server
 /// request. Plain text uses a separate local session with explicit recovery.
@@ -33,6 +36,7 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
     with WidgetsBindingObserver {
   late StreamSubscription<LocalStructuredState> _subscription;
   bool _readingState = false;
+  int? _historyMenuGeneration;
   bool _busy = false;
   bool _exiting = false;
 
@@ -129,6 +133,29 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
     );
     if (!mounted || !confirmed) return;
     _edit((body) => body.remove(id));
+  }
+
+  StructuredBodyHistorySeed? _historySeed() {
+    final view = widget.session.captureBodyHistory();
+    return view == null ? null : StructuredBodyHistorySeed(view);
+  }
+
+  Future<void> _openHistory() async {
+    if (_busy || _exiting) return;
+    final seed = _historySeed();
+    if (seed == null) return;
+    setState(() => _busy = true);
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              StructuredBodyHistoryPage(session: widget.session, seed: seed),
+        ),
+      );
+    } finally {
+      seed.clear();
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _openComparison() async {
@@ -359,6 +386,61 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
             onPressed: _leave,
           ),
           title: Text(l10n.structuredLocalTitle),
+          actions: [
+            PopupMenuButton<_BodyHistoryAction>(
+              key: const ValueKey('structured-history-menu'),
+              tooltip: l10n.structuredHistoryTitle,
+              enabled:
+                  state.phase == LocalStructuredPhase.editing &&
+                  !_busy &&
+                  !_exiting,
+              icon: const Icon(Icons.history),
+              onSelected: (action) {
+                final generation = _historyMenuGeneration;
+                _historyMenuGeneration = null;
+                final history = widget.session.captureBodyHistory();
+                if (_busy ||
+                    _exiting ||
+                    generation == null ||
+                    history?.generation != generation) {
+                  return;
+                }
+                switch (action) {
+                  case _BodyHistoryAction.undo:
+                    widget.session.undoBody();
+                  case _BodyHistoryAction.redo:
+                    widget.session.redoBody();
+                  case _BodyHistoryAction.review:
+                    unawaited(_openHistory());
+                }
+              },
+              onCanceled: () => _historyMenuGeneration = null,
+              itemBuilder: (context) {
+                final history = widget.session.captureBodyHistory();
+                _historyMenuGeneration = history?.generation;
+                return [
+                  PopupMenuItem(
+                    key: const ValueKey('structured-history-undo'),
+                    value: _BodyHistoryAction.undo,
+                    enabled: history?.canUndo == true,
+                    child: Text(l10n.structuredHistoryUndo),
+                  ),
+                  PopupMenuItem(
+                    key: const ValueKey('structured-history-redo'),
+                    value: _BodyHistoryAction.redo,
+                    enabled: history?.canRedo == true,
+                    child: Text(l10n.structuredHistoryRedo),
+                  ),
+                  PopupMenuItem(
+                    key: const ValueKey('structured-history-open'),
+                    value: _BodyHistoryAction.review,
+                    enabled: history != null,
+                    child: Text(l10n.structuredHistoryTitle),
+                  ),
+                ];
+              },
+            ),
+          ],
         ),
         body: SafeArea(child: _buildBody(context, state)),
       ),
@@ -449,7 +531,8 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
         ),
       );
     }
-    final editable = state.phase == LocalStructuredPhase.editing && !_busy;
+    final editable =
+        state.phase == LocalStructuredPhase.editing && !_busy && !_exiting;
     return ListView(
       padding: const EdgeInsets.all(NoWaveSpacing.page),
       children: [
