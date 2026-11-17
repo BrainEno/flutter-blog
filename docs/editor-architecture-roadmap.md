@@ -112,3 +112,28 @@ failed or conflicting saves. Applying does not guarantee a disk write, alter
 Markdown publishing, upload images, or publish a structured article. An input
 method composition must finish before applying. Unsupported malformed UTF-16
 is not rendered or edited through this form.
+
+### Local structural insertion and list actions
+
+The local structure editor can insert one of the six currently validated block
+shapes after an existing block. IDs are generated locally and checked for
+uniqueness by the existing document validator. Inputs remain literal, optional
+caption/attribution presence is explicit, and URL, document-size, item and
+block limits are validated before the coordinator accepts a snapshot. New
+blocks do not imply uploads, publication or remote-write support.
+
+List-item positions are bound to the exact selected body, not treated as stable
+IDs. Inserting, removing or moving an item preserves the representation of all
+other items; for formatted v1 lists their `itemInlines` entries move with the
+corresponding text. A new item gets one unformatted run only when the list
+already has inline runs. The last item cannot be removed and a 100-item list
+cannot grow. Destructive removal requires confirmation. Changing the parent
+snapshot or account invalidates a pending decision.
+
+Insertion forms are temporary: typing is not crash-recoverable, changing type
+requires confirmation when values were entered, and leaving a dirty form asks
+before discarding it. The author must finish active input-method composition
+before applying. Applying only queues an existing local CAS save, and the
+editor displays saving, saved, failed or conflict state. Device termination
+before a confirmed disk write can still lose pending input. No database schema,
+Markdown publishing or queue behavior is changed.

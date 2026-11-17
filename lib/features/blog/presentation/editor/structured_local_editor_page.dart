@@ -11,6 +11,8 @@ import 'package:belog/features/blog/domain/entities/structured_edition_read.dart
 import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_text_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_block_properties_page.dart';
+import 'package:belog/features/blog/presentation/editor/structured_insert_page.dart';
+import 'package:belog/features/blog/presentation/editor/structured_list_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_inline_page.dart';
 import 'package:flutter/material.dart';
 
@@ -212,6 +214,51 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
     }
   }
 
+  Future<void> _openInsert(StructuredArticleDraft body, String anchor) async {
+    if (_busy ||
+        _exiting ||
+        widget.session.state.phase != LocalStructuredPhase.editing ||
+        !identical(widget.session.state.body, body)) {
+      return;
+    }
+    final seed = StructuredInsertSeed(body);
+    setState(() => _busy = true);
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => StructuredInsertPage(
+            session: widget.session,
+            anchorId: anchor,
+            seed: seed,
+          ),
+        ),
+      );
+    } finally {
+      seed.clear();
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _openList(StructuredArticleDraft body, String blockId) async {
+    if (_busy ||
+        _exiting ||
+        widget.session.state.phase != LocalStructuredPhase.editing ||
+        !identical(widget.session.state.body, body)) {
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              StructuredListPage(session: widget.session, blockId: blockId),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   void _edit(
     StructuredArticleDraft Function(StructuredArticleDraft) operation,
   ) {
@@ -358,6 +405,7 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
             child: Text(l10n.actionRetry),
           ),
         const SizedBox(height: NoWaveSpacing.medium),
+        if (body.blocks.length >= 200) Text(l10n.structuredInsertBlockLimit),
         for (var index = 0; index < body.blocks.length; index++)
           _StructuredBlockCard(
             key: ValueKey(body.blocks[index]['id']),
@@ -367,11 +415,15 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
             canMoveUp: index > 0,
             canMoveDown: index < body.blocks.length - 1,
             canRemove: body.blocks.length > 1,
+            canInsert: body.blocks.length < 200,
             canBold: body.version == 1,
             canEditText: widget.session.store is StructuredTextSessionStore,
             canEditInline: body.version == 1,
             onProperties: () =>
                 _openProperties(body, body.blocks[index]['id'] as String),
+            onInsert: () =>
+                _openInsert(body, body.blocks[index]['id'] as String),
+            onList: () => _openList(body, body.blocks[index]['id'] as String),
             onInline: () => _openInline(body.blocks[index]['id'] as String),
             onText: () => _openText(body.blocks[index]['id'] as String),
             onMoveUp: () => _move(body.blocks[index]['id'] as String, -1),
@@ -467,10 +519,13 @@ class _StructuredBlockCard extends StatelessWidget {
     required this.canMoveUp,
     required this.canMoveDown,
     required this.canRemove,
+    required this.canInsert,
     required this.canBold,
     required this.canEditText,
     required this.canEditInline,
     required this.onProperties,
+    required this.onInsert,
+    required this.onList,
     required this.onInline,
     required this.onText,
     required this.onMoveUp,
@@ -484,10 +539,13 @@ class _StructuredBlockCard extends StatelessWidget {
   final bool canMoveUp;
   final bool canMoveDown;
   final bool canRemove;
+  final bool canInsert;
   final bool canBold;
   final bool canEditText;
   final bool canEditInline;
   final VoidCallback onProperties;
+  final VoidCallback onInsert;
+  final VoidCallback onList;
   final VoidCallback onInline;
   final VoidCallback onText;
   final VoidCallback onMoveUp;
@@ -542,6 +600,17 @@ class _StructuredBlockCard extends StatelessWidget {
                   onPressed: editable && canRemove ? onRemove : null,
                   icon: const Icon(Icons.delete_outline),
                 ),
+                IconButton(
+                  tooltip: l10n.structuredInsertBlockAfter,
+                  onPressed: editable && canInsert ? onInsert : null,
+                  icon: const Icon(Icons.add_box_outlined),
+                ),
+                if (type == 'list')
+                  IconButton(
+                    tooltip: l10n.structuredListOpen,
+                    onPressed: editable ? onList : null,
+                    icon: const Icon(Icons.format_list_bulleted),
+                  ),
                 if (const {
                   'image',
                   'code',
