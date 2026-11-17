@@ -51,6 +51,7 @@ class LocalStructuredState {
   const LocalStructuredState({
     required this.phase,
     this.body,
+    this.baseBody,
     this.metadata,
     this.remoteStatus,
     this.baseComparison,
@@ -60,7 +61,11 @@ class LocalStructuredState {
   });
 
   final LocalStructuredPhase phase;
+
+  /// The original snapshot for this local session, not a fresh server read.
+  /// It is cleared with all private state when the account fence invalidates.
   final StructuredArticleDraft? body;
+  final StructuredArticleDraft? baseBody;
   final StructuredSessionMetadata? metadata;
   final StructuredEditionReadStatus? remoteStatus;
   final StructuredBaseComparison? baseComparison;
@@ -291,6 +296,7 @@ class LocalStructuredSession {
           LocalStructuredState(
             phase: LocalStructuredPhase.recoveryChoice,
             body: _recovery!.body,
+            baseBody: _recovery!.base,
             metadata: _recovery!.sessionMetadata,
             remoteStatus: _remote?.status,
             baseComparison: _compareBase(_recovery!, _remote),
@@ -325,6 +331,7 @@ class LocalStructuredSession {
       LocalStructuredState(
         phase: LocalStructuredPhase.editing,
         body: edition.body,
+        baseBody: edition.body,
         metadata: edition.metadata,
         remoteStatus: _remote?.status,
         baseComparison: StructuredBaseComparison.noLocalBase,
@@ -347,6 +354,7 @@ class LocalStructuredSession {
       LocalStructuredState(
         phase: LocalStructuredPhase.editing,
         body: recovery.body,
+        baseBody: recovery.base,
         metadata: recovery.sessionMetadata,
         remoteStatus: _remote?.status,
         baseComparison: _state.baseComparison,
@@ -452,6 +460,7 @@ class LocalStructuredSession {
       LocalStructuredState(
         phase: LocalStructuredPhase.editing,
         body: edit.body,
+        baseBody: _base,
         metadata: edit.metadata,
         remoteStatus: _state.remoteStatus,
         baseComparison: _state.baseComparison,
@@ -522,6 +531,7 @@ class LocalStructuredSession {
         LocalStructuredState(
           phase: LocalStructuredPhase.editing,
           body: _state.body,
+          baseBody: _base,
           metadata: _state.metadata,
           remoteStatus: _state.remoteStatus,
           baseComparison: _state.baseComparison,
@@ -537,6 +547,7 @@ class LocalStructuredSession {
       LocalStructuredState(
         phase: phase,
         body: _state.body,
+        baseBody: _base,
         metadata: _state.metadata,
         remoteStatus: _state.remoteStatus,
         baseComparison: _state.baseComparison,
@@ -562,6 +573,7 @@ class LocalStructuredSession {
       LocalStructuredState(
         phase: LocalStructuredPhase.editing,
         body: _state.body,
+        baseBody: _base,
         metadata: _state.metadata,
         remoteStatus: _state.remoteStatus,
         baseComparison: _state.baseComparison,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/core/theme/theme.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
@@ -211,7 +213,7 @@ void main() {
       await harness.pump(tester);
       await tester.pumpAndSettle();
       final model = BlogModel.fromNowaveArticle(structuredArticle());
-      harness.router!.router.push('/view/structured', extra: model);
+      unawaited(harness.router!.router.push('/view/structured', extra: model));
       await tester.pumpAndSettle();
       expect(find.text('First caption'), findsOneWidget);
       expect(find.text('Second caption'), findsOneWidget);

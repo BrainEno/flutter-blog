@@ -9,6 +9,7 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
+import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/tag_navigation.dart';
@@ -330,9 +331,12 @@ class _AuthorPageState extends State<AuthorPage> {
                               ),
                             );
                           }
-                          final blogs = articleState is GetBlogsByUserSuccess
-                              ? articleState.blogs
-                              : const [];
+                          final List<Blog> blogs;
+                          if (articleState is GetBlogsByUserSuccess) {
+                            blogs = articleState.blogs;
+                          } else {
+                            blogs = const <Blog>[];
+                          }
                           if (blogs.isEmpty) {
                             return Padding(
                               padding: const EdgeInsets.symmetric(

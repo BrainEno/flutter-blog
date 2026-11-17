@@ -27,6 +27,8 @@ class _Identity implements NowaveSessionIdentity {
   int sessionGeneration = 3;
   @override
   Stream<void> get identityChanges => changes.stream;
+
+  Future<void> close() => changes.close();
 }
 
 void main() {
@@ -66,7 +68,7 @@ void main() {
   tearDown(() async {
     coordinator.dismiss();
     await cubit.close();
-    await identity.changes.close();
+    await identity.close();
   });
 
   Future<void> openHost(WidgetTester tester) async {

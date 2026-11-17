@@ -43,7 +43,7 @@ void main() {
     final sub = bloc.stream.listen(states.add);
     bloc.add(const SearchBlogsEvent(query: '   '));
     await bloc.close();
-    sub.cancel();
+    await sub.cancel();
 
     expect(searches, 0);
     expect(states.last, isA<BlogSearchInitial>());
@@ -82,7 +82,7 @@ void main() {
     slow.complete(Right([_blog('stale')]));
     await Future<void>.delayed(Duration.zero);
     await bloc.close();
-    sub.cancel();
+    await sub.cancel();
 
     final successes = states.whereType<BlogSearchSuccess>().toList();
     expect(successes, hasLength(1));
@@ -103,7 +103,7 @@ void main() {
     slow.complete(Right([_blog('late')]));
     await Future<void>.delayed(Duration.zero);
     await bloc.close();
-    sub.cancel();
+    await sub.cancel();
 
     expect(states.whereType<BlogSearchSuccess>(), isEmpty);
     expect(states.last, isA<BlogSearchInitial>());
@@ -117,7 +117,7 @@ void main() {
     final sub = bloc.stream.listen(states.add);
     bloc.add(const SearchBlogsEvent(query: 'x'));
     await bloc.close();
-    sub.cancel();
+    await sub.cancel();
 
     expect(states.last, isA<BlogSearchFailure>());
     expect((states.last as BlogSearchFailure).error, '离线');

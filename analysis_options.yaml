@@ -9,6 +9,12 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  # Reject implicit `dynamic` downcasts. Values from JSON and platform
+  # channels must be checked at the boundary instead of failing later.
+  language:
+    strict-casts: true
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`
@@ -22,6 +28,8 @@ linter:
   # producing the lint.
   rules:
     # `avoid_print` stays enabled: use AppLogger instead of print().
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
+    cancel_subscriptions: true
+    close_sinks: true
+    unawaited_futures: true
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

@@ -26,6 +26,8 @@ class _Identity implements NowaveSessionIdentity {
 
   @override
   Stream<void> get identityChanges => controller.stream;
+
+  Future<void> close() => controller.close();
 }
 
 void main() {
@@ -48,7 +50,7 @@ void main() {
     );
     addTearDown(() async {
       await cubit.close();
-      await identity.controller.close();
+      await identity.close();
     });
     pushedExtra = null;
     router = GoRouter(

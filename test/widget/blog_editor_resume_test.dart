@@ -57,6 +57,8 @@ class _Identity implements NowaveSessionIdentity {
 
   @override
   Stream<void> get identityChanges => controller.stream;
+
+  Future<void> close() => controller.close();
 }
 
 class _FakeDraftStore implements BlogDraftStore {
@@ -225,7 +227,7 @@ class _Harness {
 
   Future<void> dispose() async {
     await user.close();
-    await identity.controller.close();
+    await identity.close();
     await states.close();
   }
 }

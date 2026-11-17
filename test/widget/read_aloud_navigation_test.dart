@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/read_aloud/read_aloud_settings.dart';
 import 'package:belog/features/blog/domain/read_aloud/speech_engine.dart';
@@ -86,7 +88,7 @@ void main() {
       expect(engine.calls.last.rate, 1.25);
 
       final beforePage = engine.stopCount;
-      harness.router!.router.push('/author/author');
+      unawaited(harness.router!.router.push('/author/author'));
       await tester.pumpAndSettle();
       expect(engine.stopCount, greaterThan(beforePage));
       harness.router!.router.pop();
@@ -100,7 +102,7 @@ void main() {
       await tester.pumpAndSettle();
       await startPlayback(tester);
       final beforeRoot = engine.stopCount;
-      harness.router!.router.push('/login');
+      unawaited(harness.router!.router.push('/login'));
       await tester.pumpAndSettle();
       expect(engine.stopCount, greaterThan(beforeRoot));
       expect(tester.takeException(), isNull);

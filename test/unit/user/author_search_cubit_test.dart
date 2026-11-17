@@ -177,7 +177,7 @@ void main() {
       reason: 'the footer shows a spinner instead of a second request',
     );
     expect(cubit.state, isA<AuthorSearchDirectory>());
-    cubit.loadMore();
+    unawaited(cubit.loadMore());
     expect(repository.directoryOffsets, [0, 100]);
 
     repository.directoryRequests.last.complete(

@@ -1,0 +1,20 @@
+# Keep application dependencies and pinned GitHub Actions current in focused,
+# reviewable pull requests. Version updates remain subject to the same CI gates
+# as every other change; Dependabot never receives deployment credentials.
+version: 2
+updates:
+  - package-ecosystem: pub
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies

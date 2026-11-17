@@ -35,6 +35,8 @@ class _Identity implements NowaveSessionIdentity {
 
   @override
   Stream<void> get identityChanges => controller.stream;
+
+  Future<void> close() => controller.close();
 }
 
 class _Repository implements NotificationRepository {
@@ -182,7 +184,7 @@ class _Harness {
 
   Future<void> dispose() async {
     await cubit.close();
-    await identity.controller.close();
+    await identity.close();
   }
 }
 

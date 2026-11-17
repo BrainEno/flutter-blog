@@ -139,19 +139,12 @@ jobs:
             fi
             exit "$fmt_status"
           fi
-      - name: Audit repository-wide formatting drift
+      - name: Check repository-wide Dart formatting
         shell: bash
         run: |
-          set +e
+          set -o pipefail
           mkdir -p build/reports
-          dart format --output=none --set-exit-if-changed . > build/reports/repository-wide-format-audit.log 2>&1
-          audit_status=$?
-          set -e
-          if [[ "$audit_status" -ne 0 ]]; then
-            echo "::warning::Repository-wide formatting drift exists. This audit is non-blocking until legacy formatting debt is normalized; changed Dart files remain blocking."
-          else
-            echo "Repository-wide formatting audit passed."
-          fi
+          dart format --output=none --set-exit-if-changed . 2>&1 | tee build/reports/repository-wide-format-audit.log
       - name: Upload repository-wide formatting audit
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6

@@ -18,7 +18,5 @@ class GetUserLikedBlogs
 class GetUserLikedBlogsParams {
   final String userId;
 
-  GetUserLikedBlogsParams({
-    required this.userId,
-  });
+  GetUserLikedBlogsParams({required this.userId});
 }

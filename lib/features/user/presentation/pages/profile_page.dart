@@ -279,17 +279,19 @@ class _ProfileView extends StatelessWidget {
   Future<void> _exportData(BuildContext context, User user) async {
     final exporter = GetIt.instance<ExportUserData>();
     final l10n = context.l10n;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => PopScope(
-        canPop: false,
-        child: Center(
-          child: ColoredBox(
-            color: Theme.of(dialogContext).colorScheme.surface,
-            child: Padding(
-              padding: const EdgeInsets.all(NoWaveSpacing.large),
-              child: NoWaveLoadingLabel(semanticLabel: l10n.loading),
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => PopScope(
+          canPop: false,
+          child: Center(
+            child: ColoredBox(
+              color: Theme.of(dialogContext).colorScheme.surface,
+              child: Padding(
+                padding: const EdgeInsets.all(NoWaveSpacing.large),
+                child: NoWaveLoadingLabel(semanticLabel: l10n.loading),
+              ),
             ),
           ),
         ),
