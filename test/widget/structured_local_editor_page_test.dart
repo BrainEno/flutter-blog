@@ -305,6 +305,52 @@ void main() {
     );
   }
 
+  testWidgets(
+    'comparison requires recovery adoption and clears on identity change',
+    (tester) async {
+      await h.seed(
+        body: _body().replacePlainText('paragraph', 'private comparison value'),
+      );
+      await _open(tester, h);
+      expect(find.text('Compare body snapshots'), findsNothing);
+      await tester.tap(find.text('Resume local changes'));
+      await tester.pumpAndSettle();
+      await _tapVisible(tester, find.text('Compare body snapshots'));
+      expect(find.textContaining('may now be stale'), findsOneWidget);
+      expect(
+        find.textContaining('does not compare article metadata'),
+        findsOneWidget,
+      );
+      await _tapVisible(tester, find.textContaining('Paragraph · Modified'));
+      expect(find.textContaining('private comparison value'), findsWidgets);
+      h.identity.switchUser('other');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('private comparison value'), findsNothing);
+      expect(find.textContaining('may now be stale'), findsNothing);
+      expect(h.session.state.phase, LocalStructuredPhase.invalidated);
+    },
+  );
+
+  testWidgets('offline comparison remains local and reports missing remote', (
+    tester,
+  ) async {
+    h.reader.result = const StructuredEditionReadResult.failed(
+      StructuredEditionReadStatus.unavailable,
+    );
+    await h.seed();
+    await _open(tester, h);
+    await tester.tap(find.text('Resume local changes'));
+    await tester.pumpAndSettle();
+    await _tapVisible(tester, find.text('Compare body snapshots'));
+    expect(find.textContaining('does not prove deletion'), findsOneWidget);
+    expect(find.text('Original base → local'), findsOneWidget);
+    expect(find.text('Original base → session-open remote'), findsNothing);
+    expect(
+      (await h.inner.load(_key))!.body.blocks,
+      _body().move('image-two', 1).blocks,
+    );
+  });
+
   testWidgets('insert block is temporary until explicitly applied and saved', (
     tester,
   ) async {

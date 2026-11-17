@@ -18,9 +18,12 @@ field and an explicit value. A surviving block can be both moved and modified.
 Formatted runs, links, image alt/caption and unknown future fields are compared
 structurally; the reviewer never flattens them to Markdown or text.
 
-The page can be opened before the author chooses to resume a recovery and while
-viewing a locally saved body. It performs no database writes, does not discard
-anything, and has no publish, queue or network dependency.
+The page is available at the recovery decision, before the author chooses to
+resume or discard a saved recovery. After adoption, the editor's separate body
+snapshot comparator can additionally show the session-open remote read; this
+recovery-decision page remains intentionally local-only. It performs no
+database writes, does not discard anything, and has no publish, queue or
+network dependency.
 
 ## Server-state boundary
 

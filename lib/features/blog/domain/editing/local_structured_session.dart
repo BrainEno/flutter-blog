@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
+import 'package:belog/features/blog/domain/editing/structured_comparison.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_text_session.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_rich_text_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_rich_text_buffer.dart';
@@ -173,6 +174,28 @@ class LocalStructuredSession {
   LocalStructuredState get state {
     _checkIdentity();
     return _state;
+  }
+
+  /// Captures only an already adopted local body and its exact base. The
+  /// optional remote is the session-open read, never a fresh server check.
+  /// Callers must discard this object on a body replacement or identity event.
+  StructuredComparisonCapture? captureComparison() {
+    if (!_checkIdentity() || _closing || _handoff || _discarding) return null;
+    final phase = _state.phase;
+    if (phase != LocalStructuredPhase.editing &&
+        phase != LocalStructuredPhase.saveFailed &&
+        phase != LocalStructuredPhase.conflict) {
+      return null;
+    }
+    final base = _base;
+    final local = _state.body;
+    if (base == null || local == null) return null;
+    return StructuredComparisonCapture(
+      base: base,
+      local: local,
+      remote: _remote?.edition?.body,
+      remoteStatus: _remote?.status,
+    );
   }
 
   bool get _matchesIdentity =>

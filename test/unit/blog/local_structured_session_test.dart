@@ -293,6 +293,44 @@ void main() {
     await h.dispose();
   });
 
+  group('comparison capture', () {
+    test(
+      'requires explicit recovery adoption and fences account changes',
+      () async {
+        final original = _body();
+        final local = original.replacePlainText('paragraph', 'saved local');
+        await h.seed(base: original, body: local);
+        final session = h.session();
+        expect(session.captureComparison(), isNull);
+        await session.open();
+        expect(session.state.phase, LocalStructuredPhase.recoveryChoice);
+        expect(session.captureComparison(), isNull);
+        expect(session.resumeRecovery(), isTrue);
+        final capture = session.captureComparison()!;
+        expect(_text(capture.base), _text(original));
+        expect(_text(capture.local), 'saved local');
+        expect(_text(capture.remote), _text(original));
+        expect(capture.remoteStatus, StructuredEditionReadStatus.found);
+        h.identity.switchTo('someone-else');
+        expect(session.captureComparison(), isNull);
+        expect(session.state.phase, LocalStructuredPhase.invalidated);
+      },
+    );
+
+    test('offline capture does not invent a remote body', () async {
+      h.reader.result = const StructuredEditionReadResult.failed(
+        StructuredEditionReadStatus.unavailable,
+      );
+      await h.seed();
+      final session = h.session();
+      await session.open();
+      expect(session.resumeRecovery(), isTrue);
+      final capture = session.captureComparison()!;
+      expect(capture.remote, isNull);
+      expect(capture.remoteStatus, StructuredEditionReadStatus.unavailable);
+    });
+  });
+
   group('isolated inline replacement with the fenced local coordinator', () {
     test('saves exact replaced runs and keeps all other data', () async {
       final session = h.session();
