@@ -305,6 +305,180 @@ void main() {
     );
   }
 
+  testWidgets('insert block is temporary until explicitly applied and saved', (
+    tester,
+  ) async {
+    await _open(tester, h);
+    await _tapVisible(tester, find.byTooltip('Insert block after').first);
+    expect(find.textContaining('temporary form is not saved'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('structured-insert-first')),
+      'New paragraph',
+    );
+    expect(h.session.state.body!.blocks, hasLength(7));
+    await _tapVisible(tester, find.text('Insert into local recovery'));
+    expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+    final stored = (await h.inner.load(_key))!.body;
+    expect(stored.blocks, hasLength(8));
+    expect(stored.blocks[1]['type'], 'paragraph');
+    expect(stored.blocks[1]['text'], 'New paragraph');
+    expect(stored.blocks[2], _body().blocks[1]);
+  });
+
+  testWidgets(
+    'empty insertion and unfinished composing do not modify the body',
+    (tester) async {
+      await _open(tester, h);
+      await _tapVisible(tester, find.byTooltip('Insert block after').first);
+      await _tapVisible(tester, find.text('Insert into local recovery'));
+      expect(find.textContaining('Cannot insert'), findsOneWidget);
+      expect(h.session.state.body!.blocks, hasLength(7));
+      await tester.showKeyboard(
+        find.byKey(const ValueKey('structured-insert-first')),
+      );
+      tester.testTextInput.updateEditingValue(
+        const TextEditingValue(
+          text: 'composing',
+          selection: TextSelection.collapsed(offset: 9),
+          composing: TextRange(start: 0, end: 9),
+        ),
+      );
+      await tester.pump();
+      await _tapVisible(tester, find.text('Insert into local recovery'));
+      expect(h.session.state.body!.blocks, hasLength(7));
+      expect(find.textContaining('Cannot insert'), findsOneWidget);
+    },
+  );
+
+  testWidgets('dirty insert form requires confirmation before leaving', (
+    tester,
+  ) async {
+    await _open(tester, h);
+    await _tapVisible(tester, find.byTooltip('Insert block after').first);
+    await tester.enterText(
+      find.byKey(const ValueKey('structured-insert-first')),
+      'Unapplied',
+    );
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Discard temporary form?'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('Unapplied'), findsOneWidget);
+    expect(h.session.state.body!.blocks, hasLength(7));
+  });
+
+  testWidgets('stale insert form cannot apply to a changed snapshot', (
+    tester,
+  ) async {
+    await _open(tester, h);
+    await _tapVisible(tester, find.byTooltip('Insert block after').first);
+    await tester.enterText(
+      find.byKey(const ValueKey('structured-insert-first')),
+      'Unapplied',
+    );
+    expect(h.session.edit((body) => body.move('heading', 1)), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('no longer editable'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Insert into local recovery'),
+          )
+          .onPressed,
+      isNull,
+    );
+    expect(h.session.state.body!.blocks, hasLength(7));
+  });
+
+  testWidgets('account switch clears temporary insertion input', (
+    tester,
+  ) async {
+    await _open(tester, h);
+    await _tapVisible(tester, find.byTooltip('Insert block after').first);
+    await tester.enterText(
+      find.byKey(const ValueKey('structured-insert-first')),
+      'private insertion',
+    );
+    h.identity.switchUser('other');
+    await tester.pumpAndSettle();
+    expect(find.text('private insertion'), findsNothing);
+    expect(
+      find.text('The account changed. This session is no longer available.'),
+      findsOneWidget,
+    );
+    expect(h.session.state.body, isNull);
+  });
+
+  testWidgets('list reorder and insertion preserve the original item runs', (
+    tester,
+  ) async {
+    await _open(tester, h);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<Object?>('list')),
+      250,
+    );
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.descendant(
+        of: find.byKey(const ValueKey<Object?>('list')),
+        matching: find.byTooltip('Manage local list items'),
+      ),
+    );
+    await _tapVisible(tester, find.byTooltip('Move item down').first);
+    final original = _body().blocks[4]['itemInlines'] as List;
+    expect(
+      h.session.state.body!.blocks[4]['itemInlines'],
+      original.reversed.toList(),
+    );
+    await _tapVisible(tester, find.byTooltip('Insert item after').first);
+    await tester.enterText(
+      find.byKey(const ValueKey('structured-insert-first')),
+      'Inserted item',
+    );
+    await _tapVisible(tester, find.text('Insert into local recovery'));
+    expect(await h.session.flush(), LocalStructuredFlushResult.saved);
+    final saved = (await h.inner.load(_key))!.body.blocks[4];
+    expect(saved['items'], [' second item ', 'Inserted item', 'First item']);
+    expect(saved['itemInlines'], [
+      original[1],
+      [
+        {'text': 'Inserted item'},
+      ],
+      original[0],
+    ]);
+  });
+
+  testWidgets(
+    'removing an item requires confirmation and respects stale body',
+    (tester) async {
+      await _open(tester, h);
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey<Object?>('list')),
+        250,
+      );
+      await tester.pumpAndSettle();
+      await _tapVisible(
+        tester,
+        find.descendant(
+          of: find.byKey(const ValueKey<Object?>('list')),
+          matching: find.byTooltip('Manage local list items'),
+        ),
+      );
+      await _tapVisible(tester, find.byTooltip('Remove item').first);
+      expect(find.text('Remove this list item?'), findsOneWidget);
+      expect(h.session.edit((body) => body.move('heading', 1)), isTrue);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove item').last);
+      await tester.pumpAndSettle();
+      expect(h.session.state.body!.blocks[4]['items'], [
+        'First item',
+        ' second item ',
+      ]);
+    },
+  );
+
   testWidgets('image form applies only after confirmation and saves locally', (
     tester,
   ) async {
