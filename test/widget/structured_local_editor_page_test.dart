@@ -948,4 +948,53 @@ void main() {
     expect(find.byTooltip('Toggle bold on first text run'), findsNothing);
     expect(h.session.state.body!.version, 0);
   });
+
+  testWidgets(
+    'review is read-only before recovery choice and reports local moves',
+    (tester) async {
+      await h.seed();
+      await _open(tester, h);
+      final before = (await h.inner.load(_key))!;
+      expect(h.session.state.phase, LocalStructuredPhase.recoveryChoice);
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('structured-review-open')),
+      );
+
+      expect(find.text('Local recovery review'), findsOneWidget);
+      expect(find.text('Moved blocks: 5'), findsOneWidget);
+      expect(find.textContaining('does not apply changes'), findsOneWidget);
+      expect(find.byType(FilledButton), findsNothing);
+      final after = (await h.inner.load(_key))!;
+      expect(after.revision, before.revision);
+      expect(after.bodyStorageJson, before.bodyStorageJson);
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.text('Local recovery found'), findsOneWidget);
+      expect(h.session.state.phase, LocalStructuredPhase.recoveryChoice);
+    },
+  );
+
+  testWidgets('review hides snapshots immediately after account change', (
+    tester,
+  ) async {
+    await h.seed();
+    await _open(tester, h);
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('structured-review-open')),
+    );
+    expect(find.text('Local recovery review'), findsOneWidget);
+
+    h.identity.switchUser('other');
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('local recovery changed while this review was opening'),
+      findsOneWidget,
+    );
+    expect(find.text('Moved blocks: 5'), findsNothing);
+    expect(h.session.state.phase, LocalStructuredPhase.invalidated);
+  });
 }

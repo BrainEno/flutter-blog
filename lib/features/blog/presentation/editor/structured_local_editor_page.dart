@@ -10,6 +10,7 @@ import 'package:belog/features/blog/domain/editing/structured_article_draft.dart
 import 'package:belog/features/blog/domain/entities/structured_edition_read.dart';
 import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_text_page.dart';
+import 'package:belog/features/blog/presentation/editor/structured_recovery_review_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_block_properties_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_insert_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_list_page.dart';
@@ -259,6 +260,47 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
     }
   }
 
+  /// Shows a strictly read-only comparison of the local base and current local
+  /// body. The handoff captures both exact immutable snapshots; any session,
+  /// account, recovery or body change makes the review route hide them rather
+  /// than comparing a newly arrived value with an older one.
+  Future<void> _openReview() async {
+    if (_busy || _exiting) return;
+    final state = widget.session.state;
+    final base = state.baseBody;
+    final body = state.body;
+    if (base == null ||
+        body == null ||
+        !const {
+          LocalStructuredPhase.recoveryChoice,
+          LocalStructuredPhase.editing,
+          LocalStructuredPhase.saveFailed,
+          LocalStructuredPhase.conflict,
+        }.contains(state.phase)) {
+      return;
+    }
+    final seed = StructuredRecoveryReviewSeed(
+      base: base,
+      local: body,
+      remoteStatus: state.remoteStatus,
+      baseComparison: state.baseComparison,
+    );
+    setState(() => _busy = true);
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => StructuredRecoveryReviewPage(
+            session: widget.session,
+            seed: seed,
+          ),
+        ),
+      );
+    } finally {
+      seed.clear();
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   void _edit(
     StructuredArticleDraft Function(StructuredArticleDraft) operation,
   ) {
@@ -354,6 +396,11 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
               case final String message)
             Text(message),
           const SizedBox(height: NoWaveSpacing.medium),
+          OutlinedButton(
+            key: const ValueKey('structured-review-open'),
+            onPressed: _busy ? null : _openReview,
+            child: Text(l10n.structuredReviewOpen),
+          ),
           FilledButton(
             onPressed: _busy ? null : () => widget.session.resumeRecovery(),
             child: Text(l10n.structuredRecoveryResume),
@@ -399,6 +446,12 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
         if (_comparisonText(context, state.baseComparison)
             case final String message)
           Text(message),
+        if (state.baseBody != null)
+          OutlinedButton(
+            key: const ValueKey('structured-review-open'),
+            onPressed: _busy ? null : _openReview,
+            child: Text(l10n.structuredReviewOpen),
+          ),
         if (state.phase == LocalStructuredPhase.saveFailed)
           TextButton(
             onPressed: () => widget.session.retrySave(),
