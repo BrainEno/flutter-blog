@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
@@ -81,7 +83,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
     final settled = cubit.stream.firstWhere(
       (state) => state is CategoriesSuccess || state is CategoriesFailure,
     );
-    cubit.load();
+    unawaited(cubit.load());
     await settled;
   }
 

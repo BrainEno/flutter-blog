@@ -60,7 +60,7 @@ void main() {
       final sub = bloc.stream.listen(states.add);
       bloc.add(const BlogFetchFirstPage());
       await bloc.close();
-      sub.cancel();
+      await sub.cancel();
 
       expect(states.length, 2, reason: 'loading then loaded');
       expect(states[0], isA<BlogFirstPageLoading>());
@@ -78,7 +78,7 @@ void main() {
       final sub = bloc.stream.listen(states.add);
       bloc.add(const BlogFetchFirstPage());
       await bloc.close();
-      sub.cancel();
+      await sub.cancel();
 
       expect(states[1], isA<BlogListFailure>());
       expect((states[1] as BlogListFailure).error, '网络错误');
@@ -106,7 +106,7 @@ void main() {
       slow.complete(Right([_blog('stale')]));
       await Future<void>.delayed(Duration.zero);
       await bloc.close();
-      sub.cancel();
+      await sub.cancel();
 
       final loaded = states.whereType<BlogLoaded>().toList();
       expect(loaded, hasLength(1));
@@ -133,7 +133,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       bloc.add(const BlogLoadMore());
       await bloc.close();
-      sub.cancel();
+      await sub.cancel();
 
       final loaded = states.whereType<BlogLoaded>().last;
       expect(loaded.blogs.map((b) => b.id), [
@@ -172,7 +172,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
       }
       await bloc.close();
-      sub.cancel();
+      await sub.cancel();
 
       // Offset 0, 10 and 20 are readable; 30 is past the bound and is never
       // asked for, because only a refusal could come back.
@@ -208,7 +208,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         bloc.add(const BlogLoadMore());
         await bloc.close();
-        sub.cancel();
+        await sub.cancel();
 
         expect(
           states.whereType<BlogListFailure>(),
@@ -246,7 +246,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         bloc.add(const BlogLoadMore());
         await bloc.close();
-        sub.cancel();
+        await sub.cancel();
 
         expect(states.whereType<BlogListFailure>(), hasLength(1));
         expect(states.whereType<BlogLoaded>().last.depthLimited, isFalse);
@@ -274,7 +274,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       gate.complete();
       await bloc.close();
-      sub.cancel();
+      await sub.cancel();
 
       expect(loadMoreCalls, 1, reason: 'second request must not be sent');
       final loaded = states.whereType<BlogLoaded>().last;
@@ -313,7 +313,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       gate.complete();
       await bloc.close();
-      sub.cancel();
+      await sub.cancel();
 
       final loaded = states.whereType<BlogLoaded>().last;
       expect(loaded.blogs.map((b) => b.id), [
@@ -338,7 +338,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       bloc.add(const BlogLoadMore());
       await bloc.close();
-      sub.cancel();
+      await sub.cancel();
 
       final loaded = states.whereType<BlogLoaded>().last;
       expect(loaded.hasReachedMax, isTrue);
@@ -361,7 +361,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         bloc.add(const BlogLoadMore());
         await bloc.close();
-        sub.cancel();
+        await sub.cancel();
 
         final failure = states.whereType<BlogListFailure>().single;
         final previous = failure.previousState as BlogLoaded;

@@ -947,10 +947,8 @@ class _BlogEditorState extends State<BlogEditorPage> {
   void dispose() {
     _autoSaveTimer?.cancel();
     _flushDraftOnDispose();
-    final identitySubscription = _identitySubscription;
-    final userSubscription = _userSubscription;
-    if (identitySubscription != null) unawaited(identitySubscription.cancel());
-    if (userSubscription != null) unawaited(userSubscription.cancel());
+    unawaited(_identitySubscription?.cancel());
+    unawaited(_userSubscription?.cancel());
     _dismissRecoveryDialog();
     _dismissMediaPicker();
     _dismissNotionImport();
