@@ -24,6 +24,8 @@ class _Identity implements NowaveSessionIdentity {
   int get sessionGeneration => generation;
   @override
   Stream<void> get identityChanges => changes.stream;
+
+  Future<void> close() => changes.close();
 }
 
 class _Repo implements NotionImportRepository {
@@ -83,7 +85,7 @@ void main() {
   });
   tearDown(() async {
     await userCubit.close();
-    await identity.changes.close();
+    await identity.close();
   });
 
   Future<void> pumpSheet(

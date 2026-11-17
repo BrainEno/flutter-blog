@@ -896,7 +896,7 @@ void main() {
     // Dispatching a system pop is asynchronous under WidgetTester. Pump its
     // observers rather than blocking the fake clock awaiting the dispatch.
     bool? handled;
-    tester.binding.handlePopRoute().then((value) => handled = value);
+    unawaited(tester.binding.handlePopRoute().then((value) => handled = value));
     await tester.pump();
     expect(handled, isTrue);
     expect(find.byType(StructuredLocalEditorPage), findsOneWidget);

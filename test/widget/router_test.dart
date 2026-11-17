@@ -434,7 +434,7 @@ class Harness {
     await authBloc.close();
     await appUserCubit.close();
     await themeBloc.close();
-    GetIt.instance.reset();
+    await GetIt.instance.reset();
   }
 }
 

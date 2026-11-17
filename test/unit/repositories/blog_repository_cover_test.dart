@@ -229,7 +229,7 @@ void main() {
           captureAny(),
           idempotencyKey: any(named: 'idempotencyKey'),
         ),
-      ).captured.single;
+      ).captured.single as BlogModel;
       expect(created.imageUrl, _kNewCoverUrl);
       expect(created.title, '标题');
     });
@@ -405,7 +405,7 @@ void main() {
       verifyNever(() => remote.uploadBlogImage(image: any(named: 'image')));
       final BlogModel updated = verify(
         () => remote.editBlog(captureAny(), expectedRevision: _revision),
-      ).captured.single;
+      ).captured.single as BlogModel;
       expect(updated.imageUrl, _kNewCoverUrl);
       expect(updated.serverSummary, '作者的摘要');
     });

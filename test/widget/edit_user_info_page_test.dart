@@ -41,6 +41,8 @@ class _FakeSession implements NowaveSessionIdentity {
 
   @override
   Stream<void> get identityChanges => controller.stream;
+
+  Future<void> close() => controller.close();
 }
 
 User _user({
@@ -91,7 +93,7 @@ void main() {
   tearDown(() async {
     await bloc.close();
     await appUser.close();
-    await session.controller.close();
+    await session.close();
   });
 
   Future<void> pumpPage(
