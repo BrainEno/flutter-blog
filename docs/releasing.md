@@ -1,5 +1,7 @@
 # Release and signing policy
 
+> 状态：active | 分类基线：`7fc34ce`（仅文档分类，非逐项事实核验）
+
 ## Identity, license and version
 
 The owner fixed the release identity in November 2026 (#109):

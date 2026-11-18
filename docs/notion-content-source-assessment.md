@@ -1,10 +1,18 @@
 # Notion 作为第二个内容源：可行性评估与实施方案
 
-> 状态：**评估稿（2026-11-05）**，尚未写任何实现代码。
+> 状态：draft | 分类基线：`7fc34ce`（仅文档分类，非逐项事实核验）
+
+> 原始评估于 2026-11-05 编写；下述方案是当时的设计提议，不代表全部落地。
 > 目标：在现有 no-wave `apps/api` REST 后端继续可用的前提下，让同一个 App 也能读
 > 一个 Notion 数据库里的文章。
 > 结论前提：本文只依据仓库现有代码与 Notion 官方文档（`Notion-Version: 2026-03-11`）
 > 推导；**没有**看到目标数据库的 schema（该库需要登录，见 §1.1），也没有真机实测。
+
+## 当前实现与兼容性（源码核对基线 `7fc34ce`）
+
+- 编辑器的 `lib/features/blog/presentation/editor/editor_notion_coordinator.dart` 已接线 bundle 导入与导出界面；`lib/init_dependencies.dart` 注册了仓库与用例。导入读取用户提供的 JSON、允许选择页面并向 no-wave `POST /imports/notion` 发起预览或应用；导出从 `GET /imports/notion/export` 读取已保存作品并可复制。两者均依赖登录、账号围栏和相应后端实现，不是直接连接 Notion API、实时读取数据库或自动同步。
+- 上游 no-wave `7c3b2c355f63442bba49d4678520aada6271eb7e` 的[版本保护](https://github.com/BrainEno/no-wave/blob/7c3b2c355f63442bba49d4678520aada6271eb7e/docs/architecture/notion-import-version-protection.md)要求应用请求携带该次预览的 `planToken` 及完全相同的 bundle。当前 Flutter 请求没有传送 token，因此这个上游版本会拒绝应用；旧服务端的并发保护也不能仅凭 UI 预览推断。这里没有声称生产部署、真机或端到端往返已验证。
+- 以下 §0–§7 是原始直接读取 Notion 数据库的评估；不应把它的“尚未实现”解释为 bundle 入口不存在。owner 已确认产品口径：bundle 导入/导出称为“内容交换”，不称为直接读取的第二内容源。
 
 ## 0. 结论先说
 
@@ -71,8 +79,7 @@
 
 ## 2. 现有代码里会卡住这个功能的 8 处（建议先各自清一个 PR）
 
-**先说结论：GitHub 上唯一开放的 issue 是 #18（举报/屏蔽），它与本功能无因果关系，
-不阻塞。** 真正会卡住的是下面这些“代码级 issue”，它们都没有编号，建议按顺序清：
+以下是原始评估时列出的潜在代码障碍，状态可能已经变化；实时 issue 状态请查看 GitHub。
 
 ### B1 领域契约里写着 no-wave 的类型
 
@@ -105,7 +112,7 @@
 
 ### B3 本地缓存的身份里没有“源”
 
-`blog_cache` 的主键是 `(id, content_locale)`（`lib/core/storage/app_database.dart:139`，
+`blog_cache` 的主键是 `(id, content_locale)`（`lib/core/storage/app_database.dart`（原评估行 139），
 schema v7），`reading_history` 是 `(user_id, blog_id)`；Notion 的 page id 和
 no-wave 的 slug 撞车是迟早的事，而且“切换源之后离线还看到另一个源的文章”会直接
 变成错误内容，不是过期内容。
@@ -151,7 +158,7 @@ UUID（只用于更新）；`articleWebUrl()` 用 `WEB_BASE_URL` + `/articles/<s
 
 评论（`CommentRepository`）、点赞（`ArticleLikeStore`，服务端状态读改写）、关注/粉丝、
 回收站/恢复、服务端搜索与排序（featured/popular/following 三个 `BlogFeedKind`）、
-相关推荐、媒体上传、草稿（服务端）。`lib/router/app_router.dart:89` 的保护前缀是
+相关推荐、媒体上传、草稿（服务端）。`lib/router/app_router.dart`（原评估行 89） 的保护前缀是
 `['/saved', '/profile', '/editor']`，这些页面在 Notion 源下要么隐藏、要么改成“本地
 收藏”。
 

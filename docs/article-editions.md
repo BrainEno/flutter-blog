@@ -1,10 +1,12 @@
 # 语言版本（article editions）
 
+> 状态：active | 分类基线：`7fc34ce`（仅文档分类，非逐项事实核验）
+
 no-wave 里一篇文章的 id 是**作品**，`(id, locale)` 才是其中**一版译文**。同一个 slug
 可以同时存在 `zh-CN`、`zh-TW` 和 `en` 三种译文。本页说明客户端怎么读、怎么写，以及
 客户端无法单方面保证的部分。
 
-## 服务端契约（核对自 no-wave `4f6c7d82` 与 `docs/api/authoring-locales.md`）
+## 服务端契约（核对自 no-wave `4f6c7d82` 与 [no-wave 的 authoring-locales 文档](https://github.com/BrainEno/no-wave/blob/4f6c7d82/docs/api/authoring-locales.md)）
 
 | 接口 | 语义 |
 |---|---|

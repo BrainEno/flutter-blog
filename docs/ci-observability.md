@@ -1,5 +1,7 @@
 # CI Validation and Observability
 
+> 状态：active | 分类基线：`7fc34ce`（仅文档分类，非逐项事实核验）
+
 ## Validation layers
 
 | Workflow/check | Trigger | What it verifies | Failure evidence |
@@ -71,3 +73,26 @@ After the checks have produced stable results, the repository owner should creat
 Do not make these checks required while known baseline issues keep them red; resolve the underlying issues first, then enable enforcement. Repository rulesets/branch protection are server-side settings and are not changed by this PR.
 
 GitHub recommends least-privilege workflow permissions and pinning actions to full-length commit SHAs. See [Secure use reference](https://docs.github.com/en/actions/reference/security/secure-use).
+
+## Documentation contract
+
+`python3 tool/ci/check_doc_claims.py` runs offline on pull requests and pushes.
+It also supports `--format json` for machine-readable diagnostics and
+`--format github` for escaped, bounded CI annotations. It checks that each top-level `docs/*.md` page has one status classification
+and appears exactly once in the index, detects a narrow class of undated live
+issue-count claims, validates local Markdown links and recognized heading
+anchors, and checks literal backticked repository paths or bounded globs.
+Dated archived snapshots may retain their historical issue claims. Fenced and
+indented code, HTML comments, external links, examples containing placeholders
+and custom HTML anchors are outside the check. It does not fetch external URLs.
+The Markdown scanner handles the documented subset, not all CommonMark syntax.
+
+The opt-in `tool/ci/doc-claim-evidence.json` connects a few volatile claims to
+literal text in documentation and source. A missing or newly forbidden marker
+fails the check and asks a maintainer to review both the claim and its evidence;
+it is not a semantic proof that the prose, server, or deployed behavior is
+correct. Update the manifest and documentation together after examining the
+actual change, rather than just deleting an inconvenient assertion. The
+manifest is strict JSON, bounded, duplicate-key checked and cannot run code.
+Fixtures include intentional failures; run them with
+`python3 -m unittest discover -s tool/ci -p 'test_check_doc_claims.py' -v`.

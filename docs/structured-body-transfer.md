@@ -1,5 +1,7 @@
 # Local structured body transfer
 
+> 状态：active | 分类基线：`7fc34ce`（仅文档分类，非逐项事实核验）
+
 The local editor can prepare a versioned, body-only clipboard copy. It is an
 interchange between compatible app versions, not an article backup or a server
 API. The copy excludes metadata, recovery history, in-progress text buffers,

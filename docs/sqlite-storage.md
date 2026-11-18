@@ -1,5 +1,7 @@
 # SQLite storage
 
+> 状态：active | 分类基线：`7fc34ce`（仅文档分类，非逐项事实核验）
+
 Drift on SQLite is the **only** local store: theme preference, drafts, the
 bounded article cache, reading history, read-aloud preferences, the no-wave
 session copy, profile cache and app metadata all live in `belog.sqlite`.
@@ -110,7 +112,7 @@ it was removed completely:
 
 - dependencies: `isar_community`, `isar_community_flutter_libs`,
   `isar_community_generator`;
-- code: `lib/core/storage/legacy/` (generated schemas),
+- code: the former legacy storage directory (generated schemas),
   `AppDatabase.importLegacyIfNeeded`, `tool/legacy_isar_fixture/`,
   `test/fixtures/legacy_isar_3_1_0/`, the Isar import tests, `build.yaml` and
   the analyzer excludes that existed only for the generated code.

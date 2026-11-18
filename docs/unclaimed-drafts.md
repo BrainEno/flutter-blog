@@ -1,5 +1,7 @@
 # Unclaimed legacy drafts / 无法确认归属的旧草稿
 
+> 状态：active | 分类基线：`7fc34ce`（仅文档分类，非逐项事实核验）
+
 ## English
 
 Before account-scoped drafts were introduced, the local `drafts` table did not

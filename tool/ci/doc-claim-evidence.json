@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "claims": [
+    {
+      "id": "notion-import-plan-compatibility",
+      "description": "Notion bundle import is wired but the current client does not send the upstream preview plan token",
+      "documents": [
+        {"path": "README.md", "contains": ["本客户端尚未传送"], "absent": []},
+        {"path": "docs/notion-content-source-assessment.md", "contains": ["当前 Flutter 请求没有传送 token"], "absent": []}
+      ],
+      "sources": [
+        {"path": "lib/features/blog/data/notion_import/notion_import_repository_impl.dart", "contains": ["'/imports/notion'", "'bundle': bundle.json", "'apply': apply"], "absent": ["planToken"]}
+      ]
+    },
+    {
+      "id": "notion-export-is-wired",
+      "description": "The editor offers an authenticated backend bundle export rather than direct Notion access",
+      "documents": [
+        {"path": "docs/notion-content-source-assessment.md", "contains": ["导出从 `GET /imports/notion/export`"], "absent": []}
+      ],
+      "sources": [
+        {"path": "lib/features/blog/presentation/editor/editor_notion_coordinator.dart", "contains": ["NotionExportSheet(", "NotionImportSheet("], "absent": []},
+        {"path": "lib/features/blog/data/notion_export/notion_export_repository_impl.dart", "contains": ["'/imports/notion/export'"], "absent": []}
+      ]
+    }
+  ]
+}

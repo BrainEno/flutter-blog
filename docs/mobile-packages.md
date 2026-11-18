@@ -1,5 +1,7 @@
 # GitHub Actions：个人安装用 IPA / APK
 
+> 状态：active | 分类基线：`7fc34ce`（仅文档分类，非逐项事实核验）
+
 本文针对仓库所有者自己安装和调试。新流程位于 **Actions → Build personal mobile packages**，以 `workflow_dispatch` 手动运行；workflow 必须先合并到默认分支，GitHub 才会显示该入口。两个平台彼此独立，构建 iOS 不需要 Android keystore、Apple 开发者会员、Apple 证书、Apple ID 或密码上传到 GitHub。此流程只上传 Actions artifacts，不创建或覆盖 GitHub Release。
 
 ## 先准备后端

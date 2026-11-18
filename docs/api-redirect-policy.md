@@ -1,5 +1,7 @@
 # API redirect policy
 
+> 状态：active | 分类基线：`7fc34ce`（仅文档分类，非逐项事实核验）
+
 `NowaveApiClient` does not follow HTTP redirects, for public reads as well as
 private reads, credential exchanges and writes. Every `http.Request` is sent
 with `followRedirects = false`. Legacy optional `followRedirects: false`

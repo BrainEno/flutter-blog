@@ -1,5 +1,7 @@
 # no-wave API 与 Flutter 客户端差距（2026-11-02）
 
+> 状态：active | 分类基线：`7fc34ce`（仅文档分类，非逐项事实核验）
+
 本表静态核对 no-wave 默认分支快照 [`effeb9a7`](https://github.com/BrainEno/no-wave/tree/effeb9a7016278a385ecfd19d49a26eb7151c58b) 的 [`routes.ts`](https://github.com/BrainEno/no-wave/blob/effeb9a7016278a385ecfd19d49a26eb7151c58b/apps/api/src/transport/rest/routes.ts)、handler、数据校验以及 Flutter main 和表中明确标注的客户端变更；改密相关的会话语义另复核了 `7590ca98` 与 `58dc3419`。相对前次审计 `ea276a5e`，后端增加 latest 游标、搜索正文、会话列表/撤销并修复改密的会话语义；`596ca5ae` 到此快照仅有 CI/文档改动。网页也新增本地划线等功能，但不意味着已有服务端同步 API。源码存在不代表某个部署已升级、邮件可投递或移动端联调通过。
 
 ### 增量核对：评论线程 cursor

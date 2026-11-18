@@ -1,5 +1,7 @@
 # 评论线程
 
+> 状态：active | 分类基线：`7fc34ce`（仅文档分类，非逐项事实核验）
+
 ## 后端分页契约
 
 Flutter 使用 no-wave 合入的评论线程 keyset 契约（[PR #253](https://github.com/BrainEno/no-wave/pull/253)，

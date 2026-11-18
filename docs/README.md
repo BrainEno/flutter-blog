@@ -11,7 +11,7 @@
 - [发布流程](releasing.md)：应用身份（`com.nodeman24.nowave`）、版本
   （`0.2.0+1`）、许可证、签名和发布门禁。
 - [朗读功能](read-aloud.md)：操作、平台语音和设备/隐私边界。
-- [隐私政策草案](privacy-policy-draft.md)：未发布；正式政策仍需运营主体审阅。
+- [隐私政策草案](privacy-policy-draft.md)（draft）：未发布；正式政策仍需运营主体审阅。
 
 ## 数据、兼容性与故障排查
 
@@ -40,10 +40,29 @@
 - [冷启动与墨色幕布](startup.md)：`main` 之后不再 await 的启动顺序、幕布时序与降级
   路径，以及 OS 静态启动图（原生资产）怎么和首帧对齐、怎么重新生成。
 - [no-wave API 差距](nowave-api-gap-audit.md)：记录审计 SHA、已接入与未接入能力。
-- [Supabase 到 no-wave 的迁移](supabase-to-nowave-migration.md)：历史迁移背景；
+- [Supabase 到 no-wave 的迁移](supabase-to-nowave-migration.md)（archived）：历史迁移背景；
   旧快照的接口结论以较新的 API 差距审计和当前源码为准。
-- [代码健壮性审查](code-audit.md)：指定基线的已修复项与剩余风险。
+- [代码健壮性审查](code-audit.md)（archived）：指定基线的已修复项与剩余风险。
 - [编辑器收敛路线图](editor-architecture-roadmap.md)：Markdown 写入、结构化本地
   恢复工具、条件并发与临时页面退役的安全边界和分阶段验收。
 - [Agent 开发流程](agent-development.md) 和 [AGENTS.md](../AGENTS.md)：工程约束、
   验证与 PR 证据；会话平台若限定工作分支，应遵守该更高优先级的约束。
+
+## 补充专题与历史记录
+
+- [本地化与无障碍](accessibility.md)：测试覆盖与真机验收边界。
+- [API 连通性证据](api-connectivity-evidence.md)：连接探测及结果适用范围。
+- [API 重定向策略](api-redirect-policy.md)：请求重定向与凭据安全。
+- [文章语言版本](article-editions.md)：作品、译文、语言和写入边界。
+- [密码恢复](password-recovery.md)：匿名恢复流程与邮件限制。
+- [Notion 内容源评估与 bundle 现状](notion-content-source-assessment.md)（draft）：历史设计和当前接线、上游 plan token 兼容性。
+- [结构化本地恢复比较](structured-local-recovery-review.md)：只读恢复对照。
+- [结构化会话恢复](structured-session-recovery.md)：本地会话和 CAS 保存。
+- [结构化会话正文历史](structured-session-body-history.md)：会话内撤销及恢复限制。
+- [本地结构化正文传输](structured-body-transfer.md)：剪贴板交换、验证和隐私边界。
+- [全面代码审查](comprehensive-code-review-2026-11-02.md)（archived）：历史快照。
+- [Issue 勘误](issue-errata-2026-11-05.md)（archived）：历史快照。
+
+状态头中的 `active` 表示仍有维护用途，`draft` 表示草案或提议，`archived` 表示
+历史快照；分类基线仅记录这次分类所依据的提交，**不表示逐条事实已核验**。
+与现行源码或后端行为冲突时，以源码和对应部署为准。

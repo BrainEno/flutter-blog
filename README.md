@@ -66,6 +66,7 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
   分享面板（标题 + 摘要 + 指向 no-wave web 文章页的 canonical URL，需配置
   `WEB_BASE_URL`），`nowave://article/<slug>` 深链在应用内打开同一篇文章
   （见下文「分享与深链」）
+- Notion bundle：编辑器已接入通过 no-wave 后端提交 JSON bundle 预览、应用及导出已保存作品的入口；不是直连 Notion 数据库或自动同步。当前上游要求应用时携带预览的 `planToken`，本客户端尚未传送，因而与该上游版本的应用不兼容；不要把入口存在当成成功导入或无损往返的保证。详见 [Notion 评估与现状](docs/notion-content-source-assessment.md)。
 - 数据导出：个人资料及最多 100 篇简体中文已发布作品的部分文字导出为 JSON，
   经系统分享面板保存；不含服务端草稿、其他语言及完整正文格式或图片，**不是完整备份**
 - 草稿：按 API 后端、账号和文章隔离的本地草稿、恢复 / 丢弃对话框及 2 秒
@@ -189,10 +190,7 @@ lib/
 
 - **数据流向**：UI → Bloc → Usecase → Repository（`Either<Failure, T>`）→
   Datasource。Repository 是唯一把异常翻译成 `Failure` 的地方。
-- **内容源**：当前只有一个内容源——no-wave `apps/api`。让同一个 App 也能读 Notion
-  数据库的可行性、必须先清的 8 处代码阻碍与分期方案见
-  [Notion 内容源评估](docs/notion-content-source-assessment.md)；它尚未实现，
-  现有 no-wave 行为不受影响。
+- **内容源与交换**：文章读取通过 no-wave `apps/api`，未实现直接读取 Notion 数据库。编辑器已接线经 no-wave 的 Notion bundle 预览、提交与导出；这不是直接的第二文章读取源或自动同步。当前 no-wave 的应用请求需要预览 `planToken`，Flutter 尚未传送，应用会被该版本后端拒绝。产品口径是“内容交换”，不是第二个直接读取源；参见 [Notion 评估与现状](docs/notion-content-source-assessment.md)。
 - **分层方向**：依赖只能从 feature 指向 `lib/core`，不能反向；`lib/core/storage`
   不得导入 Flutter UI 类型。规则由 `tool/ci/check_core_dependencies.py` 在 CI 中
   强制（`--root` 可对任意目录跑，unittest 也在真实仓库上验证）。
@@ -536,7 +534,7 @@ CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 
 
 - **G1 删除文章**：~~待补~~ **已解决**（软删 + 回收站 + 恢复已接入，
   `purgesAt` 30 天）。
-- **G2 账号安全**：客户端已接入登录态改密（需当前密码；不自动重放，结果不明时提示先用新密码确认）。服务端“保留当前会话”的语义仍有问题，见 no-wave [#129](https://github.com/BrainEno/no-wave/issues/129) 与 [#132](https://github.com/BrainEno/no-wave/issues/132)；改邮箱 / 密码重置 / 邮箱验证尚未接入，邮件投递需单独配置和验证。
+- **G2 账号安全**：客户端已接入登录态改密（需当前密码；不自动重放，结果不明时提示先用新密码确认）。服务端“保留当前会话”的语义仍有问题，见 no-wave [#129](https://github.com/BrainEno/no-wave/issues/129) 与 [#132](https://github.com/BrainEno/no-wave/issues/132)；改邮箱、密码重置和邮箱验证已接入；旧部署或 `MAIL_DISABLED` 显示「暂不提供」，邮件投递仍需单独配置和验证（见 [账户邮箱](docs/account-email.md)、[密码恢复](docs/password-recovery.md)）。
 - **#23 离线发布队列**：客户端已实现持久 outbox —— 发布时离线或网络失败会把文章
   连同封面入库，之后按账号与后端作用域重试，每次尝试都带同一个
   `Idempotency-Key`（no-wave #105 的 `POST /articles` 支持），因此重放不会建出第二
@@ -558,12 +556,12 @@ CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 
 - **P2 进行中/延后**：分享的通用链接/App Links（#21，等 web origin 部署
   `assetlinks.json` 与 `apple-app-site-association` 才可验证）、
   离线发布队列（#23 客户端 outbox 已实现，封面媒体幂等与孤儿清理仍待服务端，
-  见上）、举报屏蔽（#18）、
+  见上）、举报屏蔽的服务端能力（历史 issue #18 曾讨论该范围，是否可用以实际部署为准）、
   架构收敛的后续拆分（#107 的依赖规则、存储端口去 UI 类型、
   会话时序单元与 Isar 移除已完成；`nowave_api_client` 等仍有拆分空间）
 - **P0/P1 已关闭**：#4 工具链升级、#7 schema 版本管理、#8 离线缓存语义
 
-当前 GitHub issue 核对中，`main` 上**只剩 #18（举报与屏蔽）开放**：客户端不能单独完成。
+实时 issue 状态请查 [GitHub issue 列表](https://github.com/BrainEno/flutter-blog/issues)。举报与屏蔽的客户端能力依赖后端，不能单独完成。
 no-wave ADR 0026 目前只接受了设计，尚未授权迁移、服务或 REST 接口；P1 与 P5–P10
 仍是实现发布门槛，且其首期范围是单条私信举报，与本 issue 的客户端描述不同。需先由
 后端侧解决这些门槛并协调范围，不能仅增加客户端入口伪造安全闭环（见

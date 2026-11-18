@@ -1,5 +1,7 @@
 # no-wave transport layer
 
+> 状态：active | 分类基线：`7fc34ce`（仅文档分类，非逐项事实核验）
+
 `NowaveApiClient` used to own everything one HTTP call does: compose the URL,
 attach the token, decide what a 401 means, and map the response body. Those are
 three independent rules with failure modes of their own, so they are now small

@@ -33,8 +33,10 @@ jobs:
         run: bash tool/ci/test_ci_scripts.sh
       - name: Test release validation rules
         run: python3 -m unittest discover -s tool/release -p 'test_*.py' -v
-      - name: Test 16 KiB ELF validation
+      - name: Test CI Python checks
         run: python3 -m unittest discover -s tool/ci -p 'test_check*.py' -v
+      - name: Check documentation contract
+        run: python3 tool/ci/check_doc_claims.py --format github
       - name: Check whitespace errors
         shell: bash
         run: |

@@ -1,5 +1,7 @@
 # Article read-aloud
 
+> 状态：active | 分类基线：`7fc34ce`（仅文档分类，非逐项事实核验）
+
 The article reader's player follows the behavior of `BrainEno/red-room-archive`'s read-aloud implementation (reference revision `839912aba3a5997079fc5bbb0742531ff27ec90b`), adapted to Flutter's rendered Markdown and device speech engines.
 
 ## Reader behavior
