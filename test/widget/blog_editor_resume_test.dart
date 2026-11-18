@@ -11,6 +11,7 @@ import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
+import 'package:belog/features/blog/domain/notion_import/notion_import_plan.dart';
 import 'package:belog/features/blog/domain/notion_export/notion_export.dart';
 import 'package:belog/features/blog/domain/entities/blog_draft.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
@@ -117,6 +118,7 @@ class _NotionRepository implements NotionImportRepository {
     required NotionBundle bundle,
     required bool apply,
     required NowaveSessionFence sessionFence,
+    NotionImportPlan? plan,
   }) async => right(NotionImportReport(applied: apply, pages: const []));
 }
 

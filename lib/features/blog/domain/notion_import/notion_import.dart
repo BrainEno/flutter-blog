@@ -4,7 +4,11 @@ import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:fpdart/fpdart.dart';
 
-/// A validated, immutable-by-convention bundle snapshot. It is never persisted.
+import 'notion_import_plan.dart';
+
+/// A validated, deeply immutable bundle snapshot. It is never persisted.
+/// Deep immutability is important because a server plan binds the full bundle,
+/// including unknown fields, and no caller may mutate it after preview.
 class NotionBundle {
   NotionBundle._(this.json);
   final Map<String, dynamic> json;
@@ -40,7 +44,7 @@ class NotionBundle {
     if (utf8.encode(encoded).length > maxRequestBytes) {
       throw const FormatException('size');
     }
-    return NotionBundle._(decoded);
+    return NotionBundle._(_freezeMap(decoded));
   }
 
   /// Positions are used rather than server report IDs: the server may omit an
@@ -76,14 +80,27 @@ class NotionBundle {
       throw const FormatException('selection');
     }
     final pages = json['pages'] as List;
-    return NotionBundle._({
-      ...json,
-      'pages': [
-        for (var i = 0; i < pages.length; i++)
-          if (indices.contains(i)) pages[i],
-      ],
-    });
+    return NotionBundle._(
+      _freezeMap({
+        ...json,
+        'pages': [
+          for (var i = 0; i < pages.length; i++)
+            if (indices.contains(i)) pages[i],
+        ],
+      }),
+    );
   }
+}
+
+Map<String, dynamic> _freezeMap(Map<String, dynamic> source) =>
+    Map<String, dynamic>.unmodifiable(
+      source.map((key, value) => MapEntry(key, _freeze(value))),
+    );
+
+dynamic _freeze(dynamic value) {
+  if (value is Map<String, dynamic>) return _freezeMap(value);
+  if (value is List) return List<dynamic>.unmodifiable(value.map(_freeze));
+  return value;
 }
 
 enum NotionImportAction { create, update, skip, refused, failed }
@@ -120,8 +137,12 @@ class NotionImportReport {
     required this.applied,
     required this.pages,
     this.omittedPages = 0,
+    this.plan,
   });
   final bool applied;
+
+  /// Present only on a validated dry run; never shown in the report.
+  final NotionImportPlan? plan;
 
   /// The server can omit invalid linked editions from the page report.
   final int omittedPages;
@@ -130,6 +151,7 @@ class NotionImportReport {
       pages.where((p) => p.action == action).length;
   bool get canApply =>
       !applied &&
+      plan != null &&
       pages.any(
         (p) =>
             p.action == NotionImportAction.create ||
@@ -142,5 +164,6 @@ abstract interface class NotionImportRepository {
     required NotionBundle bundle,
     required bool apply,
     required NowaveSessionFence sessionFence,
+    NotionImportPlan? plan,
   });
 }
