@@ -1,5 +1,7 @@
 # CI Validation and Observability
 
+> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+
 ## Validation layers
 
 | Workflow/check | Trigger | What it verifies | Failure evidence |

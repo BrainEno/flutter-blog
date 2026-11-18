@@ -1,5 +1,7 @@
 # Backend connectivity evidence
 
+> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+
 The repository preflight is a hint about the configured API, not a network
 permission check, authentication result, or guarantee that a later request
 will succeed. One app-scoped `ApiConnectionChecker` is shared by repositories.

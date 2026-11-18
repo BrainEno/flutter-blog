@@ -29,9 +29,35 @@ expect_failure() {
 
 env_check="$tmp/tool/ci/check_env_asset_contract.sh"
 agent_check="$tmp/tool/ci/validate_agent_contract.sh"
+doc_claims="$tmp/tool/ci/check_doc_claims.sh"
 annotation="$tmp/tool/ci/annotate_failure.sh"
 bash "$env_check" >/dev/null
 bash "$agent_check" >/dev/null
+
+# Documentation claims must be indexed, labelled, and free of live issue
+# counts. Exercise a minimal independent fixture so the check has no hidden
+# dependence on this repository's documentation volume.
+doc_fixture="$tmp/doc-claims"
+mkdir -p "$doc_fixture/docs" "$doc_fixture/lib"
+printf '# Project\n' > "$doc_fixture/README.md"
+printf 'void main() {}\n' > "$doc_fixture/lib/example.dart"
+cat > "$doc_fixture/docs/README.md" <<'EOF'
+# Docs
+
+> 状态：active ｜ 最后核对：2026-11-16 @ fixture
+
+[Guide](guide.md)
+EOF
+cat > "$doc_fixture/docs/guide.md" <<'EOF'
+# Guide
+
+> 状态：active ｜ 最后核对：2026-11-16 @ fixture
+
+See `lib/example.dart`.
+EOF
+bash "$doc_claims" --root "$doc_fixture" >/dev/null
+printf '\n现在只剩 #18 开放。\n' >> "$doc_fixture/docs/guide.md"
+expect_failure 'live documentation must not claim' bash "$doc_claims" --root "$doc_fixture"
 
 # Positive and negative cases for secret/configuration checks.
 cp "$tmp/pubspec.yaml" "$tmp/pubspec.original"

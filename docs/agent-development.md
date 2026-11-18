@@ -1,5 +1,7 @@
 # Agent Development Workflow
 
+> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+
 This document operationalizes the repository instructions in [`AGENTS.md`](../AGENTS.md). It is intended for Hermes and other coding agents that work through GitHub Issues and Pull Requests.
 
 ## 1. Intake and scope

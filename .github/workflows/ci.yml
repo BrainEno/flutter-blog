@@ -31,6 +31,8 @@ jobs:
         run: bash tool/ci/validate_agent_contract.sh
       - name: Test CI guardrails and diagnostic annotations
         run: bash tool/ci/test_ci_scripts.sh
+      - name: Check documentation claims
+        run: bash tool/ci/check_doc_claims.sh
       - name: Test release validation rules
         run: python3 -m unittest discover -s tool/release -p 'test_*.py' -v
       - name: Test 16 KiB ELF validation

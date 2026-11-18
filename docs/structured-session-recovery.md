@@ -1,5 +1,7 @@
 # Structured editing session recovery
 
+> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+
 The recovery store is local infrastructure, **not a publishing path**. It is
 connected to a limited local editor but not the publish queue. It only addresses an
 existing article by backend namespace, signed-in account, stable server article
