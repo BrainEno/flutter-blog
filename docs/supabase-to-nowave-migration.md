@@ -1,5 +1,7 @@
 # Supabase → no-wave apps/api 迁移核对文档
 
+> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+
 > 原始目标：`github.com/BrainEno/no-wave` `apps/api`，2026-10-29 的迁移核对与设计记录。
 > **2026-10-31 增量复核**：[no-wave `55a24bd`](https://github.com/BrainEno/no-wave/tree/55a24bdaa1c01888fb5ecb5bf41befe219348049)。本文保留该时点的迁移记录；更新的客户端差距与后端契约以 [2026-11-01 API 差距审计](nowave-api-gap-audit.md) 为准。源码核对不代表部署或验收完成。
 

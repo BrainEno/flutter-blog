@@ -1,5 +1,7 @@
 # Password recovery in the Flutter app
 
+> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+
 The App uses no-wave's anonymous identity endpoints:
 
 | Action | Request | Success |

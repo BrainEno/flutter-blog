@@ -1,5 +1,7 @@
 # Local structured recovery review
 
+> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+
 The local structured editor now includes a **Review local changes** surface. It
 is deliberately a read-only explanation of a recovery, not a second editing or
 publishing path.

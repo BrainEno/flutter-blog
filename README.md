@@ -24,7 +24,7 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
 
 ## 移动端视觉与组件
 
-客户端正逐步向 [no-wave 移动网页设计](https://github.com/BrainEno/no-wave/blob/157aa6f5799d33891910ceb606cbaa8ec90f4e40/apps/web/docs/UI_DESIGN_SYSTEM.md) 靠拢（原生落地方式见 [界面设计系统](docs/design-system.md)）：纸色与墨色、橙红强调、衬线标题、细线分隔和留白，并保留原生四标签导航及各自的页面栈。首页、搜索、阅读、作者主页和个人中心采用一致的编辑式布局；收藏和个人作品继续使用可操作的网格。这是逐步迭代，并非所有页面均已统一或与网页逐像素相同；应用包名和启动图标尚未变更。
+客户端正逐步向 [no-wave 移动网页设计](https://github.com/BrainEno/no-wave/blob/157aa6f5799d33891910ceb606cbaa8ec90f4e40/apps/web/docs/UI_DESIGN_SYSTEM.md) 靠拢（原生落地方式见 [界面设计系统](docs/design-system.md)）：纸色与墨色、橙红强调、衬线标题、细线分隔和留白，并保留原生四标签导航及各自的页面栈。首页、搜索、阅读、作者主页和个人中心采用一致的编辑式布局；收藏和个人作品继续使用可操作的网格。这是逐步迭代，并非所有页面均已统一或与网页逐像素相同；发布身份已统一为 `com.nodeman24.nowave`，启动图标美术仍可能继续迭代。
 
 - 颜色与文字样式集中在 `lib/core/theme/`；品牌、标题、作品行、封面、方形头像与操作行为可复用展示组件。作品行和操作行通过回调交给页面处理导航或动作，不依赖路由或业务状态；评论区的作者点击也由阅读页接管，保持所在标签的导航栈。
 - 头像与作品封面优先展示原有 HTTP(S) 图片 URL，提供本地化图片语义。缺失、无效或加载失败时，头像使用中性人像图标；封面使用随包附带的原创抽象兜底图（由 AI 生成，不代表文章内容）。
@@ -68,6 +68,8 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
   （见下文「分享与深链」）
 - 数据导出：个人资料及最多 100 篇简体中文已发布作品的部分文字导出为 JSON，
   经系统分享面板保存；不含服务端草稿、其他语言及完整正文格式或图片，**不是完整备份**
+- Notion bundle：编辑器可预览后导入经 no-wave 后端处理的 Notion bundle，也可把已保存
+  的编辑内容导出为 bundle；两者均由用户显式发起，不等同于连接或浏览 Notion 数据库
 - 草稿：按 API 后端、账号和文章隔离的本地草稿、恢复 / 丢弃对话框及 2 秒
   防抖自动保存；发布前保存快照，成功后仅在快照未变化时尝试清理。旧版无法
   证明归属的草稿保留但不自动显示或分配，服务端草稿是独立功能
@@ -189,10 +191,12 @@ lib/
 
 - **数据流向**：UI → Bloc → Usecase → Repository（`Either<Failure, T>`）→
   Datasource。Repository 是唯一把异常翻译成 `Failure` 的地方。
-- **内容源**：当前只有一个内容源——no-wave `apps/api`。让同一个 App 也能读 Notion
-  数据库的可行性、必须先清的 8 处代码阻碍与分期方案见
-  [Notion 内容源评估](docs/notion-content-source-assessment.md)；它尚未实现，
-  现有 no-wave 行为不受影响。
+- **文章后端与 Notion bundle**：文章列表、详情、互动与发布仍由 no-wave `apps/api`
+  提供。编辑器已支持用户主动导入或导出经 no-wave 后端处理的 Notion bundle；这不会
+  直连 Notion API、读取 Notion 数据库或把 token 写入 App。把 Notion 数据库作为第二个
+  运行时文章内容源仍处于评估阶段，所需抽象、风险与分期见
+  [Notion 内容源评估](docs/notion-content-source-assessment.md)，现有 no-wave 行为
+  不受影响。
 - **分层方向**：依赖只能从 feature 指向 `lib/core`，不能反向；`lib/core/storage`
   不得导入 Flutter UI 类型。规则由 `tool/ci/check_core_dependencies.py` 在 CI 中
   强制（`--root` 可对任意目录跑，unittest 也在真实仓库上验证）。
@@ -563,11 +567,10 @@ CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 
   会话时序单元与 Isar 移除已完成；`nowave_api_client` 等仍有拆分空间）
 - **P0/P1 已关闭**：#4 工具链升级、#7 schema 版本管理、#8 离线缓存语义
 
-当前 GitHub issue 核对中，`main` 上**只剩 #18（举报与屏蔽）开放**：客户端不能单独完成。
-no-wave ADR 0026 目前只接受了设计，尚未授权迁移、服务或 REST 接口；P1 与 P5–P10
-仍是实现发布门槛，且其首期范围是单条私信举报，与本 issue 的客户端描述不同。需先由
-后端侧解决这些门槛并协调范围，不能仅增加客户端入口伪造安全闭环（见
-[当前 no-wave ADR 0026](https://github.com/BrainEno/no-wave/blob/bbe9d198208cc9f4267e18e3a4ddcc88b2ad535a/docs/architecture/decisions/0026-moderation-reports-and-appeals.md)）。
+开放工作按 [GitHub issue 列表](https://github.com/BrainEno/flutter-blog/issues) 的优先级处理。
+举报与屏蔽仍依赖 no-wave 侧提供迁移、服务和 REST 接口；在这些门槛完成前，客户端不能
+只增加一个入口来伪造安全闭环。其当前边界见
+[no-wave ADR 0026](https://github.com/BrainEno/no-wave/blob/bbe9d198208cc9f4267e18e3a4ddcc88b2ad535a/docs/architecture/decisions/0026-moderation-reports-and-appeals.md)。
 
 **许可证**：[Apache License 2.0](LICENSE)。随包分发的字体等第三方资源及其
 许可证见 [NOTICE](NOTICE)；Dart/Flutter 依赖各自的许可随 pub 包分发，解析结果

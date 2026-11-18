@@ -1,5 +1,7 @@
 # Session lifecycle (no-wave)
 
+> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+
 `NowaveSessionManager` owns the one long-lived credential the app holds. The
 refresh token rotates on every use and the backend revokes the whole session
 family when a rotated token is replayed, so the timing rules matter more than

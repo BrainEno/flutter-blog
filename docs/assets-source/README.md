@@ -1,5 +1,7 @@
 # Unreferenced source images
 
+> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+
 These files were inside `assets/images/` and therefore bundled into every APK,
 but no Dart code, pubspec entry, native launch screen or CI script referenced
 them. They were moved here (#107 cleanup) so they stay in the repository

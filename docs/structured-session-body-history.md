@@ -1,5 +1,7 @@
 # Local structured body history
 
+> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+
 This feature is a session-only safety aid, not a backup or remote version
 history. It applies only to the local structured body editor after explicit
 recovery adoption (or initial remote adoption). It neither reads the server

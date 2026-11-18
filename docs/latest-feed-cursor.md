@@ -1,5 +1,7 @@
 # 首页最新文章分页
 
+> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+
 本次只修改首页在线「最新」列表，依据 no-wave [`58dc3419`](https://github.com/BrainEno/no-wave/tree/58dc34192fbc6efd90edf519d508f5e7ab0907c3) 的 [cursor 接口](https://github.com/BrainEno/no-wave/pull/131)。客户端与部署的实际版本、数据和真机体验仍需验证。热门、精选、关注和离线缓存继续使用 offset；作者页的分类列表按 offset 翻页（每页 20 条），`sort=popular` 到服务端上限时给出「去「最新」继续」的出口。服务器搜索仍有独立上限：已升级部署也搜索正文块文本，旧版只搜标题和摘要。搜索页另有离线书库，它只在当前 backend/内容语言的有界缓存中本地匹配标题、作者、标签和可读正文，不代表服务器完整搜索，见[离线书库](offline-library.md)。
 
 ## 策略与兼容性
