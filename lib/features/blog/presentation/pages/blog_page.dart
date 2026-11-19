@@ -15,7 +15,6 @@ import 'package:belog/features/blog/presentation/blocs/blog/blog_bloc.dart';
 import 'package:belog/features/blog/presentation/tag_navigation.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_feed_skeleton.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -165,7 +164,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
               ? FloatingActionButton(
                   onPressed: _openEditor,
                   tooltip: context.l10n.newPostTooltip,
-                  child: const Icon(CupertinoIcons.add),
+                  child: const Icon(Icons.add),
                 )
               : const SizedBox.shrink(),
         ),

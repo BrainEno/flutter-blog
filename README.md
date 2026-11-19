@@ -412,7 +412,9 @@ App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并�
   所以超时按“无法判定”处理，交给请求自己报错。二是**真实请求的传输错误**，
   说明配置的 origin 连不上。两种情况都会留下证据：登录页底部、登录失败提示条上的
   「查看诊断信息」按钮，以及「我的 → 关于我们」（按钮或长按版本号）都会打开诊断弹窗，
-  也可直接访问 `/about?diagnostics=1`；探测与请求记录形如
+  也可直接访问 `/about?diagnostics=1`。弹窗内可复制、分享，或「导出日志文件」——把应用版本、
+  构建、API origin 与最近至多 100 条脱敏记录写成文本文件交给系统分享面板，仅由用户
+  主动触发，不自动上传（缓冲最多保留 24 小时，见 `lib/core/utils/diagnostics_file_export.dart`）；探测与请求记录形如
   `probe GET /api/v1/health inconclusive (TimeoutException after 3001ms, budget 3000ms)`
   或 `request POST /api/v1/auth/login unreachable (SocketException)`，debug 控制台里
   也会打印实际探测的 origin。本机先自查 `curl http://localhost:4000/api/v1/health`；
@@ -494,7 +496,9 @@ flutter pub get
    （全仓库格式审计仅告警，不阻断）。
 2. **analyze**：`flutter analyze --fatal-infos`，零告警门禁（`avoid_print`
    已启用，请使用 `AppLogger`）。
-3. **test**：`flutter test --coverage --concurrency=1`。
+3. **test**：`flutter test --coverage --concurrency=1`，随后
+   `python3 tool/ci/check_coverage.py` 按 `tool/ci/coverage_threshold.json` 的最低行覆盖率
+   门禁（排除生成的本地化类）；覆盖率增长后再有意上调，不得为通过 PR 而下调。
 4. **android-release**：使用显式 QA debug 签名和不可路由配置构建 Android release APK，
    另编译 debug APK 并检查两者网络策略；不发布、不代表正式签名已验证。
 

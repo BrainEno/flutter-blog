@@ -17,6 +17,7 @@ import 'package:belog/features/blog/domain/usecase/list_structured_recoveries.da
 import 'package:belog/features/blog/domain/usecase/open_indexed_recovery.dart';
 import 'package:belog/features/blog/domain/usecase/open_structured_editing_session.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_editor_page.dart';
+import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:flutter/material.dart';
 
 /// A local index, independent of the remote author-list request. No body or
@@ -143,17 +144,13 @@ class _StructuredRecoveryCatalogPageState
         if (!mounted || !_active || generation != _generation) return;
         if (kind == StructuredRecoveryBufferKind.unknown ||
             kind == StructuredRecoveryBufferKind.missing) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.l10n.structuredLocalFailure)),
-          );
+          showSnackBar(context, context.l10n.structuredLocalFailure);
           return;
         }
       }
       if (kind == StructuredRecoveryBufferKind.rich) {
         if (store is! StructuredRichTextSessionStore) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.l10n.structuredLocalFailure)),
-          );
+          showSnackBar(context, context.l10n.structuredLocalFailure);
           return;
         }
         final result =
@@ -174,9 +171,7 @@ class _StructuredRecoveryCatalogPageState
             ),
           );
         } else if (result.status != IndexedRichTextRecoveryStatus.obsolete) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.l10n.structuredLocalFailure)),
-          );
+          showSnackBar(context, context.l10n.structuredLocalFailure);
         }
         return;
       }
@@ -202,9 +197,7 @@ class _StructuredRecoveryCatalogPageState
         }
         if (result.status != IndexedTextRecoveryStatus.noBuffer) {
           if (result.status != IndexedTextRecoveryStatus.obsolete) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(context.l10n.structuredLocalFailure)),
-            );
+            showSnackBar(context, context.l10n.structuredLocalFailure);
           }
           return;
         }

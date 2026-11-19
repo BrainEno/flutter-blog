@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
@@ -9,6 +7,7 @@ import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
+import 'package:belog/core/utils/search_debounce.dart';
 import 'package:belog/features/user/domain/entities/author_search_result.dart';
 import 'package:belog/features/user/presentation/bloc/author_search/author_search_cubit.dart';
 import 'package:belog/router/shell_branch_location.dart';
@@ -16,8 +15,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-
-const Duration _searchDebounce = Duration(milliseconds: 300);
 
 /// Public author discovery, scoped to the search tab and kept in memory only.
 class AuthorSearchPage extends StatefulWidget {
@@ -29,7 +26,7 @@ class AuthorSearchPage extends StatefulWidget {
 
 class _AuthorSearchPageState extends State<AuthorSearchPage> {
   final _controller = TextEditingController();
-  Timer? _debounce;
+  final SearchDebounce _debounce = SearchDebounce();
 
   @override
   void initState() {
@@ -41,25 +38,25 @@ class _AuthorSearchPageState extends State<AuthorSearchPage> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
+    _debounce.dispose();
     _controller.dispose();
     super.dispose();
   }
 
   void _onChanged(String input) {
-    _debounce?.cancel();
+    _debounce.cancel();
     setState(() {});
     final cubit = context.read<AuthorSearchCubit>();
     cubit.queryChanged(input);
     final query = input.trim();
     if (!isValidAuthorSearchQuery(query)) return;
-    _debounce = Timer(_searchDebounce, () {
+    _debounce(() {
       if (mounted) cubit.search(query);
     });
   }
 
   void _submit(String input) {
-    _debounce?.cancel();
+    _debounce.cancel();
     context.read<AuthorSearchCubit>().search(input);
   }
 

@@ -20,6 +20,7 @@ import 'package:belog/features/blog/presentation/editor/structured_block_propert
 import 'package:belog/features/blog/presentation/editor/structured_insert_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_list_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_inline_page.dart';
+import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:flutter/material.dart';
 
 enum _BodyHistoryAction { undo, redo, review, exportBody, importBody }
@@ -230,9 +231,7 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
       setState(() => _busy = false);
       if (result.status == LocalTextHandoffStatus.invalidTarget ||
           result.status == LocalTextHandoffStatus.unsupportedStore) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.structuredLocalFailure)),
-        );
+        showSnackBar(context, context.l10n.structuredLocalFailure);
       }
       return;
     }

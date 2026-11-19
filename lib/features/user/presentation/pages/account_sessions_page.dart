@@ -9,6 +9,7 @@ import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/user/domain/entities/account_session.dart';
 import 'package:belog/features/user/domain/entities/session_revoke_outcome.dart';
 import 'package:belog/features/user/domain/repositories/account_session_repository.dart';
@@ -17,7 +18,6 @@ import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
-import 'package:intl/intl.dart';
 
 /// Read-only, online-only view of the initiating sign-in's session list.
 /// Reopening the page is required after *any* account/session replacement,
@@ -429,8 +429,7 @@ class _SessionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final locale = Localizations.localeOf(context);
-    String time(DateTime value) =>
-        DateFormat.yMMMd(locale.toString()).add_jms().format(value.toLocal());
+    String time(DateTime value) => formatDate(locale, value, withTime: true);
     final lastRefreshed = session.lastRefreshedAt;
     return Card(
       margin: const EdgeInsets.only(bottom: NoWaveSpacing.medium),

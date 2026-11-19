@@ -27,21 +27,18 @@ void main() {
     'core/network/api_connection_checker.dart': 'connect timeout',
     'core/nowave/nowave_api_client.dart': 'request and upload timeouts',
     'core/nowave/nowave_session.dart': 'refresh lead time before expiry',
+    'core/utils/diagnostics_buffer.dart': 'diagnostics retention window',
     'core/utils/retry_on_connection_closed.dart': 'retry backoff',
+    'core/utils/search_debounce.dart': 'the shared search input debounce',
+    'core/utils/show_snackbar.dart': 'how long a feedback notice stays',
     'features/blog/data/datasources/latest_feed_cursor.dart':
         'cursor arithmetic: one millisecond of inclusive bound',
     'features/blog/data/publish/publish_queue_runner.dart':
         'publish retry schedule',
     'features/blog/presentation/editor/editor_session_coordinator.dart':
         'autosave dwell',
-    'features/blog/presentation/pages/search_blog_page.dart':
-        'input debounce, and how long a failure notice stays',
     'features/blog/presentation/read_aloud/read_aloud_sleep_timer.dart':
         'session-only sleep-timer deadlines',
-    'features/user/presentation/pages/author_search_page.dart':
-        'input debounce',
-    'features/messages/presentation/pages/message_participants_sheet.dart':
-        'public-author lookup debounce',
     'features/user/presentation/pages/about_page.dart': 'package info timeout',
   };
 

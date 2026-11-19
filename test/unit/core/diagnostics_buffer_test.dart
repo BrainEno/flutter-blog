@@ -164,6 +164,64 @@ void main() {
     test('the default capacity matches the issue contract', () {
       expect(DiagnosticsBuffer().capacity, 200);
     });
+
+    test('the default retention window is 24 hours', () {
+      expect(DiagnosticsBuffer().maxAge, const Duration(hours: 24));
+      expect(DiagnosticsBuffer.defaultMaxAge, const Duration(hours: 24));
+    });
+
+    test('records older than the window are dropped on read', () {
+      var now = DateTime.utc(2026, 11, 19, 8);
+      final buffer = DiagnosticsBuffer(
+        maxAge: const Duration(hours: 1),
+        clock: () => now,
+      )..recordRequest('GET', '/api/v1/old', 500, 1);
+      now = now.add(const Duration(minutes: 30));
+      buffer.recordRequest('GET', '/api/v1/recent', 500, 2);
+
+      expect(buffer.entries, hasLength(2));
+
+      now = now.add(const Duration(minutes: 31));
+
+      expect(buffer.entries.map((entry) => entry.line), [
+        'request GET /api/v1/recent -> 500 (2ms)',
+      ]);
+      expect(buffer.export().contains('/api/v1/old'), isFalse);
+      expect(buffer.export(), contains('/api/v1/recent'));
+
+      now = now.add(const Duration(hours: 2));
+
+      expect(buffer.isEmpty, isTrue);
+      expect(buffer.export(), isEmpty);
+    });
+
+    test('a new record prunes expired ones even without a read', () {
+      var now = DateTime.utc(2026, 11, 19, 8);
+      final buffer = DiagnosticsBuffer(
+        maxAge: const Duration(minutes: 10),
+        clock: () => now,
+      )..recordError('first failure', null);
+      now = now.add(const Duration(minutes: 11));
+      buffer.recordError('second failure', null);
+
+      final lines = buffer.entries.map((entry) => entry.line).toList();
+      expect(lines, hasLength(1));
+      expect(lines.single, contains('second failure'));
+    });
+
+    test('export can be limited to the newest records', () {
+      final buffer = DiagnosticsBuffer();
+      for (var i = 1; i <= 4; i++) {
+        buffer.recordRequest('GET', '/api/v1/failure-$i', 500, i);
+      }
+
+      final report = buffer.export(limit: 2);
+      expect(report.split('\n'), hasLength(2));
+      expect(report, contains('failure-4'));
+      expect(report, contains('failure-3'));
+      expect(report.contains('failure-2'), isFalse);
+      expect(buffer.export(limit: 0), isEmpty);
+    });
   });
 
   group('AppLogger integration', () {

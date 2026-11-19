@@ -547,10 +547,12 @@
   "diagnosticsTitle": "Diagnostics",
   "diagnosticsEmptyBuffer": "The diagnostics buffer is empty.",
   "diagnosticsEmptyHint": "When the app fails, a sanitized summary is recorded here (error category, endpoint path, status code and duration) - never any account data.",
-  "diagnosticsPrivacyNote": "This stays in this device's memory and is never sent anywhere; copying or sharing is up to you.",
+  "diagnosticsPrivacyNote": "This stays in this device's memory and is never sent anywhere automatically; copying, sharing or exporting a log file is up to you.",
   "diagnosticsShareTitle": "No Wave diagnostics",
   "diagnosticsShareFailed": "Could not share — try copying instead",
   "diagnosticsCopied": "Diagnostics copied",
+  "diagnosticsExportFile": "Export log file",
+  "diagnosticsExportFailed": "Could not export the log file — try copying instead",
   "avatarOf": "Avatar of {name}",
   "@avatarOf": {
     "placeholders": {
