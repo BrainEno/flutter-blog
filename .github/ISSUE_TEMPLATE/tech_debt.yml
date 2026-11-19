@@ -1,0 +1,54 @@
+name: 技术债 / 优化
+description: 重构、清理、可维护性、CI 门禁或文档一致性改进。
+title: "[P3][类别] "
+labels: ["tech-debt"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        标题前缀可保留，但请同时选择优先级与类别，维护者会据此打标签（见 AGENTS.md「Repository workflow」）。
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 优先级
+      options:
+        - P1
+        - P2
+        - P3
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 类别
+      multiple: true
+      options:
+        - cleanup
+        - ui-consistency
+        - ci
+        - tests
+        - docs
+        - process
+        - security
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 证据
+      description: 文件与行号、计数或命令输出；说明核对时的提交。
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: 影响
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      placeholder: "- [ ] …"
+    validations:
+      required: true

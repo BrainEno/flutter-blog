@@ -10,6 +10,7 @@ import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/router/app_router.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -158,9 +159,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
       setState(() => _legacyAvailable = false);
     } catch (_) {
       if (mounted && _userId == userId && _accountVersion == accountVersion) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(context.l10n.errorStorage)));
+        showSnackBar(context, context.l10n.errorStorage);
       }
     } finally {
       if (mounted) setState(() => _clearingLegacy = false);

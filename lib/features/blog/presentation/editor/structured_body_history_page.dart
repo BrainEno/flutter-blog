@@ -8,6 +8,7 @@ import 'package:belog/features/blog/domain/editing/structured_body_history.dart'
 import 'package:belog/features/blog/domain/editing/structured_comparison.dart';
 import 'package:belog/features/blog/presentation/editor/structured_comparison_card.dart';
 import 'package:belog/features/blog/presentation/editor/structured_history_patch_page.dart';
+import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:flutter/material.dart';
 
 /// A one-shot, memory-only route handoff. The owner and receiver clear their
@@ -208,9 +209,7 @@ class _StructuredBodyHistoryPageState extends State<StructuredBodyHistoryPage> {
       case LocalHistoryBlockRestoreResult.accepted:
         Navigator.of(context).pop();
       case LocalHistoryBlockRestoreResult.invalid:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.structuredHistoryBlockInvalid)),
-        );
+        showSnackBar(context, context.l10n.structuredHistoryBlockInvalid);
       case LocalHistoryBlockRestoreResult.stale:
       case LocalHistoryBlockRestoreResult.unchanged:
         _clear();

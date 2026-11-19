@@ -272,6 +272,10 @@ jobs:
             bash tool/ci/annotate_failure.sh analyze build/reports/flutter-test.log
           fi
           exit "$status"
+      - name: Enforce minimum line coverage
+        # The floor lives in tool/ci/coverage_threshold.json (#301). Raise it
+        # deliberately when coverage grows; never lower it to pass a PR.
+        run: python3 tool/ci/check_coverage.py --lcov coverage/lcov.info --config tool/ci/coverage_threshold.json
       - name: Comment the log tail on the PR when tests fail
         if: failure() && github.event_name == 'pull_request'
         env:

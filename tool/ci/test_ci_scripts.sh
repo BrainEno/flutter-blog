@@ -61,7 +61,9 @@ expect_failure 'live documentation must not claim' bash "$doc_claims" --root "$d
 
 # Positive and negative cases for secret/configuration checks.
 cp "$tmp/pubspec.yaml" "$tmp/pubspec.original"
-printf '\n    - .env.example\n    # - .env\n' >> "$tmp/pubspec.yaml"
+# A look-alike asset name and a commented-out `.env` must not trip the check.
+# The name is a fixture only: the repository has no `.env.*` template (#296).
+printf '\n    - .env.template\n    # - .env\n' >> "$tmp/pubspec.yaml"
 bash "$env_check" >/dev/null
 for asset in '.env' '".env"' "'.env'"; do
   cp "$tmp/pubspec.original" "$tmp/pubspec.yaml"

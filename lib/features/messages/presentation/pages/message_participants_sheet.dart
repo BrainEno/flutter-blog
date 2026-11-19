@@ -9,6 +9,7 @@ import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/utils/search_debounce.dart';
 import 'package:belog/features/messages/domain/entities/conversation.dart';
 import 'package:belog/features/messages/domain/entities/message_participant.dart';
 import 'package:belog/features/user/domain/entities/author_search_result.dart';
@@ -51,11 +52,9 @@ class MessageParticipantsSheet extends StatefulWidget {
 }
 
 class _MessageParticipantsSheetState extends State<MessageParticipantsSheet> {
-  static const Duration _searchDebounce = Duration(milliseconds: 300);
-
   final TextEditingController _searchController = TextEditingController();
   final Set<String> _selectedIds = {};
-  Timer? _searchTimer;
+  final SearchDebounce _searchDebounce = SearchDebounce();
   int _searchGeneration = 0;
   bool _adding = false;
   bool _searching = false;
@@ -69,14 +68,14 @@ class _MessageParticipantsSheetState extends State<MessageParticipantsSheet> {
 
   @override
   void dispose() {
-    _searchTimer?.cancel();
+    _searchDebounce.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   void _beginAdding() {
     _searchGeneration++;
-    _searchTimer?.cancel();
+    _searchDebounce.cancel();
     _searchController.clear();
     setState(() {
       _adding = true;
@@ -92,7 +91,7 @@ class _MessageParticipantsSheetState extends State<MessageParticipantsSheet> {
 
   void _returnToMembers() {
     _searchGeneration++;
-    _searchTimer?.cancel();
+    _searchDebounce.cancel();
     setState(() {
       _adding = false;
       _query = '';
@@ -107,7 +106,7 @@ class _MessageParticipantsSheetState extends State<MessageParticipantsSheet> {
   }
 
   void _queryChanged(String input) {
-    _searchTimer?.cancel();
+    _searchDebounce.cancel();
     final generation = ++_searchGeneration;
     final query = input.trim();
     final tooLong = query.length > maxAuthorSearchQueryLength;
@@ -119,7 +118,7 @@ class _MessageParticipantsSheetState extends State<MessageParticipantsSheet> {
       _searching = query.isNotEmpty && !tooLong;
     });
     if (query.isEmpty || tooLong) return;
-    _searchTimer = Timer(_searchDebounce, () {
+    _searchDebounce(() {
       unawaited(_search(query, generation));
     });
   }

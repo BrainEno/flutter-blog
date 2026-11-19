@@ -1,0 +1,56 @@
+name: 缺陷 / Bug
+description: 应用行为与预期不符（崩溃、数据丢失、接口不兼容、文案错误等）。
+title: "[P?][类别] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        标题前缀可保留（如 `[P1][兼容性]`），但请同时选择下方优先级，维护者会据此打 `P0`–`P3` 标签。
+        **不要**粘贴 token、密码、邮箱、真实用户数据或完整服务端响应；诊断信息请用应用内「关于 → 查看诊断信息 → 导出日志文件」生成的脱敏文本。
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 优先级
+      options:
+        - P0 — 数据丢失 / 安全 / 无法启动
+        - P1 — 主要功能不可用或与后端不兼容
+        - P2 — 功能受损但有绕过方式
+        - P3 — 体验、清理或一致性问题
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: 现象
+      description: 实际发生了什么？附上脱敏的诊断导出或截图。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. …
+        2. …
+  - type: input
+    id: version
+    attributes:
+      label: 应用版本 / 平台
+      placeholder: "0.2.0+1 · Android 15"
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 证据（源码位置、上游契约链接、提交）
+      description: 静态源码核对与真机 / 生产验证请分开写明。
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      placeholder: "- [ ] …"

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:belog/core/common/widgets/no_wave_masthead.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
@@ -10,6 +8,8 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/format_date.dart';
+import 'package:belog/core/utils/search_debounce.dart';
+import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart'
     show kMaxSearchResults;
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
@@ -20,8 +20,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-const Duration _kSearchDebounce = Duration(milliseconds: 300);
-
 class SearchBlogPage extends StatefulWidget {
   const SearchBlogPage({super.key});
 
@@ -31,7 +29,7 @@ class SearchBlogPage extends StatefulWidget {
 
 class _SearchBlogPageState extends State<SearchBlogPage> {
   final TextEditingController _searchController = TextEditingController();
-  Timer? _debounce;
+  final SearchDebounce _debounce = SearchDebounce();
 
   @override
   void initState() {
@@ -41,21 +39,21 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
+    _debounce.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   /// Debounce typing; the bloc also discards out-of-order responses.
   void _onQueryChanged() {
-    _debounce?.cancel();
+    _debounce.cancel();
     setState(() {});
     final query = _searchController.text.trim();
     if (query.isEmpty) {
       context.read<BlogSearchBloc>().add(const SearchBlogsCleared());
       return;
     }
-    _debounce = Timer(_kSearchDebounce, () {
+    _debounce(() {
       if (mounted) {
         context.read<BlogSearchBloc>().add(SearchBlogsEvent(query: query));
       }
@@ -63,7 +61,7 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
   }
 
   void _onSubmitted(String query) {
-    _debounce?.cancel();
+    _debounce.cancel();
     final trimmed = query.trim();
     if (trimmed.isEmpty) {
       context.read<BlogSearchBloc>().add(const SearchBlogsCleared());
@@ -194,18 +192,11 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
           BlocConsumer<BlogSearchBloc, BlogSearchState>(
             listener: (context, state) {
               if (state is BlogSearchFailure) {
-                ScaffoldMessenger.of(context)
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        l10n.searchFailed(
-                          localizedFailure(l10n, state.failure),
-                        ),
-                      ),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
+                showSnackBar(
+                  context,
+                  l10n.searchFailed(localizedFailure(l10n, state.failure)),
+                  duration: kShortSnackBarDuration,
+                );
               }
             },
             builder: (context, state) {

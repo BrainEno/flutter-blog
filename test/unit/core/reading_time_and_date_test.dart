@@ -54,6 +54,30 @@ void main() {
       expect(formatDate(const Locale('en', 'GB'), date), '30 Oct 2026');
     });
 
+    test('withTime appends hours, minutes and seconds to the same date', () {
+      final instant = DateTime(2026, 10, 30, 14, 5, 9);
+      final zh = formatDate(const Locale('zh'), instant, withTime: true);
+      final en = formatDate(const Locale('en'), instant, withTime: true);
+      final gb = formatDate(const Locale('en', 'GB'), instant, withTime: true);
+
+      expect(zh, startsWith('2026年10月30日'));
+      expect(zh, contains('14:05:09'));
+      expect(en, startsWith('Oct 30, 2026'));
+      expect(en, contains('2:05:09'));
+      expect(en, contains('PM'));
+      expect(gb, startsWith('30 Oct 2026'));
+      expect(gb, contains('14:05:09'));
+    });
+
+    test('the date-only form stays the default', () {
+      final instant = DateTime(2026, 10, 30, 14, 5, 9);
+      expect(
+        formatDate(const Locale('en'), instant),
+        formatDate(const Locale('en'), instant, withTime: false),
+      );
+      expect(formatDate(const Locale('en'), instant).contains(':'), isFalse);
+    });
+
     test('formats grouped counts in both locales', () {
       expect(formatNumber(const Locale('zh'), 1234), '1,234');
       expect(formatNumber(const Locale('en'), 1234), '1,234');

@@ -7,7 +7,9 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/network/api_origin_report.dart';
 import 'package:belog/core/secrets/app_secrets.dart';
 import 'package:belog/core/utils/app_logger.dart';
+import 'package:belog/core/utils/diagnostics_file_export.dart';
 import 'package:belog/core/utils/diagnostics_header.dart';
+import 'package:belog/core/utils/diagnostics_report.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -25,10 +27,15 @@ class AboutPage extends StatefulWidget {
   /// instead of asking the user to find a button.
   final bool openDiagnostics;
 
+  /// Writes the diagnostics export and opens the share sheet (issue #306).
+  /// Injectable for tests; null uses [DiagnosticsFileExporter].
+  final DiagnosticsExportAction? exportDiagnostics;
+
   const AboutPage({
     super.key,
     this.packageInfoLoader = PackageInfo.fromPlatform,
     this.openDiagnostics = false,
+    this.exportDiagnostics,
   });
 
   @override
@@ -37,6 +44,8 @@ class AboutPage extends StatefulWidget {
 
 class _AboutPageState extends State<AboutPage> {
   late final Future<PackageInfo?> _packageInfo = _loadPackageInfo();
+  late final DiagnosticsExportAction _exportDiagnostics =
+      widget.exportDiagnostics ?? DiagnosticsFileExporter().exportAndShare;
 
   @override
   void initState() {
@@ -186,10 +195,42 @@ class _AboutPageState extends State<AboutPage> {
 
   /// The report reviewed and optionally copied/shared by the user: sanitized
   /// context first, followed by the local buffer's entries newest-first.
+  /// The redaction pass is defense in depth (issue #306): the buffer only
+  /// stores pre-scrubbed lines, but what is on screen is what gets copied.
   String _composeReport(PackageInfo? info) {
     final header = _diagnosticsHeader(info);
     final body = AppLogger.diagnosticsReport();
-    return body.isEmpty ? header : '$header\n$body';
+    return redactDiagnosticsText(body.isEmpty ? header : '$header\n$body');
+  }
+
+  /// The exported file: the same sanitized header plus a format tag, the
+  /// export instant, the retention window and at most
+  /// [kDiagnosticsExportMaxEntries] newest records (issue #306).
+  String _composeExport(PackageInfo? info) => composeDiagnosticsExport(
+    header: _diagnosticsHeader(info),
+    entries: AppLogger.diagnostics.entries,
+    generatedAt: DateTime.now(),
+    window: AppLogger.diagnostics.maxAge,
+  );
+
+  /// Only ever runs from the user's tap: nothing is uploaded, scheduled or
+  /// retried, and the share sheet decides where the file goes.
+  Future<void> _export(BuildContext context, PackageInfo? info) async {
+    final l10n = context.l10n;
+    final document = _composeExport(info);
+    try {
+      await _exportDiagnostics(
+        report: document,
+        shareTitle: l10n.diagnosticsShareTitle,
+      );
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'exporting the diagnostics failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (context.mounted) showSnackBar(context, l10n.diagnosticsExportFailed);
+    }
   }
 
   Future<void> _showDiagnostics(BuildContext context) async {
@@ -267,6 +308,14 @@ class _AboutPageState extends State<AboutPage> {
                       showSnackBar(context, l10n.diagnosticsShareFailed);
                     }
                   }
+                },
+              ),
+              NoWaveButton(
+                label: l10n.diagnosticsExportFile,
+                variant: NoWaveButtonVariant.quiet,
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  unawaited(_export(context, info));
                 },
               ),
               NoWaveButton(

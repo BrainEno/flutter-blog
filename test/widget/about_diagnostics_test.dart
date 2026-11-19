@@ -1,3 +1,5 @@
+import 'dart:io' show FileSystemException;
+
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:belog/core/utils/app_logger.dart';
@@ -201,6 +203,97 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('诊断信息'), findsNothing);
     expect(AppLogger.diagnosticsReport(), isNotEmpty);
+  });
+
+  testWidgets('exporting hands a sanitized log file to the share sheet', (
+    tester,
+  ) async {
+    final exported = <String>[];
+    final titles = <String>[];
+    tester.platformDispatcher.localeTestValue = const Locale('zh');
+    addTearDown(tester.platformDispatcher.clearLocaleTestValue);
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AboutPage(
+          packageInfoLoader: _fakePackageInfo,
+          exportDiagnostics: ({required report, required shareTitle}) async {
+            exported.add(report);
+            titles.add(shareTitle);
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    AppLogger.error(
+      'refreshing the session failed',
+      error: _BoobyTrappedError(),
+    );
+    // A misbehaving caller: the static message itself embeds an address.
+    AppLogger.error('sign-in for user@example.invalid failed');
+    AppLogger.probeInconclusive('/api/v1/health', 3001, 3000);
+    AppLogger.request('GET', '/api/v1/articles?token=secret-token', 503, 1203);
+
+    await tester.tap(find.text('查看诊断信息'));
+    await tester.pumpAndSettle();
+    // The reviewed text on screen is already redacted.
+    final shown =
+        tester.widget<SelectableText>(find.byType(SelectableText).first).data ??
+        '';
+    expect(shown.contains('user@example.invalid'), isFalse);
+
+    await tester.tap(find.text('导出日志文件'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('诊断信息'), findsNothing);
+    expect(titles, ['无浪潮诊断信息']);
+    final report = exported.single;
+    expect(report, contains('format belog-diagnostics/1'));
+    expect(report, contains('app belog 9.9+42'));
+    expect(report, contains('build debug'));
+    expect(report, contains('probe GET /api/v1/health inconclusive'));
+    expect(report, contains('request GET /api/v1/articles -> 503'));
+    expect(report, contains('refreshing the session failed'));
+    expect(report.contains('secret-token'), isFalse);
+    expect(report.contains('user@example.invalid'), isFalse);
+    expect(report.contains('password'), isFalse);
+    // Exporting is read-only: the buffer is still there for a second try.
+    expect(AppLogger.diagnosticsReport(), isNotEmpty);
+  });
+
+  testWidgets('a failed export tells the user and suggests copying', (
+    tester,
+  ) async {
+    tester.platformDispatcher.localeTestValue = const Locale('zh');
+    addTearDown(tester.platformDispatcher.clearLocaleTestValue);
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AboutPage(
+          packageInfoLoader: _fakePackageInfo,
+          exportDiagnostics: ({required report, required shareTitle}) async =>
+              throw const FileSystemException('disk full'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    AppLogger.request('GET', '/api/v1/articles', 500, 42);
+
+    await tester.tap(find.text('查看诊断信息'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('导出日志文件'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('导出日志文件失败，请尝试复制'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    expect(
+      AppLogger.diagnosticsReport(),
+      contains('exporting the diagnostics failed'),
+    );
   });
 
   testWidgets('closing the dialog keeps the buffer intact', (tester) async {

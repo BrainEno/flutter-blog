@@ -19,6 +19,7 @@ This file is the repository-wide instruction source for coding agents. Read it b
 5. Before committing, inspect `git diff --check`, `git diff --stat`, and the complete diff. Remove credentials, generated noise, unrelated formatting and accidental files.
 6. Push the branch and open a PR against `main`. Include the issue reference, implementation summary, validation evidence, risks, data migration notes and unresolved blockers. Use `Closes #N` only when the complete issue acceptance criteria are met.
 7. After pushing, verify that the PR exists, points at the intended branch, and that its workflow runs started. Do not equate “PR created” with “issue fixed”.
+8. Issues may keep a `[P1][area]` title prefix, but they must also carry the matching `P0`–`P3` priority label and a category label (`bug`, `tech-debt`, `cleanup`, `ui-consistency`, `ci`, `tests`, `documentation`, `security`, `process`). New issues start from `.github/ISSUE_TEMPLATE/`; Dependabot PRs are labelled `dependencies`.
 
 ## Commands and evidence
 
@@ -41,12 +42,14 @@ The only generated code left is the ARB localization class, produced by `flutter
 - If a command fails, preserve the diagnostic output and fix the cause where it is in scope. Do not delete tests, weaken assertions, globally suppress lints, or use `continue-on-error` to manufacture green checks.
 - Do not report runtime, real-device, production backend, 16KB page-size, signing, or deep-link validation as completed unless that exact validation was actually executed.
 - Coverage is evidence, not a vanity number. Do not reduce assertions or add meaningless tests to improve the percentage.
+- CI fails when line coverage drops below the floor in `tool/ci/coverage_threshold.json` (`python3 tool/ci/check_coverage.py`). Raise the floor deliberately when coverage has grown; never lower it to make a PR pass.
 
 ## Secrets, configuration and external services
 
 - Never commit `.env`, private keys, signing keystores, access tokens, service-role/secret keys, production credentials, or real user data.
 - Client-side backend configuration is a single public `API_BASE_URL` origin (no client key is embedded). Authorization is enforced per request by the no-wave backend; the app must never embed administrative credentials.
 - Do not print secrets, environment dumps, full auth/session objects, or sensitive user data in terminal logs, CI artifacts, screenshots or PR comments.
+- The app has no telemetry or automatic reporting. In-app diagnostics stay in a bounded in-memory buffer; they leave the device only when the user explicitly copies, shares or exports them from the diagnostics dialog (the exported log file is redacted and handed to the system share sheet, never uploaded by the app).
 - Pull-request CI must not need production secrets. Do not introduce `pull_request_target` or execute untrusted PR code with privileged tokens.
 - Use a fake, non-routable placeholder only when a build tool requires a local configuration file; document that it is a CI fixture and never use it to claim backend smoke tests passed.
 - Never mutate, reset, truncate, migrate destructively, or upload test content to the production backend. Validate migrations in a local or dedicated test deployment.

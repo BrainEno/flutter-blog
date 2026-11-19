@@ -10,6 +10,7 @@ import 'package:belog/features/messages/domain/entities/conversation_message.dar
 import 'package:belog/features/messages/presentation/bloc/message_thread_cubit.dart';
 import 'package:belog/features/messages/presentation/bloc/message_thread_cubit_factory.dart';
 import 'package:belog/features/messages/presentation/pages/message_participants_sheet.dart';
+import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -154,9 +155,7 @@ class _MessageThreadViewState extends State<_MessageThreadView> {
       ),
     );
     if (!mounted || updated != true) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.messagesParticipantsUpdated)),
-    );
+    showSnackBar(context, context.l10n.messagesParticipantsUpdated);
   }
 
   String _title(MessageThreadState state) {

@@ -5,6 +5,7 @@ import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/presentation/blocs/publish_queue/publish_queue_cubit.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:belog/core/design/design_tokens.dart';
+import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -184,9 +185,7 @@ class _QueueEntryCard extends StatelessWidget {
     final removed = await context.read<PublishQueueCubit>().remove(entry.id);
     if (!context.mounted) return;
     if (removed) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.l10n.publishQueueRemoved)));
+      showSnackBar(context, context.l10n.publishQueueRemoved);
     }
   }
 
@@ -194,9 +193,7 @@ class _QueueEntryCard extends StatelessWidget {
     final queued = await context.read<PublishQueueCubit>().retry(entry.id);
     if (!context.mounted) return;
     if (queued) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.publishQueueRetryQueued)),
-      );
+      showSnackBar(context, context.l10n.publishQueueRetryQueued);
     }
   }
 

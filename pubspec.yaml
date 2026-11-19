@@ -1,5 +1,5 @@
 name: belog
-description: "A new Flutter project."
+description: "No Wave (无浪潮): Flutter mobile client for the self-hosted no-wave blogging API."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -31,9 +31,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^2.0.0
   fpdart: ^1.1.1
   http: ^1.6.0
   # Markdown parser (Dart-team maintained). Rendering to widgets is our

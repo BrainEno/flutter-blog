@@ -15,6 +15,7 @@ import 'package:belog/features/blog/domain/offline_library/offline_library.dart'
 import 'package:belog/features/blog/domain/offline_library/offline_library_query.dart';
 import 'package:belog/features/blog/presentation/blocs/offline_library/offline_library_cubit.dart';
 import 'package:belog/features/blog/presentation/offline_library/offline_library_article_tile.dart';
+import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -94,9 +95,8 @@ class _OfflineLibraryPageState extends State<OfflineLibraryPage> {
         listenWhen: (previous, current) =>
             previous.clearFailure != current.clearFailure &&
             current.clearFailure != null,
-        listener: (context, _) => ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.offlineLibraryClearFailed)),
-        ),
+        listener: (context, _) =>
+            showSnackBar(context, context.l10n.offlineLibraryClearFailed),
         builder: (context, state) => _scaffold(context, state),
       ),
     );
