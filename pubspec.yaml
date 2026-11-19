@@ -60,7 +60,7 @@ dependencies:
   # Real app version for the about page and the diagnostics header
   # (issue #49 follow-up); replaces a hardcoded, already-stale string.
   package_info_plus: ^10.2.2
-  cached_network_image: ^3.4.1
+  cached_network_image: ^4.0.7
   # Localized Material/Cupertino widget chrome (issue #24). The ARB
   # pipeline is driven by `generate: true` below plus l10n.yaml.
   flutter_localizations:
