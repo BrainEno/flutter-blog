@@ -1,5 +1,5 @@
 {
-  "minimum_line_coverage": 1,
+  "minimum_line_coverage": 85,
   "exclude": [
     "lib/l10n/app_localizations*.dart"
   ]
