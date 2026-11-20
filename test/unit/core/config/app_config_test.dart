@@ -16,6 +16,10 @@ void main() {
       expect(AppDurations.requestTimeout, const Duration(seconds: 30));
       expect(AppDurations.mediaUploadTimeout, const Duration(seconds: 90));
       expect(AppDurations.notionImportTimeout, const Duration(minutes: 2));
+      expect(
+        AppDurations.notionImportPlanLifetime,
+        const Duration(minutes: 15),
+      );
       expect(AppDurations.healthProbeTimeout, const Duration(seconds: 3));
       expect(AppDurations.healthProbeSuccessTtl, const Duration(seconds: 2));
       expect(
@@ -108,6 +112,7 @@ void main() {
       expect(AppLimits.messagePageSize, 100);
       expect(AppLimits.structuredComparisonPageSize, 1000);
       expect(AppLimits.mediaUploadMaxBytes, 8 * 1024 * 1024);
+      expect(AppLimits.notionImportPlanMaxTokenBytes, 512 * 1024);
     });
 
     test('a default page never exceeds the cap it is clamped to', () {

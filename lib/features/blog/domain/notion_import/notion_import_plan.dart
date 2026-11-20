@@ -1,3 +1,5 @@
+import 'package:belog/core/config/app_durations.dart';
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
 
@@ -17,9 +19,10 @@ final class NotionImportPlan {
     required String token,
   }) : _token = token;
 
-  /// The no-wave limit is 512 KiB. Its current token is ASCII base64url.
-  static const maxTokenBytes = 512 * 1024;
-  static const localLifetime = Duration(minutes: 15);
+  /// The no-wave limit is 512 KiB. Its current token is ASCII base64url, so
+  /// UTF-16 length and byte length agree for every value the shape accepts.
+  static const maxTokenBytes = AppLimits.notionImportPlanMaxTokenBytes;
+  static const localLifetime = AppDurations.notionImportPlanLifetime;
   static final _shape = RegExp(r'^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$');
   static final _isoUtc = RegExp(
     r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$',

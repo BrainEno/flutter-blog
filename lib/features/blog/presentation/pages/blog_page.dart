@@ -1,4 +1,5 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/design/components/no_wave_entrance.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/common/widgets/no_wave_masthead.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
@@ -328,105 +329,114 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     final depthLimited = state is BlogLoaded && state.depthLimited;
     final failed = state is BlogListFailure;
     final hasFooter = loadingMore || reachedMax || failed;
-    return ListView.builder(
-      controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(
-        NoWaveSpacing.page,
-        NoWaveSpacing.large,
-        NoWaveSpacing.page,
-        NoWaveSpacing.section,
-      ),
-      itemCount: 1 + blogs.length + (hasFooter ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return _contentWidth(
-            Padding(
-              padding: const EdgeInsets.only(bottom: NoWaveSpacing.large),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _heading(state.kind),
-                  if (isCached) ...[
-                    const SizedBox(height: NoWaveSpacing.small),
-                    Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        l10n.feedCachedNotice,
-                        style: NoWaveTypography.meta(context),
+    // A different feed is a new entrance; a refresh or next page is not.
+    return NoWaveEntranceScope(
+      generation: state.kind,
+      child: ListView.builder(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          NoWaveSpacing.page,
+          NoWaveSpacing.large,
+          NoWaveSpacing.page,
+          NoWaveSpacing.section,
+        ),
+        itemCount: 1 + blogs.length + (hasFooter ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return _contentWidth(
+              Padding(
+                padding: const EdgeInsets.only(bottom: NoWaveSpacing.large),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _heading(state.kind),
+                    if (isCached) ...[
+                      const SizedBox(height: NoWaveSpacing.small),
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          l10n.feedCachedNotice,
+                          style: NoWaveTypography.meta(context),
+                        ),
                       ),
-                    ),
+                    ],
                   ],
-                ],
-              ),
-            ),
-          );
-        }
-        final articleIndex = index - 1;
-        if (articleIndex == blogs.length) {
-          if (failed) {
-            return Center(
-              child: TextButton(
-                onPressed: _fetchFirstPage,
-                child: Text(l10n.actionRetry),
+                ),
               ),
             );
           }
-          if (loadingMore) {
+          final articleIndex = index - 1;
+          if (articleIndex == blogs.length) {
+            if (failed) {
+              return Center(
+                child: TextButton(
+                  onPressed: _fetchFirstPage,
+                  child: Text(l10n.actionRetry),
+                ),
+              );
+            }
+            if (loadingMore) {
+              return Padding(
+                padding: const EdgeInsets.all(NoWaveSpacing.medium),
+                child: Center(
+                  child: NoWaveLoadingLabel(
+                    semanticLabel: l10n.loadingMoreArticles,
+                    compact: true,
+                  ),
+                ),
+              );
+            }
+            if (depthLimited) {
+              // The order ended, not the library: say where reading can continue
+              // instead of claiming there is nothing more.
+              return _contentWidth(
+                Padding(
+                  padding: const EdgeInsets.all(NoWaveSpacing.medium),
+                  child: Column(
+                    children: [
+                      Text(
+                        l10n.feedPopularDepthLimit,
+                        textAlign: TextAlign.center,
+                        style: NoWaveTypography.meta(context),
+                      ),
+                      const SizedBox(height: NoWaveSpacing.small),
+                      TextButton(
+                        onPressed: () =>
+                            _selectFeed(BlogFeedKind.latest, state),
+                        child: Text(l10n.feedPopularDepthAction),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
             return Padding(
               padding: const EdgeInsets.all(NoWaveSpacing.medium),
               child: Center(
-                child: NoWaveLoadingLabel(
-                  semanticLabel: l10n.loadingMoreArticles,
-                  compact: true,
+                child: Text(
+                  isCached ? l10n.feedCachedNoMore : l10n.feedNoMore,
+                  style: NoWaveTypography.meta(context),
                 ),
               ),
             );
           }
-          if (depthLimited) {
-            // The order ended, not the library: say where reading can continue
-            // instead of claiming there is nothing more.
-            return _contentWidth(
-              Padding(
-                padding: const EdgeInsets.all(NoWaveSpacing.medium),
-                child: Column(
-                  children: [
-                    Text(
-                      l10n.feedPopularDepthLimit,
-                      textAlign: TextAlign.center,
-                      style: NoWaveTypography.meta(context),
-                    ),
-                    const SizedBox(height: NoWaveSpacing.small),
-                    TextButton(
-                      onPressed: () => _selectFeed(BlogFeedKind.latest, state),
-                      child: Text(l10n.feedPopularDepthAction),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-          return Padding(
-            padding: const EdgeInsets.all(NoWaveSpacing.medium),
-            child: Center(
-              child: Text(
-                isCached ? l10n.feedCachedNoMore : l10n.feedNoMore,
-                style: NoWaveTypography.meta(context),
+          final blog = blogs[articleIndex];
+          return _contentWidth(
+            NoWaveEntrance(
+              index: articleIndex,
+              child: BlogCard(
+                blog: blog,
+                featured: articleIndex == 0,
+                index: articleIndex + 1,
+                onTagTap: (tag) => openTagArticles(context, tag),
+                onTap: () =>
+                    context.push(RoutePaths.view(blog.id), extra: blog),
               ),
             ),
           );
-        }
-        final blog = blogs[articleIndex];
-        return _contentWidth(
-          BlogCard(
-            blog: blog,
-            featured: articleIndex == 0,
-            index: articleIndex + 1,
-            onTagTap: (tag) => openTagArticles(context, tag),
-            onTap: () => context.push(RoutePaths.view(blog.id), extra: blog),
-          ),
-        );
-      },
+        },
+      ),
     );
   }
 

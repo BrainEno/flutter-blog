@@ -47,6 +47,10 @@ abstract final class AppLimits {
   /// test `AppDurations.mediaUploadTimeout`.
   static const int slowUplinkBytesPerSecond = 125000;
 
+  /// The longest Notion import plan token accepted from a preview (#308): the
+  /// no-wave limit of 512 KiB. A longer value is refused, never truncated.
+  static const int notionImportPlanMaxTokenBytes = 512 * 1024;
+
   // --- Display ------------------------------------------------------------
 
   /// UTF-16 code units per page when a long structured value is shown in the

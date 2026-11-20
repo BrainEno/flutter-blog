@@ -1,6 +1,6 @@
 # 界面设计系统（tokens 与组件）
 
-> 状态：active ｜ 最后核对：2026-11-19 @ ae4b70a
+> 状态：active ｜ 最后核对：2026-11-19 @ b61c0c5
 
 本页是客户端「长什么样」的唯一入口：色板、间距、圆角、线宽、动效、断点，以及
 共用组件的 API 和使用规则。目标是让新增页面**不需要**重新决定这些数字——需要时
@@ -88,6 +88,8 @@
 | `NoWaveSizes.activityBarEmpty` | 0.06 | 当天无阅读时活动条占图表高度的比例（保留可见基线） |
 | `NoWaveSizes.accentRule` | 2 | 标记「位置」的橙色细线厚度：底栏选中标记、阅读进度线 |
 | `NoWaveSizes.tabIndicator` | 24 | 底栏选中标记的长度（≈一个图标宽，读作下划线而不是分隔线） |
+| `NoWaveSizes.entranceRise` | 12 | 列表项进场时上浮的距离 |
+| `NoWaveSizes.arrowNudge` | 4 | 按下 / 悬停 / 聚焦时行尾箭头向前迈出的距离 |
 
 编辑式界面本身仍是方角（`none`）：`inline` 到 `container` 这几档记录的是内容面
 **已经在用**的圆角（#294 盘点时散落为 18 处 `BorderRadius.circular(数字)`），给它们起名
@@ -117,7 +119,8 @@
 | token | alpha | 说明 |
 | --- | --- | --- |
 | `dividerAlpha` | 100（≈39%） | 分隔线、细线 |
-| `focusAlpha` | 55（≈22%） | 焦点/悬停的强调色洗色 |
+| `focusAlpha` | 55（≈22%） | 焦点的强调色洗色 |
+| `hoverAlpha` | 25（≈10%） | 指针悬停的强调色洗色：比焦点浅，悬停是浏览，焦点是键盘用户必须找得到的决定 |
 | `disabledAlpha` | 97（≈38%） | 禁用控件的前景色 |
 | `skeletonAlpha` | 28（≈11%） | 骨架屏填充：纸色和墨色两侧都用前景色的 11% |
 
@@ -135,6 +138,9 @@
 | `counter` / `counterFinish` | 1800ms / 350ms | 幕布计数爬到 `088` 与最后一跳 `088 → 100` |
 | `curtain` / `stagger` | 900ms / 80ms | 单列上撕与相邻列的错开 |
 | `minimumSplash` / `splashBail` | 1400ms / 4500ms | 最短幕布时长与兜底揭幕 |
+| `pressScale` | 0.98 | 文章被按下时下沉到的比例（像纸被指尖压下，不像玩具按钮） |
+| `stampScale` | 1.3 | 切换态图标落下时的初始放大比例（盖章，而不是换图） |
+| `entranceCount` | 6 | 新列表里逐个上浮进场的条目数（约一屏），间隔 `stagger` |
 
 幕布那几行只在冷启动用，语义与时序见 [冷启动与墨色幕布](startup.md)。
 
@@ -156,7 +162,8 @@
 
 动效时长只从 `NoWaveMotion` 取。`test/unit/design/no_magic_durations_test.dart` 扫描
 `lib/`，只放行「在等」的文件（请求超时、重试退避、自动保存、输入防抖），并在表里写明
-理由；界面文件自己写 `Duration` 会失败。`fast` / `slow` / `enter` / `page` 目前没有
+理由；界面文件自己写 `Duration` 会失败。`fast`（按下反馈）与 `slow`（列表进场）已有
+使用者；`enter` / `page` 目前没有
 使用者，留给真的需要那一步的地方，不要为了用而用。
 
 ### 断点 `NoWaveBreakpoints`
@@ -209,6 +216,9 @@
 | `NoWaveFadeTransition` | `design/components/no_wave_fade_transition.dart` | 标签切换的淡入；少动时不构建转场 |
 | `NoWaveTabIndicator` | `design/components/no_wave_tab_indicator.dart` | 底栏选中项上方的橙色短线，切换时滑到新位置；少动时直接落位 |
 | `NoWaveReadingProgress` | `design/components/no_wave_reading_progress.dart` | 阅读页顶部随滚动填满的橙色细线；跟手、不计时，读屏不读 |
+| `NoWavePressable` / `NoWavePressArrow` | `design/components/no_wave_pressable.dart` | 文章卡片与网格项的可点表面：保留 InkWell 的水波、焦点与语义，按下时下沉，行尾箭头向前迈一步 |
+| `NoWaveEntranceScope` / `NoWaveEntrance` | `design/components/no_wave_entrance.dart` | 新列表前一屏逐个上浮进场；同一位置只进场一次，换列表（`generation`）才重来 |
+| `NoWaveStampSwitcher` | `design/components/no_wave_stamp_switcher.dart` | 切换态图标的「盖章」：新状态放大落下再归位（阅读页收藏） |
 | `NoWaveCoverPlate` | `design/cover/no_wave_cover_plate.dart` | 四张编辑式默认封面，按文章身份稳定选一张 |
 | `ArticleCover` | `features/blog/presentation/widgets/article_cover.dart` | 真封面 / 加载 / 失败三种状态共用同一张版 |
 | `ArticleCategoryLabel` | `features/blog/presentation/widgets/article_category_label.dart` | 文章所属的分类（填充色块，与服务端给的名称；可点进分类列表） |
@@ -313,6 +323,27 @@
   直接落位，不做 0ms 动画。
 - 橙色在纸色上的非文字对比度约 3.5:1、墨色上约 4.8:1，都过 3:1 的图形要求，所以两种
   主题都用 `AppPalette.orange`，不换成牛血红。
+
+### 触感：按下、进场、盖章
+
+这三件小事让页面「回应手指」，而不只是换一帧：
+
+- **按下（`NoWavePressable`）**：Material 水波只说「收到了」，不说按的是什么。文章
+  卡片和网格项按下时整体下沉到 `pressScale`（`fast` + `curve`），松手回弹；同时卡片
+  行尾的 `NoWavePressArrow` 沿阅读方向迈出 `arrowNudge`——「这一行通往某处」。悬停
+  和键盘聚焦也会让箭头迈步，所以不用触屏的人得到同样的回答。仍然是 `InkWell`，焦点、
+  悬停洗色（`focusAlpha` / `hoverAlpha`）与读屏语义都不变。
+- **进场（`NoWaveEntrance`）**：首页 feed 第一次出现时，前 `entranceCount` 条依次
+  淡入并上浮 `entranceRise`，间隔 `stagger`——像一页刚从印刷机上下来，而不是一帧里
+  全部出现。只动绘制：布局、点击与语义从第一帧起就是最终状态（`Opacity` 设
+  `alwaysIncludeSemantics`），进场中也能点、能读。同一位置只进场一次，所以下拉刷新、
+  翻页、滚出再滚回都不会重播；换 feed 时 `generation` 变化才重新进场。等待用曲线前段
+  的 `Interval` 表达，不开定时器，条目提前销毁也不会留下悬空回调。
+- **盖章（`NoWaveStampSwitcher`）**：阅读页的收藏图标切换时，新状态从 `stampScale`
+  落下归位，旧状态淡出——空心换实心太容易被忽略，而收藏是一次小小的承诺。时长只有
+  `normal`，连点两下依然跟手。
+- 三者在「减少动效」下都不构建动画：不缩放、不上浮、不盖章，箭头不动；水波与焦点
+  洗色照常显示状态。
 
 ### showNoWaveConfirmDialog
 

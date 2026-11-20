@@ -2,9 +2,8 @@ import 'dart:convert';
 
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
+import 'package:belog/features/blog/domain/notion_import/notion_import_plan.dart';
 import 'package:fpdart/fpdart.dart';
-
-import 'notion_import_plan.dart';
 
 /// A validated, deeply immutable bundle snapshot. It is never persisted.
 /// Deep immutability is important because a server plan binds the full bundle,

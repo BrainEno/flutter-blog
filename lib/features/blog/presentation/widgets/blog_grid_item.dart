@@ -1,4 +1,5 @@
 import 'package:belog/core/design/components/no_wave_badge.dart';
+import 'package:belog/core/design/components/no_wave_pressable.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -58,84 +59,81 @@ class BlogGridItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = authorDisplayName(context.l10n, blog.posterName);
     final description = extractDescription(blog.content);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                ArticleCover(
-                  title: blog.title,
-                  imageUrl: blog.imageUrl,
-                  seed: blog.id,
-                  aspectRatio: NoWaveSizes.coverAspect,
-                ),
-                if (blog.isDraft || editionLabel != null)
-                  Positioned(
-                    top: NoWaveSpacing.small,
-                    left: NoWaveSpacing.small,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (blog.isDraft)
-                          NoWaveBadge(label: context.l10n.myArticlesDraftBadge),
-                        if (blog.isDraft && editionLabel != null)
-                          const SizedBox(height: NoWaveSpacing.xs),
-                        if (editionLabel != null)
-                          NoWaveBadge(
-                            label: editionLabel!,
-                            tone: NoWaveBadgeTone.neutral,
-                          ),
-                      ],
-                    ),
-                  ),
-                if (onLongPress != null)
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: IconButton.filled(
-                      tooltip: context.l10n.deleteArticleTitle,
-                      onPressed: onLongPress,
-                      icon: const Icon(Icons.delete_outline),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: NoWaveSpacing.small),
-            Text(
-              blog.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: NoWaveTypography.title(context, size: 19),
-            ),
-            if (description.isNotEmpty) ...[
-              const SizedBox(height: NoWaveSpacing.xs),
-              Text(
-                description,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: NoWaveTypography.meta(context),
+    return NoWavePressable(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              ArticleCover(
+                title: blog.title,
+                imageUrl: blog.imageUrl,
+                seed: blog.id,
+                aspectRatio: NoWaveSizes.coverAspect,
               ),
+              if (blog.isDraft || editionLabel != null)
+                Positioned(
+                  top: NoWaveSpacing.small,
+                  left: NoWaveSpacing.small,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (blog.isDraft)
+                        NoWaveBadge(label: context.l10n.myArticlesDraftBadge),
+                      if (blog.isDraft && editionLabel != null)
+                        const SizedBox(height: NoWaveSpacing.xs),
+                      if (editionLabel != null)
+                        NoWaveBadge(
+                          label: editionLabel!,
+                          tone: NoWaveBadgeTone.neutral,
+                        ),
+                    ],
+                  ),
+                ),
+              if (onLongPress != null)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: IconButton.filled(
+                    tooltip: context.l10n.deleteArticleTitle,
+                    onPressed: onLongPress,
+                    icon: const Icon(Icons.delete_outline),
+                  ),
+                ),
             ],
+          ),
+          const SizedBox(height: NoWaveSpacing.small),
+          Text(
+            blog.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: NoWaveTypography.title(context, size: 19),
+          ),
+          if (description.isNotEmpty) ...[
             const SizedBox(height: NoWaveSpacing.xs),
             Text(
-              name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: NoWaveTypography.meta(context),
-            ),
-            Text(
-              formatDate(Localizations.localeOf(context), blog.updatedAt),
-              maxLines: 1,
+              description,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: NoWaveTypography.meta(context),
             ),
           ],
-        ),
+          const SizedBox(height: NoWaveSpacing.xs),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: NoWaveTypography.meta(context),
+          ),
+          Text(
+            formatDate(Localizations.localeOf(context), blog.updatedAt),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: NoWaveTypography.meta(context),
+          ),
+        ],
       ),
     );
   }
