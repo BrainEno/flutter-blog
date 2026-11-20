@@ -1,5 +1,4 @@
 import 'package:belog/core/design/design_tokens.dart';
-import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:flutter/material.dart';
 
@@ -54,8 +53,9 @@ class NoWaveSectionHeading extends StatelessWidget {
   }
 }
 
-/// The small line above a section heading: a short orange rule, then the
-/// words, small and tracked out.
+/// The small line above a section heading: the words alone, small, muted
+/// and tracked out. No leading rule - the type is distinct enough, and a mark
+/// in front of every heading only delays the words.
 ///
 /// Latin is set in capitals - the only all-caps type in the app, so it reads
 /// as a label and never as a sentence. Chinese has no capitals; it keeps its
@@ -63,8 +63,7 @@ class NoWaveSectionHeading extends StatelessWidget {
 /// apart from body copy without breaking the words into single glyphs.
 ///
 /// Screen readers get the text as written, not the capitals, so an English
-/// line is read as words rather than spelled out as an acronym. The rule is
-/// decoration and has no semantics.
+/// line is read as words rather than spelled out as an acronym.
 class NoWaveEyebrow extends StatelessWidget {
   const NoWaveEyebrow(this.text, {super.key});
 
@@ -111,19 +110,6 @@ class NoWaveEyebrow extends StatelessWidget {
           fontWeight: FontWeight.w600,
           letterSpacing: size * (cjk ? _cjkTracking : _latinTracking),
         );
-    return Row(
-      children: [
-        const SizedBox(
-          key: ValueKey('no-wave-eyebrow-rule'),
-          width: NoWaveSizes.eyebrowRule,
-          height: NoWaveSizes.accentRule,
-          child: ColoredBox(color: AppPalette.orange),
-        ),
-        const SizedBox(width: NoWaveSpacing.small),
-        Flexible(
-          child: Text(displayText(text), semanticsLabel: text, style: style),
-        ),
-      ],
-    );
+    return Text(displayText(text), semanticsLabel: text, style: style);
   }
 }

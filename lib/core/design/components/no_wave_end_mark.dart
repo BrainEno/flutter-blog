@@ -1,9 +1,8 @@
 import 'package:belog/core/design/design_tokens.dart';
-import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:flutter/material.dart';
 
-/// Where an article ends: a small orange square between two hairlines, and
+/// Where an article ends: a small ink square between two hairlines, and
 /// one line of colophon under it.
 ///
 /// On a phone the body runs straight into "related reading" and comments, and
@@ -12,8 +11,9 @@ import 'package:flutter/material.dart';
 /// knows the piece is over before it reaches anything else. This is that
 /// mark, set as a section break so it holds its own line at every width.
 ///
-/// The square is [AppPalette.orange], the colour every position marker uses;
-/// here it marks the last position. The hairlines and the square are
+/// The square is set in the text colour - the printer's tombstone is black,
+/// and structure in this app is ink; orange is kept for what answers a touch
+/// (focus, a pull that will refresh, reading progress). The hairlines and the square are
 /// decoration. The colophon is read as written - [label], then the [byline]
 /// when there is one - so a screen-reader user hears where the article ends
 /// as clearly as a sighted reader sees it.
@@ -47,10 +47,10 @@ class NoWaveEndMark extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: NoWaveSpacing.medium),
-                const SizedBox.square(
-                  key: ValueKey('no-wave-end-mark'),
+                SizedBox.square(
+                  key: const ValueKey('no-wave-end-mark'),
                   dimension: NoWaveSizes.endMark,
-                  child: ColoredBox(color: AppPalette.orange),
+                  child: ColoredBox(color: scheme.onSurface),
                 ),
                 const SizedBox(width: NoWaveSpacing.medium),
                 Expanded(

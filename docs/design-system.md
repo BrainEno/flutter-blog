@@ -12,9 +12,12 @@
 
 ## 一、原则
 
-1. **纸与墨，两色打底。** 页面底色只有纸（浅色）与墨（深色）两种，强调色橙红只
-   用于大色块与焦点，小字号强调文字用牛血红（`AppPalette.oxblood`），因为橙红在
-   纸色上不到 4.5:1。
+1. **纸与墨，两色打底；橙色只回应手指。** 页面底色只有纸（浅色）与墨（深色）两种。
+   结构性的记号——选中词下的线、文末方块——一律用墨色（`onSurface`），不用强调色；
+   橙红只留给「回应操作」的地方：焦点与悬停洗色、输入框聚焦线、下拉刷新、阅读进度、
+   主按钮。装饰性的橙色短线（小标题前、提示条前、底栏上沿）已全部去掉：标在文字前面的
+   线只会拖慢读到字的那一刻。小字号强调文字用牛血红（`AppPalette.oxblood`），因为橙红
+   在纸色上不到 4.5:1。
 2. **方角。** 圆角只有一个例外（封面上的角标 2pt）。Material 的填充/描边按钮默认
    是胶囊形，主题层统一压平方，组件层不许另开圆角。
 3. **留白与细线。** 分组靠留白，分隔靠 1pt 半透明细线，不用卡片阴影与抬升。
@@ -35,10 +38,10 @@
 | --- | --- | --- |
 | `xs` | 4 | 标题与它的元信息、标签与值之间 |
 | `small` | 8 | 同一组内（角标与标题、两行元信息） |
-| `medium` | 16 | 页面左右边距、两组之间的距离（= `page`） |
+| `medium` | 16 | 两组之间的距离 |
 | `large` | 24 | 标题块与它引入的内容之间 |
 | `section` | 32 | 一页之中两个 section 之间 |
-| `page` | 16 | 页面 gutter，语义化别名 |
+| `page` | 24 | 页面左右边距（= `large`）：手机上一栏两侧要留够空气，文字才不贴着屏幕边；应用栏标题（`titleSpacing`）也从这里起排，与下面的栏对齐 |
 
 这张表只有五档，是故意的：档位少，页面才不会每一处都自己决定。**12 不在表里**，
 因为它在代码里同时扮演两种角色，逐处判断后分给了相邻两档：
@@ -87,14 +90,12 @@
 | `NoWaveSizes.skeletonLine` | 12 | 骨架屏一行的高度（≈正文 x-height） |
 | `NoWaveSizes.activityChart` | 56 | 阅读统计 7 天活动条的高度 |
 | `NoWaveSizes.activityBarEmpty` | 0.06 | 当天无阅读时活动条占图表高度的比例（保留可见基线） |
-| `NoWaveSizes.accentRule` | 2 | 标记「位置」的橙色细线厚度：底栏选中标记、阅读进度线 |
-| `NoWaveSizes.tabIndicator` | 24 | 底栏选中标记的长度（≈一个图标宽，读作下划线而不是分隔线） |
+| `NoWaveSizes.accentRule` | 2 | 标记「位置」的细线厚度：页内选中词下的墨线、阅读进度线、刷新线 |
 | `NoWaveSizes.entranceRise` | 12 | 列表项进场时上浮的距离 |
 | `NoWaveSizes.arrowNudge` | 4 | 按下 / 悬停 / 聚焦时行尾箭头向前迈出的距离 |
-| `NoWaveSizes.eyebrowRule` | 16 | 章节标题上方小标题（eyebrow）前的橙色短线；比底栏标记短，读作标点而不是下划线 |
 | `NoWaveSizes.busySegment` | 0.4 | 忙碌标记里走动线段占图标槽位的比例（槽位很小，所以比刷新线段长） |
-| `NoWaveSizes.endMark` | 8 | 文末那枚橙色小方块（杂志的终止符）的边长 |
-| `NoWaveSizes.statusRule` | 24 | 空态/出错态记号里方块两侧各一段发丝线的长度（与底栏橙线等长，读作一个记号而不是分隔线） |
+| `NoWaveSizes.endMark` | 8 | 文末那枚墨色小方块（杂志的终止符）的边长 |
+| `NoWaveSizes.statusMeasure` | 320 | 空态/出错态那句话的最大行宽：断成居中的一小段，像引文，而不是横贯一页的一行 |
 | `NoWaveSizes.refreshSegment` | 0.3 | 下拉刷新进行中，沿列表顶边移动的橙色线段占列表宽度的比例 |
 
 编辑式界面本身仍是方角（`none`）：`inline` 到 `container` 这几档记录的是内容面
@@ -152,7 +153,7 @@
 | `entranceCount` | 6 | 新列表里逐个上浮进场的条目数（约一屏），间隔 `stagger` |
 | `runningHeadRise` | 0.5 | 书眉出现时从自身高度一半处升到位（读作「升进栏里」，而不是从别处滑来） |
 | `returnLeap` | 1.0 | 再点当前标签回顶部时，从多远开始「走」（屏数）：更远的先跳到这里，只走最后一屏 |
-| `strokeLag` | 0.25 | 橙线移动时后沿比前沿晚走、晚到的比例（占 `slow`）：先伸长再收拢，像一笔，而不像橡皮筋 |
+| `strokeLag` | 0.25 | 选中线移动时后沿比前沿晚走、晚到的比例（占 `slow`）：先伸长再收拢，像一笔，而不像橡皮筋；空态里按钮也晚句子这么多出现 |
 
 幕布那几行只在冷启动用，语义与时序见 [冷启动与墨色幕布](startup.md)。
 
@@ -201,6 +202,7 @@
 - 分隔线：`dividerAlpha` + 1pt；`Chip`：方角 1pt 描边；
 - 卡片：0 阴影、0 色调、方角、`surface` 底色；列表项：`NoWaveSizes.row` 最小
   高度、`medium` 内边距、方角；
+- 应用栏：0 阴影，标题从 `page` 起排（`titleSpacing`），与下面的栏左对齐；
 - 底部面板：底色同页面、0 阴影、方角，只在上沿有同样的发丝线（它从底边升起，
   另外三边贴着屏幕）；SnackBar：浅色下墨底纸字、深色下纸底墨字，
   方角 0 阴影，行动文字用强调色（深色用橙、浅色用牛血红）；
@@ -218,8 +220,8 @@
 | `NoWaveBadge` | `design/components/no_wave_badge.dart` | 封面或标题旁的短标签（草稿、语言版本） |
 | `NoWaveNotice` | `design/components/no_wave_notice.dart` | 内联提示（说明、限制、失败 + 重试） |
 | `showNoWaveConfirmDialog` | `design/components/no_wave_confirm_dialog.dart` | 破坏性动作的二次确认 |
-| `NoWaveStatus` / `NoWaveStatusMark` | `common/widgets/no_wave_status.dart` | 空态/错误态：一枚印刷记号（无事可做是空心方块，有行动是橙色实心）、一句话、至多一个描边按钮；出现时线向两边画出、文字随后升入 |
-| `NoWaveSectionHeading` / `NoWaveEyebrow` | `common/widgets/no_wave_section_heading.dart` | 编辑式大标题（可换行）；可选的小标题 `NoWaveEyebrow`：橙色短线 + 小号、拉开字距的一行，拉丁字母全大写 |
+| `NoWaveStatus` | `common/widgets/no_wave_status.dart` | 空态/错误态：一句衬线排的话（无事可做是浅色，有行动是墨色）、至多一个描边按钮；没有装饰记号；出现时淡入上浮，按钮稍晚 |
+| `NoWaveSectionHeading` / `NoWaveEyebrow` | `common/widgets/no_wave_section_heading.dart` | 编辑式大标题（可换行）；可选的小标题 `NoWaveEyebrow`：只有一行小号、拉开字距的浅色字，拉丁字母全大写，前面不加线 |
 | `NoWaveActionRow` | `common/widgets/no_wave_action_row.dart` | 个人中心式的可点行动行；与文章卡片同样的回应（水波、橙色焦点/悬停洗色、行尾箭头前移），但不下沉 |
 | `NoWaveMasthead` | `common/widgets/no_wave_masthead.dart` | 双字体字标 |
 | `NoWaveAvatar` | `common/widgets/no_wave_avatar.dart` | 方形头像，失败回退中性图 |
@@ -228,14 +230,13 @@
 | `BlogFeedSkeleton` | `features/blog/presentation/widgets/blog_feed_skeleton.dart` | feed 首帧与紧凑文章列表的静态占位；头条可关闭 |
 | `BlogGridSkeleton` | `features/blog/presentation/widgets/blog_grid_skeleton.dart` | 网格首帧：与 `blogGridDelegate` 同列数、同高，封面沿用 4/3 |
 | `NoWaveFadeTransition` | `design/components/no_wave_fade_transition.dart` | 标签切换的淡入；少动时不构建转场 |
-| `NoWaveTabIndicator` | `design/components/no_wave_tab_indicator.dart` | 底栏选中项上方的橙色短线，切换时滑到新位置；少动时直接落位 |
 | `NoWaveReturnToTop` | `design/components/no_wave_return_to_top.dart` | 再点当前底栏标签：屏幕上的列表回到顶部，栈不动；远处先跳近再走一屏；少动时直接跳 |
 | `NoWaveRunningHead` | `design/components/no_wave_running_head.dart` | 阅读页书眉：正文标题滚到应用栏下面后，栏里升起一行小标题并出现一道发丝线；点它回到开头 |
-| `NoWaveEndMark` | `design/components/no_wave_end_mark.dart` | 文末终止符：两段发丝线中间一枚橙色小方块，下面一行「全文完 · 作者名」；阅读页正文之后、相关阅读之前 |
-| `NoWaveSnackBarContent` | `core/utils/show_snackbar.dart` | 所有提示条的内容：起始边一道与文字等高的橙线，再接那句话；由 `showSnackBar` 统一使用 |
+| `NoWaveEndMark` | `design/components/no_wave_end_mark.dart` | 文末终止符：两段发丝线中间一枚墨色小方块，下面一行「全文完 · 作者名」；阅读页正文之后、相关阅读之前 |
+| `NoWaveSnackBarContent` | `core/utils/show_snackbar.dart` | 所有提示条的内容：只有那句话（反色纸条本身就是信号）；由 `showSnackBar` 统一使用 |
 | `NoWaveBusyMark` | `design/components/no_wave_busy_mark.dart` | 控件槽位里的忙碌态（按钮加载、行内恢复、发送图标）：图标大小的细线上走过一小段，颜色随控件；少动时停在中间 |
 | `NoWaveRefresh` | `design/components/no_wave_refresh.dart` | 下拉刷新：沿用系统手势，不画转圈；顶边一道线随手指从中间长出，过了松手点变橙，刷新时一段橙线沿顶边走过 |
-| `NoWaveSlidingTabs` / `NoWaveSlidingTab` | `design/components/no_wave_sliding_tabs.dart` | 页内的一排词（首页 feed 切换、作者页「最新 / 热门」）：选中词下的橙线像一笔划过去，先伸长再收拢；大字号时横向滚动；少动时直接落位 |
+| `NoWaveSlidingTabs` / `NoWaveSlidingTab` | `design/components/no_wave_sliding_tabs.dart` | 页内的一排词（首页 feed 切换、作者页「最新 / 热门」）：站在一条通栏的浅色发丝线上，选中词下一道与词同宽的 2pt 墨线像一笔划过去，先伸长再收拢；大字号时横向滚动；少动时直接落位 |
 | `NoWaveReadingProgress` | `design/components/no_wave_reading_progress.dart` | 阅读页顶部随滚动填满的橙色细线；跟手、不计时，读屏不读 |
 | `NoWavePressable` / `NoWavePressArrow` | `design/components/no_wave_pressable.dart` | 文章卡片与网格项的可点表面：保留 InkWell 的水波、焦点与语义，按下时下沉，行尾箭头向前迈一步 |
 | `NoWaveEntranceScope` / `NoWaveEntrance` | `design/components/no_wave_entrance.dart` | 新列表前一屏逐个上浮进场；同一位置只进场一次，换列表（`generation`）才重来 |
@@ -326,41 +327,40 @@
 - 有下一步动作时把按钮放在提示里，不要塞进转瞬即逝的 SnackBar。
 - 图标是装饰：语义里排除，含义必须由文案本身说清。
 
-### 位置标记：一道会走的橙线
+### 位置标记：选中词下的一道墨线
 
-橙色在这套系统里只做两件事：大色块，和「你在这里」。底栏、首页 feed 切换和阅读页
-各有一道 2pt 的橙线（`accentRule`）回答这个问题。这是本应用最有辨识度的动效，也是
-唯一会「走」的装饰：
+「你在这里」由三处回答：底栏、页内的一排词（首页 feed、作者页）和阅读页的进度线。
 
-- **`NoWaveTabIndicator`**：主题已经关掉了 `NavigationBar` 的胶囊指示器（胶囊是本
-  系统不用的形状），选中态只靠字重和颜色又不够。于是在底栏上沿画一道
-  `tabIndicator` 长的橙线，切换标签时用 `NoWaveMotion.normal` + `travel` 曲线滑过去
-  ——底栏不动、页面淡入、标记移动，三者各司其职。用 `AlignmentDirectional`，从右
-  往左的语言里同样从起点开始。
+- **底栏**：主题关掉了 `NavigationBar` 的胶囊指示器（胶囊是本系统不用的形状）。选中
+  的标签是墨色实心图标 + w700 墨色字，其余是浅色描边图标；上沿一道与 `Divider` 同色的
+  发丝线把栏和页面分开。原来上沿还有一道会滑动的橙色短线（`NoWaveTabIndicator`），
+  和图标、文字说的是同一件事，又是一道悬在半空的线，已删除。
 - **`NoWaveReadingProgress`**：手机上没有滚动条也没有页码，长文读到哪儿只能靠
   猜。它包在阅读页正文外，只跟最外层纵向滚动（notification depth 0，横向代码块不
   影响），内容变长（图片加载完）时也会缩回真实比例；不滚动的页面算「没读」，不
-  显示满格。
-- **`NoWaveSlidingTabs`**：首页 feed 的「最新 / 精选 / 热门 / 关注」原本是一排
-  Material 的 `ChoiceChip`。胶囊形状和填色切换都不属于这套系统，而且它们只会换色、
-  不会「走」。现在改成一排词，下面是一道发丝线，选中词下压一道与词同宽的
-  `accentRule` 橙线，和底栏是同一种标记。切换时橙线像一笔划过去：朝前进方向的那条边
-  先走，另一条边晚 `strokeLag` 才出发，用 `slow` + `travel` 完成。所以橙线会先伸长
-  跨过中间的词，再收拢到新词下面。从右往左的语言里方向也跟着反过来。
+  显示满格。进度由手指驱动，所以仍是橙色。
+- **`NoWaveSlidingTabs`**：首页 feed 的「最新 / 精选 / 最多收藏 / 关注」原本是一排
+  Material 的 `ChoiceChip`。现在是一排词，站在一条**通栏**的浅色发丝线上（与 `Divider`
+  同色同粗，读作页头的下沿，而不是四个词的下划线）；选中词下压一道与词同宽的
+  `accentRule` **墨线**。原来这条底线是全黑的、只和词一样宽并且居中，第一个词左边还
+  露出一截黑线在橙线前面；现在底线贴满给它的宽度、颜色退到发丝级，选中线换成墨色，
+  两条线不再争。切换时墨线像一笔划过去：朝前进方向的那条边先走，另一条边晚
+  `strokeLag` 才出发，用 `slow` + `travel` 完成。所以线会先伸长跨过中间的词，再收拢
+  到新词下面。从右往左的语言里方向也跟着反过来。
   - 每个槽位的宽度在布局前按选中字重（以及系统粗体设置）量好。选中只改变颜色和字重，
-    不会挤动相邻的词，橙线在同一帧就知道每个词的位置。
+    不会挤动相邻的词，墨线在同一帧就知道每个词的位置。
   - 2× 字体、320dp 屏幕下这一排横向滚动，不换行。选中的词如果在屏幕外，会被滚进视野，
     并保留页边距。
   - 每个词都是互斥组里一个「已选中 / 未选中」的按钮，至少 `tapTarget` 高。按下用
     `NoWavePressable` 下沉，焦点和悬停用橙色洗色。
   - 「关注」在未登录时会先去登录：组件只报告点了哪个词，选中与否由调用方决定，
-    所以橙线不会先走过去再弹回来。
-  - 每个词贴着自己槽位的起点排，橙线从词的起点画起、与词同宽。`inset` 是这一排的
-    页边距：首页传 `page`；作者页的栏本身已有页边距，传 `0`，第一个词与上方标题的
-    左边对齐，不再多缩进一格。
-- 这几道橙线都是装饰：`ExcludeSemantics` + `IgnorePointer`，选中态和位置由控件本身告诉
-  读屏。进度线由手指驱动、没有时钟，所以「减少动效」下无需关闭；底栏标记在少动时
-  直接落位，不做 0ms 动画；页内这排词同样直接落位，滚动改为跳转。
+    所以墨线不会先走过去再弹回来。
+  - 每个词贴着自己槽位的起点排，墨线从词的起点画起、与词同宽。`inset` 是这一排的
+    页边距：首页传 `page`，第一个词与下面的标题左边对齐；作者页的栏本身已有页边距，
+    传 `0`。
+- 这些线都是装饰：`ExcludeSemantics` + `IgnorePointer`，选中态和位置由控件本身告诉
+  读屏。进度线由手指驱动、没有时钟，所以「减少动效」下无需关闭；页内这排词在少动时
+  直接落位，滚动改为跳转。
 - **`NoWaveRefresh`**：系统的下拉刷新会在列表上落下一个转圈的圆片——全屏唯一一个
   不属于这套字体和配色的元素，也正是 `no_spinner_test.dart` 在别处挡掉的东西。现在
   12 处（11 个页面）都换成 `NoWaveRefresh`：手势仍由 Flutter 的
@@ -387,14 +387,14 @@
 杂志在栏目标题上方会印一行小字，说明这是什么栏目。`NoWaveSectionHeading` 的
 `eyebrow` 现在画成 `NoWaveEyebrow`，不再是普通的元信息字：
 
-- 一道 `eyebrowRule` × `accentRule` 的橙色短线，与「位置」标记同色同厚，间隔 `small`
-  后接文字；
+- 前面**不加线**：原来有一道 16pt 的橙色短线，标在每个标题之前，只会推迟读到字的那
+  一刻；小字号、拉开的字距和浅色已经足够把它和正文分开；
 - 文字用 `NoWaveTypography.metaLabel`，字号 `NoWaveTypeScale.eyebrow`（11）、w600、
   `onSurfaceVariant` 色；
 - 拉丁字母全大写，字距为字号的 14%——全应用只有这里用全大写，所以它读作标签，不会
   被当成一句话；中文没有大小写，保持原字，字距收到 8%，足以和正文区分，又不会把词
   拆成一个个孤立的字；
-- 读屏读原文（`semanticsLabel`），不读大写，英文不会被逐字母拼读；短线没有语义；
+- 读屏读原文（`semanticsLabel`），不读大写，英文不会被逐字母拼读；
 - 长句在 2× 字号下换行，不截断。
 
 用在：首页 feed（`feedEyebrow`）、搜索（`searchEyebrow`）、离线书库
@@ -431,29 +431,28 @@
 - **怎么走**：比一屏（`returnLeap`）更远时先跳到离顶部一屏处，再用 `slow` + `travel`
   走完最后一屏——读起来是「回去」一个动作，而不是一路刷过所有文章。少动时直接跳到顶。
 
-### 空态与出错：一枚记号、一句话、一条路
+### 空态与出错：一句话、一条路
 
-40 处空列表、无结果、加载失败都走 `NoWaveStatus`。原来是一个 48pt 的斜体破折号，
-空和错长得一样，读者要读完那句话才知道该不该做点什么。现在：
+40 处空列表、无结果、加载失败都走 `NoWaveStatus`。它最早是一个 48pt 的斜体破折号，
+上一轮换成过「方块 + 两段线」的记号；放到真机上，记号和上方的小标题短线、选中线挤在
+一起，一屏里有四处小装饰在争注意力。现在不要任何记号：
 
-- **记号**（`NoWaveStatusMark`）：文末终止符的缩小版——方块（`endMark`）两侧各一段
-  `statusRule` 长的发丝线。**空心**（`onSurfaceVariant` 发丝线描边）表示无事可做；
-  **橙色实心**表示这里有一条路（重试、返回）——橙色在别处标「位置」，这里标的是
-  「轮到你了」。是否实心只由有没有行动决定，调用方不用改。
-- **一句话**：`bodyLarge` 居中；**行动**：`NoWaveButton.secondary`（方角描边、48pt），
-  比纯文字按钮更像一个能按的东西。
-- **出现**：两段线从方块向外画出，句子与按钮晚 `strokeLag` 淡入并上浮
-  `entranceRise`，共 `slow` + `curve`。重试后又失败时会重新落一次，而不是看起来什么都
-  没发生。只动绘制：句子和按钮从第一帧起就在原位、能点、能读（`alwaysIncludeSemantics`）。
-  少动时不构建任何动画。
-- **读屏**：整体仍是 live region；记号不读。
+- **一句话**：衬线、`sectionTitle`（18）、w400，居中，最宽 `statusMeasure`（320），断成
+  一小段，像引文。**无事可做**（空列表、无结果）用 `onSurfaceVariant`，页面是安静的；
+  **有一条路**（重试、登录）用墨色——这句话是对读者说的。颜色只由有没有行动决定，调用
+  方不用改。
+- **行动**：`NoWaveButton.secondary`（方角描边、48pt），与句子隔 `large`。
+- **出现**：句子淡入并上浮 `entranceRise`，按钮晚 `strokeLag`，共 `slow` + `curve`。
+  重试后又失败时会重新落一次，而不是看起来什么都没发生。只动绘制：句子和按钮从第一帧
+  起就在原位、能点、能读（`alwaysIncludeSemantics`）。少动时不构建任何动画。
+- **读屏**：整体仍是 live region。
 
-### 文末与提示条：两处印刷记号
+### 文末与提示条
 
 - **`NoWaveEndMark`**：手机上正文直接接「相关阅读」和评论，读者分不清最后一段是结束
   还是停顿。杂志的做法是在最后一行后面印一枚实心小方块。这里把它做成一个分节符：
-  两段与 `Divider` 同色同粗的发丝线，中间一枚 `endMark`（8）见方的 `AppPalette.orange`
-  方块——橙色在别处标「位置」，这里标的是最后一个位置。下面一行 `metaLabel` 居中：
+  两段与 `Divider` 同色同粗的发丝线，中间一枚 `endMark`（8）见方的**墨色**方块——印刷
+  里的终止符本来就是黑的，结构性记号一律用墨色。下面一行 `metaLabel` 居中：
   `articleEnd`（全文完 / The end），作者已知时接 `articleEndByline`（中文直接是作者名，
   英文 Words by …）；匿名作者不写署名，而不是写「匿名作者」。线和方块不读，那一行
   照常朗读，读屏用户和看屏幕的人同样知道文章在哪里结束。
@@ -461,10 +460,9 @@
   `searchNoMore` / `searchLimitReached` 作为那一行），最后一张卡片读起来是「最后」，
   而不是「还在加载」。
 - **提示条（`showSnackBar`）**：仍是反色的一张纸条（纸上墨、墨上纸），方角无阴影。
-  内容换成 `NoWaveSnackBarContent`：起始边一道 `accentRule` 宽的橙线，像校对在页边
-  画的记号，意思是「这是关于你刚才那个操作」。橙线与文字等高（`IntrinsicHeight`），
-  大字号换成两行时也标在整段旁边。橙线不读；动作按钮仍是 Material 的
-  `SnackBarAction`。全应用 75 处调用都走 `showSnackBar`，所以一次改完。
+  反色本身就说明「这是关于你刚才那个操作」，所以 `NoWaveSnackBarContent` 只有那句话；
+  原来起始边那道橙线和小标题前的短线一样，标在文字前面只会拖慢阅读，已去掉。动作按钮
+  仍是 Material 的 `SnackBarAction`。全应用 75 处调用都走 `showSnackBar`，所以一次改完。
 
 ### 触感：按下、进场、盖章
 

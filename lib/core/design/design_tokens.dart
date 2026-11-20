@@ -31,7 +31,7 @@ abstract final class NoWaveSpacing {
   /// 8: inside one group (a badge and its title, two lines of metadata).
   static const small = 8.0;
 
-  /// 16: the page gutter, and the gap between two groups.
+  /// 16: the gap between two groups.
   static const medium = 16.0;
 
   /// 24: between a heading block and the content it introduces.
@@ -40,9 +40,11 @@ abstract final class NoWaveSpacing {
   /// 32: between two sections of one page.
   static const section = 32.0;
 
-  /// The page gutter. Same value as [medium], named for where it is used so a
-  /// future redesign can widen gutters without touching group spacing.
-  static const page = 16.0;
+  /// The page gutter: the same value as [large]. Wider than the gap between
+  /// two groups ([medium]) so a phone's column has air at its edges and the
+  /// text does not run to the glass; named for where it is used so gutters
+  /// and group spacing can change independently.
+  static const page = 24.0;
 }
 
 /// Corner radius.
@@ -240,14 +242,10 @@ abstract final class NoWaveSizes {
   /// of the chart: a visible baseline so the day still reads as a day.
   static const activityBarEmpty = 0.06;
 
-  /// Thickness of an accent rule that marks a position: the tab indicator and
-  /// the reading-progress line. Thinner than [splashProgress] because it sits
+  /// Thickness of a rule that marks a position: the chosen word of a sliding
+  /// tab row and the reading-progress line. Thinner than [splashProgress] because it sits
   /// on the app all the time rather than on a curtain for a second.
   static const accentRule = 2.0;
-
-  /// Length of the tab indicator: about the width of a tab icon, so the rule
-  /// reads as underlining the destination rather than as a divider.
-  static const tabIndicator = 24.0;
 
   /// How far a list item rises while it enters. Enough to read as arriving
   /// from below, too little to read as the list scrolling by itself.
@@ -257,23 +255,18 @@ abstract final class NoWaveSizes {
   /// hovered or focused: the row answers "yes, this goes somewhere".
   static const arrowNudge = 4.0;
 
-  /// The short orange rule that leads an eyebrow line above a section
-  /// heading: a printer's mark, shorter than [tabIndicator] so it reads as
-  /// punctuation rather than as an underline.
-  static const eyebrowRule = 16.0;
-
   /// Share of an icon slot the busy mark's running segment covers: the same
   /// figure as the refresh segment, longer because the slot is tiny.
   static const busySegment = 0.4;
 
-  /// Side of the small orange square that ends an article - the end mark a
+  /// Side of the small ink square that ends an article - the end mark a
   /// magazine prints after the last line.
   static const endMark = 8.0;
 
-  /// Length of each hairline beside the square in an empty or failed state:
-  /// as long as the tab indicator, so the mark reads as one printed figure
-  /// rather than as a divider across the page.
-  static const statusRule = 24.0;
+  /// The widest an empty or failed state's sentence may set: short enough
+  /// that it breaks into a compact centred block, the way a pull quote does,
+  /// instead of one line running across the page.
+  static const statusMeasure = 320.0;
 
   /// Share of the list's width the running refresh segment covers while it
   /// travels along the top edge: long enough to read as a rule, short enough

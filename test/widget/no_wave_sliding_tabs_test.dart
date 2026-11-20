@@ -94,6 +94,39 @@ void main() {
     expect(rule.top, greaterThan(word.bottom));
   });
 
+  testWidgets('an ink rule on a faint hairline that spans the row', (
+    tester,
+  ) async {
+    final theme = AppTheme.lightThemeMode;
+    await tester.pumpWidget(_tabs(selected: 0, theme: theme));
+
+    final rule = tester.widget<ColoredBox>(
+      find.descendant(
+        of: find.byKey(const ValueKey('no-wave-sliding-rule')),
+        matching: find.byType(ColoredBox),
+      ),
+    );
+    expect(rule.color, theme.colorScheme.onSurface);
+
+    final edge = tester.widget<DecoratedBox>(
+      find
+          .descendant(
+            of: find.byType(NoWaveSlidingTabs),
+            matching: find.byType(DecoratedBox),
+          )
+          .first,
+    );
+    final border = (edge.decoration as BoxDecoration).border! as Border;
+    expect(border.bottom.color, theme.dividerTheme.color);
+    expect(border.bottom.width, NoWaveStroke.hairline);
+    // The hairline runs the whole width it is given, not just under the
+    // words, so nothing pokes out ahead of the first word's rule.
+    expect(
+      tester.getSize(find.byType(NoWaveSlidingTabs)).width,
+      tester.getSize(find.byType(Scaffold)).width,
+    );
+  });
+
   testWidgets('words are set from the start, and the rule starts with them', (
     tester,
   ) async {

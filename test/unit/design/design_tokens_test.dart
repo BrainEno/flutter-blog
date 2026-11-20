@@ -30,7 +30,9 @@ void main() {
     });
 
     test('the page gutter is a real step of the same scale', () {
-      expect(NoWaveSpacing.medium, NoWaveSpacing.page);
+      // 24, not 16: on a phone the column needs air at its edges, and the
+      // gap between two groups inside it stays at `medium`.
+      expect(NoWaveSpacing.large, NoWaveSpacing.page);
     });
   });
 
