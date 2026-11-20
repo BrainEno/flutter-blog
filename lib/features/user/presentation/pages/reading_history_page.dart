@@ -8,23 +8,37 @@ import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/router/app_router.dart';
+import 'package:belog/features/blog/domain/entities/reading_stats.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
+import 'package:belog/features/user/presentation/widgets/reading_stats_card.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
+import 'package:belog/router/shell_branch_location.dart';
 
 /// The device-local reading history of the signed-in account (issue #22).
 ///
 /// Everything shown lives in SQLite and never leaves the device. The list
 /// refreshes when the viewer above it pops (a re-read bumps the entry to
 /// the top) and each row can be removed individually or wholesale.
+///
+/// A [ReadingStatsCard] sits above a non-empty list: counts for the last seven
+/// days, the current and longest reading streak, and a seven-day activity
+/// strip. It is computed from the rows already loaded, so it updates with
+/// every removal or re-read and needs no storage of its own.
 class ReadingHistoryPage extends StatefulWidget {
   /// Injectable for tests; resolved from the service locator when absent.
   final ReadingHistoryStore? store;
-  const ReadingHistoryPage({super.key, this.store});
+
+  /// The clock the reading summary measures "today" with. Injectable so a
+  /// test can pin the calendar; production reads the device clock.
+  final DateTime Function() clock;
+
+  const ReadingHistoryPage({super.key, this.store, this.clock = DateTime.now});
 
   @override
   State<ReadingHistoryPage> createState() => _ReadingHistoryPageState();
@@ -300,10 +314,18 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
               ),
             )
           : ListView.separated(
-              itemCount: entries.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
+              // Row 0 is the reading summary; history rows follow it.
+              itemCount: entries.length + 1,
+              separatorBuilder: (context, index) => index == 0
+                  ? const SizedBox.shrink()
+                  : const Divider(height: 1),
               itemBuilder: (context, index) {
-                final entry = entries[index];
+                if (index == 0) {
+                  return ReadingStatsCard(
+                    stats: ReadingStats.from(entries, now: widget.clock()),
+                  );
+                }
+                final entry = entries[index - 1];
                 final readAtLabel = formatDate(
                   Localizations.localeOf(context),
                   entry.readAt,
@@ -377,7 +399,14 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                       icon: Icon(Icons.close, size: 20, color: mutedColor),
                       onPressed: () => _remove(entry),
                     ),
-                    onTap: () => context.push('/view/${entry.blogId}'),
+                    // Stay on the profile tab's stack so popping the
+                    // reader returns here and didPopNext refreshes.
+                    onTap: () => context.push(
+                      shellBranchLocation(
+                        GoRouterState.of(context).uri,
+                        RoutePaths.view(entry.blogId),
+                      ),
+                    ),
                   ),
                 );
               },

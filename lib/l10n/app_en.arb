@@ -385,6 +385,38 @@
   "historyEmpty": "No reading history yet",
   "historyEmptyHint": "Articles you read stay on this device, visible only to you",
   "removeHistoryEntry": "Remove this entry",
+  "readingStatsTitle": "Your reading",
+  "readingStatsWindowLabel": "Last 7 days",
+  "readingStatsStreakLabel": "Day streak",
+  "readingStatsTotalLabel": "Articles",
+  "readingStatsLongest": "{days, plural, =0{No reading streak yet} =1{Longest streak: 1 day} other{Longest streak: {days} days}}",
+  "@readingStatsLongest": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "readingStatsDay": "{day}: {count, plural, =0{no reading} =1{1 article} other{{count} articles}}",
+  "@readingStatsDay": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "readingStatsChart": "Articles read per day, last 7 days. {days}",
+  "@readingStatsChart": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "readingStatsFootnote": "Counted by the day each article was last read. Stays on this device.",
   "loginTitle": "Sign in",
   "fieldEmail": "E-mail",
   "fieldPassword": "Password",

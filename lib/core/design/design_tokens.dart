@@ -213,6 +213,13 @@ abstract final class NoWaveSizes {
   /// Thickness of one skeleton line. Roughly the x-height of body copy, so a
   /// placeholder row is the height of the row it stands in for.
   static const skeletonLine = 12.0;
+
+  /// Height of the small activity chart (the reading-history summary).
+  static const activityChart = 56.0;
+
+  /// Height of an activity-chart bar on a day without activity, as a fraction
+  /// of the chart: a visible baseline so the day still reads as a day.
+  static const activityBarEmpty = 0.06;
 }
 
 /// Opacity of lines and overlays that are not semantic colours.

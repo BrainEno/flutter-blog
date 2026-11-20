@@ -20,6 +20,13 @@ String formatDate(Locale locale, DateTime date, {bool withTime = false}) {
   return format.format(date.toLocal());
 }
 
+/// The locale's abbreviated weekday of [date] in local time ("Mon", "周一").
+///
+/// Used where a row of days needs short labels, such as the reading
+/// activity chart; still the one place that builds a `DateFormat`.
+String formatWeekdayShort(Locale locale, DateTime date) =>
+    DateFormat.E(locale.toString()).format(date.toLocal());
+
 /// Formats a count according to the resolved locale, including grouping.
 String formatNumber(Locale locale, int number) =>
     NumberFormat.decimalPattern(locale.toString()).format(number);
