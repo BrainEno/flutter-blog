@@ -250,6 +250,8 @@ class _NoWaveRefreshState extends State<NoWaveRefresh>
     return Center(
       child: FractionallySizedBox(
         widthFactor: progress,
+        // Centre loosens the height too; the rule keeps the full thickness.
+        heightFactor: 1,
         child: ColoredBox(
           key: const ValueKey('no-wave-refresh-rule'),
           color: color,
