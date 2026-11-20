@@ -1,0 +1,78 @@
+import 'package:belog/core/design/design_tokens.dart';
+import 'package:belog/core/theme/app_palette.dart';
+import 'package:belog/core/theme/no_wave_typography.dart';
+import 'package:flutter/material.dart';
+
+/// Where an article ends: a small orange square between two hairlines, and
+/// one line of colophon under it.
+///
+/// On a phone the body runs straight into "related reading" and comments, and
+/// a reader cannot tell the last paragraph from a pause. Magazines solve this
+/// with an end mark - a small solid square after the final line - so the eye
+/// knows the piece is over before it reaches anything else. This is that
+/// mark, set as a section break so it holds its own line at every width.
+///
+/// The square is [AppPalette.orange], the colour every position marker uses;
+/// here it marks the last position. The hairlines and the square are
+/// decoration. The colophon is read as written - [label], then the [byline]
+/// when there is one - so a screen-reader user hears where the article ends
+/// as clearly as a sighted reader sees it.
+class NoWaveEndMark extends StatelessWidget {
+  const NoWaveEndMark({super.key, required this.label, this.byline});
+
+  /// What the colophon says first ("The end").
+  final String label;
+
+  /// Who wrote it, already phrased ("Words by …"); omitted when unknown.
+  final String? byline;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    // The same line as a Divider, drawn in two halves around the square.
+    final hairline = theme.dividerTheme.color ?? scheme.outlineVariant;
+    final byline = this.byline;
+    return Semantics(
+      container: true,
+      child: Column(
+        children: [
+          ExcludeSemantics(
+            child: Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: NoWaveStroke.hairline,
+                    child: ColoredBox(color: hairline),
+                  ),
+                ),
+                const SizedBox(width: NoWaveSpacing.medium),
+                const SizedBox.square(
+                  key: ValueKey('no-wave-end-mark'),
+                  dimension: NoWaveSizes.endMark,
+                  child: ColoredBox(color: AppPalette.orange),
+                ),
+                const SizedBox(width: NoWaveSpacing.medium),
+                Expanded(
+                  child: SizedBox(
+                    height: NoWaveStroke.hairline,
+                    child: ColoredBox(color: hairline),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: NoWaveSpacing.small),
+          Text(
+            byline == null ? label : '$label · $byline',
+            textAlign: TextAlign.center,
+            style: NoWaveTypography.metaLabel(
+              context,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

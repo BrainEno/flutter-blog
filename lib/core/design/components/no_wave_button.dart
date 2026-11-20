@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_busy_mark.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/material.dart';
 
@@ -133,18 +134,9 @@ class NoWaveButton extends StatelessWidget {
   }
 
   Widget _content(BuildContext context, ColorScheme scheme) {
-    final spinner = isLoading
-        ? SizedBox(
-            width: NoWaveIconSize.inline,
-            height: NoWaveIconSize.inline,
-            child: CircularProgressIndicator(
-              strokeWidth: NoWaveStroke.focus,
-              // The button's own state is announced above; a second live
-              // region on every button would be noise.
-              semanticsLabel: '',
-            ),
-          )
-        : null;
+    // The button's own state is announced above; a second live region on
+    // every button would be noise, so the mark has no label.
+    final spinner = isLoading ? const NoWaveBusyMark() : null;
     final leading = spinner ?? (icon == null ? null : Icon(icon));
     final text = Text(label, textAlign: TextAlign.center);
     if (leading == null) return text;

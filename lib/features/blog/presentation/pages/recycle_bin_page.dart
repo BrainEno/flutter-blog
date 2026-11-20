@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_busy_mark.dart';
 import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
@@ -142,12 +143,9 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                     ' · ${_purgeDeadlineText(context.l10n, blog)}',
                   ),
                   trailing: restoring
-                      ? SizedBox.square(
-                          dimension: NoWaveIconSize.row,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            semanticsLabel: context.l10n.loading,
-                          ),
+                      ? NoWaveBusyMark(
+                          size: NoWaveIconSize.row,
+                          semanticsLabel: context.l10n.loading,
                         )
                       : TextButton(
                           onPressed: () => context.read<RecycleBinBloc>().add(

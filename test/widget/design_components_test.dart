@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_busy_mark.dart';
 import 'package:belog/core/design/components/no_wave_badge.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
@@ -80,7 +81,8 @@ void main() {
 
       // The label stays in the layout so the button does not resize.
       expect(find.text('发布'), findsOneWidget);
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(NoWaveBusyMark), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
 
       await tester.tap(find.byType(NoWaveButton));
       await tester.pump();

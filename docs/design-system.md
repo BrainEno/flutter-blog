@@ -92,6 +92,8 @@
 | `NoWaveSizes.entranceRise` | 12 | 列表项进场时上浮的距离 |
 | `NoWaveSizes.arrowNudge` | 4 | 按下 / 悬停 / 聚焦时行尾箭头向前迈出的距离 |
 | `NoWaveSizes.eyebrowRule` | 16 | 章节标题上方小标题（eyebrow）前的橙色短线；比底栏标记短，读作标点而不是下划线 |
+| `NoWaveSizes.busySegment` | 0.4 | 忙碌标记里走动线段占图标槽位的比例（槽位很小，所以比刷新线段长） |
+| `NoWaveSizes.endMark` | 8 | 文末那枚橙色小方块（杂志的终止符）的边长 |
 | `NoWaveSizes.refreshSegment` | 0.3 | 下拉刷新进行中，沿列表顶边移动的橙色线段占列表宽度的比例 |
 
 编辑式界面本身仍是方角（`none`）：`inline` 到 `container` 这几档记录的是内容面
@@ -220,6 +222,9 @@
 | `BlogGridSkeleton` | `features/blog/presentation/widgets/blog_grid_skeleton.dart` | 网格首帧：与 `blogGridDelegate` 同列数、同高，封面沿用 4/3 |
 | `NoWaveFadeTransition` | `design/components/no_wave_fade_transition.dart` | 标签切换的淡入；少动时不构建转场 |
 | `NoWaveTabIndicator` | `design/components/no_wave_tab_indicator.dart` | 底栏选中项上方的橙色短线，切换时滑到新位置；少动时直接落位 |
+| `NoWaveEndMark` | `design/components/no_wave_end_mark.dart` | 文末终止符：两段发丝线中间一枚橙色小方块，下面一行「全文完 · 文 / 作者」；阅读页正文之后、相关阅读之前 |
+| `NoWaveSnackBarContent` | `core/utils/show_snackbar.dart` | 所有提示条的内容：起始边一道与文字等高的橙线，再接那句话；由 `showSnackBar` 统一使用 |
+| `NoWaveBusyMark` | `design/components/no_wave_busy_mark.dart` | 控件槽位里的忙碌态（按钮加载、行内恢复、发送图标）：图标大小的细线上走过一小段，颜色随控件；少动时停在中间 |
 | `NoWaveRefresh` | `design/components/no_wave_refresh.dart` | 下拉刷新：沿用系统手势，不画转圈；顶边一道线随手指从中间长出，过了松手点变橙，刷新时一段橙线沿顶边走过 |
 | `NoWaveSlidingTabs` / `NoWaveSlidingTab` | `design/components/no_wave_sliding_tabs.dart` | 页内的一排词（首页 feed 切换、作者页「最新 / 热门」）：选中词下的橙线像一笔划过去，先伸长再收拢；大字号时横向滚动；少动时直接落位 |
 | `NoWaveReadingProgress` | `design/components/no_wave_reading_progress.dart` | 阅读页顶部随滚动填满的橙色细线；跟手、不计时，读屏不读 |
@@ -252,8 +257,10 @@
   出来**，占位骨架接在它下面；数据回来时列表往已经占好的位置里长，而不是把页面往下推。
 
 **边界**：控件自己的忙碌态仍由控件表达 —— `NoWaveButton(isLoading: true)` 保持标签
-在布局里不变高、保持不可点；回收站行内的"恢复中"与私信发送图标位保留系统小转圈，
-因为那是控件槽位里的图标，一句文案放不进去。
+在布局里不变高、保持不可点；回收站行内的"恢复中"与私信发送图标位放不下一句文案，
+用图标大小的 `NoWaveBusyMark`：一道细线上走过一小段（`busySegment`），和下拉刷新
+是同一个图形，颜色跟随所在控件的前景色。至此 `lib/` 里没有任何转圈，
+`no_spinner_test.dart` 的白名单为空。
 
 `_row` 里那三道横线的宽度比例写在组件内部（`_lineWidths`），不是全局尺度：它们是
 "一段话"的形状，不是间距。
@@ -296,7 +303,7 @@
 
 - **必须传可见标签**，只有图标时用带 tooltip 的 `IconButton`。
 - `isLoading` 保留标签（宽度不跳）、拦截点击，并向读屏报告为「不可用」——当前
-  Flutter 的语义里没有 busy 标志，所以忙碌态靠禁用播报加可见的转圈表达；不要另外
+  Flutter 的语义里没有 busy 标志，所以忙碌态靠禁用播报加可见的 `NoWaveBusyMark` 表达；不要另外
   在页面上再弹一个「处理中」。
 - `onPressed: null` 是禁用态，高度不变，避免整行按钮跳动。
 - 标签在上下文里有歧义时（列表里一排「删除」）传 `semanticLabel`。
@@ -384,6 +391,21 @@
 用在：首页 feed（`feedEyebrow`）、搜索（`searchEyebrow`）、离线书库
 （`offlineLibraryEyebrow`）、作者页文章区（`authorArticlesEyebrow`）。
 
+### 文末与提示条：两处印刷记号
+
+- **`NoWaveEndMark`**：手机上正文直接接「相关阅读」和评论，读者分不清最后一段是结束
+  还是停顿。杂志的做法是在最后一行后面印一枚实心小方块。这里把它做成一个分节符：
+  两段与 `Divider` 同色同粗的发丝线，中间一枚 `endMark`（8）见方的 `AppPalette.orange`
+  方块——橙色在别处标「位置」，这里标的是最后一个位置。下面一行 `metaLabel` 居中：
+  `articleEnd`（全文完 / The end），作者已知时接 `articleEndByline`（文 / 某某 /
+  Words by …）；匿名作者不写署名，而不是写「文 / 匿名作者」。线和方块不读，那一行
+  照常朗读，读屏用户和看屏幕的人同样知道文章在哪里结束。
+- **提示条（`showSnackBar`）**：仍是反色的一张纸条（纸上墨、墨上纸），方角无阴影。
+  内容换成 `NoWaveSnackBarContent`：起始边一道 `accentRule` 宽的橙线，像校对在页边
+  画的记号，意思是「这是关于你刚才那个操作」。橙线与文字等高（`IntrinsicHeight`），
+  大字号换成两行时也标在整段旁边。橙线不读；动作按钮仍是 Material 的
+  `SnackBarAction`。全应用 75 处调用都走 `showSnackBar`，所以一次改完。
+
 ### 触感：按下、进场、盖章
 
 这三件小事让页面「回应手指」，而不只是换一帧：
@@ -455,9 +477,6 @@
 
 ## 七、已知缺口
 
-- **控件内部的忙碌指示仍是系统小转圈**（`NoWaveButton` 的加载态、回收站行内恢复、
-  私信发送图标位）。它们的尺寸由控件自己的槽位决定，放不下一句文案；页面级与区块级
-  已经全部换成 `NoWaveLoadingLabel` / 骨架。
 - **暗色模式没有独立插画或位图**，只有色板翻转。
 - **没有 golden 测试。** 一致性的回归靠 `design_tokens_test.dart` 的约束断言与页面
   级 widget 测试，而不是像素比对。

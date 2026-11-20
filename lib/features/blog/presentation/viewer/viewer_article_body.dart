@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_end_mark.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
@@ -118,6 +119,15 @@ class ViewerArticleBody extends StatelessWidget {
                         size: 18,
                       ).copyWith(fontWeight: FontWeight.w400, height: 1.9),
                       headingStyle: NoWaveTypography.title(context),
+                    ),
+                    const SizedBox(height: NoWaveSpacing.large),
+                    NoWaveEndMark(
+                      label: context.l10n.articleEnd,
+                      // An unknown author gets no byline rather than
+                      // "Words by Anonymous author".
+                      byline: (blog.posterName ?? '').trim().isEmpty
+                          ? null
+                          : context.l10n.articleEndByline(blog.posterName!),
                     ),
                     const SizedBox(height: NoWaveSpacing.section),
                     if (getRelatedArticles case final related?)
