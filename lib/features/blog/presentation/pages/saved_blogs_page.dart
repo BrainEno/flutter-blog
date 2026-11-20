@@ -11,6 +11,7 @@ import 'package:belog/router/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 class SavedBlogsPage extends StatefulWidget {
   const SavedBlogsPage({super.key});
@@ -122,7 +123,7 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
                   return BlogGridItem(
                     blog: blog,
                     onTap: () {
-                      context.push('/saved/view/${blog.id}', extra: blog);
+                      context.push(RoutePaths.savedView(blog.id), extra: blog);
                     },
                   );
                 },
@@ -165,7 +166,10 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
                       return BlogGridItem(
                         blog: blog,
                         onTap: () {
-                          context.push('/saved/view/${blog.id}', extra: blog);
+                          context.push(
+                            RoutePaths.savedView(blog.id),
+                            extra: blog,
+                          );
                         },
                       );
                     },

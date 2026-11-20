@@ -1,3 +1,4 @@
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/core/storage/backend_key.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -34,7 +35,7 @@ class SqliteReadingHistoryStore
   @override
   Future<List<ReadingHistoryEntry>> list({
     required String userId,
-    int limit = 200,
+    int limit = AppLimits.readingHistoryPageSize,
   }) async {
     final rows = await database
         .customSelect(

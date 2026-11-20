@@ -1,3 +1,4 @@
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/messages/domain/entities/conversation.dart';
@@ -14,7 +15,7 @@ abstract interface class MessageRepository {
   /// at 100 and has no cursor, so this is the newest window only.
   Future<Either<Failure, List<Conversation>>> conversations({
     required NowaveSessionFence fence,
-    int limit = 50,
+    int limit = AppLimits.conversationPageSize,
   });
 
   /// One conversation's header: participants, unread count, last message.
@@ -31,7 +32,7 @@ abstract interface class MessageRepository {
   Future<Either<Failure, List<ConversationMessage>>> messages(
     String conversationId, {
     required NowaveSessionFence fence,
-    int limit = 100,
+    int limit = AppLimits.messagePageSize,
     String? before,
   });
 

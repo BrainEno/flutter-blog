@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:belog/core/config/app_durations.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/session/auth_status.dart';
 import 'package:belog/core/nowave/session/serial_queue.dart';
@@ -40,7 +41,7 @@ class NowaveSessionManager
   NowaveSessionManager({
     required NowaveApiClient client,
     required NowaveSessionStore store,
-    this.refreshLeadTime = const Duration(seconds: 30),
+    this.refreshLeadTime = AppDurations.sessionRefreshLead,
     DateTime Function() now = DateTime.now,
   }) : _client = client,
        _store = store,

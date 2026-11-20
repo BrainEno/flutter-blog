@@ -18,6 +18,7 @@ import 'package:belog/features/blog/presentation/widgets/blog_feed_skeleton.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 class BlogPage extends StatefulWidget {
   const BlogPage({super.key});
@@ -79,7 +80,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     if (kind == BlogFeedKind.following &&
         (viewerId == null || viewerId.isEmpty)) {
       showSnackBar(context, context.l10n.signInRequired);
-      context.push('/login?redirect=${Uri.encodeComponent('/')}');
+      context.push(RoutePaths.withRedirect(RoutePaths.login, RoutePaths.feed));
       return;
     }
     if (_scrollController.hasClients) _scrollController.jumpTo(0);
@@ -106,7 +107,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
   }
 
   Future<void> _openEditor() async {
-    final published = await context.push<bool>('/editor');
+    final published = await context.push<bool>(RoutePaths.editor);
     if (published == true && mounted) _fetchFirstPage();
   }
 
@@ -422,7 +423,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
             featured: articleIndex == 0,
             index: articleIndex + 1,
             onTagTap: (tag) => openTagArticles(context, tag),
-            onTap: () => context.push('/view/${blog.id}', extra: blog),
+            onTap: () => context.push(RoutePaths.view(blog.id), extra: blog),
           ),
         );
       },

@@ -15,6 +15,7 @@ import 'package:belog/features/blog/presentation/widgets/related_articles_sectio
 import 'package:belog/router/shell_branch_location.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// The scrolling article: header, read-aloud controls, body, related articles
 /// and comments.
@@ -54,7 +55,7 @@ class ViewerArticleBody extends StatelessWidget {
       context.push(
         shellBranchLocation(
           GoRouterState.of(context).uri,
-          '/author/${Uri.encodeComponent(userId)}',
+          RoutePaths.author(userId),
         ),
       );
     }
@@ -124,7 +125,7 @@ class ViewerArticleBody extends StatelessWidget {
                         onOpenArticle: (article) => context.push(
                           shellBranchLocation(
                             GoRouterState.of(context).uri,
-                            '/view/${Uri.encodeComponent(article.id)}',
+                            RoutePaths.view(article.id),
                           ),
                           extra: article,
                         ),

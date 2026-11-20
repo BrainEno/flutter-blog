@@ -1,3 +1,4 @@
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/offline_library/offline_library.dart';
 
@@ -18,7 +19,10 @@ abstract interface class BlogLocalDataSource {
   /// Reads cached articles in deterministic update-time/id order. [limit]
   /// is bounded to 500 and [offset] is zero-based; both apply in SQLite,
   /// before article bodies are decoded.
-  Future<List<BlogModel>> loadBlogs({int limit = 500, int offset = 0});
+  Future<List<BlogModel>> loadBlogs({
+    int limit = AppLimits.blogCacheMaxRows,
+    int offset = 0,
+  });
 
   Future<List<BlogModel>> searchLocalBlogs(String query);
 

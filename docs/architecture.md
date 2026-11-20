@@ -1,6 +1,6 @@
 # 架构与约定
 
-> 状态：active ｜ 最后核对：2026-11-19 @ de5e8bc
+> 状态：active ｜ 最后核对：2026-11-19 @ eb363b3
 
 > 从根 README 移出（#298）。依赖注入按功能拆在 `lib/di/`（#304），组合根是
 > `lib/init_dependencies.dart`。
@@ -11,6 +11,7 @@
 lib/
 ├── core/                  # 与业务无关的基础设施
 │   ├── common/            # 全局 cubit（AppUser）与通用控件
+│   ├── config/            # 配置值唯一来源：等待时长 app_durations、分页/上限 app_limits（#295）
 │   ├── error/             # Failure 契约 + 异常映射（error_mapper）
 │   ├── l10n/              # 界面语言、内容语言，以及 Failure/标签/作者名文案 helper
 │   ├── network/           # 连接检查
@@ -26,7 +27,7 @@ lib/
 │   ├── blog/              # 文章域：datasources / repository / usecases / blocs / pages
 │   └── user/              # 个人资料
 ├── l10n/                  # ARB 目录（中文/英文）+ 生成物（git 忽略，pub get 生成）
-├── router/                # go_router 路由（页面级 bloc 随页面创建销毁）
+├── router/                # go_router 路由（页面级 bloc 随页面创建销毁）；路径与跳转地址集中在 route_paths.dart（#295）
 └── main.dart              # 入口 + 全局错误钩子
 ```
 
@@ -43,6 +44,13 @@ lib/
 - **分层方向**：依赖只能从 feature 指向 `lib/core`，不能反向；`lib/core/storage`
   不得导入 Flutter UI 类型。规则由 `tool/ci/check_core_dependencies.py` 在 CI 中
   强制（`--root` 可对任意目录跑，unittest 也在真实仓库上验证）。
+- **配置值单一来源**（#295）：超时、防抖、自动保存间隔、重试表与保留窗口写在
+  `lib/core/config/app_durations.dart`；分页大小与行数上限写在
+  `lib/core/config/app_limits.dart`；路由 `path:` 片段与页面跳转地址写在
+  `lib/router/route_paths.dart`（动态段统一 `Uri.encodeComponent`）。调用方只引用
+  常量；`test/unit/design/no_magic_durations_test.dart` 与
+  `test/unit/core/route_paths_guard_test.dart` 拒绝在别处新增字面量。动画时长仍来自
+  `NoWaveMotion`。
 - **文章寻址双轨**：公开读 / 点赞按 slug（即 `Blog.id`），更新按服务端 UUID
   （`BlogModel.articleId`，仅写入路径使用）。
 - **正文模型**：普通编辑器写入 no-wave `contentBlocks` v0 纯文本块（首张图

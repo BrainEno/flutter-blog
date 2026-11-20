@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// The publishes this device still owes the server (issue #23).
 ///
@@ -98,7 +99,7 @@ class _PublishQueueView extends StatelessWidget {
               title: context.l10n.publishQueueNoSession,
               body: context.l10n.publishQueueMenuHint,
               actionLabel: context.l10n.publishQueueSignIn,
-              onAction: () => context.push('/login'),
+              onAction: () => context.push(RoutePaths.login),
             );
           }
           if (loaded.isEmpty) {
@@ -202,7 +203,7 @@ class _QueueEntryCard extends StatelessWidget {
   /// once the new attempt is sent or is queued again, so this screen reloads on
   /// return instead of assuming either outcome.
   Future<void> _resumeEditing(BuildContext context) async {
-    await context.push<bool>('/profile/editor', extra: entry);
+    await context.push<bool>(RoutePaths.profileEditor, extra: entry);
     if (!context.mounted) return;
     await context.read<PublishQueueCubit>().load(silent: true);
   }

@@ -1,3 +1,4 @@
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/features/notifications/domain/entities/app_notification.dart';
@@ -20,7 +21,7 @@ abstract interface class NotificationRepository {
   /// The response cursor is null only when the server returned an empty page.
   Future<Either<Failure, NotificationPage>> list({
     required NowaveSessionFence fence,
-    int limit = 50,
+    int limit = AppLimits.notificationPageSize,
     String? cursor,
   });
 

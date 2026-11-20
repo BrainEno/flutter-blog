@@ -1,5 +1,7 @@
 import 'dart:collection';
 
+import 'package:belog/core/config/app_durations.dart';
+
 /// One sanitized diagnostics record: a single pre-scrubbed line plus its
 /// timestamp. Everything the buffer ever learns about a failure is on
 /// this object, which is what makes the export safe to hand to support:
@@ -33,7 +35,7 @@ class DiagnosticsBuffer {
   /// (issue #306). A long-lived process should not hand support a failure
   /// from yesterday's unrelated session, and a bounded window keeps the
   /// exported file about the problem the user is reporting now.
-  static const Duration defaultMaxAge = Duration(hours: 24);
+  static const Duration defaultMaxAge = AppDurations.diagnosticsMaxAge;
 
   /// How many entries survive; the oldest are dropped first. Errors are
   /// rare enough that 200 failure lines comfortably cover a support

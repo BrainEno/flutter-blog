@@ -1,6 +1,7 @@
 import 'package:belog/router/shell_branch_location.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// Opens the article list for [tag] on the current tab's stack.
 ///
@@ -14,10 +15,7 @@ void openTagArticles(BuildContext context, String tag) {
   // Tag routes exist in every tab branch, so the tap has to stay inside the
   // one the reader is in - otherwise it would jump to the feed's stack.
   context.push(
-    shellBranchLocation(
-      GoRouterState.of(context).uri,
-      '/tag/${Uri.encodeComponent(name)}',
-    ),
+    shellBranchLocation(GoRouterState.of(context).uri, RoutePaths.tag(name)),
     extra: name,
   );
 }

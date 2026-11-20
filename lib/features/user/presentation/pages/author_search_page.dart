@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// Public author discovery, scoped to the search tab and kept in memory only.
 class AuthorSearchPage extends StatefulWidget {
@@ -270,7 +271,7 @@ class _AuthorRow extends StatelessWidget {
             onTap: () => context.push(
               shellBranchLocation(
                 GoRouterState.of(context).uri,
-                '/author/${Uri.encodeComponent(person.userId)}',
+                RoutePaths.author(person.userId),
               ),
             ),
             child: Padding(

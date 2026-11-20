@@ -69,6 +69,7 @@ import 'package:belog/features/user/presentation/pages/reading_history_page.dart
 import 'package:belog/init_dependencies.dart';
 import 'package:belog/router/home_shell.dart';
 import 'package:belog/router/read_aloud_route_observers.dart';
+import 'package:belog/router/route_paths.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -105,10 +106,6 @@ final RouteObserver<ModalRoute<void>> savedRouteObserver =
 final RouteObserver<ModalRoute<void>> profileRouteObserver =
     RouteObserver<ModalRoute<void>>();
 
-/// Route prefixes that require a signed-in user. Everything else (feed,
-/// search, viewer, about and the auth pages) stays public.
-const List<String> _protectedPrefixes = ['/saved', '/profile', '/editor'];
-
 /// Owns a router and the stream subscription that drives its redirects.
 ///
 /// GoRouter removes a refresh listener on dispose, but it does not own the
@@ -138,7 +135,7 @@ class AppRouterHandle {
 /// location they were trying to open.
 AppRouterHandle createAppRouter({
   required AppUserCubit appUserCubit,
-  String initialLocation = '/',
+  String initialLocation = RoutePaths.feed,
   // Allows the lifecycle contract to be observed with a controlled broadcast
   // stream. Production never passes this and always follows AppUserCubit.
   Stream<dynamic>? refreshStreamForTesting,
@@ -162,7 +159,7 @@ AppRouterHandle createAppRouter({
               const SizedBox(height: NoWaveSpacing.medium),
               NoWaveButton(
                 label: context.l10n.backToHome,
-                onPressed: () => context.go('/'),
+                onPressed: () => context.go(RoutePaths.feed),
               ),
             ],
           ),
@@ -181,61 +178,65 @@ AppRouterHandle createAppRouter({
         return deepLink;
       }
       final loggedIn = appUserCubit.state is AppUserLoggedIn;
-      final inAuthFlow =
-          state.matchedLocation == '/login' ||
-          state.matchedLocation == '/signup' ||
-          state.matchedLocation == '/forgot-password' ||
-          state.matchedLocation == '/reset-password';
-      final protected = _protectedPrefixes.any(
-        (prefix) => state.matchedLocation.startsWith(prefix),
-      );
+      final inAuthFlow = RoutePaths.authFlow.contains(state.matchedLocation);
+      final protected = RoutePaths.isProtected(state.matchedLocation);
       if (!loggedIn && protected) {
-        return '/login?redirect=${Uri.encodeComponent(state.uri.toString())}';
+        return RoutePaths.withRedirect(RoutePaths.login, state.uri.toString());
       }
       if (loggedIn && inAuthFlow) {
-        return _sanitize(state.uri.queryParameters['redirect']) ?? '/';
+        return _sanitize(state.uri.queryParameters[RoutePaths.redirectQuery]) ??
+            RoutePaths.feed;
       }
       return null;
     },
     routes: [
       // Public on purpose: the diagnostics report is exactly what a user
       // needs when signing in fails, and `/profile/about` sits behind the
-      // auth guard (see [_protectedPrefixes]).
+      // auth guard (see [RoutePaths.protectedPrefixes]).
       GoRoute(
-        path: '/about',
+        path: RoutePaths.about,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => AboutPage(
-          openDiagnostics: state.uri.queryParameters['diagnostics'] == '1',
+          openDiagnostics:
+              state.uri.queryParameters[RoutePaths.diagnosticsQuery] == '1',
         ),
       ),
       GoRoute(
-        path: '/login',
+        path: RoutePaths.login,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => LoginPage(
-          redirectTo: _sanitize(state.uri.queryParameters['redirect']),
+          redirectTo: _sanitize(
+            state.uri.queryParameters[RoutePaths.redirectQuery],
+          ),
         ),
       ),
       GoRoute(
-        path: '/signup',
+        path: RoutePaths.signup,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => SignUpPage(
-          redirectTo: _sanitize(state.uri.queryParameters['redirect']),
+          redirectTo: _sanitize(
+            state.uri.queryParameters[RoutePaths.redirectQuery],
+          ),
         ),
       ),
       GoRoute(
-        path: '/forgot-password',
+        path: RoutePaths.forgotPassword,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => PasswordRecoveryPage(
           requestPasswordReset: serviceLocator<RequestPasswordReset>(),
-          redirectTo: _sanitize(state.uri.queryParameters['redirect']),
+          redirectTo: _sanitize(
+            state.uri.queryParameters[RoutePaths.redirectQuery],
+          ),
         ),
       ),
       GoRoute(
-        path: '/reset-password',
+        path: RoutePaths.resetPassword,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => PasswordResetPage(
           resetPassword: serviceLocator<ResetPassword>(),
-          redirectTo: _sanitize(state.uri.queryParameters['redirect']),
+          redirectTo: _sanitize(
+            state.uri.queryParameters[RoutePaths.redirectQuery],
+          ),
         ),
       ),
       StatefulShellRoute.indexedStack(
@@ -246,7 +247,7 @@ AppRouterHandle createAppRouter({
             observers: [feedRouteObserver, feedReadAloudRouteObserver],
             routes: [
               GoRoute(
-                path: '/',
+                path: RoutePaths.feed,
                 builder: (context, state) => BlocProvider(
                   create: (_) => serviceLocator<BlogBloc>(),
                   child: const BlogPage(),
@@ -265,7 +266,7 @@ AppRouterHandle createAppRouter({
             observers: [searchRouteObserver, searchReadAloudRouteObserver],
             routes: [
               GoRoute(
-                path: '/search',
+                path: RoutePaths.search,
                 builder: (context, state) => BlocProvider(
                   create: (_) => serviceLocator<BlogSearchBloc>(),
                   child: const SearchBlogPage(),
@@ -277,7 +278,7 @@ AppRouterHandle createAppRouter({
                   categoriesRoute(),
                   categoryRoute(),
                   GoRoute(
-                    path: 'offline-library',
+                    path: RouteSegments.offlineLibrary,
                     builder: (context, state) => BlocProvider(
                       create: (_) => serviceLocator<OfflineLibraryCubit>(),
                       child: const OfflineLibraryPage(),
@@ -285,7 +286,7 @@ AppRouterHandle createAppRouter({
                     routes: [viewerRoute()],
                   ),
                   GoRoute(
-                    path: 'authors',
+                    path: RouteSegments.authors,
                     builder: (context, state) => BlocProvider(
                       create: (_) => AuthorSearchCubit(
                         searchAuthors: serviceLocator<SearchAuthors>(),
@@ -303,7 +304,7 @@ AppRouterHandle createAppRouter({
             observers: [savedRouteObserver, savedReadAloudRouteObserver],
             routes: [
               GoRoute(
-                path: '/saved',
+                path: RoutePaths.saved,
                 builder: (context, state) => BlocProvider(
                   create: (_) => serviceLocator<BlogLikedBloc>(),
                   child: const SavedBlogsPage(),
@@ -317,7 +318,7 @@ AppRouterHandle createAppRouter({
             observers: [profileRouteObserver, profileReadAloudRouteObserver],
             routes: [
               GoRoute(
-                path: '/profile',
+                path: RoutePaths.profile,
                 builder: (context, state) => const ProfilePage(),
                 routes: [
                   viewerRoute(),
@@ -325,7 +326,7 @@ AppRouterHandle createAppRouter({
                   authorRoute(),
                   tagRoute(),
                   GoRoute(
-                    path: 'my-articles',
+                    path: RouteSegments.myArticles,
                     builder: (context, state) => MultiBlocProvider(
                       providers: [
                         BlocProvider(
@@ -339,7 +340,7 @@ AppRouterHandle createAppRouter({
                     ),
                     routes: [
                       GoRoute(
-                        path: 'recycle-bin',
+                        path: RouteSegments.recycleBin,
                         builder: (context, state) => BlocProvider(
                           create: (_) => serviceLocator<RecycleBinBloc>(),
                           child: const RecycleBinPage(),
@@ -348,39 +349,39 @@ AppRouterHandle createAppRouter({
                     ],
                   ),
                   GoRoute(
-                    path: 'edit',
+                    path: RouteSegments.editProfile,
                     builder: (context, state) => BlocProvider(
                       create: (_) => serviceLocator<UserEditBloc>(),
                       child: const EditUserInfoPage(),
                     ),
                   ),
                   GoRoute(
-                    path: 'change-password',
+                    path: RouteSegments.changePassword,
                     builder: (context, state) => ChangePasswordPage(
                       repository: serviceLocator<AccountSecurityRepository>(),
                       session: serviceLocator<NowaveSessionManager>(),
                     ),
                   ),
                   GoRoute(
-                    path: 'change-email',
+                    path: RouteSegments.changeEmail,
                     builder: (context, state) => ChangeEmailPage(
                       repository: serviceLocator<AccountSecurityRepository>(),
                       session: serviceLocator<NowaveSessionManager>(),
                     ),
                   ),
                   GoRoute(
-                    path: 'email-verification',
+                    path: RouteSegments.emailVerification,
                     builder: (context, state) => EmailVerificationPage(
                       repository: serviceLocator<AccountSecurityRepository>(),
                       session: serviceLocator<NowaveSessionManager>(),
                     ),
                   ),
                   GoRoute(
-                    path: 'about',
+                    path: RouteSegments.about,
                     builder: (context, state) => const AboutPage(),
                   ),
                   GoRoute(
-                    path: 'notifications',
+                    path: RouteSegments.notifications,
                     builder: (context, state) => const NotificationInboxPage(),
                   ),
                   // Private conversations. `?to=<userId>` comes from an
@@ -388,15 +389,18 @@ AppRouterHandle createAppRouter({
                   // that already exists with that person, or offers to create
                   // one, instead of creating a duplicate.
                   GoRoute(
-                    path: 'messages',
+                    path: RouteSegments.messages,
                     builder: (context, state) => MessageInboxPage(
-                      startWith: state.uri.queryParameters['to'],
+                      startWith: state
+                          .uri
+                          .queryParameters[RoutePaths.messageRecipientQuery],
                     ),
                     routes: [
                       GoRoute(
-                        path: ':id',
+                        path: RouteSegments.messageThread,
                         builder: (context, state) => MessageThreadPage(
-                          conversationId: state.pathParameters['id']!,
+                          conversationId:
+                              state.pathParameters[RouteSegments.idParam]!,
                           participantSearch: (query) =>
                               serviceLocator<SearchAuthors>()(query),
                         ),
@@ -404,16 +408,16 @@ AppRouterHandle createAppRouter({
                     ],
                   ),
                   GoRoute(
-                    path: 'history',
+                    path: RouteSegments.history,
                     builder: (context, state) => const ReadingHistoryPage(),
                   ),
                   // What this device still owes the server (issue #23).
                   GoRoute(
-                    path: 'publish-queue',
+                    path: RouteSegments.publishQueue,
                     builder: (context, state) => const PublishQueuePage(),
                   ),
                   GoRoute(
-                    path: 'sessions',
+                    path: RouteSegments.sessions,
                     builder: (context, state) => const AccountSessionsPage(),
                   ),
                 ],
@@ -437,9 +441,9 @@ AppRouterHandle createAppRouter({
 /// to a draft or a deleted article fails in the viewer like any other fetch.
 GoRoute viewerRoute() {
   return GoRoute(
-    path: 'view/:id',
+    path: RouteSegments.view,
     builder: (context, state) {
-      final blogId = state.pathParameters['id']!;
+      final blogId = state.pathParameters[RouteSegments.idParam]!;
       final extra = state.extra;
       return MultiBlocProvider(
         providers: [
@@ -474,9 +478,9 @@ GoRoute viewerRoute() {
 /// (Blog.posterId / Comment.authorId), not a slug.
 GoRoute authorRoute() {
   return GoRoute(
-    path: 'author/:userId',
+    path: RouteSegments.author,
     builder: (context, state) {
-      final userId = state.pathParameters['userId']!;
+      final userId = state.pathParameters[RouteSegments.userIdParam]!;
       return MultiBlocProvider(
         providers: [
           BlocProvider(
@@ -499,7 +503,7 @@ GoRoute authorRoute() {
           builder: (context, state) => BlocProvider(
             create: (_) => AuthorRelationshipsCubit(
               getRelationships: serviceLocator<GetAuthorRelationships>(),
-              userId: state.pathParameters['userId']!,
+              userId: state.pathParameters[RouteSegments.userIdParam]!,
               kind: kind,
             ),
             child: AuthorRelationshipsPage(kind: kind),
@@ -516,7 +520,7 @@ GoRoute authorRoute() {
 /// once per visit.
 GoRoute categoriesRoute() {
   return GoRoute(
-    path: 'categories',
+    path: RouteSegments.categories,
     builder: (context, state) => BlocProvider(
       create: (_) => serviceLocator<CategoriesCubit>(),
       child: const CategoriesPage(),
@@ -529,9 +533,11 @@ GoRoute categoriesRoute() {
 /// through `extra` so the title does not have to wait for a lookup.
 GoRoute categoryRoute() {
   return GoRoute(
-    path: 'category/:slug',
+    path: RouteSegments.category,
     builder: (context, state) {
-      final slug = categorySlugFromRoute(state.pathParameters['slug']!);
+      final slug = categorySlugFromRoute(
+        state.pathParameters[RouteSegments.slugParam]!,
+      );
       return BlocProvider(
         create: (_) => serviceLocator<CategoryArticlesBloc>(),
         child: CategoryArticlesPage(
@@ -550,9 +556,12 @@ GoRoute categoryRoute() {
 /// and is resolved by the page itself.
 GoRoute tagRoute() {
   return GoRoute(
-    path: 'tag/:name',
+    path: RouteSegments.tag,
     builder: (context, state) {
-      final tag = tagFromRoute(state.pathParameters['name']!, state.extra);
+      final tag = tagFromRoute(
+        state.pathParameters[RouteSegments.nameParam]!,
+        state.extra,
+      );
       return BlocProvider(
         create: (_) => serviceLocator<TagArticlesBloc>(),
         child: TagArticlesPage(tag: tag),
@@ -570,7 +579,7 @@ GoRoute tagRoute() {
 /// (the queue page), never both.
 GoRoute editorRoute() {
   return GoRoute(
-    path: 'editor',
+    path: RouteSegments.editor,
     builder: (context, state) {
       final extra = state.extra;
       return BlocProvider(
@@ -618,10 +627,7 @@ String? _sanitize(String? target) {
   if (target == null || !target.startsWith('/')) {
     return null;
   }
-  if (target.startsWith('/login') ||
-      target.startsWith('/signup') ||
-      target.startsWith('/forgot-password') ||
-      target.startsWith('/reset-password')) {
+  if (RoutePaths.authFlow.any(target.startsWith)) {
     return null;
   }
   return target;

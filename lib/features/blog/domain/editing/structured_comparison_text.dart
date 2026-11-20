@@ -1,3 +1,4 @@
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/core/utils/well_formed_utf16.dart';
 
 /// Exact single-span text comparison, using UTF-16 offsets as Flutter does.
@@ -64,7 +65,10 @@ bool _splitsPair(String value, int offset) {
 final class StructuredValuePages {
   StructuredValuePages._(this._text, this._boundaries);
 
-  static StructuredValuePages? create(String text, {int pageSize = 1000}) {
+  static StructuredValuePages? create(
+    String text, {
+    int pageSize = AppLimits.structuredComparisonPageSize,
+  }) {
     if (pageSize < 2) throw ArgumentError.value(pageSize, 'pageSize');
     if (!isWellFormedUtf16(text)) return null;
     final boundaries = <int>[0];

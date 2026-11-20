@@ -19,6 +19,7 @@ import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 class SearchBlogPage extends StatefulWidget {
   const SearchBlogPage({super.key});
@@ -99,7 +100,7 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
           IconButton(
             tooltip: l10n.offlineLibraryTooltip,
             icon: const Icon(Icons.folder_off_outlined),
-            onPressed: () => context.push('/search/offline-library'),
+            onPressed: () => context.push(RoutePaths.searchOfflineLibrary),
           ),
           const SizedBox(width: NoWaveSpacing.small),
         ],
@@ -138,7 +139,8 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                             label: Text(l10n.categoriesBrowse),
                           ),
                           TextButton.icon(
-                            onPressed: () => context.push('/search/authors'),
+                            onPressed: () =>
+                                context.push(RoutePaths.searchAuthors),
                             icon: const Icon(Icons.person_search_outlined),
                             label: Text(l10n.authorSearchTitle),
                           ),
@@ -255,7 +257,7 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                         labelAuthor: true,
                         onTagTap: (tag) => openTagArticles(context, tag),
                         onTap: () => context.push(
-                          '/search/view/${blog.id}',
+                          RoutePaths.searchView(blog.id),
                           extra: blog,
                         ),
                       ),

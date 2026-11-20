@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:belog/core/config/app_durations.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -239,7 +240,7 @@ class _AboutPageState extends State<AboutPage> {
     // diagnostics (this is exactly the "the app is broken" moment).
     PackageInfo? info;
     try {
-      info = await _packageInfo.timeout(const Duration(seconds: 2));
+      info = await _packageInfo.timeout(AppDurations.packageInfoLookup);
     } on TimeoutException {
       info = null;
     }

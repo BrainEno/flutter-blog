@@ -21,25 +21,21 @@ void main() {
   /// Files whose durations are waiting, not motion. Keep the reason next to the
   /// path: a future reader has to be able to tell whether a new duration is the
   /// same kind of thing.
+  ///
+  /// Since #295 a new wait does not earn its own entry here: it becomes a
+  /// named constant in `core/config/app_durations.dart`, and the file that
+  /// waits reads it. The other entries compute a duration rather than
+  /// configure one.
   const waiting = <String, String>{
     'core/design/design_tokens.dart': 'the tokens themselves',
-    'boot/boot_sequence.dart': 'session and language restore timeouts',
-    'core/network/api_connection_checker.dart': 'connect timeout',
-    'core/nowave/nowave_api_client.dart': 'request and upload timeouts',
-    'core/nowave/nowave_session.dart': 'refresh lead time before expiry',
-    'core/utils/diagnostics_buffer.dart': 'diagnostics retention window',
-    'core/utils/retry_on_connection_closed.dart': 'retry backoff',
-    'core/utils/search_debounce.dart': 'the shared search input debounce',
-    'core/utils/show_snackbar.dart': 'how long a feedback notice stays',
+    'core/config/app_durations.dart':
+        'every configured wait: timeouts, debounces, dwell, retention (#295)',
+    'core/utils/retry_on_connection_closed.dart':
+        'jitter computed from the configured initial delay',
     'features/blog/data/datasources/latest_feed_cursor.dart':
         'cursor arithmetic: one millisecond of inclusive bound',
-    'features/blog/data/publish/publish_queue_runner.dart':
-        'publish retry schedule',
-    'features/blog/presentation/editor/editor_session_coordinator.dart':
-        'autosave dwell',
     'features/blog/presentation/read_aloud/read_aloud_sleep_timer.dart':
-        'session-only sleep-timer deadlines',
-    'features/user/presentation/pages/about_page.dart': 'package info timeout',
+        'the sleep-timer menu choices, which are product copy',
   };
 
   /// `Duration(milliseconds: 200)` and friends.
@@ -89,5 +85,22 @@ void main() {
   test('the scan can still see a duration', () {
     // A gate that silently matches nothing is worse than no gate.
     expect(literalsIn('core/design/design_tokens.dart'), greaterThan(0));
+    expect(literalsIn('core/config/app_durations.dart'), greaterThan(0));
+  });
+
+  test('pages never configure a wait of their own (#295)', () {
+    // The narrower rule from the issue: a screen reads AppDurations or a
+    // motion token, it never writes a duration, not even an allowed one.
+    final pages = [
+      for (final path in files)
+        if (path.contains('/pages/') && literalsIn(path) > 0) path,
+    ];
+    expect(
+      pages,
+      isEmpty,
+      reason:
+          'Move these waits into core/config/app_durations.dart: '
+          '${pages.join(', ')}',
+    );
   });
 }

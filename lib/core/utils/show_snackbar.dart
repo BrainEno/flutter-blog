@@ -1,11 +1,12 @@
+import 'package:belog/core/config/app_durations.dart';
 import 'package:flutter/material.dart';
 
 /// Material's own display time for a [SnackBar]; the app default.
-const Duration kDefaultSnackBarDuration = Duration(milliseconds: 4000);
+const Duration kDefaultSnackBarDuration = AppDurations.snackBarDefault;
 
 /// For transient feedback the user can act on again right away, such as a
 /// failed search that is retried by typing (#293, #295).
-const Duration kShortSnackBarDuration = Duration(seconds: 2);
+const Duration kShortSnackBarDuration = AppDurations.snackBarShort;
 
 /// The single entry point for page-level feedback (#293).
 ///

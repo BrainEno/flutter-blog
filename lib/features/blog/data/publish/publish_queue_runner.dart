@@ -1,3 +1,4 @@
+import 'package:belog/core/config/app_durations.dart';
 import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/network/connection_checker.dart';
@@ -315,11 +316,6 @@ class PublishQueueRunner implements PublishQueueDrainer {
     return true;
   }
 
-  static Duration _backoffFor(int attempts) => switch (attempts) {
-    0 => const Duration(minutes: 1),
-    1 => const Duration(minutes: 5),
-    2 => const Duration(minutes: 15),
-    3 => const Duration(minutes: 60),
-    _ => const Duration(hours: 3),
-  };
+  static Duration _backoffFor(int attempts) =>
+      AppDurations.publishRetryAfter(attempts);
 }

@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// The signed-in account's private conversations.
 ///
@@ -104,9 +105,7 @@ class _MessageInboxViewState extends State<_MessageInboxView> {
   }
 
   Future<void> _openThread(String conversationId) async {
-    await context.push(
-      '/profile/messages/${Uri.encodeComponent(conversationId)}',
-    );
+    await context.push(RoutePaths.messageThread(conversationId));
     if (!mounted) return;
     // Reading (and marking read) inside the thread is what changes these rows.
     await context.read<MessageInboxCubit>().load(showLoading: false);
@@ -191,7 +190,7 @@ class _MessageInboxViewState extends State<_MessageInboxView> {
             return _InboxStatus(
               message: l10n.messagesEmptyTitle,
               actionLabel: l10n.signIn,
-              onAction: () => context.push('/login'),
+              onAction: () => context.push(RoutePaths.login),
             );
           }
           if (state is MessageInboxFailure) {

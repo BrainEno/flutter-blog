@@ -12,6 +12,7 @@ import 'package:belog/router/shell_branch_location.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// A public, online-only relationship list. The backend currently offers no
 /// way to request a second page, so a full response must not imply completion.
@@ -109,7 +110,7 @@ class _PeopleList extends StatelessWidget {
                 onTap: () => context.push(
                   shellBranchLocation(
                     GoRouterState.of(context).uri,
-                    '/author/${Uri.encodeComponent(person.userId)}',
+                    RoutePaths.author(person.userId),
                   ),
                 ),
                 child: Padding(
