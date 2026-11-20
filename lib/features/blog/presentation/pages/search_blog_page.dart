@@ -1,6 +1,7 @@
 import 'package:belog/core/common/widgets/no_wave_masthead.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/components/no_wave_entrance.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
@@ -74,7 +75,7 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
   Widget _contentWidth(Widget child) => Align(
     alignment: Alignment.topCenter,
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 680),
+      constraints: const BoxConstraints(maxWidth: NoWaveSizes.contentColumn),
       child: child,
     ),
   );
@@ -225,44 +226,51 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
               if (blogs.isEmpty) {
                 return _state(NoWaveStatus(message: l10n.searchNoResults));
               }
-              return SliverPadding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: NoWaveSpacing.page,
-                ),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    if (index == blogs.length) {
-                      return Padding(
-                        padding: const EdgeInsets.all(NoWaveSpacing.medium),
-                        child: Center(
-                          child: Text(
-                            blogs.length >= kMaxSearchResults
-                                ? l10n.searchLimitReached(
-                                    formatNumber(
-                                      Localizations.localeOf(context),
-                                      kMaxSearchResults,
-                                    ),
-                                  )
-                                : l10n.searchNoMore,
-                            style: NoWaveTypography.meta(context),
+              // Every search arrives through the loading state, so each
+              // result list gets a fresh scope and sets in once.
+              return NoWaveEntranceScope(
+                child: SliverPadding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: NoWaveSpacing.page,
+                  ),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      if (index == blogs.length) {
+                        return Padding(
+                          padding: const EdgeInsets.all(NoWaveSpacing.medium),
+                          child: Center(
+                            child: Text(
+                              blogs.length >= kMaxSearchResults
+                                  ? l10n.searchLimitReached(
+                                      formatNumber(
+                                        Localizations.localeOf(context),
+                                        kMaxSearchResults,
+                                      ),
+                                    )
+                                  : l10n.searchNoMore,
+                              style: NoWaveTypography.meta(context),
+                            ),
+                          ),
+                        );
+                      }
+                      final blog = blogs[index];
+                      return _contentWidth(
+                        NoWaveEntrance(
+                          index: index,
+                          child: BlogCard(
+                            blog: blog,
+                            index: index + 1,
+                            labelAuthor: true,
+                            onTagTap: (tag) => openTagArticles(context, tag),
+                            onTap: () => context.push(
+                              RoutePaths.searchView(blog.id),
+                              extra: blog,
+                            ),
                           ),
                         ),
                       );
-                    }
-                    final blog = blogs[index];
-                    return _contentWidth(
-                      BlogCard(
-                        blog: blog,
-                        index: index + 1,
-                        labelAuthor: true,
-                        onTagTap: (tag) => openTagArticles(context, tag),
-                        onTap: () => context.push(
-                          RoutePaths.searchView(blog.id),
-                          extra: blog,
-                        ),
-                      ),
-                    );
-                  }, childCount: blogs.length + 1),
+                    }, childCount: blogs.length + 1),
+                  ),
                 ),
               );
             },

@@ -315,7 +315,9 @@ class _AccountSessionsPageState extends State<AccountSessionsPage> {
             children: [
               Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 680),
+                  constraints: const BoxConstraints(
+                    maxWidth: NoWaveSizes.contentColumn,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [

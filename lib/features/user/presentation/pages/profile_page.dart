@@ -133,7 +133,9 @@ class _ProfileView extends StatelessWidget {
               children: [
                 Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 680),
+                    constraints: const BoxConstraints(
+                      maxWidth: NoWaveSizes.contentColumn,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

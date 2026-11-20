@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
@@ -67,7 +68,9 @@ class ViewerArticleBody extends StatelessWidget {
           child: Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 680),
+              constraints: const BoxConstraints(
+                maxWidth: NoWaveSizes.contentColumn,
+              ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
                   NoWaveSpacing.page,

@@ -1,4 +1,5 @@
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/components/no_wave_entrance.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
@@ -176,81 +177,88 @@ class _CategoryArticlesPageState extends State<CategoryArticlesPage> {
     final l10n = context.l10n;
     final hasFooter =
         state.hasMore || state.loadingMore || state.loadMoreFailure != null;
-    return ListView.builder(
-      controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(
-        NoWaveSpacing.page,
-        NoWaveSpacing.large,
-        NoWaveSpacing.page,
-        NoWaveSpacing.section,
-      ),
-      itemCount: state.articles.length + (hasFooter ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == state.articles.length) {
-          final failed = state.loadMoreFailure;
-          if (failed != null) {
-            return Padding(
-              padding: const EdgeInsets.all(NoWaveSpacing.medium),
-              child: Center(
-                child: Column(
-                  children: [
-                    Text(
-                      localizedFailure(l10n, failed),
-                      textAlign: TextAlign.center,
-                      style: NoWaveTypography.meta(context),
-                    ),
-                    const SizedBox(height: NoWaveSpacing.small),
-                    TextButton(
-                      onPressed: _loadMore,
-                      child: Text(l10n.actionRetry),
-                    ),
-                  ],
+    // The page is one list; its first screen sets in once, and a refresh or
+    // next page holds still.
+    return NoWaveEntranceScope(
+      child: ListView.builder(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          NoWaveSpacing.page,
+          NoWaveSpacing.large,
+          NoWaveSpacing.page,
+          NoWaveSpacing.section,
+        ),
+        itemCount: state.articles.length + (hasFooter ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == state.articles.length) {
+            final failed = state.loadMoreFailure;
+            if (failed != null) {
+              return Padding(
+                padding: const EdgeInsets.all(NoWaveSpacing.medium),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Text(
+                        localizedFailure(l10n, failed),
+                        textAlign: TextAlign.center,
+                        style: NoWaveTypography.meta(context),
+                      ),
+                      const SizedBox(height: NoWaveSpacing.small),
+                      TextButton(
+                        onPressed: _loadMore,
+                        child: Text(l10n.actionRetry),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+            if (state.loadingMore) {
+              return Padding(
+                padding: const EdgeInsets.all(NoWaveSpacing.medium),
+                child: Center(
+                  child: NoWaveLoadingLabel(
+                    semanticLabel: l10n.loadingMoreArticles,
+                    compact: true,
+                  ),
+                ),
+              );
+            }
+            // Ask for the next page once the footer is actually built.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _loadMore();
+            });
+            return const SizedBox(height: NoWaveSpacing.section);
+          }
+          final Blog blog = state.articles[index];
+          return _contentWidth(
+            NoWaveEntrance(
+              index: index,
+              child: BlogCard(
+                blog: blog,
+                index: index + 1,
+                labelAuthor: true,
+                onTagTap: (tag) => openTagArticles(context, tag),
+                onTap: () => context.push(
+                  shellBranchLocation(
+                    GoRouterState.of(context).uri,
+                    RoutePaths.view(blog.id),
+                  ),
+                  extra: blog,
                 ),
               ),
-            );
-          }
-          if (state.loadingMore) {
-            return Padding(
-              padding: const EdgeInsets.all(NoWaveSpacing.medium),
-              child: Center(
-                child: NoWaveLoadingLabel(
-                  semanticLabel: l10n.loadingMoreArticles,
-                  compact: true,
-                ),
-              ),
-            );
-          }
-          // Ask for the next page once the footer is actually built.
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _loadMore();
-          });
-          return const SizedBox(height: NoWaveSpacing.section);
-        }
-        final Blog blog = state.articles[index];
-        return _contentWidth(
-          BlogCard(
-            blog: blog,
-            index: index + 1,
-            labelAuthor: true,
-            onTagTap: (tag) => openTagArticles(context, tag),
-            onTap: () => context.push(
-              shellBranchLocation(
-                GoRouterState.of(context).uri,
-                RoutePaths.view(blog.id),
-              ),
-              extra: blog,
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
   Widget _contentWidth(Widget child) => Align(
     alignment: Alignment.topCenter,
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 680),
+      constraints: const BoxConstraints(maxWidth: NoWaveSizes.contentColumn),
       child: child,
     ),
   );
