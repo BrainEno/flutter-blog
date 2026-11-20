@@ -1,5 +1,6 @@
 import 'package:belog/core/design/components/no_wave_pressable.dart';
 import 'package:belog/core/design/design_tokens.dart';
+import 'package:flutter/gestures.dart' show kPressTimeout;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
