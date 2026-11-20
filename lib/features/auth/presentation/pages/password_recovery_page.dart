@@ -11,6 +11,7 @@ import 'package:belog/features/auth/presentation/widgets/auth_field.dart';
 import 'package:flutter/material.dart';
 import 'package:fpdart/fpdart.dart' show Either, left;
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// Requests a password-reset link without revealing whether an address exists.
 class PasswordRecoveryPage extends StatefulWidget {
@@ -40,16 +41,12 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
     super.dispose();
   }
 
-  String _location(String path) {
-    final target = widget.redirectTo;
-    return target == null
-        ? path
-        : '$path?redirect=${Uri.encodeComponent(target)}';
-  }
+  String _location(String path) =>
+      RoutePaths.withRedirect(path, widget.redirectTo);
 
-  void _openReset() => context.push(_location('/reset-password'));
+  void _openReset() => context.push(_location(RoutePaths.resetPassword));
 
-  void _backToSignIn() => context.go(_location('/login'));
+  void _backToSignIn() => context.go(_location(RoutePaths.login));
 
   String? _emailProblem(String? value) {
     final problem = validateEmailAddress(value);

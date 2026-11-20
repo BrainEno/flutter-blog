@@ -25,6 +25,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// The signed-in account's own page: identity, the way into every account
 /// screen, and badges for unread notifications and private messages.
@@ -74,7 +75,7 @@ class _ProfileView extends StatelessWidget {
   /// Re-reads the notification badge after returning from its inbox.
   Future<void> _openInbox(BuildContext context) async {
     final badge = context.read<NotificationBadgeCubit>();
-    await context.push('/profile/notifications');
+    await context.push(RoutePaths.notifications);
     if (!context.mounted) return;
     unawaited(badge.refresh());
   }
@@ -82,7 +83,7 @@ class _ProfileView extends StatelessWidget {
   /// Re-reads unread totals after messages were opened or marked read.
   Future<void> _openMessages(BuildContext context) async {
     final badge = context.read<MessageUnreadBadgeCubit>();
-    await context.push('/profile/messages');
+    await context.push(RoutePaths.messages);
     if (!context.mounted) return;
     unawaited(badge.refresh());
   }
@@ -117,7 +118,7 @@ class _ProfileView extends StatelessWidget {
                     const SizedBox(height: NoWaveSpacing.medium),
                     NoWaveButton(
                       label: l10n.signIn,
-                      onPressed: () => context.push('/login'),
+                      onPressed: () => context.push(RoutePaths.login),
                     ),
                   ],
                 ),
@@ -161,7 +162,7 @@ class _ProfileView extends StatelessWidget {
                                   ],
                                   TextButton(
                                     onPressed: () => context.push(
-                                      '/profile/author/${Uri.encodeComponent(user.id)}',
+                                      RoutePaths.profileAuthor(user.id),
                                     ),
                                     child: Text(l10n.viewMyAuthorProfile),
                                   ),
@@ -174,34 +175,34 @@ class _ProfileView extends StatelessWidget {
                         NoWaveActionRow(
                           icon: Icons.edit_outlined,
                           label: l10n.menuEditProfile,
-                          onTap: () => context.push('/profile/edit'),
+                          onTap: () => context.push(RoutePaths.editProfile),
                         ),
                         NoWaveActionRow(
                           icon: Icons.lock_outline,
                           label: l10n.menuChangePassword,
-                          onTap: () => context.push('/profile/change-password'),
+                          onTap: () => context.push(RoutePaths.changePassword),
                         ),
                         NoWaveActionRow(
                           icon: Icons.alternate_email,
                           label: l10n.accountEmailTitle,
                           description: user.email.isEmpty ? null : user.email,
-                          onTap: () => context.push('/profile/change-email'),
+                          onTap: () => context.push(RoutePaths.changeEmail),
                         ),
                         NoWaveActionRow(
                           icon: Icons.mark_email_unread_outlined,
                           label: l10n.emailVerifyTitle,
                           onTap: () =>
-                              context.push('/profile/email-verification'),
+                              context.push(RoutePaths.emailVerification),
                         ),
                         NoWaveActionRow(
                           icon: Icons.article_outlined,
                           label: l10n.menuMyArticles,
-                          onTap: () => context.push('/profile/my-articles'),
+                          onTap: () => context.push(RoutePaths.myArticles),
                         ),
                         NoWaveActionRow(
                           icon: Icons.history,
                           label: l10n.menuReadingHistory,
-                          onTap: () => context.push('/profile/history'),
+                          onTap: () => context.push(RoutePaths.history),
                         ),
                         BlocBuilder<NotificationBadgeCubit, int>(
                           builder: (context, unread) => NoWaveActionRow(
@@ -237,17 +238,17 @@ class _ProfileView extends StatelessWidget {
                           icon: Icons.cloud_upload_outlined,
                           label: l10n.publishQueueTitle,
                           description: l10n.publishQueueMenuHint,
-                          onTap: () => context.push('/profile/publish-queue'),
+                          onTap: () => context.push(RoutePaths.publishQueue),
                         ),
                         NoWaveActionRow(
                           icon: Icons.devices_outlined,
                           label: l10n.accountSessionsTitle,
-                          onTap: () => context.push('/profile/sessions'),
+                          onTap: () => context.push(RoutePaths.sessions),
                         ),
                         NoWaveActionRow(
                           icon: Icons.info_outline,
                           label: l10n.menuAbout,
-                          onTap: () => context.push('/profile/about'),
+                          onTap: () => context.push(RoutePaths.profileAbout),
                         ),
                         NoWaveActionRow(
                           icon: Icons.file_download_outlined,

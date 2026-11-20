@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/config/app_durations.dart';
 import 'package:belog/core/l10n/locale_bloc.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/auth/auth_session_sync.dart';
@@ -11,11 +12,11 @@ import 'package:belog/init_dependencies.dart';
 ///
 /// Normally the restore resolves in well under a second; the bound only guards
 /// against a hung network so the app still becomes usable.
-const _kSessionRestoreTimeout = Duration(seconds: 3);
+const _kSessionRestoreTimeout = AppDurations.bootSessionRestore;
 
 /// The language preference is one small row; it resolves instantly in normal
 /// boots. Bounding it only keeps a corrupt store from delaying the app.
-const _kLanguageRestoreTimeout = Duration(seconds: 2);
+const _kLanguageRestoreTimeout = AppDurations.bootLanguageRestore;
 
 /// Everything the app needs before its first route can be built.
 ///

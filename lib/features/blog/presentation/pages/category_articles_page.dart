@@ -13,6 +13,7 @@ import 'package:belog/router/shell_branch_location.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// Everything filed under one category.
 ///
@@ -236,7 +237,7 @@ class _CategoryArticlesPageState extends State<CategoryArticlesPage> {
             onTap: () => context.push(
               shellBranchLocation(
                 GoRouterState.of(context).uri,
-                '/view/${Uri.encodeComponent(blog.id)}',
+                RoutePaths.view(blog.id),
               ),
               extra: blog,
             ),

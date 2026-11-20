@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// The signed-in account's notification inbox.
 ///
@@ -165,7 +166,7 @@ class _NotificationInboxView extends StatelessWidget {
               title: context.l10n.notificationsSignInTitle,
               body: context.l10n.notificationsEmptyBody,
               actionLabel: context.l10n.notificationsSignIn,
-              onAction: () => context.push('/login'),
+              onAction: () => context.push(RoutePaths.login),
             );
           }
           if (state is NotificationInboxFailure) {
@@ -260,21 +261,18 @@ class _NotificationInboxView extends StatelessWidget {
                           generation,
                         ),
                         onOpenTarget: articleTarget != null
-                            ? () => open(
-                                '/profile/view/${Uri.encodeComponent(articleTarget)}',
-                              )
+                            ? () => open(RoutePaths.profileView(articleTarget))
                             : followerTarget != null
-                            ? () => open(
-                                '/profile/author/${Uri.encodeComponent(followerTarget)}',
-                              )
+                            ? () =>
+                                  open(RoutePaths.profileAuthor(followerTarget))
                             : null,
                         onOpenConversation:
                             item.kind != AppNotificationKind.messageReceived
                             ? null
                             : () => open(
                                 conversationId == null
-                                    ? '/profile/messages'
-                                    : '/profile/messages/${Uri.encodeComponent(conversationId)}',
+                                    ? RoutePaths.messages
+                                    : RoutePaths.messageThread(conversationId),
                               ),
                       );
                     },

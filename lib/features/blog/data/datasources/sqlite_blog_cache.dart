@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/core/storage/backend_key.dart';
@@ -87,8 +88,16 @@ class SqliteBlogCache implements BlogLocalDataSource {
   }
 
   @override
-  Future<List<BlogModel>> loadBlogs({int limit = 500, int offset = 0}) async {
-    RangeError.checkValueInInterval(limit, 1, 500, 'limit');
+  Future<List<BlogModel>> loadBlogs({
+    int limit = AppLimits.blogCacheMaxRows,
+    int offset = 0,
+  }) async {
+    RangeError.checkValueInInterval(
+      limit,
+      1,
+      AppLimits.blogCacheMaxRows,
+      'limit',
+    );
     RangeError.checkNotNegative(offset, 'offset');
     final locale = _locale;
     final rows = await database

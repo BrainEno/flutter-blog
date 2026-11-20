@@ -25,6 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// Public author profile page (issue #20): who they are, the follow
 /// relationship, and their published articles.
@@ -133,7 +134,7 @@ class _AuthorPageState extends State<AuthorPage> {
 
   void _requestLogin() {
     final currentLocation = GoRouterState.of(context).uri.toString();
-    context.push('/login?redirect=${Uri.encodeComponent(currentLocation)}');
+    context.push(RoutePaths.withRedirect(RoutePaths.login, currentLocation));
   }
 
   Future<void> _openWebsite(String url) async {
@@ -152,7 +153,7 @@ class _AuthorPageState extends State<AuthorPage> {
     context.push(
       shellBranchLocation(
         GoRouterState.of(context).uri,
-        '/author/${Uri.encodeComponent(widget.userId)}/${kind.name}',
+        RoutePaths.authorRelationships(widget.userId, kind.name),
       ),
     );
   }
@@ -169,7 +170,7 @@ class _AuthorPageState extends State<AuthorPage> {
       _requestLogin();
       return;
     }
-    context.push('/profile/messages?to=${Uri.encodeComponent(widget.userId)}');
+    context.push(RoutePaths.messagesWith(widget.userId));
   }
 
   void _onFollowTap() {
@@ -361,7 +362,7 @@ class _AuthorPageState extends State<AuthorPage> {
                                   onTap: () => context.push(
                                     shellBranchLocation(
                                       GoRouterState.of(context).uri,
-                                      '/view/${Uri.encodeComponent(blogs[index].id)}',
+                                      RoutePaths.view(blogs[index].id),
                                     ),
                                     extra: blogs[index],
                                   ),

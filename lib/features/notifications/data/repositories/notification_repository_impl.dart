@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
@@ -20,7 +21,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
   final NowaveApiClient client;
 
   /// The server accepts 1..100 and defaults to 50.
-  static const int _kMaxLimit = 100;
+  static const int _kMaxLimit = AppLimits.notificationMaxPageSize;
   static const int _kMaxCursorLength = 512;
   static final RegExp _cursorTimestamp = RegExp(
     r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$',
@@ -32,7 +33,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
   @override
   Future<Either<Failure, NotificationPage>> list({
     required NowaveSessionFence fence,
-    int limit = 50,
+    int limit = AppLimits.notificationPageSize,
     String? cursor,
   }) async {
     var bounded = limit;

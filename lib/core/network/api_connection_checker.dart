@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/config/app_durations.dart';
 import 'package:belog/core/network/connection_checker.dart';
 import 'package:belog/core/network/connectivity_evidence.dart';
 import 'package:belog/core/utils/app_logger.dart';
@@ -18,8 +19,8 @@ class ApiConnectionChecker implements ConnectionChecker, ConnectivityEvidence {
   ApiConnectionChecker(
     Uri baseUrl, {
     http.Client Function()? clientFactory,
-    this.timeout = const Duration(seconds: 3),
-    this.successTtl = const Duration(seconds: 2),
+    this.timeout = AppDurations.healthProbeTimeout,
+    this.successTtl = AppDurations.healthProbeSuccessTtl,
     Duration Function()? elapsed,
   }) : _baseUrl = baseUrl,
        _prefix = baseUrl.path.replaceFirst(RegExp(r'/$'), ''),

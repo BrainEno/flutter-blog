@@ -19,6 +19,7 @@ import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// A local-only catalog of the active backend/content-language article cache.
 ///
@@ -81,7 +82,7 @@ class _OfflineLibraryPageState extends State<OfflineLibraryPage> {
     // present; opening one item is the reader's explicit action, unlike merely
     // browsing a library which must not instantiate image/network providers.
     context.push(
-      '/search/offline-library/view/${Uri.encodeComponent(entry.article.id)}',
+      RoutePaths.offlineLibraryView(entry.article.id),
       extra: entry.article,
     );
   }

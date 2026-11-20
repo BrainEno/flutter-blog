@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:belog/core/config/app_durations.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:http/http.dart' as http;
 
@@ -17,7 +18,7 @@ import 'package:http/http.dart' as http;
 Future<T> retryOnConnectionClosed<T>(
   Future<T> Function() request, {
   int maxRetries = 3,
-  Duration initialDelay = const Duration(milliseconds: 500),
+  Duration initialDelay = AppDurations.connectionRetryInitialDelay,
 }) async {
   var retries = 0;
   while (true) {

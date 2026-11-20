@@ -2,6 +2,7 @@ import 'package:belog/features/blog/domain/entities/category_ref.dart';
 import 'package:belog/router/shell_branch_location.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// Opens the article list for [category] on the current tab's stack.
 ///
@@ -14,7 +15,7 @@ void openCategoryArticles(BuildContext context, CategoryRef category) {
   context.push(
     shellBranchLocation(
       GoRouterState.of(context).uri,
-      '/category/${Uri.encodeComponent(slug)}',
+      RoutePaths.category(slug),
     ),
     extra: category,
   );
@@ -23,7 +24,7 @@ void openCategoryArticles(BuildContext context, CategoryRef category) {
 /// Opens the catalog on the current tab's stack.
 void openCategories(BuildContext context) {
   context.push(
-    shellBranchLocation(GoRouterState.of(context).uri, '/categories'),
+    shellBranchLocation(GoRouterState.of(context).uri, RoutePaths.categories),
   );
 }
 

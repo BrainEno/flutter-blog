@@ -13,6 +13,7 @@ import 'package:belog/features/auth/presentation/widgets/auth_primary_button.dar
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// Email/password sign-in.
 ///
@@ -50,16 +51,24 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   /// The diagnostics dialog, opened from the failed-login snackbar.
-  void _openDiagnostics() => context.push('/about?diagnostics=1');
+  void _openDiagnostics() => context.push(RoutePaths.aboutDiagnostics);
 
   void _openSignUp() {
-    final target = Uri.encodeComponent(widget.redirectTo ?? '/');
-    context.push('/signup?redirect=$target');
+    context.push(
+      RoutePaths.withRedirect(
+        RoutePaths.signup,
+        widget.redirectTo ?? RoutePaths.feed,
+      ),
+    );
   }
 
   void _openPasswordRecovery() {
-    final target = Uri.encodeComponent(widget.redirectTo ?? '/');
-    context.push('/forgot-password?redirect=$target');
+    context.push(
+      RoutePaths.withRedirect(
+        RoutePaths.forgotPassword,
+        widget.redirectTo ?? RoutePaths.feed,
+      ),
+    );
   }
 
   void _onAuthenticated() {
@@ -177,13 +186,13 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: NoWaveSpacing.small),
                       TextButton(
-                        onPressed: () => context.go('/'),
+                        onPressed: () => context.go(RoutePaths.feed),
                         child: Text(context.l10n.browseWithoutSignIn),
                       ),
                       // Public entry: signing in is exactly when the report
                       // is needed, so it must not hide behind the profile tab.
                       TextButton(
-                        onPressed: () => context.push('/about'),
+                        onPressed: () => context.push(RoutePaths.about),
                         child: Text(context.l10n.diagnosticsEntry),
                       ),
                       const SizedBox(height: AuthRhythm.hero),

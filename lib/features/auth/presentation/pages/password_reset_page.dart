@@ -13,6 +13,7 @@ import 'package:belog/features/auth/presentation/widgets/auth_field.dart';
 import 'package:flutter/material.dart';
 import 'package:fpdart/fpdart.dart' show Either, left;
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// Redeems a copied one-time reset link or token. The token is sent only in
 /// the body of an anonymous API request; it is never placed in a route or log.
@@ -49,16 +50,13 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
     super.dispose();
   }
 
-  String _location(String path) {
-    final target = widget.redirectTo;
-    return target == null
-        ? path
-        : '$path?redirect=${Uri.encodeComponent(target)}';
-  }
+  String _location(String path) =>
+      RoutePaths.withRedirect(path, widget.redirectTo);
 
-  void _backToSignIn() => context.go(_location('/login'));
+  void _backToSignIn() => context.go(_location(RoutePaths.login));
 
-  void _requestAnotherLink() => context.push(_location('/forgot-password'));
+  void _requestAnotherLink() =>
+      context.push(_location(RoutePaths.forgotPassword));
 
   String? _tokenProblem(String? value) {
     if (value == null || value.trim().isEmpty) {

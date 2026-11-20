@@ -57,8 +57,10 @@ void main() {
   });
 
   test('search boxes share one debounce', () {
+    // The value itself lives with the other configured waits (#295);
+    // search_debounce.dart re-exports it as kSearchDebounceDelay.
     final hits = offenders(RegExp(r'Duration\(milliseconds: 300\)'), {
-      'lib/core/utils/search_debounce.dart',
+      'lib/core/config/app_durations.dart',
     });
     expect(
       hits,
@@ -75,6 +77,7 @@ void main() {
       'lib/core/utils/show_snackbar.dart',
       'lib/core/utils/format_date.dart',
       'lib/core/utils/search_debounce.dart',
+      'lib/core/config/app_durations.dart',
     ]) {
       expect(File(path).existsSync(), isTrue, reason: path);
     }

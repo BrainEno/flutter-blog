@@ -13,6 +13,7 @@ import 'package:belog/features/auth/presentation/widgets/auth_primary_button.dar
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// Account registration.
 ///
@@ -43,8 +44,12 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   void _openLogin() {
-    final target = Uri.encodeComponent(widget.redirectTo ?? '/');
-    context.go('/login?redirect=$target');
+    context.go(
+      RoutePaths.withRedirect(
+        RoutePaths.login,
+        widget.redirectTo ?? RoutePaths.feed,
+      ),
+    );
   }
 
   @override
@@ -145,7 +150,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       ),
                       const SizedBox(height: NoWaveSpacing.small),
                       TextButton(
-                        onPressed: () => context.go('/'),
+                        onPressed: () => context.go(RoutePaths.feed),
                         child: Text(context.l10n.browseWithoutSignUp),
                       ),
                       const SizedBox(height: AuthRhythm.hero),

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/core/storage/backend_key.dart';
 import 'package:belog/features/blog/domain/editing/structured_article_draft.dart';
@@ -78,7 +79,7 @@ class SqliteStructuredBodyRecoveryStore
         (afterRowId != null && afterRowId <= 0)) {
       throw ArgumentError('Invalid catalog identity or cursor');
     }
-    const pageSize = 25;
+    const pageSize = AppLimits.structuredRecoveryPageSize;
     final rows = await database
         .customSelect(
           'SELECT id, substr(article_id, 1, 4097) AS article, '

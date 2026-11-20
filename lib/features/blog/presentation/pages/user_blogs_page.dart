@@ -27,6 +27,7 @@ import 'package:belog/features/blog/presentation/widgets/blog_grid_skeleton.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 class UserBlogsPage extends StatefulWidget {
   const UserBlogsPage({super.key, this.structuredOpener, this.recoveryList});
@@ -141,7 +142,10 @@ class _UserBlogsPageState extends State<UserBlogsPage>
       return;
     }
     // The ordinary Markdown path and its publish safeguards stay unchanged.
-    final changed = await context.push<bool>('/profile/editor', extra: blog);
+    final changed = await context.push<bool>(
+      RoutePaths.profileEditor,
+      extra: blog,
+    );
     if (changed == true && mounted) {
       _fetchUserBlogs();
     }
@@ -183,7 +187,7 @@ class _UserBlogsPageState extends State<UserBlogsPage>
   }
 
   Future<void> _openRecycleBin() async {
-    await context.push('/profile/my-articles/recycle-bin');
+    await context.push(RoutePaths.recycleBin);
     if (mounted) _fetchUserBlogs();
   }
 

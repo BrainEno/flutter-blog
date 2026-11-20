@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:belog/core/config/app_durations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/error/failures.dart';
@@ -55,7 +56,7 @@ class EditorSessionCoordinator extends StatefulWidget {
 }
 
 class _EditorSessionCoordinatorState extends State<EditorSessionCoordinator> {
-  static const _kAutoSaveDelay = Duration(seconds: 2);
+  static const _kAutoSaveDelay = AppDurations.editorAutoSave;
 
   final titleController = TextEditingController();
   final contentController = TextEditingController();

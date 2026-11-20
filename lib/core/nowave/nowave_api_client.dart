@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:belog/core/config/app_durations.dart';
 import 'package:belog/core/network/connectivity_evidence.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/transport/api_base_url.dart';
@@ -80,14 +81,14 @@ abstract interface class NowaveViewerAuthenticator
 /// see docs/supabase-to-nowave-migration.md.
 class NowaveApiClient {
   /// Notion imports can copy remote images and need longer than ordinary JSON.
-  static const notionImportTimeout = Duration(minutes: 2);
+  static const notionImportTimeout = AppDurations.notionImportTimeout;
 
   NowaveApiClient({
     required Uri baseUrl,
     NowaveAuthenticator? authenticator,
     http.Client? httpClient,
     this.connectivityEvidence,
-    this.timeout = const Duration(seconds: 30),
+    this.timeout = AppDurations.requestTimeout,
   }) : _base = ApiBaseUrl.parse(baseUrl),
        _authenticator = authenticator,
        _httpClient = httpClient ?? http.Client();
@@ -407,7 +408,7 @@ class NowaveApiClient {
       '/me/media',
       rawBody: bytes,
       contentType: contentType,
-      timeout: const Duration(seconds: 90),
+      timeout: AppDurations.mediaUploadTimeout,
       sessionFence: sessionFence,
     );
     return NowaveMediaAsset.fromDataMap(requireJsonMap(data, 'media asset'));

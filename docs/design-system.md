@@ -1,6 +1,6 @@
 # 界面设计系统（tokens 与组件）
 
-> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+> 状态：active ｜ 最后核对：2026-11-19 @ eb363b3
 
 本页是客户端「长什么样」的唯一入口：色板、间距、圆角、线宽、动效、断点，以及
 共用组件的 API 和使用规则。目标是让新增页面**不需要**重新决定这些数字——需要时
@@ -84,6 +84,8 @@
 | `NoWaveSizes.splashProgressLength` | 72 | 该装饰段的长度 |
 | `NoWaveSizes.loadingRule` | 40 | 加载标签上方那道短横线 |
 | `NoWaveSizes.skeletonLine` | 12 | 骨架屏一行的高度（≈正文 x-height） |
+| `NoWaveSizes.activityChart` | 56 | 阅读统计 7 天活动条的高度 |
+| `NoWaveSizes.activityBarEmpty` | 0.06 | 当天无阅读时活动条占图表高度的比例（保留可见基线） |
 
 编辑式界面本身仍是方角（`none`）：`inline` 到 `container` 这几档记录的是内容面
 **已经在用**的圆角（#294 盘点时散落为 18 处 `BorderRadius.circular(数字)`），给它们起名

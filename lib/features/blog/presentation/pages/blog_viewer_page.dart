@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// Shows a single article.
 ///
@@ -154,7 +155,7 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
 
   void _requestLogin() {
     final currentLocation = GoRouterState.of(context).uri.toString();
-    context.push('/login?redirect=${Uri.encodeComponent(currentLocation)}');
+    context.push(RoutePaths.withRedirect(RoutePaths.login, currentLocation));
   }
 
   /// The related-articles use case is an optional decoration, not part of

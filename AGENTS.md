@@ -63,6 +63,7 @@ The only generated code left is the ARB localization class, produced by `flutter
 - Async writes must be awaited. Define stable ordering and identifiers for pagination, caches and relationships. Make offline behavior explicit instead of reporting a fake success.
 - Protect authorization at the trusted server/database layer; hiding a client button is not authorization.
 - Dependency registrations live in one module per feature under `lib/di/` (listed in `lib/di/app_modules.dart`); `lib/init_dependencies.dart` is only the composition root (storage, session, HTTP client) and must stay at or under 150 lines (#304). A new registration needs a row in `test/unit/di/app_modules_test.dart`, which resolves every registered type from the real modules.
+- Configured values have one home (#295): a timeout, debounce, dwell time, retry schedule or retention window is a named constant in `lib/core/config/app_durations.dart`; a page size or row cap lives in `lib/core/config/app_limits.dart`; a route pattern or navigation location lives in `lib/router/route_paths.dart`. Call sites read the constant. `test/unit/design/no_magic_durations_test.dart` and `test/unit/core/route_paths_guard_test.dart` reject new literals elsewhere; animation durations still come from `NoWaveMotion`.
 
 ## Completion report
 

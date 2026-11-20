@@ -1,3 +1,4 @@
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 
 /// One entry of the device-local reading history (issue #22).
@@ -34,7 +35,7 @@ abstract class ReadingHistoryStore {
   /// The user's most recent reads, newest first.
   Future<List<ReadingHistoryEntry>> list({
     required String userId,
-    int limit = 200,
+    int limit = AppLimits.readingHistoryPageSize,
   });
 
   /// Deletes one entry.

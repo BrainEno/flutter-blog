@@ -1,3 +1,4 @@
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
@@ -31,7 +32,7 @@ class MessageRepositoryImpl implements MessageRepository {
   @override
   Future<Either<Failure, List<Conversation>>> conversations({
     required NowaveSessionFence fence,
-    int limit = 50,
+    int limit = AppLimits.conversationPageSize,
   }) async {
     final bounded = _bound(limit);
     try {
@@ -73,7 +74,7 @@ class MessageRepositoryImpl implements MessageRepository {
   Future<Either<Failure, List<ConversationMessage>>> messages(
     String conversationId, {
     required NowaveSessionFence fence,
-    int limit = 100,
+    int limit = AppLimits.messagePageSize,
     String? before,
   }) async {
     final invalid = _invalidConversationId(conversationId);

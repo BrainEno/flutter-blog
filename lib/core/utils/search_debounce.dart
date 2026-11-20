@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:belog/core/config/app_durations.dart';
+
 /// The pause after the last keystroke before a search box queries (#292).
 ///
 /// Every search field in the app - articles, authors and message participants
 /// - waits the same 300ms, so typing feels the same everywhere and a change
 /// to the delay happens in one place.
-const Duration kSearchDebounceDelay = Duration(milliseconds: 300);
+const Duration kSearchDebounceDelay = AppDurations.searchDebounce;
 
 /// Runs only the last action scheduled within [delay].
 ///

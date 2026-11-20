@@ -16,6 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
+import 'package:belog/router/route_paths.dart';
 
 /// One private conversation.
 ///
@@ -203,7 +204,7 @@ class _MessageThreadViewState extends State<_MessageThreadView> {
             MessageThreadSignedOut() => _ThreadStatus(
               message: l10n.messagesEmptyTitle,
               actionLabel: l10n.signIn,
-              onAction: () => context.push('/login'),
+              onAction: () => context.push(RoutePaths.login),
             ),
             MessageThreadMissing() => _ThreadStatus(
               message: l10n.messagesMissing,
