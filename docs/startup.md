@@ -13,7 +13,7 @@
 启动这一段放在 `lib/boot/`，不在 `lib/core/`：`test/unit/core/layering_test.dart` 规定
 `lib/core` 是底层、不得 import `lib/features/`，而启动编排必然要建 `AuthBloc`、起
 `PublishQueueService`——那是组合根，只能待在顶层（和 `app.dart`、`init_dependencies.dart`
-一样）。幕布本身不碰 features，但它和「谁在什么时候揭幕」是一件事，跟着一起放。
+以及按功能拆分的注册模块 `lib/di/` 一样，#304）。幕布本身不碰 features，但它和「谁在什么时候揭幕」是一件事，跟着一起放。
 
 ```
 WidgetsFlutterBinding.ensureInitialized()

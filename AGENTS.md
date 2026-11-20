@@ -62,6 +62,7 @@ The only generated code left is the ARB localization class, produced by `flutter
 - Preserve generated files that belong to committed generators; regenerate them using the repository's configured toolchain instead of hand-editing generated output.
 - Async writes must be awaited. Define stable ordering and identifiers for pagination, caches and relationships. Make offline behavior explicit instead of reporting a fake success.
 - Protect authorization at the trusted server/database layer; hiding a client button is not authorization.
+- Dependency registrations live in one module per feature under `lib/di/` (listed in `lib/di/app_modules.dart`); `lib/init_dependencies.dart` is only the composition root (storage, session, HTTP client) and must stay at or under 150 lines (#304). A new registration needs a row in `test/unit/di/app_modules_test.dart`, which resolves every registered type from the real modules.
 
 ## Completion report
 
