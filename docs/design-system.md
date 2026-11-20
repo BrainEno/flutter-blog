@@ -94,6 +94,7 @@
 | `NoWaveSizes.eyebrowRule` | 16 | 章节标题上方小标题（eyebrow）前的橙色短线；比底栏标记短，读作标点而不是下划线 |
 | `NoWaveSizes.busySegment` | 0.4 | 忙碌标记里走动线段占图标槽位的比例（槽位很小，所以比刷新线段长） |
 | `NoWaveSizes.endMark` | 8 | 文末那枚橙色小方块（杂志的终止符）的边长 |
+| `NoWaveSizes.statusRule` | 24 | 空态/出错态记号里方块两侧各一段发丝线的长度（与底栏橙线等长，读作一个记号而不是分隔线） |
 | `NoWaveSizes.refreshSegment` | 0.3 | 下拉刷新进行中，沿列表顶边移动的橙色线段占列表宽度的比例 |
 
 编辑式界面本身仍是方角（`none`）：`inline` 到 `container` 这几档记录的是内容面
@@ -217,7 +218,7 @@
 | `NoWaveBadge` | `design/components/no_wave_badge.dart` | 封面或标题旁的短标签（草稿、语言版本） |
 | `NoWaveNotice` | `design/components/no_wave_notice.dart` | 内联提示（说明、限制、失败 + 重试） |
 | `showNoWaveConfirmDialog` | `design/components/no_wave_confirm_dialog.dart` | 破坏性动作的二次确认 |
-| `NoWaveStatus` | `common/widgets/no_wave_status.dart` | 空态/错误态（带可选行动） |
+| `NoWaveStatus` / `NoWaveStatusMark` | `common/widgets/no_wave_status.dart` | 空态/错误态：一枚印刷记号（无事可做是空心方块，有行动是橙色实心）、一句话、至多一个描边按钮；出现时线向两边画出、文字随后升入 |
 | `NoWaveSectionHeading` / `NoWaveEyebrow` | `common/widgets/no_wave_section_heading.dart` | 编辑式大标题（可换行）；可选的小标题 `NoWaveEyebrow`：橙色短线 + 小号、拉开字距的一行，拉丁字母全大写 |
 | `NoWaveActionRow` | `common/widgets/no_wave_action_row.dart` | 个人中心式的可点行动行；与文章卡片同样的回应（水波、橙色焦点/悬停洗色、行尾箭头前移），但不下沉 |
 | `NoWaveMasthead` | `common/widgets/no_wave_masthead.dart` | 双字体字标 |
@@ -430,6 +431,23 @@
 - **怎么走**：比一屏（`returnLeap`）更远时先跳到离顶部一屏处，再用 `slow` + `travel`
   走完最后一屏——读起来是「回去」一个动作，而不是一路刷过所有文章。少动时直接跳到顶。
 
+### 空态与出错：一枚记号、一句话、一条路
+
+40 处空列表、无结果、加载失败都走 `NoWaveStatus`。原来是一个 48pt 的斜体破折号，
+空和错长得一样，读者要读完那句话才知道该不该做点什么。现在：
+
+- **记号**（`NoWaveStatusMark`）：文末终止符的缩小版——方块（`endMark`）两侧各一段
+  `statusRule` 长的发丝线。**空心**（`onSurfaceVariant` 发丝线描边）表示无事可做；
+  **橙色实心**表示这里有一条路（重试、返回）——橙色在别处标「位置」，这里标的是
+  「轮到你了」。是否实心只由有没有行动决定，调用方不用改。
+- **一句话**：`bodyLarge` 居中；**行动**：`NoWaveButton.secondary`（方角描边、48pt），
+  比纯文字按钮更像一个能按的东西。
+- **出现**：两段线从方块向外画出，句子与按钮晚 `strokeLag` 淡入并上浮
+  `entranceRise`，共 `slow` + `curve`。重试后又失败时会重新落一次，而不是看起来什么都
+  没发生。只动绘制：句子和按钮从第一帧起就在原位、能点、能读（`alwaysIncludeSemantics`）。
+  少动时不构建任何动画。
+- **读屏**：整体仍是 live region；记号不读。
+
 ### 文末与提示条：两处印刷记号
 
 - **`NoWaveEndMark`**：手机上正文直接接「相关阅读」和评论，读者分不清最后一段是结束
@@ -439,6 +457,9 @@
   `articleEnd`（全文完 / The end），作者已知时接 `articleEndByline`（中文直接是作者名，
   英文 Words by …）；匿名作者不写署名，而不是写「匿名作者」。线和方块不读，那一行
   照常朗读，读屏用户和看屏幕的人同样知道文章在哪里结束。
+  首页 feed 与搜索结果翻到底时也印这一枚（`feedNoMore` / `feedCachedNoMore` /
+  `searchNoMore` / `searchLimitReached` 作为那一行），最后一张卡片读起来是「最后」，
+  而不是「还在加载」。
 - **提示条（`showSnackBar`）**：仍是反色的一张纸条（纸上墨、墨上纸），方角无阴影。
   内容换成 `NoWaveSnackBarContent`：起始边一道 `accentRule` 宽的橙线，像校对在页边
   画的记号，意思是「这是关于你刚才那个操作」。橙线与文字等高（`IntrinsicHeight`），

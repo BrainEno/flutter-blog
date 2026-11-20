@@ -1,6 +1,7 @@
 import 'package:belog/core/common/widgets/no_wave_masthead.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/components/no_wave_end_mark.dart';
 import 'package:belog/core/design/components/no_wave_entrance.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
@@ -237,11 +238,13 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate((context, index) {
                       if (index == blogs.length) {
-                        return Padding(
-                          padding: const EdgeInsets.all(NoWaveSpacing.medium),
-                          child: Center(
-                            child: Text(
-                              blogs.length >= kMaxSearchResults
+                        return _contentWidth(
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: NoWaveSpacing.large,
+                            ),
+                            child: NoWaveEndMark(
+                              label: blogs.length >= kMaxSearchResults
                                   ? l10n.searchLimitReached(
                                       formatNumber(
                                         Localizations.localeOf(context),
@@ -249,7 +252,6 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                                       ),
                                     )
                                   : l10n.searchNoMore,
-                              style: NoWaveTypography.meta(context),
                             ),
                           ),
                         );
