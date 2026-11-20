@@ -235,8 +235,9 @@ class _StructuredLocalTextPageState extends State<StructuredLocalTextPage>
         ],
       );
     }
-    if (!_initialized)
+    if (!_initialized) {
       return StructuredLocalNotice(l10n.structuredLocalFailure);
+    }
     final canEdit =
         !_busy &&
         !state.finishing &&
