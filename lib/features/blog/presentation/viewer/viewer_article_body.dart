@@ -33,6 +33,7 @@ class ViewerArticleBody extends StatelessWidget {
     required this.scrollController,
     required this.getRelatedArticles,
     required this.onRequestLogin,
+    this.titleKey,
   });
 
   final Blog blog;
@@ -49,6 +50,10 @@ class ViewerArticleBody extends StatelessWidget {
   final ScrollController scrollController;
   final GetRelatedArticles? getRelatedArticles;
   final VoidCallback onRequestLogin;
+
+  /// Marks the title when read-aloud has not already keyed it, so the
+  /// running head can tell when it has scrolled away.
+  final GlobalKey? titleKey;
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +93,7 @@ class ViewerArticleBody extends StatelessWidget {
                       onCategoryTap: (category) =>
                           openCategoryArticles(context, category),
                       titleHighlight: reader?.highlights.first,
-                      titleKey: blockKeys.isEmpty ? null : blockKeys.first,
+                      titleKey: blockKeys.isEmpty ? titleKey : blockKeys.first,
                     ),
                     const SizedBox(height: NoWaveSpacing.section),
                     if (blog.document?.supported == false) ...[

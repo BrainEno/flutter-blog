@@ -72,6 +72,8 @@
   "anonymousAuthor": "Anonymous author",
   "anonymousReader": "Anonymous reader",
   "shareArticleTooltip": "Share article",
+  "readerRunningHead": "{title}, back to top",
+  "@readerRunningHead": {"placeholders": {"title": {"type": "String"}}},
   "saveTooltip": "Save",
   "unsaveTooltip": "Remove from saved",
   "signInRequired": "Please sign in first",

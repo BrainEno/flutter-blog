@@ -117,6 +117,7 @@
 | `label` | 15 | 标签/分类 chip 与列表行标题（阅读历史） |
 | `emptyState` | 16 | 空态说明句 |
 | `hint` | 17 | 封面上传框里的提示 |
+| `runningHead` | 17 | 阅读页书眉：标题滚走后，应用栏里重复的那行小标题 |
 | `sectionTitle` | 18 | 文章下方的分节标题（评论、相关阅读） |
 | `authTitle` | 32 | 登录 / 注册页标题 |
 
@@ -147,6 +148,7 @@
 | `pressScale` | 0.98 | 文章被按下时下沉到的比例（像纸被指尖压下，不像玩具按钮） |
 | `stampScale` | 1.3 | 切换态图标落下时的初始放大比例（盖章，而不是换图） |
 | `entranceCount` | 6 | 新列表里逐个上浮进场的条目数（约一屏），间隔 `stagger` |
+| `runningHeadRise` | 0.5 | 书眉出现时从自身高度一半处升到位（读作「升进栏里」，而不是从别处滑来） |
 | `strokeLag` | 0.25 | 橙线移动时后沿比前沿晚走、晚到的比例（占 `slow`）：先伸长再收拢，像一笔，而不像橡皮筋 |
 
 幕布那几行只在冷启动用，语义与时序见 [冷启动与墨色幕布](startup.md)。
@@ -213,7 +215,7 @@
 | `showNoWaveConfirmDialog` | `design/components/no_wave_confirm_dialog.dart` | 破坏性动作的二次确认 |
 | `NoWaveStatus` | `common/widgets/no_wave_status.dart` | 空态/错误态（带可选行动） |
 | `NoWaveSectionHeading` / `NoWaveEyebrow` | `common/widgets/no_wave_section_heading.dart` | 编辑式大标题（可换行）；可选的小标题 `NoWaveEyebrow`：橙色短线 + 小号、拉开字距的一行，拉丁字母全大写 |
-| `NoWaveActionRow` | `common/widgets/no_wave_action_row.dart` | 个人中心式的可点行动行 |
+| `NoWaveActionRow` | `common/widgets/no_wave_action_row.dart` | 个人中心式的可点行动行；与文章卡片同样的回应（水波、橙色焦点/悬停洗色、行尾箭头前移），但不下沉 |
 | `NoWaveMasthead` | `common/widgets/no_wave_masthead.dart` | 双字体字标 |
 | `NoWaveAvatar` | `common/widgets/no_wave_avatar.dart` | 方形头像，失败回退中性图 |
 | `NoWaveLoadingLabel` | `design/components/no_wave_loading_label.dart` | 加载态：一道短横线 + 一句文案，没有转圈 |
@@ -222,7 +224,8 @@
 | `BlogGridSkeleton` | `features/blog/presentation/widgets/blog_grid_skeleton.dart` | 网格首帧：与 `blogGridDelegate` 同列数、同高，封面沿用 4/3 |
 | `NoWaveFadeTransition` | `design/components/no_wave_fade_transition.dart` | 标签切换的淡入；少动时不构建转场 |
 | `NoWaveTabIndicator` | `design/components/no_wave_tab_indicator.dart` | 底栏选中项上方的橙色短线，切换时滑到新位置；少动时直接落位 |
-| `NoWaveEndMark` | `design/components/no_wave_end_mark.dart` | 文末终止符：两段发丝线中间一枚橙色小方块，下面一行「全文完 · 文 / 作者」；阅读页正文之后、相关阅读之前 |
+| `NoWaveRunningHead` | `design/components/no_wave_running_head.dart` | 阅读页书眉：正文标题滚到应用栏下面后，栏里升起一行小标题并出现一道发丝线；点它回到开头 |
+| `NoWaveEndMark` | `design/components/no_wave_end_mark.dart` | 文末终止符：两段发丝线中间一枚橙色小方块，下面一行「全文完 · 作者名」；阅读页正文之后、相关阅读之前 |
 | `NoWaveSnackBarContent` | `core/utils/show_snackbar.dart` | 所有提示条的内容：起始边一道与文字等高的橙线，再接那句话；由 `showSnackBar` 统一使用 |
 | `NoWaveBusyMark` | `design/components/no_wave_busy_mark.dart` | 控件槽位里的忙碌态（按钮加载、行内恢复、发送图标）：图标大小的细线上走过一小段，颜色随控件；少动时停在中间 |
 | `NoWaveRefresh` | `design/components/no_wave_refresh.dart` | 下拉刷新：沿用系统手势，不画转圈；顶边一道线随手指从中间长出，过了松手点变橙，刷新时一段橙线沿顶边走过 |
@@ -391,14 +394,32 @@
 用在：首页 feed（`feedEyebrow`）、搜索（`searchEyebrow`）、离线书库
 （`offlineLibraryEyebrow`）、作者页文章区（`authorArticlesEyebrow`）。
 
+### 书眉：标题滚走以后
+
+长文读过第一屏，应用栏里只剩返回箭头和两个图标，没有任何地方说明你在读什么。书籍的
+做法是书眉——每页顶端印一行小号的书名。`NoWaveRunningHead` 就是阅读页的书眉：
+
+- **何时出现**：正文标题整个滚到应用栏下面时（`NoWaveRunningHead.passed`：从布局里
+  读出标题底边在内容中的位置，再与通知自带的滚动偏移比较，所以封面、提示、分类在不在、
+  字号多大都不影响；不用标题的屏幕位置，因为滚动通知先于移动标题的那一帧到达，屏幕
+  位置会慢一步，惯性滚动正好停在阈值上时会留下错误状态）；标题回来时
+  离开。只看文章本身的纵向滚动（depth 0），横向代码块不算。
+- **样子**：`NoWaveTypeScale.runningHead`（17）的衬线标题，单行省略；从自身一半高度处
+  （`runningHeadRise`）随淡入升到位，`normal` + `curve`。同时应用栏下沿出现一道与
+  `Divider` 同色的发丝线——书眉总是压在一道线上；回到顶部时线变透明。
+- **点它回到开头**：`slow` + `travel` 滚回顶部；少动时直接跳。
+- **读屏**：隐藏时根本不构建，页面上标题只有一份；出现时是一个按钮，名字是
+  `readerRunningHead`（「标题，回到开头」），可见文字包含在名字里。少动时原地出现、
+  原地消失。
+
 ### 文末与提示条：两处印刷记号
 
 - **`NoWaveEndMark`**：手机上正文直接接「相关阅读」和评论，读者分不清最后一段是结束
   还是停顿。杂志的做法是在最后一行后面印一枚实心小方块。这里把它做成一个分节符：
   两段与 `Divider` 同色同粗的发丝线，中间一枚 `endMark`（8）见方的 `AppPalette.orange`
   方块——橙色在别处标「位置」，这里标的是最后一个位置。下面一行 `metaLabel` 居中：
-  `articleEnd`（全文完 / The end），作者已知时接 `articleEndByline`（文 / 某某 /
-  Words by …）；匿名作者不写署名，而不是写「文 / 匿名作者」。线和方块不读，那一行
+  `articleEnd`（全文完 / The end），作者已知时接 `articleEndByline`（中文直接是作者名，
+  英文 Words by …）；匿名作者不写署名，而不是写「匿名作者」。线和方块不读，那一行
   照常朗读，读屏用户和看屏幕的人同样知道文章在哪里结束。
 - **提示条（`showSnackBar`）**：仍是反色的一张纸条（纸上墨、墨上纸），方角无阴影。
   内容换成 `NoWaveSnackBarContent`：起始边一道 `accentRule` 宽的橙线，像校对在页边
@@ -415,6 +436,8 @@
   行尾的 `NoWavePressArrow` 沿阅读方向迈出 `arrowNudge`——「这一行通往某处」。悬停
   和键盘聚焦也会让箭头迈步，所以不用触屏的人得到同样的回答。仍然是 `InkWell`，焦点、
   悬停洗色（`focusAlpha` / `hoverAlpha`）与读屏语义都不变。
+  个人中心与设置里的 `NoWaveActionRow` 也用它，但传 `sink: false`：整宽、顶上压着一道
+  线的行一缩放，线就会从两边缩进去；所以行只用箭头迈步和洗色回答。
 - **进场（`NoWaveEntrance`）**：首页 feed 第一次出现时，前 `entranceCount` 条依次
   淡入并上浮 `entranceRise`，间隔 `stagger`——像一页刚从印刷机上下来，而不是一帧里
   全部出现。只动绘制：布局、点击与语义从第一帧起就是最终状态（`Opacity` 设
