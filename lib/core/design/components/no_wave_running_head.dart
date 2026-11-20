@@ -4,6 +4,7 @@ import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/design/motion/no_wave_motion_policy.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 /// The article's title, repeated small in the app bar once the real title has
 /// scrolled away - a book's running head.
@@ -46,22 +47,22 @@ class NoWaveRunningHead extends StatelessWidget {
   /// Whether [anchor] - the real title - has scrolled wholly above the top
   /// of the scroll view that sent [notification].
   ///
-  /// Measured on screen rather than as a scroll offset, so it stays right
-  /// whatever sits above the title (a cover, a notice, categories) and
-  /// whatever size the type is.
+  /// The title's place is read from the layout (where its bottom edge sits in
+  /// the scrolled content), not assumed, so it stays right whatever sits above
+  /// it - a cover, a notice, categories - and whatever size the type is. It is
+  /// compared with the notification's own scroll offset rather than with the
+  /// title's position on screen: a scroll notification arrives before the
+  /// frame that moves the title, so the screen would answer one step late,
+  /// and a fling that ends on the threshold would leave it wrong.
   static bool passed(BuildContext? anchor, ScrollNotification notification) {
     final title = anchor?.findRenderObject();
-    final viewport = notification.context?.findRenderObject();
-    if (title is! RenderBox ||
-        viewport is! RenderBox ||
-        !title.attached ||
-        !title.hasSize ||
-        !viewport.hasSize) {
+    if (title is! RenderBox || !title.attached || !title.hasSize) {
       return false;
     }
-    final titleBottom = title.localToGlobal(Offset(0, title.size.height)).dy;
-    final viewportTop = viewport.localToGlobal(Offset.zero).dy;
-    return titleBottom <= viewportTop;
+    final viewport = RenderAbstractViewport.maybeOf(title);
+    if (viewport == null) return false;
+    final top = viewport.getOffsetToReveal(title, 0).offset;
+    return notification.metrics.pixels >= top + title.size.height;
   }
 
   /// Back to the top of [controller]'s scroll view: a short travel, or a
@@ -89,6 +90,9 @@ class NoWaveRunningHead extends StatelessWidget {
             key: const ValueKey('no-wave-running-head'),
             button: onTap != null,
             label: semanticLabel,
+            // The ink well's own tap is excluded with its text, so the
+            // action is restated here for screen readers.
+            onTap: onTap,
             excludeSemantics: true,
             child: InkWell(
               onTap: onTap,
