@@ -443,8 +443,7 @@ class LocalBufferSession<V, B, R, S extends LocalBufferState<V>> {
   }
 
   Future<void> _drain() async {
-    while (_pending != null) {
-      final edit = _pending!;
+    for (var edit = _pending; edit != null; edit = _pending) {
       _pending = null;
       try {
         final previous = _saved;
