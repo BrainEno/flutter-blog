@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_end_mark.dart';
 import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/design/components/no_wave_entrance.dart';
@@ -405,12 +406,15 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
                 ),
               );
             }
-            return Padding(
-              padding: const EdgeInsets.all(NoWaveSpacing.medium),
-              child: Center(
-                child: Text(
-                  isCached ? l10n.feedCachedNoMore : l10n.feedNoMore,
-                  style: NoWaveTypography.meta(context),
+            // The bottom of the feed is printed like the end of an article,
+            // so the last card reads as last, not as a page still loading.
+            return _contentWidth(
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: NoWaveSpacing.large,
+                ),
+                child: NoWaveEndMark(
+                  label: isCached ? l10n.feedCachedNoMore : l10n.feedNoMore,
                 ),
               ),
             );

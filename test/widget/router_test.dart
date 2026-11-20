@@ -531,7 +531,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(BlogViewerPage), findsOneWidget);
     // The body ends with the end mark, before related reading and comments.
-    expect(find.byType(NoWaveEndMark, skipOffstage: false), findsOneWidget);
+    // (The feed underneath ends with one too, so look inside the reader.)
+    expect(
+      find.descendant(
+        of: find.byType(BlogViewerPage),
+        matching: find.byType(NoWaveEndMark, skipOffstage: false),
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
     expect(find.textContaining('全文完', skipOffstage: false), findsOneWidget);
 
     // Switch to the search tab and back.

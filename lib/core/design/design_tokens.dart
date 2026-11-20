@@ -270,6 +270,11 @@ abstract final class NoWaveSizes {
   /// magazine prints after the last line.
   static const endMark = 8.0;
 
+  /// Length of each hairline beside the square in an empty or failed state:
+  /// as long as the tab indicator, so the mark reads as one printed figure
+  /// rather than as a divider across the page.
+  static const statusRule = 24.0;
+
   /// Share of the list's width the running refresh segment covers while it
   /// travels along the top edge: long enough to read as a rule, short enough
   /// to read as moving.
