@@ -6,6 +6,7 @@ import 'package:belog/core/l10n/edition_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_text_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_text_buffer.dart';
+import 'package:belog/features/blog/presentation/editor/structured_local_page_chrome.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -105,28 +106,14 @@ class _StructuredLocalTextPageState extends State<StructuredLocalTextPage>
   Future<void> _leave() async {
     if (_busy || _exiting) return;
     _exiting = true;
-    final closed = await widget.session.close();
+    final mayPop = await closeStructuredSessionForExit(
+      context,
+      widget.session.close,
+    );
     if (!mounted) return;
-    if (!closed) {
-      final l10n = context.l10n;
-      final confirmed = await showNoWaveConfirmDialog(
-        context,
-        title: l10n.structuredExitTitle,
-        message: l10n.structuredExitBody,
-        cancelLabel: l10n.actionCancel,
-        confirmLabel: l10n.structuredExitAction,
-      );
-      if (!mounted) return;
-      if (!confirmed) {
-        _exiting = false;
-        return;
-      }
-      final abandoned = await widget.session.close(abandonUnsaved: true);
-      if (!mounted) return;
-      if (!abandoned) {
-        _exiting = false;
-        return;
-      }
+    if (!mayPop) {
+      _exiting = false;
+      return;
     }
     Navigator.of(context).pop();
   }
@@ -194,22 +181,10 @@ class _StructuredLocalTextPageState extends State<StructuredLocalTextPage>
       _reading = false;
     }
     final l10n = context.l10n;
-    return PopScope<Object?>(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) unawaited(_leave());
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            tooltip: l10n.actionBack,
-            icon: const Icon(Icons.arrow_back),
-            onPressed: _leave,
-          ),
-          title: Text(l10n.structuredTextTitle),
-        ),
-        body: SafeArea(child: _content(context, state)),
-      ),
+    return StructuredLocalScaffold(
+      title: l10n.structuredTextTitle,
+      onLeave: _leave,
+      body: _content(context, state),
     );
   }
 
@@ -217,22 +192,20 @@ class _StructuredLocalTextPageState extends State<StructuredLocalTextPage>
     final l10n = context.l10n;
     if (state.phase == LocalTextPhase.initial ||
         state.phase == LocalTextPhase.opening) {
-      return Center(
-        child: Semantics(liveRegion: true, child: Text(l10n.structuredLoading)),
-      );
+      return StructuredLocalNotice(l10n.structuredLoading, live: true);
     }
     if (state.phase == LocalTextPhase.invalidated ||
         state.phase == LocalTextPhase.closed) {
-      return Center(child: Text(l10n.structuredSessionChanged));
+      return StructuredLocalNotice(l10n.structuredSessionChanged);
     }
     if (state.phase == LocalTextPhase.loadFailed) {
-      return Center(child: Text(l10n.structuredLocalFailure));
+      return StructuredLocalNotice(l10n.structuredLocalFailure);
     }
     if (state.phase == LocalTextPhase.conflict && !_initialized) {
-      return Center(child: Text(l10n.structuredConflict));
+      return StructuredLocalNotice(l10n.structuredConflict);
     }
     if (state.phase == LocalTextPhase.cancelled) {
-      return Center(child: Text(l10n.structuredRecoveryBody));
+      return StructuredLocalNotice(l10n.structuredRecoveryBody);
     }
     if (state.phase == LocalTextPhase.recoveryChoice) {
       return ListView(
@@ -262,7 +235,9 @@ class _StructuredLocalTextPageState extends State<StructuredLocalTextPage>
         ],
       );
     }
-    if (!_initialized) return Center(child: Text(l10n.structuredLocalFailure));
+    if (!_initialized) {
+      return StructuredLocalNotice(l10n.structuredLocalFailure);
+    }
     final canEdit =
         !_busy &&
         !state.finishing &&

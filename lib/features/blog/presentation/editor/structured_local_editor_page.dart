@@ -21,6 +21,7 @@ import 'package:belog/features/blog/presentation/editor/structured_insert_page.d
 import 'package:belog/features/blog/presentation/editor/structured_list_page.dart';
 import 'package:belog/features/blog/presentation/editor/structured_local_inline_page.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
+import 'package:belog/features/blog/presentation/editor/structured_local_page_chrome.dart';
 import 'package:flutter/material.dart';
 
 enum _BodyHistoryAction { undo, redo, review, exportBody, importBody }
@@ -86,28 +87,14 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
   Future<void> _leave() async {
     if (_busy || _exiting) return;
     _exiting = true;
-    final closed = await widget.session.close();
+    final mayPop = await closeStructuredSessionForExit(
+      context,
+      widget.session.close,
+    );
     if (!mounted) return;
-    if (!closed) {
-      final l10n = context.l10n;
-      final confirmed = await showNoWaveConfirmDialog(
-        context,
-        title: l10n.structuredExitTitle,
-        message: l10n.structuredExitBody,
-        cancelLabel: l10n.actionCancel,
-        confirmLabel: l10n.structuredExitAction,
-      );
-      if (!mounted) return;
-      if (!confirmed) {
-        _exiting = false;
-        return;
-      }
-      final abandoned = await widget.session.close(abandonUnsaved: true);
-      if (!mounted) return;
-      if (!abandoned) {
-        _exiting = false;
-        return;
-      }
+    if (!mayPop) {
+      _exiting = false;
+      return;
     }
     Navigator.of(context).pop();
   }
@@ -412,113 +399,101 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
     } finally {
       _readingState = false;
     }
-    return PopScope<Object?>(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) unawaited(_leave());
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            tooltip: l10n.actionBack,
-            icon: const Icon(Icons.arrow_back),
-            onPressed: _leave,
-          ),
-          title: Text(l10n.structuredLocalTitle),
-          actions: [
-            PopupMenuButton<_BodyHistoryAction>(
-              key: const ValueKey('structured-history-menu'),
-              tooltip: l10n.structuredHistoryTitle,
-              enabled:
-                  state.body != null &&
-                  const {
-                    LocalStructuredPhase.editing,
-                    LocalStructuredPhase.saveFailed,
-                    LocalStructuredPhase.conflict,
-                  }.contains(state.phase) &&
-                  !_busy &&
-                  !_exiting,
-              icon: const Icon(Icons.history),
-              onSelected: (action) {
-                final generation = _historyMenuGeneration;
-                final selectedBody = _historyMenuBody;
-                _historyMenuGeneration = null;
-                _historyMenuBody = null;
-                final current = widget.session.state;
-                if (_busy ||
-                    _exiting ||
-                    selectedBody == null ||
-                    !identical(current.body, selectedBody)) {
-                  return;
-                }
-                if (action == _BodyHistoryAction.exportBody) {
-                  unawaited(_openTransfer(import: false));
-                  return;
-                }
-                final history = widget.session.captureBodyHistory();
-                if (generation == null || history?.generation != generation) {
-                  return;
-                }
-                switch (action) {
-                  case _BodyHistoryAction.undo:
-                    widget.session.undoBody();
-                  case _BodyHistoryAction.redo:
-                    widget.session.redoBody();
-                  case _BodyHistoryAction.review:
-                    unawaited(_openHistory());
-                  case _BodyHistoryAction.importBody:
-                    unawaited(_openTransfer(import: true));
-                  case _BodyHistoryAction.exportBody:
-                    break;
-                }
-              },
-              onCanceled: () {
-                _historyMenuGeneration = null;
-                _historyMenuBody = null;
-              },
-              itemBuilder: (context) {
-                final history = widget.session.captureBodyHistory();
-                _historyMenuGeneration = history?.generation;
-                _historyMenuBody = widget.session.state.body;
-                return [
-                  PopupMenuItem(
-                    key: const ValueKey('structured-history-undo'),
-                    value: _BodyHistoryAction.undo,
-                    enabled: history?.canUndo == true,
-                    child: Text(l10n.structuredHistoryUndo),
-                  ),
-                  PopupMenuItem(
-                    key: const ValueKey('structured-history-redo'),
-                    value: _BodyHistoryAction.redo,
-                    enabled: history?.canRedo == true,
-                    child: Text(l10n.structuredHistoryRedo),
-                  ),
-                  PopupMenuItem(
-                    key: const ValueKey('structured-history-open'),
-                    value: _BodyHistoryAction.review,
-                    enabled: history != null,
-                    child: Text(l10n.structuredHistoryTitle),
-                  ),
-                  const PopupMenuDivider(),
-                  PopupMenuItem(
-                    key: const ValueKey('structured-transfer-export'),
-                    value: _BodyHistoryAction.exportBody,
-                    enabled: _historyMenuBody != null,
-                    child: Text(l10n.structuredTransferExportTitle),
-                  ),
-                  PopupMenuItem(
-                    key: const ValueKey('structured-transfer-import'),
-                    value: _BodyHistoryAction.importBody,
-                    enabled: history != null,
-                    child: Text(l10n.structuredTransferImportTitle),
-                  ),
-                ];
-              },
-            ),
-          ],
+    return StructuredLocalScaffold(
+      title: l10n.structuredLocalTitle,
+      onLeave: _leave,
+      actions: [
+        PopupMenuButton<_BodyHistoryAction>(
+          key: const ValueKey('structured-history-menu'),
+          tooltip: l10n.structuredHistoryTitle,
+          enabled:
+              state.body != null &&
+              const {
+                LocalStructuredPhase.editing,
+                LocalStructuredPhase.saveFailed,
+                LocalStructuredPhase.conflict,
+              }.contains(state.phase) &&
+              !_busy &&
+              !_exiting,
+          icon: const Icon(Icons.history),
+          onSelected: (action) {
+            final generation = _historyMenuGeneration;
+            final selectedBody = _historyMenuBody;
+            _historyMenuGeneration = null;
+            _historyMenuBody = null;
+            final current = widget.session.state;
+            if (_busy ||
+                _exiting ||
+                selectedBody == null ||
+                !identical(current.body, selectedBody)) {
+              return;
+            }
+            if (action == _BodyHistoryAction.exportBody) {
+              unawaited(_openTransfer(import: false));
+              return;
+            }
+            final history = widget.session.captureBodyHistory();
+            if (generation == null || history?.generation != generation) {
+              return;
+            }
+            switch (action) {
+              case _BodyHistoryAction.undo:
+                widget.session.undoBody();
+              case _BodyHistoryAction.redo:
+                widget.session.redoBody();
+              case _BodyHistoryAction.review:
+                unawaited(_openHistory());
+              case _BodyHistoryAction.importBody:
+                unawaited(_openTransfer(import: true));
+              case _BodyHistoryAction.exportBody:
+                break;
+            }
+          },
+          onCanceled: () {
+            _historyMenuGeneration = null;
+            _historyMenuBody = null;
+          },
+          itemBuilder: (context) {
+            final history = widget.session.captureBodyHistory();
+            _historyMenuGeneration = history?.generation;
+            _historyMenuBody = widget.session.state.body;
+            return [
+              PopupMenuItem(
+                key: const ValueKey('structured-history-undo'),
+                value: _BodyHistoryAction.undo,
+                enabled: history?.canUndo == true,
+                child: Text(l10n.structuredHistoryUndo),
+              ),
+              PopupMenuItem(
+                key: const ValueKey('structured-history-redo'),
+                value: _BodyHistoryAction.redo,
+                enabled: history?.canRedo == true,
+                child: Text(l10n.structuredHistoryRedo),
+              ),
+              PopupMenuItem(
+                key: const ValueKey('structured-history-open'),
+                value: _BodyHistoryAction.review,
+                enabled: history != null,
+                child: Text(l10n.structuredHistoryTitle),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem(
+                key: const ValueKey('structured-transfer-export'),
+                value: _BodyHistoryAction.exportBody,
+                enabled: _historyMenuBody != null,
+                child: Text(l10n.structuredTransferExportTitle),
+              ),
+              PopupMenuItem(
+                key: const ValueKey('structured-transfer-import'),
+                value: _BodyHistoryAction.importBody,
+                enabled: history != null,
+                child: Text(l10n.structuredTransferImportTitle),
+              ),
+            ];
+          },
         ),
-        body: SafeArea(child: _buildBody(context, state)),
-      ),
+      ],
+      body: _buildBody(context, state),
     );
   }
 
@@ -526,32 +501,22 @@ class _StructuredLocalEditorPageState extends State<StructuredLocalEditorPage>
     final l10n = context.l10n;
     if (state.phase == LocalStructuredPhase.initial ||
         state.phase == LocalStructuredPhase.opening) {
-      return Center(
-        child: Semantics(liveRegion: true, child: Text(l10n.structuredLoading)),
-      );
+      return StructuredLocalNotice(l10n.structuredLoading, live: true);
     }
     if (state.phase == LocalStructuredPhase.invalidated ||
         state.phase == LocalStructuredPhase.closed) {
-      return Center(child: Text(l10n.structuredSessionChanged));
+      return StructuredLocalNotice(l10n.structuredSessionChanged);
     }
     if (state.phase == LocalStructuredPhase.cancelled) {
-      return Center(child: Text(l10n.structuredRecoveryBody));
+      return StructuredLocalNotice(l10n.structuredRecoveryBody);
     }
     if (state.phase == LocalStructuredPhase.unavailable) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(NoWaveSpacing.page),
-          child: Text(_unavailableMessage(context, state.remoteStatus)),
-        ),
+      return StructuredLocalNotice(
+        _unavailableMessage(context, state.remoteStatus),
       );
     }
     if (state.phase == LocalStructuredPhase.localReadFailed) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(NoWaveSpacing.page),
-          child: Text(l10n.structuredLocalFailure),
-        ),
-      );
+      return StructuredLocalNotice(l10n.structuredLocalFailure);
     }
     if (state.phase == LocalStructuredPhase.recoveryChoice) {
       return ListView(

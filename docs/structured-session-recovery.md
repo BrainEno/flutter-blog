@@ -612,3 +612,27 @@ storage tests are unchanged. Preselected tokens are released after open, on
 invalidation and on close for both sessions; the plain-text session still
 exposes the values it was constructed with. `test/unit/editing/local_buffer_session_test.dart`
 pins the two switches through an in-memory port.
+
+### Shared page chrome (#291)
+
+The local editing pages share their way out as well as their state machine.
+`lib/features/blog/presentation/editor/structured_local_page_chrome.dart`
+holds three pieces:
+
+- `StructuredLocalScaffold`: the `PopScope(canPop: false)`, the app bar with
+  its back arrow and the `SafeArea` body. The system back gesture,
+  predictive back and the arrow all call the same `onLeave`, so a page cannot
+  wire one and forget the other.
+- `closeStructuredSessionForExit`: close once; if the last write did not reach
+  the buffer, ask with `structuredExitTitle` / `structuredExitBody`, and only
+  after a confirmation close again with `abandonUnsaved: true`. It returns
+  whether the page may pop, and the page re-arms its own exit guard otherwise.
+- `StructuredLocalNotice`: the centred one-line states (loading, changed
+  session, local failure, conflict), with the page margin; only the loading
+  line is a live region.
+
+The block editor, the plain-text page and the rich-text page use all three.
+The inline page keeps its own `PopScope(canPop: !_handingOff)`, because it
+hands its result back to the editor instead of closing a buffer, and the range
+page has no buffer to close; neither has an exit question to share.
+`test/widget/structured_local_page_chrome_test.dart` pins the exit paths.

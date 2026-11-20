@@ -70,7 +70,7 @@ class _AuthorSearchPageState extends State<AuthorSearchPage> {
   Widget _contentWidth(Widget child) => Align(
     alignment: Alignment.topCenter,
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 680),
+      constraints: const BoxConstraints(maxWidth: NoWaveSizes.contentColumn),
       child: child,
     ),
   );

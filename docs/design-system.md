@@ -72,6 +72,7 @@
 | `NoWaveSizes.coverAspect` | 4/3 | 网格项里的封面比例 |
 | `NoWaveSizes.coverAspectWide` | 16/10 | feed 头条卡片与阅读页头的封面比例 |
 | `NoWaveSizes.maxReadingWidth` | 720 | 平板上的正文最大宽度 |
+| `NoWaveSizes.contentColumn` | 680 | 列表、表单、设置等页面主栏的最大宽度（比正文窄，平板上居中） |
 | `NoWaveSizes.coverEditorBox` | 250 | 编辑器里固定的封面框（三种状态同框，表单不跳） |
 | `NoWaveSizes.emptyStateOffset` | 48 | 空态/加载态在列表里从多高开始 |
 | `NoWaveSizes.listThumbnail` | 56 | 列表行前导缩略图（阅读历史） |
@@ -339,10 +340,16 @@
   `alwaysIncludeSemantics`），进场中也能点、能读。同一位置只进场一次，所以下拉刷新、
   翻页、滚出再滚回都不会重播；换 feed 时 `generation` 变化才重新进场。等待用曲线前段
   的 `Interval` 表达，不开定时器，条目提前销毁也不会留下悬空回调。
+  同一套进场也接在标签、分类文章列表与搜索结果上：标签/分类页每页一个 scope；搜索每次
+  都会经过加载态，所以每次结果都是新的 scope、各进场一次。
+- **长出来（阅读统计活动条）**：阅读历史顶部的 7 天活动条第一次出现时，从基线由旧到新
+  依次「长」出来，间隔半个 `stagger`、每根 `slow`——一周是从左往右读的，就从左往右
+  画。只动绘制（以底边为锚的纵向缩放），柱高从第一帧起就是最终值；删除一条记录后，
+  受影响的那天在 `normal` 内滑到新高度，而不是跳变。
 - **盖章（`NoWaveStampSwitcher`）**：阅读页的收藏图标切换时，新状态从 `stampScale`
   落下归位，旧状态淡出——空心换实心太容易被忽略，而收藏是一次小小的承诺。时长只有
   `normal`，连点两下依然跟手。
-- 三者在「减少动效」下都不构建动画：不缩放、不上浮、不盖章，箭头不动；水波与焦点
+- 这几种在「减少动效」下都不构建动画：不缩放、不上浮、不盖章、柱子直接落位，箭头不动；水波与焦点
   洗色照常显示状态。
 
 ### showNoWaveConfirmDialog

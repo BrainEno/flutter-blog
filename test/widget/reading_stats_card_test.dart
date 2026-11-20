@@ -1,5 +1,6 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/reading_stats.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
@@ -50,6 +51,8 @@ Future<void> _pumpCard(
   Locale locale = const Locale('zh'),
   double textScale = 1,
   Size size = const Size(800, 900),
+  bool disableAnimations = false,
+  bool settle = true,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -61,9 +64,10 @@ Future<void> _pumpCard(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(
-          context,
-        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+          disableAnimations: disableAnimations,
+        ),
         child: child!,
       ),
       home: Scaffold(
@@ -71,8 +75,23 @@ Future<void> _pumpCard(
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  if (settle) await tester.pumpAndSettle();
 }
+
+/// How far each bar of the activity strip has risen, oldest day first: the
+/// vertical scale of the baseline-anchored transform around it.
+List<double> _barRise(WidgetTester tester) => tester
+    .widgetList<Transform>(
+      find.descendant(
+        of: find.byType(ReadingStatsCard),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Transform && widget.alignment == Alignment.bottomCenter,
+        ),
+      ),
+    )
+    .map((transform) => transform.transform.entry(1, 1))
+    .toList();
 
 String _figure(WidgetTester tester, String key) {
   final column = find.byKey(ValueKey(key));
@@ -142,6 +161,41 @@ void main() {
       findsOneWidget,
     );
     handle.dispose();
+  });
+
+  testWidgets('the bars rise from the baseline, oldest day first', (
+    tester,
+  ) async {
+    await _pumpCard(tester, stats, settle: false);
+
+    var rise = _barRise(tester);
+    expect(rise, hasLength(ReadingStats.windowDays));
+    expect(rise, everyElement(0), reason: 'nothing has risen on frame one');
+
+    await tester.pump(NoWaveMotion.slow ~/ 2);
+    rise = _barRise(tester);
+    expect(rise.first, greaterThan(0));
+    expect(rise.first, greaterThan(rise.last), reason: 'oldest leads');
+
+    await tester.pumpAndSettle();
+    expect(_barRise(tester), everyElement(1));
+    // The figures were final all along; only paint moved.
+    expect(_figure(tester, 'reading-stats-total'), '8');
+  });
+
+  testWidgets('less motion draws the bars in place', (tester) async {
+    await _pumpCard(tester, stats, settle: false, disableAnimations: true);
+
+    expect(_barRise(tester), isEmpty);
+    expect(find.byType(AnimatedFractionallySizedBox), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(ReadingStatsCard),
+        matching: find.byType(FractionallySizedBox),
+      ),
+      findsNWidgets(ReadingStats.windowDays),
+    );
+    expect(tester.hasRunningAnimations, isFalse);
   });
 
   for (final locale in const [Locale('zh'), Locale('en')]) {

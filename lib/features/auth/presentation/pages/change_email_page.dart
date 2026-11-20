@@ -202,7 +202,9 @@ class _ChangeEmailPageState extends State<ChangeEmailPage> {
               children: [
                 Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 680),
+                    constraints: const BoxConstraints(
+                      maxWidth: NoWaveSizes.contentColumn,
+                    ),
                     child: Form(
                       key: _formKey,
                       child: Column(

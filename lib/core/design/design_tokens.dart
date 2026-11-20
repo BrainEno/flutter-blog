@@ -157,6 +157,12 @@ abstract final class NoWaveSizes {
   /// long lines stay readable.
   static const maxReadingWidth = 720.0;
 
+  /// Widest a page's own column gets - lists, forms, settings - before it is
+  /// centred. Narrower than [maxReadingWidth]: a column of cards and fields
+  /// is scanned, not read line by line, and the wider gutter on a tablet keeps
+  /// it reading as one sheet rather than a stretched phone screen.
+  static const contentColumn = 680.0;
+
   /// Fixed cover box in the editor.
   ///
   /// The three states (picked file, pending bytes, published URL) draw the

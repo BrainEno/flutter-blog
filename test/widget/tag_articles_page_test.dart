@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_entrance.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/tag_ref.dart';
@@ -166,6 +167,9 @@ void main() {
     );
     expect(find.text('第二篇'), findsOneWidget, reason: diagnostics(tester, bloc));
     verify(() => getArticlesByTag(any())).called(1);
+    // The first screen sets in like the home feed, one card after another.
+    expect(find.byType(NoWaveEntranceScope), findsOneWidget);
+    expect(find.byType(NoWaveEntrance), findsNWidgets(2));
   });
 
   testWidgets('an existing tag with nothing filed under it says so', (

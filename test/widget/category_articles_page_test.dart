@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_entrance.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
@@ -160,6 +161,9 @@ void main() {
     );
     expect(find.text('第二篇'), findsOneWidget);
     verify(() => getArticlesByCategory(any())).called(1);
+    // The first screen sets in like the home feed, one card after another.
+    expect(find.byType(NoWaveEntranceScope), findsOneWidget);
+    expect(find.byType(NoWaveEntrance), findsNWidgets(2));
   });
 
   testWidgets('an empty category says so by name', (tester) async {

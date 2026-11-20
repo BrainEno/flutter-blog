@@ -7,6 +7,7 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_rich_text_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_rich_run_input.dart';
 import 'package:belog/features/blog/domain/editing/structured_rich_text_buffer.dart';
+import 'package:belog/features/blog/presentation/editor/structured_local_page_chrome.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -250,28 +251,14 @@ class _StructuredLocalRichTextPageState
   Future<void> _leave() async {
     if (_busy || _exiting) return;
     _exiting = true;
-    final closed = await widget.session.close();
+    final mayPop = await closeStructuredSessionForExit(
+      context,
+      widget.session.close,
+    );
     if (!mounted) return;
-    if (!closed) {
-      final l10n = context.l10n;
-      final confirmed = await showNoWaveConfirmDialog(
-        context,
-        title: l10n.structuredExitTitle,
-        message: l10n.structuredExitBody,
-        cancelLabel: l10n.actionCancel,
-        confirmLabel: l10n.structuredExitAction,
-      );
-      if (!mounted) return;
-      if (!confirmed) {
-        _exiting = false;
-        return;
-      }
-      final abandoned = await widget.session.close(abandonUnsaved: true);
-      if (!mounted) return;
-      if (!abandoned) {
-        _exiting = false;
-        return;
-      }
+    if (!mayPop) {
+      _exiting = false;
+      return;
     }
     Navigator.of(context).pop();
   }
@@ -324,22 +311,10 @@ class _StructuredLocalRichTextPageState
       _reading = false;
     }
     final l10n = context.l10n;
-    return PopScope<Object?>(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) unawaited(_leave());
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            tooltip: l10n.actionBack,
-            icon: const Icon(Icons.arrow_back),
-            onPressed: _leave,
-          ),
-          title: Text(l10n.structuredRichTitle),
-        ),
-        body: SafeArea(child: _body(context, state)),
-      ),
+    return StructuredLocalScaffold(
+      title: l10n.structuredRichTitle,
+      onLeave: _leave,
+      body: _body(context, state),
     );
   }
 
@@ -347,22 +322,20 @@ class _StructuredLocalRichTextPageState
     final l10n = context.l10n;
     if (state.phase == LocalRichTextPhase.initial ||
         state.phase == LocalRichTextPhase.opening) {
-      return Center(
-        child: Semantics(liveRegion: true, child: Text(l10n.structuredLoading)),
-      );
+      return StructuredLocalNotice(l10n.structuredLoading, live: true);
     }
     if (state.phase == LocalRichTextPhase.invalidated ||
         state.phase == LocalRichTextPhase.closed) {
-      return Center(child: Text(l10n.structuredSessionChanged));
+      return StructuredLocalNotice(l10n.structuredSessionChanged);
     }
     if (state.phase == LocalRichTextPhase.loadFailed) {
-      return Center(child: Text(l10n.structuredLocalFailure));
+      return StructuredLocalNotice(l10n.structuredLocalFailure);
     }
     if (state.phase == LocalRichTextPhase.conflict && !_initialized) {
-      return Center(child: Text(l10n.structuredConflict));
+      return StructuredLocalNotice(l10n.structuredConflict);
     }
     if (state.phase == LocalRichTextPhase.cancelled) {
-      return Center(child: Text(l10n.structuredRecoveryBody));
+      return StructuredLocalNotice(l10n.structuredRecoveryBody);
     }
     if (state.phase == LocalRichTextPhase.recoveryChoice) {
       return ListView(
@@ -398,7 +371,7 @@ class _StructuredLocalRichTextPageState
     }
     final buffer = _draft;
     if (!_initialized || buffer == null) {
-      return Center(child: Text(l10n.structuredLocalFailure));
+      return StructuredLocalNotice(l10n.structuredLocalFailure);
     }
     final canEdit = _canEdit(state);
     final canFinish =
