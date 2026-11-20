@@ -135,8 +135,8 @@ const Map<String, _Row<Object>> _resolutions = {
   'AuthRemoteDataSource': _Row<AuthRemoteDataSource>(),
   'AuthRepository': _Row<AuthRepository>(),
   'AuthSessionSync': _Row<AuthSessionSync>(),
-  'AuthorRelationshipRemoteDataSource': (l) =>
-      l<AuthorRelationshipRemoteDataSource>(),
+  'AuthorRelationshipRemoteDataSource':
+      _Row<AuthorRelationshipRemoteDataSource>(),
   'AuthorRelationshipRepository': _Row<AuthorRelationshipRepository>(),
   'AuthorRemoteDataSource': _Row<AuthorRemoteDataSource>(),
   'AuthorRepository': _Row<AuthorRepository>(),
