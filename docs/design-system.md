@@ -1,6 +1,6 @@
 # 界面设计系统（tokens 与组件）
 
-> 状态：active ｜ 最后核对：2026-11-19 @ eb363b3
+> 状态：active ｜ 最后核对：2026-11-19 @ ae4b70a
 
 本页是客户端「长什么样」的唯一入口：色板、间距、圆角、线宽、动效、断点，以及
 共用组件的 API 和使用规则。目标是让新增页面**不需要**重新决定这些数字——需要时
@@ -86,6 +86,8 @@
 | `NoWaveSizes.skeletonLine` | 12 | 骨架屏一行的高度（≈正文 x-height） |
 | `NoWaveSizes.activityChart` | 56 | 阅读统计 7 天活动条的高度 |
 | `NoWaveSizes.activityBarEmpty` | 0.06 | 当天无阅读时活动条占图表高度的比例（保留可见基线） |
+| `NoWaveSizes.accentRule` | 2 | 标记「位置」的橙色细线厚度：底栏选中标记、阅读进度线 |
+| `NoWaveSizes.tabIndicator` | 24 | 底栏选中标记的长度（≈一个图标宽，读作下划线而不是分隔线） |
 
 编辑式界面本身仍是方角（`none`）：`inline` 到 `container` 这几档记录的是内容面
 **已经在用**的圆角（#294 盘点时散落为 18 处 `BorderRadius.circular(数字)`），给它们起名
@@ -205,6 +207,8 @@
 | `BlogFeedSkeleton` | `features/blog/presentation/widgets/blog_feed_skeleton.dart` | feed 首帧与紧凑文章列表的静态占位；头条可关闭 |
 | `BlogGridSkeleton` | `features/blog/presentation/widgets/blog_grid_skeleton.dart` | 网格首帧：与 `blogGridDelegate` 同列数、同高，封面沿用 4/3 |
 | `NoWaveFadeTransition` | `design/components/no_wave_fade_transition.dart` | 标签切换的淡入；少动时不构建转场 |
+| `NoWaveTabIndicator` | `design/components/no_wave_tab_indicator.dart` | 底栏选中项上方的橙色短线，切换时滑到新位置；少动时直接落位 |
+| `NoWaveReadingProgress` | `design/components/no_wave_reading_progress.dart` | 阅读页顶部随滚动填满的橙色细线；跟手、不计时，读屏不读 |
 | `NoWaveCoverPlate` | `design/cover/no_wave_cover_plate.dart` | 四张编辑式默认封面，按文章身份稳定选一张 |
 | `ArticleCover` | `features/blog/presentation/widgets/article_cover.dart` | 真封面 / 加载 / 失败三种状态共用同一张版 |
 | `ArticleCategoryLabel` | `features/blog/presentation/widgets/article_category_label.dart` | 文章所属的分类（填充色块，与服务端给的名称；可点进分类列表） |
@@ -288,6 +292,27 @@
   的常驻说明不要设，否则每次重建都打断读屏。
 - 有下一步动作时把按钮放在提示里，不要塞进转瞬即逝的 SnackBar。
 - 图标是装饰：语义里排除，含义必须由文案本身说清。
+
+### 位置标记：一道会走的橙线
+
+橙色在这套系统里只做两件事：大色块，和「你在这里」。底栏和阅读页各有一道 2pt 的
+橙线（`accentRule`）回答这个问题，这是本应用最有辨识度的动效，也是唯一会「走」
+的装饰：
+
+- **`NoWaveTabIndicator`**：主题已经关掉了 `NavigationBar` 的胶囊指示器（胶囊是本
+  系统不用的形状），选中态只靠字重和颜色又不够。于是在底栏上沿画一道
+  `tabIndicator` 长的橙线，切换标签时用 `NoWaveMotion.normal` + `travel` 曲线滑过去
+  ——底栏不动、页面淡入、标记移动，三者各司其职。用 `AlignmentDirectional`，从右
+  往左的语言里同样从起点开始。
+- **`NoWaveReadingProgress`**：手机上没有滚动条也没有页码，长文读到哪儿只能靠
+  猜。它包在阅读页正文外，只跟最外层纵向滚动（notification depth 0，横向代码块不
+  影响），内容变长（图片加载完）时也会缩回真实比例；不滚动的页面算「没读」，不
+  显示满格。
+- 两者都是装饰：`ExcludeSemantics` + `IgnorePointer`，选中态和位置由控件本身告诉
+  读屏。进度线由手指驱动、没有时钟，所以「减少动效」下无需关闭；底栏标记在少动时
+  直接落位，不做 0ms 动画。
+- 橙色在纸色上的非文字对比度约 3.5:1、墨色上约 4.8:1，都过 3:1 的图形要求，所以两种
+  主题都用 `AppPalette.orange`，不换成牛血红。
 
 ### showNoWaveConfirmDialog
 

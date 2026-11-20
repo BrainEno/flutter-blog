@@ -4,6 +4,7 @@ import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/utils/diagnostics_buffer.dart';
 import 'package:belog/core/utils/search_debounce.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
+import 'package:belog/features/blog/domain/entities/structured_session_metadata.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// #295 moved every configured wait and page size into `core/config`. These
@@ -44,6 +45,24 @@ void main() {
       expect(kSearchDebounceDelay, AppDurations.searchDebounce);
       expect(kDefaultSnackBarDuration, AppDurations.snackBarDefault);
       expect(kShortSnackBarDuration, AppDurations.snackBarShort);
+    });
+
+    test('the upload budget carries the largest image over a slow uplink', () {
+      // #295 Q11: 90 s is sized, not arbitrary. The send phase must move
+      // AppLimits.mediaUploadMaxBytes at AppLimits.slowUplinkBytesPerSecond.
+      final transfer = Duration(
+        microseconds:
+            AppLimits.mediaUploadMaxBytes *
+            Duration.microsecondsPerSecond ~/
+            AppLimits.slowUplinkBytesPerSecond,
+      );
+      expect(transfer, lessThan(AppDurations.mediaUploadTimeout));
+      // ...and the ordinary request budget would not.
+      expect(transfer, greaterThan(AppDurations.requestTimeout));
+      expect(
+        StructuredCoverSelection.maxImageBytes,
+        AppLimits.mediaUploadMaxBytes,
+      );
     });
 
     test('a media upload outlasts an ordinary request', () {
@@ -88,6 +107,7 @@ void main() {
       expect(AppLimits.conversationPageSize, 50);
       expect(AppLimits.messagePageSize, 100);
       expect(AppLimits.structuredComparisonPageSize, 1000);
+      expect(AppLimits.mediaUploadMaxBytes, 8 * 1024 * 1024);
     });
 
     test('a default page never exceeds the cap it is clamped to', () {

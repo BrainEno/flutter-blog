@@ -1,6 +1,6 @@
 # Structured editing session recovery
 
-> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+> 状态：active ｜ 最后核对：2026-11-19 @ ae4b70a
 
 The recovery store is local infrastructure, **not a publishing path**. It is
 connected to a limited local editor but not the publish queue. It only addresses an
@@ -586,3 +586,29 @@ resume, overwrite corrupt/unknown data, infer a missing author article, call a
 server, enqueue a publish, or provide remote concurrency protection. This is
 an isolated domain component, not an IME/editor UI; real-device input,
 accessibility, and downgrade behavior remain unverified.
+
+### One state machine for both buffer sessions (#291)
+
+`LocalStructuredTextSession` and `LocalStructuredRichTextSession` used to be
+two copies of the same state machine (open, recovery choice, serialized writer,
+flush, apply/discard, identity fence, close). Both are now thin subclasses of
+`LocalBufferSession` in `lib/features/blog/domain/editing/local_buffer_session.dart`,
+so a fix to the fence, the writer or the finish path lands in one place.
+
+What still differs is explicit and small:
+
+| | plain text | rich text |
+| --- | --- | --- |
+| buffer port | `StructuredTextBuffer` by block id | `StructuredRichTextBuffer` by block id and item index |
+| preselected token (`requireExpectedToken`) | optional: at most one | mandatory: exactly one |
+| finish with no buffer (`verifyParentBeforeEmptyFinish`) | reports the body opened at the choice | re-reads the parent; a changed parent is an uncertain conflict |
+| edit for another target | not possible (`edit(String)`) | `ArgumentError` before any state change |
+
+The port (`LocalBufferPort`) carries only type adaptation: which store methods
+to call, how a buffer names its target, and the initial value. Phase, flush and
+finish result enums are shared; the old names (`LocalTextPhase`,
+`LocalRichTextPhase`, …) remain as typedefs, so callers and the existing
+storage tests are unchanged. Preselected tokens are released after open, on
+invalidation and on close for both sessions; the plain-text session still
+exposes the values it was constructed with. `test/unit/editing/local_buffer_session_test.dart`
+pins the two switches through an in-memory port.

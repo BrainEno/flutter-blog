@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_reading_progress.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/design/motion/no_wave_motion_policy.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -224,14 +225,16 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: ReaderAppBar(blog: blog, onRequestLogin: onRequestLogin),
-      body: ViewerArticleBody(
-        blog: blog,
-        document: _document,
-        reader: _reader,
-        blockKeys: _blockKeys,
-        scrollController: _scrollController,
-        getRelatedArticles: getRelatedArticles,
-        onRequestLogin: onRequestLogin,
+      body: NoWaveReadingProgress(
+        child: ViewerArticleBody(
+          blog: blog,
+          document: _document,
+          reader: _reader,
+          blockKeys: _blockKeys,
+          scrollController: _scrollController,
+          getRelatedArticles: getRelatedArticles,
+          onRequestLogin: onRequestLogin,
+        ),
       ),
     );
   }

@@ -35,6 +35,18 @@ abstract final class AppLimits {
   /// One page of messages inside a conversation.
   static const int messagePageSize = 100;
 
+  // --- Media ----------------------------------------------------------------
+
+  /// The largest image `POST /me/media` accepts (no-wave REST limit at the
+  /// audited upstream revision). The picker downsamples far below it, but a
+  /// structured cover can carry a local file up to this size.
+  static const int mediaUploadMaxBytes = 8 * 1024 * 1024;
+
+  /// The weakest uplink the media upload budget is sized for: 1 Mbit/s, a
+  /// congested or edge-of-coverage mobile connection. Used only to derive and
+  /// test `AppDurations.mediaUploadTimeout`.
+  static const int slowUplinkBytesPerSecond = 125000;
+
   // --- Display ------------------------------------------------------------
 
   /// UTF-16 code units per page when a long structured value is shown in the
