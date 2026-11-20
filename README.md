@@ -59,6 +59,10 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
   `lib/features/blog/data/notion_export/`，入口在
   `lib/features/blog/presentation/editor/editor_notion_coordinator.dart`）。App 不直连
   Notion API、不保存 Notion token。
+- **导入的预览计划保护（#308）**：导入需要支持预览计划保护的 no-wave 服务端；
+  旧服务端预览不返回计划时不允许确认。计划只在内存中使用，选择或账号变化、过期
+  或失败后需重新预览。服务端按作品保护，多作品可能部分成功；超时或断线后先检查
+  文章再预览，不会自动重发。
 - **未实现**：把 Notion 数据库作为第二个**运行时文章内容源**（直接读取 Notion 数据库
   的文章列表与正文）。方案、风险与分期见
   [Notion 内容源评估](docs/notion-content-source-assessment.md)；现有 no-wave 行为不受影响。

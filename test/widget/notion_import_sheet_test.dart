@@ -6,6 +6,7 @@ import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
+import 'package:belog/features/blog/domain/notion_import/notion_import_plan.dart';
 import 'package:belog/features/blog/presentation/editor/notion_import_sheet.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -39,6 +40,7 @@ class _Repo implements NotionImportRepository {
     required NotionBundle bundle,
     required bool apply,
     required NowaveSessionFence sessionFence,
+    NotionImportPlan? plan,
   }) async {
     calls.add(apply);
     bundles.add(bundle);
@@ -47,6 +49,7 @@ class _Repo implements NotionImportRepository {
     return right(
       NotionImportReport(
         applied: apply,
+        plan: apply ? null : _planFor(bundle, sessionFence),
         pages: [
           NotionImportPage(
             title: 'My page',
@@ -60,6 +63,18 @@ class _Repo implements NotionImportRepository {
     );
   }
 }
+
+NotionImportPlan _planFor(NotionBundle bundle, NowaveSessionFence fence) =>
+    NotionImportPlan.fromPreview(
+      bundle: bundle,
+      fence: fence,
+      token: 'payload.${'s' * 43}',
+      expiresAt: DateTime.now()
+          .toUtc()
+          .add(const Duration(minutes: 10))
+          .toIso8601String()
+          .replaceFirst(RegExp(r'\.\d{6}Z$'), '.000Z'),
+    );
 
 const _input =
     '{"version":1,"database":{"id":"db"},"pages":[{"id":"p","properties":{},"blocks":[]}]}';
@@ -189,9 +204,10 @@ void main() {
       expect(find.text(l10n.notionImportConfirm), findsNothing);
       repo.pending!.complete(
         right(
-          const NotionImportReport(
+          NotionImportReport(
             applied: false,
-            pages: [
+            plan: _planFor(repo.bundles.last, _fence),
+            pages: const [
               NotionImportPage(
                 title: 'Changed plan',
                 locale: 'en',
@@ -342,5 +358,38 @@ void main() {
     expect(find.text(l10n.editorSessionChanged), findsOneWidget);
     expect(find.text(l10n.notionImportPlan), findsNothing);
     expect(repo.calls, [false]);
+  });
+  testWidgets(
+    'expiry removes an open confirmation and requires a new preview',
+    (tester) async {
+      await pumpSheet(tester);
+      await tester.enterText(find.byType(TextField), _input);
+      await selectAll(tester);
+      await tap(tester, l10n.notionImportPreviewSelected);
+      await tap(tester, l10n.notionImportReviewConfirm);
+      await tester.pump(const Duration(minutes: 11));
+      expect(find.text(l10n.notionImportPlanInvalid), findsOneWidget);
+      expect(find.text(l10n.notionImportConfirm), findsNothing);
+      expect(repo.calls, [false]);
+      await tap(tester, l10n.notionImportPreviewSelected);
+      expect(repo.calls, [false, false]);
+      expect(find.text(l10n.notionImportReviewConfirm), findsOneWidget);
+    },
+  );
+
+  testWidgets('legacy preview cannot expose a confirmation', (tester) async {
+    repo.pending = Completer<Either<Failure, NotionImportReport>>();
+    await pumpSheet(tester);
+    await tester.enterText(find.byType(TextField), _input);
+    await selectAll(tester);
+    await tester.ensureVisible(find.text(l10n.notionImportPreviewSelected));
+    await tester.tap(find.text(l10n.notionImportPreviewSelected));
+    await tester.pump();
+    repo.pending!.complete(
+      right(const NotionImportReport(applied: false, pages: [])),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.notionImportReviewConfirm), findsNothing);
+    expect(find.text(l10n.notionImportConfirm), findsNothing);
   });
 }

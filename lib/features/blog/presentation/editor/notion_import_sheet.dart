@@ -9,6 +9,7 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
+import 'package:belog/features/blog/domain/notion_import/notion_import_plan.dart';
 import 'package:flutter/material.dart';
 
 /// Import is separate from the editor's own draft and never changes its text.
@@ -39,6 +40,29 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
   final Set<int> _selected = {};
   NotionBundle? _snapshot;
   NotionImportReport? _report;
+  NotionImportPlan? _plan;
+  Timer? _expiryTimer;
+
+  void _discardPlan() {
+    _expiryTimer?.cancel();
+    _expiryTimer = null;
+    _plan?.discard();
+    _plan = null;
+  }
+
+  void _watchPlan(NotionImportPlan plan) {
+    _plan = plan;
+    _expiryTimer = Timer(plan.remaining(), () {
+      if (!mounted || !identical(_plan, plan)) return;
+      setState(() {
+        _discardPlan();
+        _snapshot = null;
+        _confirming = false;
+        _error = context.l10n.notionImportPlanInvalid;
+      });
+    });
+  }
+
   String? _error;
   bool _busy = false;
   bool _confirming = false;
@@ -66,6 +90,7 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
   void _checkIdentity() {
     if (!_current && !_invalidated) {
       _invalidated = true;
+      _discardPlan();
       _input.clear();
       if (mounted) {
         setState(() {
@@ -81,6 +106,7 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
 
   @override
   void dispose() {
+    _discardPlan();
     unawaited(_subscription?.cancel());
     unawaited(_userSubscription?.cancel());
     _input.dispose();
@@ -88,6 +114,7 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
   }
 
   void _changed(String _) {
+    _discardPlan();
     setState(() {
       _source = null;
       _selected.clear();
@@ -100,6 +127,7 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
 
   void _readBundle() {
     if (!_current || _busy) return;
+    _discardPlan();
     try {
       final bundle = NotionBundle.parse(_input.text);
       setState(() {
@@ -124,6 +152,7 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
 
   void _setSelection(Set<int> selection) {
     if (!_current || _busy) return;
+    _discardPlan();
     setState(() {
       _selected
         ..clear()
@@ -143,6 +172,23 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
 
   Future<void> _submit(NotionBundle bundle, {required bool apply}) async {
     if (!_current || _busy) return;
+    final plan = apply ? _plan : null;
+    if (apply &&
+        (plan == null || !plan.usable(bundle: bundle, fence: widget.fence))) {
+      _discardPlan();
+      setState(() {
+        _snapshot = null;
+        _confirming = false;
+        _error = context.l10n.notionImportPlanInvalid;
+      });
+      return;
+    }
+    if (!apply) _discardPlan();
+    if (apply) {
+      _expiryTimer?.cancel();
+      _expiryTimer = null;
+      _plan = null;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -158,8 +204,15 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
       bundle: bundle,
       apply: apply,
       sessionFence: widget.fence,
+      plan: plan,
     );
-    if (!mounted || !_current) return;
+    plan?.discard();
+    if (!mounted || !_current) {
+      result.fold<void>((_) {}, (report) {
+        report.plan?.discard();
+      });
+      return;
+    }
     setState(() {
       _busy = false;
       result.fold(
@@ -168,12 +221,21 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
           _snapshot = null;
           // A timeout, invalid response or connection loss cannot prove that a
           // server-side apply did not land; require a fresh preview.
-          _error = apply
+          _error = failure.code == 'notion.planInvalid'
+              ? context.l10n.notionImportPlanInvalid
+              : apply
               ? context.l10n.notionImportOutcomeUnknown
               : localizedFailure(context.l10n, failure);
         },
         (report) {
-          if (report.applied != apply) {
+          if (report.applied != apply ||
+              (!apply &&
+                  (report.plan == null ||
+                      !report.plan!.usable(
+                        bundle: bundle,
+                        fence: widget.fence,
+                      )))) {
+            report.plan?.discard();
             _report = null;
             _snapshot = null;
             _error = apply
@@ -182,6 +244,7 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
           } else {
             _report = report;
             _snapshot = apply ? null : bundle;
+            if (!apply) _watchPlan(report.plan!);
           }
         },
       );
@@ -407,7 +470,9 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
                                         : '${issue.code}: ${issue.detail}',
                                   ),
                               ],
-                              if (report.canApply && _snapshot != null) ...[
+                              if (report.canApply &&
+                                  _snapshot != null &&
+                                  _plan != null) ...[
                                 const SizedBox(height: NoWaveSpacing.medium),
                                 Text(l10n.notionImportWarning),
                                 Semantics(

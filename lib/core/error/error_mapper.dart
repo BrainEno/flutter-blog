@@ -75,6 +75,13 @@ ServerException mapToServerException(Object error) {
           code: 'article.versionConflict',
           cause: error,
         );
+      case 'IMPORT_PLAN_INVALID':
+        return ServerException(
+          '导入预览无效或已过期，请重新预览',
+          kind: FailureKind.validation,
+          code: 'notion.planInvalid',
+          cause: error,
+        );
       case 'IDEMPOTENCY_CONFLICT':
         // Same Idempotency-Key reused with a different request (issue #19:
         // the server replays the original work on a same-key retry).
