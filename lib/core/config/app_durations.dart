@@ -34,6 +34,14 @@ abstract final class AppDurations {
   /// A Notion import copies remote images server-side before it answers.
   static const Duration notionImportTimeout = Duration(minutes: 2);
 
+  /// The longest this client trusts a Notion import preview plan (#308).
+  ///
+  /// No-wave signs a plan for 15 minutes (`NOTION_IMPORT_PLAN_TTL_MS`). The
+  /// client caps its own deadline at the same length measured from its own
+  /// clock, so a server or device clock that runs ahead cannot stretch a plan
+  /// past what the server would accept; the server's check stays authoritative.
+  static const Duration notionImportPlanLifetime = Duration(minutes: 15);
+
   /// How long the health probe may take before the result is inconclusive.
   static const Duration healthProbeTimeout = Duration(seconds: 3);
 

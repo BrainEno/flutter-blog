@@ -1,4 +1,5 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/design/components/no_wave_stamp_switcher.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/article_share.dart';
@@ -62,7 +63,12 @@ class ReaderAppBar extends StatelessWidget implements PreferredSizeWidget {
               tooltip: isSaved
                   ? context.l10n.unsaveTooltip
                   : context.l10n.saveTooltip,
-              icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border),
+              icon: NoWaveStampSwitcher(
+                child: Icon(
+                  isSaved ? Icons.bookmark : Icons.bookmark_border,
+                  key: ValueKey(isSaved),
+                ),
+              ),
               onPressed: () {
                 final userState = context.read<AppUserCubit>().state;
                 if (userState is AppUserLoggedIn) {

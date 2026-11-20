@@ -229,6 +229,14 @@ abstract final class NoWaveSizes {
   /// Length of the tab indicator: about the width of a tab icon, so the rule
   /// reads as underlining the destination rather than as a divider.
   static const tabIndicator = 24.0;
+
+  /// How far a list item rises while it enters. Enough to read as arriving
+  /// from below, too little to read as the list scrolling by itself.
+  static const entranceRise = 12.0;
+
+  /// How far a row's forward arrow steps ahead while the row is pressed,
+  /// hovered or focused: the row answers "yes, this goes somewhere".
+  static const arrowNudge = 4.0;
 }
 
 /// Opacity of lines and overlays that are not semantic colours.
@@ -248,6 +256,11 @@ abstract final class NoWaveOpacity {
   /// A skeleton block: a shape that says "content is coming" without
   /// competing with the content it will be replaced by.
   static const skeletonAlpha = 28;
+
+  /// A pointer resting on something tappable: 10% of the accent. Lighter than
+  /// [focusAlpha] because hovering is browsing, while focus is a decision the
+  /// keyboard user has to be able to find.
+  static const hoverAlpha = 25;
 }
 
 /// Motion. Short enough to feel like a native tap, long enough to be visible.
@@ -295,6 +308,20 @@ abstract final class NoWaveMotion {
   /// point the curtain lifts regardless and the app's own error states take
   /// over.
   static const splashBail = Duration(milliseconds: 4500);
+
+  /// How far a pressed article sinks. Two percent reads as paper giving under
+  /// a finger; more reads as a toy button.
+  static const pressScale = 0.98;
+
+  /// How large a toggled glyph lands before it settles - a rubber stamp
+  /// coming down rather than an icon swapping.
+  static const stampScale = 1.3;
+
+  /// How many items of a freshly shown list rise into place, [stagger] apart.
+  ///
+  /// About one phone screen. Items further down are not on screen when the
+  /// list appears, and making them wait would be a delay, not an entrance.
+  static const entranceCount = 6;
 }
 
 /// Layout breakpoints and the grid they imply.

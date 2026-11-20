@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_pressable.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
@@ -36,16 +37,11 @@ class BlogCard extends StatelessWidget {
     final l10n = context.l10n;
     final author = authorDisplayName(l10n, blog.posterName);
     final authorLabel = labelAuthor ? l10n.posterLabel(author) : author;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        focusColor: AppPalette.orange.withAlpha(55),
-        hoverColor: AppPalette.orange.withAlpha(25),
-        child: featured
-            ? _featured(context, authorLabel)
-            : _row(context, authorLabel),
-      ),
+    return NoWavePressable(
+      onTap: onTap,
+      child: featured
+          ? _featured(context, authorLabel)
+          : _row(context, authorLabel),
     );
   }
 
@@ -96,9 +92,7 @@ class BlogCard extends StatelessWidget {
                 child: Text(author, style: NoWaveTypography.meta(context)),
               ),
               const SizedBox(width: NoWaveSpacing.small),
-              const ExcludeSemantics(
-                child: Icon(Icons.arrow_forward, size: 20),
-              ),
+              const NoWavePressArrow(),
             ],
           ),
         ],
@@ -147,7 +141,7 @@ class BlogCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: NoWaveSpacing.small),
-          const ExcludeSemantics(child: Icon(Icons.arrow_forward, size: 20)),
+          const NoWavePressArrow(),
         ],
       ),
     );
