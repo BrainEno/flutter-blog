@@ -1,5 +1,6 @@
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/theme/app_palette.dart';
+import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:flutter/material.dart';
 
 /// Material defaults for the no-wave mobile experience.
@@ -71,16 +72,28 @@ abstract final class AppTheme {
         color: foreground.withAlpha(NoWaveOpacity.dividerAlpha),
         thickness: NoWaveStroke.hairline,
       ),
+      // A dialog is a card laid on the page: the same paper, square, no
+      // shadow - so a hairline in the text colour is what lifts it off the
+      // scrim, the way a printed card has an edge. Its title is set in the
+      // serif of the section headings: a question to the reader is editorial
+      // copy, not a system alert.
       dialogTheme: DialogThemeData(
         backgroundColor: background,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        shape: square,
+        shape: RoundedRectangleBorder(
+          borderRadius: const BorderRadius.all(
+            Radius.circular(NoWaveRadius.none),
+          ),
+          side: BorderSide(color: foreground, width: NoWaveStroke.hairline),
+        ),
         titleTextStyle: TextStyle(
           color: foreground,
-          fontFamily: 'InterTight',
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
+          fontFamily: 'InstrumentSerif',
+          fontFamilyFallback: NoWaveTypography.serifFallback,
+          fontSize: NoWaveTypeScale.dialogTitle,
+          fontWeight: FontWeight.w600,
+          height: 1.3,
         ),
         contentTextStyle: TextStyle(
           color: foreground,
@@ -223,13 +236,17 @@ abstract final class AppTheme {
         shape: square,
         minTileHeight: NoWaveSizes.row,
       ),
+      // A sheet rises from the bottom edge, so only its top edge needs the
+      // hairline that a dialog carries all round.
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: background,
         modalBackgroundColor: background,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         modalElevation: 0,
-        shape: square,
+        shape: Border(
+          top: BorderSide(color: foreground, width: NoWaveStroke.hairline),
+        ),
         dragHandleColor: muted,
       ),
       snackBarTheme: SnackBarThemeData(

@@ -474,6 +474,42 @@ void main() {
     },
   );
 
+  testWidgets('tapping the active tab takes its list back to the top', (
+    tester,
+  ) async {
+    final harness = Harness()..buildRouter();
+    when(() => harness.remote.getAllBlogs(page: 1)).thenAnswer(
+      (_) async => [for (var i = 0; i < 30; i++) sampleBlog('$i', '第 $i 篇文章')],
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(BlogPage), findsOneWidget);
+
+    final feed = find
+        .descendant(
+          of: find.byType(BlogPage),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          ),
+        )
+        .first;
+    double offset() => tester.state<ScrollableState>(feed).position.pixels;
+
+    // Far enough down to need the return, short of the paging edge.
+    tester.state<ScrollableState>(feed).position.jumpTo(800);
+    await tester.pumpAndSettle();
+    expect(offset(), 800);
+
+    await tester.tap(find.text('首页'));
+    await tester.pumpAndSettle();
+    expect(offset(), 0);
+    // Still the same stack: nothing was popped or rebuilt.
+    expect(find.byType(BlogPage), findsOneWidget);
+  });
+
   testWidgets('each tab keeps its own stack across tab switches', (
     tester,
   ) async {

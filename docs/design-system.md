@@ -119,6 +119,7 @@
 | `hint` | 17 | 封面上传框里的提示 |
 | `runningHead` | 17 | 阅读页书眉：标题滚走后，应用栏里重复的那行小标题 |
 | `sectionTitle` | 18 | 文章下方的分节标题（评论、相关阅读） |
+| `dialogTitle` | 24 | 对话框标题（衬线）：问读者的一句话是编辑文字，不是系统警告 |
 | `authTitle` | 32 | 登录 / 注册页标题 |
 
 ### 线与遮罩的不透明度 `NoWaveOpacity`
@@ -149,6 +150,7 @@
 | `stampScale` | 1.3 | 切换态图标落下时的初始放大比例（盖章，而不是换图） |
 | `entranceCount` | 6 | 新列表里逐个上浮进场的条目数（约一屏），间隔 `stagger` |
 | `runningHeadRise` | 0.5 | 书眉出现时从自身高度一半处升到位（读作「升进栏里」，而不是从别处滑来） |
+| `returnLeap` | 1.0 | 再点当前标签回顶部时，从多远开始「走」（屏数）：更远的先跳到这里，只走最后一屏 |
 | `strokeLag` | 0.25 | 橙线移动时后沿比前沿晚走、晚到的比例（占 `slow`）：先伸长再收拢，像一笔，而不像橡皮筋 |
 
 幕布那几行只在冷启动用，语义与时序见 [冷启动与墨色幕布](startup.md)。
@@ -193,11 +195,13 @@
 
 - 填充/描边/文字/图标按钮：方角，最小高度 ≥ 48，主按钮 52；
 - 输入框：`medium` 内边距，1pt 边框，聚焦 2pt；
-- 对话框：底色同页面，方角，标题 20/w700；
+- 对话框：底色同页面，方角，0 阴影，四周一道前景色发丝线（同一张纸上靠边线浮起，
+  像印刷卡片的切边）；标题用衬线 `dialogTitle`（24/w600），与分节标题同一种声音；
 - 分隔线：`dividerAlpha` + 1pt；`Chip`：方角 1pt 描边；
 - 卡片：0 阴影、0 色调、方角、`surface` 底色；列表项：`NoWaveSizes.row` 最小
   高度、`medium` 内边距、方角；
-- 底部面板：底色同页面、0 阴影、方角；SnackBar：浅色下墨底纸字、深色下纸底墨字，
+- 底部面板：底色同页面、0 阴影、方角，只在上沿有同样的发丝线（它从底边升起，
+  另外三边贴着屏幕）；SnackBar：浅色下墨底纸字、深色下纸底墨字，
   方角 0 阴影，行动文字用强调色（深色用橙、浅色用牛血红）；
 - 开关/复选框/分段按钮：选中态为强调色填充 + `onPrimary` 前景，未选中为 1pt
   `muted` 描边，方角，≥48pt。
@@ -224,6 +228,7 @@
 | `BlogGridSkeleton` | `features/blog/presentation/widgets/blog_grid_skeleton.dart` | 网格首帧：与 `blogGridDelegate` 同列数、同高，封面沿用 4/3 |
 | `NoWaveFadeTransition` | `design/components/no_wave_fade_transition.dart` | 标签切换的淡入；少动时不构建转场 |
 | `NoWaveTabIndicator` | `design/components/no_wave_tab_indicator.dart` | 底栏选中项上方的橙色短线，切换时滑到新位置；少动时直接落位 |
+| `NoWaveReturnToTop` | `design/components/no_wave_return_to_top.dart` | 再点当前底栏标签：屏幕上的列表回到顶部，栈不动；远处先跳近再走一屏；少动时直接跳 |
 | `NoWaveRunningHead` | `design/components/no_wave_running_head.dart` | 阅读页书眉：正文标题滚到应用栏下面后，栏里升起一行小标题并出现一道发丝线；点它回到开头 |
 | `NoWaveEndMark` | `design/components/no_wave_end_mark.dart` | 文末终止符：两段发丝线中间一枚橙色小方块，下面一行「全文完 · 作者名」；阅读页正文之后、相关阅读之前 |
 | `NoWaveSnackBarContent` | `core/utils/show_snackbar.dart` | 所有提示条的内容：起始边一道与文字等高的橙线，再接那句话；由 `showSnackBar` 统一使用 |
@@ -411,6 +416,19 @@
 - **读屏**：隐藏时根本不构建，页面上标题只有一份；出现时是一个按钮，名字是
   `readerRunningHead`（「标题，回到开头」），可见文字包含在名字里。少动时原地出现、
   原地消失。
+
+### 再点一次：回到顶部
+
+每个平台的底栏都这样做，读者也会不假思索地去试：在 feed 里翻得很深，再点一下「首页」
+回到最新。`HomeShell` 把四个分支包在 `NoWaveReturnToTop` 里，点当前标签时调用
+`toTop()`：
+
+- **只动列表，不动栈**：读到一半的文章、打开的作者页都还在；它跟踪的是最近一次报告
+  滚动的纵向列表（滚动通知，而不是控制器），所以每一页都不用改接线，包括自己持有
+  控制器做翻页的 feed。横向的分类条、代码块不算。
+- **什么时候不动**：列表已在顶部；或它所在的页面被别的页面盖住（路由不是当前的）。
+- **怎么走**：比一屏（`returnLeap`）更远时先跳到离顶部一屏处，再用 `slow` + `travel`
+  走完最后一屏——读起来是「回去」一个动作，而不是一路刷过所有文章。少动时直接跳到顶。
 
 ### 文末与提示条：两处印刷记号
 

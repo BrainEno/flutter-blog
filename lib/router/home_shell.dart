@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belog/core/design/components/no_wave_fade_transition.dart';
+import 'package:belog/core/design/components/no_wave_return_to_top.dart';
 import 'package:belog/core/design/components/no_wave_tab_indicator.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -23,6 +24,9 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> with RouteAware {
   late int _lastTab;
+
+  /// Takes the list on screen back to its top when its tab is tapped again.
+  final GlobalKey<NoWaveReturnToTopState> _returnToTop = GlobalKey();
 
   @override
   void initState() {
@@ -95,7 +99,11 @@ class _HomeShellState extends State<HomeShell> with RouteAware {
         top: false,
         child: NoWaveFadeTransition(
           index: widget.shell.currentIndex,
-          child: widget.shell,
+          child: NoWaveReturnToTop(
+            key: _returnToTop,
+            section: widget.shell.currentIndex,
+            child: widget.shell,
+          ),
         ),
       ),
       bottomNavigationBar: DecoratedBox(
@@ -117,10 +125,12 @@ class _HomeShellState extends State<HomeShell> with RouteAware {
               selectedIndex: widget.shell.currentIndex,
               onDestinationSelected: (index) {
                 // Re-tapping the active destination preserves its existing
-                // stack.
+                // stack and takes the list on screen back to its top.
                 if (index != widget.shell.currentIndex) {
                   _stopAfterNavigation();
                   widget.shell.goBranch(index);
+                } else {
+                  _returnToTop.currentState?.toTop();
                 }
               },
               destinations: [
