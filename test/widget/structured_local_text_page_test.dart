@@ -363,8 +363,34 @@ Future<void> _visibleTap(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
 }
 
+/// Finds the text block's edit action. The body arrives from native SQLite,
+/// which can need real event-loop turns rather than frames; and the editor is
+/// a lazy list, so with the page gutter the block can sit past what the list
+/// builds up front - scroll it in before looking.
+Future<Finder> _revealTextEdit(WidgetTester tester) async {
+  final edit = find.byTooltip('Edit unformatted text');
+  final list = find.byType(ListView);
+  for (var i = 0; i < 50 && list.evaluate().isEmpty; i++) {
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump(const Duration(milliseconds: 20));
+  }
+  if (edit.evaluate().isNotEmpty) return edit;
+  await tester.scrollUntilVisible(
+    edit,
+    200,
+    scrollable: find
+        .descendant(
+          of: find.byType(ListView).first,
+          matching: find.byType(Scrollable),
+        )
+        .first,
+  );
+  await tester.pumpAndSettle();
+  return edit;
+}
+
 Future<void> _handoffFromBody(WidgetTester tester, _Harness h) async {
-  await _visibleTap(tester, find.byTooltip('Edit unformatted text'));
+  await _visibleTap(tester, await _revealTextEdit(tester));
   // pumpAndSettle only waits for frames; a native SQLite acknowledgement can
   // need a real event-loop turn before handoff and navigation finish.
   for (var i = 0; i < 50 && !h.body.completed.isCompleted; i++) {
@@ -409,7 +435,7 @@ void main() {
       tester,
     ) async {
       await _pump(tester, StructuredLocalEditorPage(session: h.body));
-      expect(find.byTooltip('Edit unformatted text'), findsOneWidget);
+      expect(await _revealTextEdit(tester), findsOneWidget);
       expect(find.text('Publish'), findsNothing);
       await _handoffFromBody(tester, h);
       expect(
