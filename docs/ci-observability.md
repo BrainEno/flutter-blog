@@ -75,3 +75,29 @@ After the checks have produced stable results, the repository owner should creat
 Do not make these checks required while known baseline issues keep them red; resolve the underlying issues first, then enable enforcement. Repository rulesets/branch protection are server-side settings and are not changed by this PR.
 
 GitHub recommends least-privilege workflow permissions and pinning actions to full-length commit SHAs. See [Secure use reference](https://docs.github.com/en/actions/reference/security/secure-use).
+
+## 工作流一览（原 README，#298）
+
+`.github/workflows/ci.yml`（PR / push 到 main 时运行，Flutter 3.47.8 + JDK 17）：
+
+1. **format**：对本次改动的 `.dart` 文件强制 `dart format` 通过
+   （全仓库格式审计仅告警，不阻断）。
+2. **analyze**：`flutter analyze --fatal-infos`，零告警门禁（`avoid_print`
+   已启用，请使用 `AppLogger`）。
+3. **test**：`flutter test --coverage --concurrency=1`，随后
+   `python3 tool/ci/check_coverage.py` 按 `tool/ci/coverage_threshold.json` 的最低行覆盖率
+   门禁（排除生成的本地化类）；覆盖率增长后再有意上调，不得为通过 PR 而下调。
+4. **android-release**：使用显式 QA debug 签名和不可路由配置构建 Android release APK，
+   另编译 debug APK 并检查两者网络策略；不发布、不代表正式签名已验证。
+
+`.github/workflows/local-scripts.yml` 在 Linux/macOS/Windows 上运行本地脚本的
+mock 控制流测试，并在 macOS 上编译 iOS debug 模拟器版本、运行默认 ad-hoc IPA
+脚本及检查 debug/release 网络策略。`.github/workflows/dart.yml` 的额外 iOS
+无签名编译只在手动选择 `include_ios` 时执行。CI 编译/打包不等同于真实模拟器
+启动、设备安装、后端或分发签名实测。
+
+单元与 widget 测试覆盖：分页/刷新竞态（BlogBloc）、搜索竞态（BlogSearchBloc）、
+点赞并发与回滚、草稿隔离与自动保存、异常映射矩阵、离线行为、API 客户端
+envelope/401 刷新重放、会话刷新单飞、contentBlocks 编解码、Markdown 渲染
+（结构/样式/原始 HTML 惰性/javascript: 链接不可点）、阅读历史（去重/排序/
+按账号隔离/清空/v2→v3 升级）、导出文档形状、分享 URL 构造等。
