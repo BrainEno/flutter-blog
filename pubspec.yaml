@@ -46,7 +46,7 @@ dependencies:
   # The only database engine: Drift on SQLite. Isar was retired in #107
   # (unmaintained upstream; the one-time importer is gone). See
   # docs/sqlite-storage.md before touching the schema.
-  drift: 2.35.3
+  drift: 2.35.4
   path_provider: ^2.1.5
   go_router: ^14.8.0
   equatable: ^2.0.7
