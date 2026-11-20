@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/design/motion/no_wave_motion_policy.dart';
@@ -121,10 +123,8 @@ class _NoWaveStatusState extends State<NoWaveStatus>
       child: Align(
         alignment: Alignment.topCenter,
         heightFactor: 1,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: NoWaveSizes.statusMeasure,
-          ),
+        child: _Measure(
+          maxWidth: NoWaveSizes.statusMeasure,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -164,4 +164,44 @@ class _NoWaveStatusState extends State<NoWaveStatus>
       ),
     );
   }
+}
+
+/// A `ConstrainedBox(maxWidth:)` that also reports its height at that width.
+///
+/// A plain `ConstrainedBox` answers intrinsic-height questions at the width it
+/// is offered, not the narrower width it will lay its child out at. A status
+/// in a `SliverFillRemaining(hasScrollBody: false)` is sized from that answer,
+/// so a sentence that breaks into more lines at the measure than at the full
+/// width would overflow. This asks at the measure.
+class _Measure extends SingleChildRenderObjectWidget {
+  const _Measure({required this.maxWidth, super.child});
+
+  final double maxWidth;
+
+  @override
+  RenderConstrainedBox createRenderObject(BuildContext context) =>
+      _RenderMeasure(BoxConstraints(maxWidth: maxWidth));
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    RenderConstrainedBox renderObject,
+  ) {
+    renderObject.additionalConstraints = BoxConstraints(maxWidth: maxWidth);
+  }
+}
+
+class _RenderMeasure extends RenderConstrainedBox {
+  _RenderMeasure(BoxConstraints constraints)
+    : super(additionalConstraints: constraints);
+
+  double _at(double width) => math.min(width, additionalConstraints.maxWidth);
+
+  @override
+  double computeMinIntrinsicHeight(double width) =>
+      super.computeMinIntrinsicHeight(_at(width));
+
+  @override
+  double computeMaxIntrinsicHeight(double width) =>
+      super.computeMaxIntrinsicHeight(_at(width));
 }

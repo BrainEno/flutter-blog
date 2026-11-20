@@ -94,6 +94,40 @@ void main() {
     expect(text.center.dx, closeTo(400, 1));
   });
 
+  testWidgets('a filler sized from it leaves room for every line', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(720, 200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightThemeMode,
+        home: const Scaffold(
+          body: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: SizedBox(height: 150)),
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: NoWaveStatus(
+                    message:
+                        'There are no cached articles in this language on '
+                        'this device; connect and try again later today.',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // Asked at the full width, the sentence is one line; at the measure it
+    // is several, and the filler must have been told so.
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('it arrives: the words rise in, the button just behind', (
     tester,
   ) async {
