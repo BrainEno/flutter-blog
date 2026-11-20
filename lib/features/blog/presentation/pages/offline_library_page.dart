@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
@@ -123,7 +124,7 @@ class _OfflineLibraryPageState extends State<OfflineLibraryPage> {
           const SizedBox(width: NoWaveSpacing.small),
         ],
       ),
-      body: RefreshIndicator(onRefresh: _refresh, child: _body(context, state)),
+      body: NoWaveRefresh(onRefresh: _refresh, child: _body(context, state)),
     );
   }
 
@@ -184,7 +185,10 @@ class _OfflineLibraryPageState extends State<OfflineLibraryPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        NoWaveSectionHeading(title: l10n.offlineLibraryTitle),
+        NoWaveSectionHeading(
+          title: l10n.offlineLibraryTitle,
+          eyebrow: l10n.offlineLibraryEyebrow,
+        ),
         const SizedBox(height: NoWaveSpacing.small),
         Text(
           l10n.offlineLibraryDescription,

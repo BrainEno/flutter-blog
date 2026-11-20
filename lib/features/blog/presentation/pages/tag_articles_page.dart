@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_entrance.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
@@ -142,7 +143,7 @@ class _TagArticlesPageState extends State<TagArticlesPage> {
                   ),
                 );
               }
-              return RefreshIndicator(onRefresh: _refresh, child: _list(state));
+              return NoWaveRefresh(onRefresh: _refresh, child: _list(state));
             }
             return const SizedBox.shrink();
           },

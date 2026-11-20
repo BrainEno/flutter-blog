@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
@@ -106,7 +107,7 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
                 ),
               );
             }
-            return RefreshIndicator(
+            return NoWaveRefresh(
               onRefresh: () async {
                 _fetchSavedBlogs();
                 await context.read<BlogLikedBloc>().stream.firstWhere(
@@ -149,7 +150,7 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
           }
           return _lastBlogs.isEmpty
               ? const BlogGridSkeleton()
-              : RefreshIndicator(
+              : NoWaveRefresh(
                   onRefresh: () async {
                     _fetchSavedBlogs();
                     await context.read<BlogLikedBloc>().stream.firstWhere(

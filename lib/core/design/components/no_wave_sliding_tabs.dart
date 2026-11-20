@@ -18,8 +18,8 @@ import 'package:flutter/material.dart';
 /// draws a line from where you were to where you are.
 ///
 /// Every label gets a slot as wide as the label set at its *selected* weight,
-/// measured before layout. Choosing a word therefore never shifts its
-/// neighbours, and the rule knows where each word is in the same frame. With
+/// measured before layout, and is set at the slot's start edge. Choosing a
+/// word therefore never shifts its neighbours, and the rule knows where each word is in the same frame. With
 /// large text the row scrolls sideways instead of wrapping, and a chosen word
 /// that is off screen is scrolled into view.
 ///
@@ -85,7 +85,10 @@ class NoWaveSlidingTabs extends StatefulWidget {
 }
 
 /// One slot's geometry along the reading direction, from the row's start.
-typedef _Slot = ({double start, double width, double text});
+///
+/// [lead] is the margin before the word inside its slot; the word is set
+/// at the slot's start edge after it, so a word never moves when chosen.
+typedef _Slot = ({double start, double width, double text, double lead});
 
 class _NoWaveSlidingTabsState extends State<NoWaveSlidingTabs>
     with SingleTickerProviderStateMixin {
@@ -127,7 +130,7 @@ class _NoWaveSlidingTabsState extends State<NoWaveSlidingTabs>
 
   (double, double) _ruleFor(int index) {
     final slot = _slots[index];
-    final start = slot.start + (slot.width - slot.text) / 2;
+    final start = slot.start + slot.lead;
     return (start, start + slot.text);
   }
 
@@ -172,6 +175,11 @@ class _NoWaveSlidingTabsState extends State<NoWaveSlidingTabs>
   /// the first *word* starts at [NoWaveSlidingTabs.inset].
   double get _padding => math.max(0, widget.inset - NoWaveSpacing.small);
 
+  /// The first slot's own margin: a full one when there is room for it, and
+  /// only what the inset allows otherwise - inside an already padded column
+  /// (`inset: 0`) the first word sits flush with the text above it.
+  double get _firstLead => math.min(NoWaveSpacing.small, widget.inset);
+
   TextStyle _style(BuildContext context, {required bool selected}) {
     final scheme = Theme.of(context).colorScheme;
     return (Theme.of(context).textTheme.titleSmall ?? const TextStyle())
@@ -194,7 +202,7 @@ class _NoWaveSlidingTabsState extends State<NoWaveSlidingTabs>
         : base;
     final slots = <_Slot>[];
     var start = 0.0;
-    for (final label in widget.labels) {
+    for (final (index, label) in widget.labels.indexed) {
       final painter = TextPainter(
         text: TextSpan(text: label, style: style),
         textDirection: Directionality.of(context),
@@ -204,8 +212,9 @@ class _NoWaveSlidingTabsState extends State<NoWaveSlidingTabs>
       )..layout();
       final text = painter.width.ceilToDouble();
       painter.dispose();
-      final width = text + NoWaveSpacing.small * 2;
-      slots.add((start: start, width: width, text: text));
+      final lead = index == 0 ? _firstLead : NoWaveSpacing.small;
+      final width = lead + text + NoWaveSpacing.small;
+      slots.add((start: start, width: width, text: text, lead: lead));
       start += width;
     }
     return slots;
@@ -250,6 +259,7 @@ class _NoWaveSlidingTabsState extends State<NoWaveSlidingTabs>
                             selected: index == widget.selected,
                           ),
                           duration: textDuration,
+                          lead: slots[index].lead,
                           onTap: () => widget.onSelected(index),
                         ),
                       ),
@@ -307,6 +317,7 @@ class NoWaveSlidingTab extends StatelessWidget {
     required this.style,
     required this.duration,
     required this.onTap,
+    this.lead = NoWaveSpacing.small,
   });
 
   final String label;
@@ -314,6 +325,10 @@ class NoWaveSlidingTab extends StatelessWidget {
   final TextStyle style;
   final Duration duration;
   final VoidCallback onTap;
+
+  /// The margin before the word. The word is set at the start edge after it,
+  /// so its position does not depend on its weight.
+  final double lead;
 
   @override
   Widget build(BuildContext context) {
@@ -326,16 +341,24 @@ class NoWaveSlidingTab extends StatelessWidget {
         onTap: onTap,
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: NoWaveSizes.tapTarget),
-          child: Center(
-            child: AnimatedDefaultTextStyle(
-              style: style,
-              duration: duration,
-              curve: NoWaveMotionPolicy.curve,
-              child: Text(
-                label,
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.visible,
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            widthFactor: 1,
+            child: Padding(
+              padding: EdgeInsetsDirectional.only(
+                start: lead,
+                end: NoWaveSpacing.small,
+              ),
+              child: AnimatedDefaultTextStyle(
+                style: style,
+                duration: duration,
+                curve: NoWaveMotionPolicy.curve,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.visible,
+                ),
               ),
             ),
           ),

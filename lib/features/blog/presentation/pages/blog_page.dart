@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/design/components/no_wave_entrance.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
@@ -153,7 +154,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
             children: [
               _feedSelector(state),
               Expanded(
-                child: RefreshIndicator(
+                child: NoWaveRefresh(
                   onRefresh: _refreshBlogs,
                   child: _buildBody(state, viewerId),
                 ),

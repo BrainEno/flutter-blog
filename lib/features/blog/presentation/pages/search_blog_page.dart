@@ -125,6 +125,7 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                     NoWaveSectionHeading(
                       title: l10n.tabSearch,
                       companion: l10n.searchHeadingCompanion,
+                      eyebrow: l10n.searchEyebrow,
                     ),
                     Align(
                       alignment: Alignment.centerRight,

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
@@ -325,7 +326,7 @@ class _UserBlogsPageState extends State<UserBlogsPage>
     } else {
       editionHint = l10n.myArticlesEditionsUnavailable;
     }
-    return RefreshIndicator(
+    return NoWaveRefresh(
       onRefresh: () async {
         _fetchUserBlogs();
         await context.read<BlogByBloc>().stream.firstWhere(

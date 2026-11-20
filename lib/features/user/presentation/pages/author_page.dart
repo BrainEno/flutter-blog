@@ -3,6 +3,7 @@ import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
+import 'package:belog/core/design/components/no_wave_sliding_tabs.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -49,6 +50,10 @@ class _AuthorPageState extends State<AuthorPage> {
   ///
   /// Kept on the page, not in the bloc's event, so the chips render before the
   /// first page arrives and a switch never has to wait for the old list.
+  /// The two orders an author's articles can be read in, as the switch shows
+  /// them.
+  static const _articleOrders = [BlogFeedKind.latest, BlogFeedKind.popular];
+
   BlogFeedKind _articleKind = BlogFeedKind.latest;
 
   @override
@@ -279,25 +284,30 @@ class _AuthorPageState extends State<AuthorPage> {
                       const SizedBox(height: NoWaveSpacing.medium),
                       NoWaveSectionHeading(
                         title: context.l10n.authorArticlesTitle,
+                        eyebrow: context.l10n.authorArticlesEyebrow,
                       ),
                       const SizedBox(height: NoWaveSpacing.small),
                       // Two orders, one list at a time. `popular` is re-ranked
                       // while it is read, so it can only go as deep as the
                       // server allows - which the footer says out loud.
-                      Wrap(
-                        spacing: NoWaveSpacing.small,
-                        runSpacing: NoWaveSpacing.xs,
-                        children: [
-                          for (final (kind, label) in [
-                            (BlogFeedKind.latest, context.l10n.feedTabLatest),
-                            (BlogFeedKind.popular, context.l10n.feedTabPopular),
-                          ])
-                            ChoiceChip(
-                              label: Text(label),
-                              selected: _articleKind == kind,
-                              onSelected: (_) => _selectArticleOrder(kind),
-                            ),
+                      // The same switch as the home feed: words on a hairline
+                      // and the orange stroke. The column is already padded,
+                      // so the first word sits flush with the heading.
+                      NoWaveSlidingTabs(
+                        inset: 0,
+                        labels: [
+                          for (final kind in _articleOrders)
+                            switch (kind) {
+                              BlogFeedKind.popular =>
+                                context.l10n.feedTabPopular,
+                              _ => context.l10n.feedTabLatest,
+                            },
                         ],
+                        selected: _articleOrders
+                            .indexOf(_articleKind)
+                            .clamp(0, _articleOrders.length - 1),
+                        onSelected: (index) =>
+                            _selectArticleOrder(_articleOrders[index]),
                       ),
                       const SizedBox(height: NoWaveSpacing.medium),
                       BlocBuilder<BlogByBloc, BlogByState>(

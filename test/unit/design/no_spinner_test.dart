@@ -20,6 +20,10 @@ import '../../support/source_files.dart';
 ///   in the slot where the label already is, and two pages put one in an icon
 ///   slot. A sentence does not fit in an icon.
 /// - **The cold-start curtain** deliberately asserts the *absence* of one.
+///
+/// Pull to refresh counts: the stock `RefreshIndicator` (and its `.adaptive`
+/// form) drops a spinning disc over the list. Pages use `NoWaveRefresh`, which
+/// keeps the gesture through `RefreshIndicator.noSpinner` and draws a rule.
 void main() {
   /// `path: <why a spinner is still the right answer here>`
   const allowed = <String, String>{
@@ -67,6 +71,17 @@ void main() {
     expect(_spinnerLinesOf('CircularProgressIndicator()'), hasLength(1));
     expect(_spinnerLinesOf('CupertinoActivityIndicator()'), hasLength(1));
     expect(_spinnerLinesOf('NoWaveLoadingLabel()'), isEmpty);
+    expect(_spinnerLinesOf('RefreshIndicator(onRefresh: f)'), hasLength(1));
+    expect(
+      _spinnerLinesOf('RefreshIndicator.adaptive(onRefresh: f)'),
+      hasLength(1),
+    );
+    expect(
+      _spinnerLinesOf('RefreshIndicator.noSpinner(onRefresh: f)'),
+      isEmpty,
+      reason: 'the gesture without the disc is what NoWaveRefresh builds on',
+    );
+    expect(_spinnerLinesOf('NoWaveRefresh(onRefresh: f)'), isEmpty);
   });
 }
 
@@ -74,6 +89,10 @@ const _spinners = [
   'CircularProgressIndicator',
   'CupertinoActivityIndicator',
   'LinearProgressIndicator',
+  'RefreshProgressIndicator',
+  'RefreshIndicator(',
+  'RefreshIndicator.adaptive(',
+  'CupertinoSliverRefreshControl',
 ];
 
 /// `path:line: <source>` for every spinner call under [file].

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/components/no_wave_skeleton.dart';
 import 'package:belog/core/error/failures.dart';
@@ -177,7 +178,7 @@ class _NotificationInboxView extends StatelessWidget {
           final showPaginationFooter =
               loaded.items.isNotEmpty && !loaded.isRefreshing;
           final extra = (showSummary ? 1 : 0) + (showPaginationFooter ? 1 : 0);
-          return RefreshIndicator(
+          return NoWaveRefresh(
             onRefresh: () =>
                 context.read<NotificationInboxCubit>().load(showLoading: false),
             child: loaded.isEmpty
