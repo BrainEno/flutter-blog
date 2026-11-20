@@ -91,6 +91,15 @@ Future<void> _pumpPage(
   );
 }
 
+/// The feed's own vertical list. The feed switch above it scrolls sideways,
+/// so "the first Scrollable" is no longer the feed.
+final Finder _feedList = find
+    .byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable && widget.axisDirection == AxisDirection.down,
+    )
+    .first;
+
 /// Taps a feed word, scrolling the row first: with 2x text on a narrow screen
 /// the later words start off screen, as they would for a reader.
 Future<void> _tapFeed(WidgetTester tester, String label) async {
@@ -262,6 +271,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.widgetWithText(TextButton, l10n.feedPopularDepthAction),
       400,
+      scrollable: _feedList,
     );
     expect(find.text(l10n.feedPopularDepthLimit), findsOneWidget);
     await tester.tap(
