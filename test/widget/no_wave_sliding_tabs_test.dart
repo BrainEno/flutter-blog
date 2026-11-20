@@ -176,25 +176,26 @@ void main() {
     final handle = tester.ensureSemantics();
     await tester.pumpWidget(_tabs(selected: 1));
 
-    expect(
-      tester.getSemantics(find.widgetWithText(NoWaveSlidingTab, 'Featured')),
-      containsSemantics(
-        label: 'Featured',
-        isButton: true,
-        isSelected: true,
-        isInMutuallyExclusiveGroup: true,
-        hasTapAction: true,
-      ),
-    );
-    expect(
-      tester.getSemantics(find.widgetWithText(NoWaveSlidingTab, 'Latest')),
-      containsSemantics(
-        label: 'Latest',
-        isButton: true,
-        isSelected: false,
-        isInMutuallyExclusiveGroup: true,
-      ),
-    );
+    for (final (label, chosen) in [('Featured', true), ('Latest', false)]) {
+      final tab = find.widgetWithText(NoWaveSlidingTab, label);
+      final data = tester.getSemantics(tab).getSemanticsData();
+      expect(data.label, label, reason: 'the word is read once, as is');
+      expect(data.flagsCollection.isButton, isTrue);
+      expect(data.flagsCollection.isInMutuallyExclusiveGroup, isTrue);
+      expect(data.hasAction(SemanticsAction.tap), isTrue);
+      final semantics = tester.widget<Semantics>(
+        find
+            .descendant(
+              of: tab,
+              matching: find.byWidgetPredicate(
+                (widget) =>
+                    widget is Semantics && widget.properties.button == true,
+              ),
+            )
+            .first,
+      );
+      expect(semantics.properties.selected, chosen);
+    }
     handle.dispose();
   });
 
