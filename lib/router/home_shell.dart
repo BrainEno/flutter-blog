@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:belog/core/design/components/no_wave_fade_transition.dart';
 import 'package:belog/core/design/components/no_wave_return_to_top.dart';
-import 'package:belog/core/design/components/no_wave_tab_indicator.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
@@ -116,41 +115,27 @@ class _HomeShellState extends State<HomeShell> with RouteAware {
             ),
           ),
         ),
-        // The bar's own pill indicator is off in the theme; the travelling
-        // rule over the top edge marks the selected tab instead.
-        child: Stack(
-          fit: StackFit.passthrough,
-          children: [
-            NavigationBar(
-              selectedIndex: widget.shell.currentIndex,
-              onDestinationSelected: (index) {
-                // Re-tapping the active destination preserves its existing
-                // stack and takes the list on screen back to its top.
-                if (index != widget.shell.currentIndex) {
-                  _stopAfterNavigation();
-                  widget.shell.goBranch(index);
-                } else {
-                  _returnToTop.currentState?.toTop();
-                }
-              },
-              destinations: [
-                for (var i = 0; i < _icons.length; i++)
-                  NavigationDestination(
-                    icon: Icon(_icons[i]),
-                    selectedIcon: Icon(_selectedIcons[i]),
-                    label: labels[i],
-                  ),
-              ],
-            ),
-            PositionedDirectional(
-              top: 0,
-              start: 0,
-              end: 0,
-              child: NoWaveTabIndicator(
-                index: widget.shell.currentIndex,
-                count: _icons.length,
+        // The bar's pill indicator is off in the theme: the chosen tab is the
+        // one set in ink with a filled icon, the rest are muted outlines.
+        child: NavigationBar(
+          selectedIndex: widget.shell.currentIndex,
+          onDestinationSelected: (index) {
+            // Re-tapping the active destination preserves its existing
+            // stack and takes the list on screen back to its top.
+            if (index != widget.shell.currentIndex) {
+              _stopAfterNavigation();
+              widget.shell.goBranch(index);
+            } else {
+              _returnToTop.currentState?.toTop();
+            }
+          },
+          destinations: [
+            for (var i = 0; i < _icons.length; i++)
+              NavigationDestination(
+                icon: Icon(_icons[i]),
+                selectedIcon: Icon(_selectedIcons[i]),
+                label: labels[i],
               ),
-            ),
           ],
         ),
       ),

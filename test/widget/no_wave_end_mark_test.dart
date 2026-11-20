@@ -1,6 +1,5 @@
 import 'package:belog/core/design/components/no_wave_end_mark.dart';
 import 'package:belog/core/design/design_tokens.dart';
-import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,7 +26,7 @@ Widget _mark({String? byline, double textScale = 1, double width = 400}) =>
     );
 
 void main() {
-  testWidgets('an orange square centred between two hairlines', (tester) async {
+  testWidgets('an ink square centred between two hairlines', (tester) async {
     await tester.pumpWidget(_mark());
 
     final square = tester.getRect(find.byKey(_square));
@@ -45,7 +44,7 @@ void main() {
             ),
           )
           .color,
-      AppPalette.orange,
+      AppTheme.lightThemeMode.colorScheme.onSurface,
     );
     final lines = find.descendant(
       of: find.byType(NoWaveEndMark),

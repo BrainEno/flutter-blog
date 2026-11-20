@@ -3,15 +3,16 @@ import 'dart:math' as math;
 import 'package:belog/core/design/components/no_wave_pressable.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/design/motion/no_wave_motion_policy.dart';
-import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:flutter/material.dart';
 
-/// A row of words, one of them chosen, with the orange rule underneath it.
+/// A row of words, one of them chosen, with an ink rule underneath it.
 ///
-/// This is the in-page version of the bottom bar's [NoWaveTabIndicator]: the
-/// same 2pt orange rule ([NoWaveSizes.accentRule]) riding on a hairline, as
-/// wide as the chosen word. Choosing another word moves the rule like a pen
+/// The row stands on a hairline that runs the full width it is given - the
+/// same faint line as a `Divider`, so it reads as the edge of the page's
+/// header rather than as an underline under four words - and the chosen word
+/// carries a 2pt rule ([NoWaveSizes.accentRule]) in the text colour, exactly
+/// as wide as the word and sitting on that hairline. Choosing another word moves the rule like a pen
 /// stroke. The edge on the side it is heading to leaves first; the other edge
 /// follows [NoWaveMotion.strokeLag] later, so the rule stretches across the
 /// gap and then gathers under the new word. A chip row swaps a fill; this
@@ -226,76 +227,81 @@ class _NoWaveSlidingTabsState extends State<NoWaveSlidingTabs>
     final total = slots.last.start + slots.last.width;
     final scheme = Theme.of(context).colorScheme;
     final textDuration = NoWaveMotionPolicy.resolve(context, NoWaveMotion.fast);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: scheme.outlineVariant,
-            width: NoWaveStroke.hairline,
+    final hairline =
+        Theme.of(context).dividerTheme.color ?? scheme.outlineVariant;
+    // Full width on purpose: a hairline that stops where the words stop
+    // reads as a stray underline, and its start pokes out ahead of the
+    // first word's rule.
+    return SizedBox(
+      width: double.infinity,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: hairline, width: NoWaveStroke.hairline),
           ),
         ),
-      ),
-      child: SingleChildScrollView(
-        controller: _scroll,
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsetsDirectional.symmetric(horizontal: _padding),
-        child: Semantics(
-          container: true,
-          explicitChildNodes: true,
-          child: SizedBox(
-            width: total,
-            child: Stack(
-              children: [
-                Row(
-                  children: [
-                    for (final (index, label) in widget.labels.indexed)
-                      SizedBox(
-                        width: slots[index].width,
-                        child: NoWaveSlidingTab(
-                          label: label,
-                          selected: index == widget.selected,
-                          style: _style(
-                            context,
+        child: SingleChildScrollView(
+          controller: _scroll,
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsetsDirectional.symmetric(horizontal: _padding),
+          child: Semantics(
+            container: true,
+            explicitChildNodes: true,
+            child: SizedBox(
+              width: total,
+              child: Stack(
+                children: [
+                  Row(
+                    children: [
+                      for (final (index, label) in widget.labels.indexed)
+                        SizedBox(
+                          width: slots[index].width,
+                          child: NoWaveSlidingTab(
+                            label: label,
                             selected: index == widget.selected,
+                            style: _style(
+                              context,
+                              selected: index == widget.selected,
+                            ),
+                            duration: textDuration,
+                            lead: slots[index].lead,
+                            onTap: () => widget.onSelected(index),
                           ),
-                          duration: textDuration,
-                          lead: slots[index].lead,
-                          onTap: () => widget.onSelected(index),
                         ),
-                      ),
-                  ],
-                ),
-                PositionedDirectional(
-                  start: 0,
-                  end: 0,
-                  bottom: 0,
-                  height: NoWaveSizes.accentRule,
-                  child: IgnorePointer(
-                    child: ExcludeSemantics(
-                      child: AnimatedBuilder(
-                        animation: _travel,
-                        builder: (context, _) {
-                          final (start, end) = _currentRule(widget.selected);
-                          return Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: Padding(
-                              padding: EdgeInsetsDirectional.only(start: start),
-                              child: SizedBox(
-                                key: const ValueKey('no-wave-sliding-rule'),
-                                width: math.max(0, end - start),
-                                height: NoWaveSizes.accentRule,
-                                child: const ColoredBox(
-                                  color: AppPalette.orange,
+                    ],
+                  ),
+                  PositionedDirectional(
+                    start: 0,
+                    end: 0,
+                    bottom: 0,
+                    height: NoWaveSizes.accentRule,
+                    child: IgnorePointer(
+                      child: ExcludeSemantics(
+                        child: AnimatedBuilder(
+                          animation: _travel,
+                          builder: (context, _) {
+                            final (start, end) = _currentRule(widget.selected);
+                            return Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Padding(
+                                padding: EdgeInsetsDirectional.only(
+                                  start: start,
+                                ),
+                                child: SizedBox(
+                                  key: const ValueKey('no-wave-sliding-rule'),
+                                  width: math.max(0, end - start),
+                                  height: NoWaveSizes.accentRule,
+                                  child: ColoredBox(color: scheme.onSurface),
                                 ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

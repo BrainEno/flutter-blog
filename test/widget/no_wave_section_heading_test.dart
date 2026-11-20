@@ -1,11 +1,8 @@
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/design/design_tokens.dart';
-import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-const _rule = ValueKey('no-wave-eyebrow-rule');
 
 Widget _heading({String? eyebrow, double textScale = 1, double width = 400}) =>
     MaterialApp(
@@ -46,30 +43,22 @@ void main() {
     });
   });
 
-  testWidgets('no eyebrow, no rule', (tester) async {
+  testWidgets('no eyebrow, nothing above the title', (tester) async {
     await tester.pumpWidget(_heading());
     expect(find.byType(NoWaveEyebrow), findsNothing);
-    expect(find.byKey(_rule), findsNothing);
   });
 
-  testWidgets('the eyebrow is a short orange rule and tracked capitals', (
+  testWidgets('the eyebrow is tracked capitals alone, with no rule', (
     tester,
   ) async {
     await tester.pumpWidget(_heading(eyebrow: 'Downloaded to this device'));
 
-    final rule = tester.getRect(find.byKey(_rule));
-    expect(rule.width, NoWaveSizes.eyebrowRule);
-    expect(rule.height, NoWaveSizes.accentRule);
     expect(
-      tester
-          .widget<ColoredBox>(
-            find.descendant(
-              of: find.byKey(_rule),
-              matching: find.byType(ColoredBox),
-            ),
-          )
-          .color,
-      AppPalette.orange,
+      find.descendant(
+        of: find.byType(NoWaveEyebrow),
+        matching: find.byType(ColoredBox),
+      ),
+      findsNothing,
     );
 
     final words = find.text('DOWNLOADED TO THIS DEVICE');
@@ -78,12 +67,11 @@ void main() {
     expect(style.fontSize, NoWaveTypeScale.eyebrow);
     expect(style.letterSpacing, greaterThan(NoWaveTypeScale.eyebrow * 0.1));
 
-    // Above the title, starting at the same edge, rule first.
+    // Above the title, starting at the same edge.
     final text = tester.getRect(words);
     final title = tester.getRect(find.text('Latest'));
     expect(text.bottom, lessThanOrEqualTo(title.top));
-    expect(rule.left, closeTo(title.left, 1));
-    expect(text.left, greaterThan(rule.right));
+    expect(text.left, closeTo(title.left, 1));
   });
 
   testWidgets('Chinese keeps its characters and tracks less', (tester) async {

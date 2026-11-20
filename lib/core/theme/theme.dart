@@ -105,6 +105,9 @@ abstract final class AppTheme {
         foregroundColor: foreground,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
+        // Titles start on the page gutter, so the masthead and a page title
+        // line up with the column under them.
+        titleSpacing: NoWaveSpacing.page,
         titleTextStyle: TextStyle(
           color: foreground,
           fontFamily: 'InterTight',

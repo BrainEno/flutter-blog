@@ -1,28 +1,29 @@
 import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/design/motion/no_wave_motion_policy.dart';
-import 'package:belog/core/theme/app_palette.dart';
+import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:flutter/material.dart';
 
-/// An empty or failed state: a printer's mark, one sentence, and at most one
-/// way forward.
+/// An empty or failed state: one sentence, set like copy, and at most one way
+/// forward.
 ///
-/// The mark is the end mark's figure at status size - a small square between
-/// two short hairlines - and it says which of the two this is before the
-/// sentence is read:
+/// No glyph, no ornament. The sentence is set in the serif at
+/// [NoWaveTypeScale.sectionTitle], regular weight, centred in a short measure
+/// ([NoWaveSizes.statusMeasure]) so it breaks into a compact block rather than
+/// one long line - the way a magazine sets a pull quote, not the way a system
+/// prints an alert. Tone comes from colour alone:
 ///
-/// * **hollow** (a hairline outline in the muted colour) when there is
-///   nothing to do: an empty list, a search with no results;
-/// * **filled orange** when the state comes with an action (retry, go back):
-///   orange marks a position everywhere else in the app, and here the
-///   position is "your move".
+/// * **muted** when there is nothing to do (an empty list, no results): the
+///   page is quiet because there is nothing to read;
+/// * **ink**, with a bordered [NoWaveButton] under it, when the state comes
+///   with an action (retry, sign in): it is addressed to the reader.
 ///
-/// On arrival the hairlines draw outward from the square and the sentence
-/// follows them up by [NoWaveSizes.entranceRise], `slow` in all, the sentence
-/// [NoWaveMotion.strokeLag] behind - so a retry that fails again visibly
-/// lands again instead of looking like nothing happened. Only paint moves:
-/// the sentence and the action are laid out, tappable and read from the first
-/// frame. With less motion asked for, everything is simply there.
+/// On arrival the block fades in and rises [NoWaveSizes.entranceRise] over
+/// `slow`, the button [NoWaveMotion.strokeLag] behind the words - so a retry
+/// that fails again visibly lands again instead of looking like nothing
+/// happened. Only paint moves: the sentence and the button are laid out,
+/// tappable and read from the first frame. With less motion asked for,
+/// everything is simply there.
 class NoWaveStatus extends StatefulWidget {
   const NoWaveStatus({
     super.key,
@@ -46,8 +47,8 @@ class _NoWaveStatusState extends State<NoWaveStatus>
     duration: NoWaveMotion.slow,
   );
 
-  /// The hairlines: from the start, finishing [NoWaveMotion.strokeLag] early.
-  late final CurvedAnimation _drawn = CurvedAnimation(
+  /// The sentence: from the start, finishing [NoWaveMotion.strokeLag] early.
+  late final CurvedAnimation _words = CurvedAnimation(
     parent: _controller,
     curve: const Interval(
       0,
@@ -56,8 +57,8 @@ class _NoWaveStatusState extends State<NoWaveStatus>
     ),
   );
 
-  /// The sentence and the action: [NoWaveMotion.strokeLag] behind the lines.
-  late final CurvedAnimation _arrived = CurvedAnimation(
+  /// The button: [NoWaveMotion.strokeLag] behind the sentence.
+  late final CurvedAnimation _action = CurvedAnimation(
     parent: _controller,
     curve: const Interval(
       NoWaveMotion.strokeLag,
@@ -82,134 +83,85 @@ class _NoWaveStatusState extends State<NoWaveStatus>
 
   @override
   void dispose() {
-    _drawn.dispose();
-    _arrived.dispose();
+    _words.dispose();
+    _action.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  /// [child] fading in and rising along [progress]; [child] itself when the
+  /// reader asked for less motion.
+  Widget _arrive(Animation<double> progress, Widget child, bool still) {
+    if (still) return child;
+    return AnimatedBuilder(
+      animation: progress,
+      builder: (context, child) => Transform.translate(
+        offset: Offset(0, (1 - progress.value) * NoWaveSizes.entranceRise),
+        child: child,
+      ),
+      child: FadeTransition(
+        opacity: progress,
+        // Arriving is paint only: a screen reader hears the state at once,
+        // not after the fade.
+        alwaysIncludeSemantics: true,
+        child: child,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final still = NoWaveMotionPolicy.reducesMotion(context);
+    final scheme = Theme.of(context).colorScheme;
     final onAction = widget.onAction;
-    final words = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          widget.message,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyLarge,
-        ),
-        if (onAction != null) ...[
-          const SizedBox(height: NoWaveSpacing.medium),
-          NoWaveButton(
-            label: widget.actionLabel!,
-            onPressed: onAction,
-            variant: NoWaveButtonVariant.secondary,
-          ),
-        ],
-      ],
-    );
+    final actionable = onAction != null;
     return Semantics(
       liveRegion: true,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ExcludeSemantics(
-            child: NoWaveStatusMark(
-              actionable: onAction != null,
-              drawn: still ? null : _drawn,
-            ),
+      // Its own measure even where the parent stretches it (a list row).
+      child: Align(
+        alignment: Alignment.topCenter,
+        heightFactor: 1,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: NoWaveSizes.statusMeasure,
           ),
-          const SizedBox(height: NoWaveSpacing.medium),
-          if (still)
-            words
-          else
-            AnimatedBuilder(
-              animation: _arrived,
-              builder: (context, child) => Transform.translate(
-                offset: Offset(
-                  0,
-                  (1 - _arrived.value) * NoWaveSizes.entranceRise,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _arrive(
+                _words,
+                Text(
+                  widget.message,
+                  textAlign: TextAlign.center,
+                  style:
+                      NoWaveTypography.title(
+                        context,
+                        size: NoWaveTypeScale.sectionTitle,
+                      ).copyWith(
+                        fontWeight: FontWeight.w400,
+                        color: actionable
+                            ? scheme.onSurface
+                            : scheme.onSurfaceVariant,
+                      ),
                 ),
-                child: child,
+                still,
               ),
-              child: FadeTransition(
-                opacity: _arrived,
-                // Arriving is paint only: a screen reader hears the state at
-                // once, not after the fade.
-                alwaysIncludeSemantics: true,
-                child: words,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The status mark: a square between two short hairlines. Filled orange when
-/// the state offers an action, a hollow outline when it does not.
-///
-/// [drawn] runs the hairlines outward from the square; without it they are
-/// drawn already.
-class NoWaveStatusMark extends StatelessWidget {
-  const NoWaveStatusMark({super.key, required this.actionable, this.drawn});
-
-  final bool actionable;
-  final Animation<double>? drawn;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final hairline = theme.dividerTheme.color ?? scheme.outlineVariant;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _rule(hairline, AlignmentDirectional.centerEnd),
-        const SizedBox(width: NoWaveSpacing.small),
-        SizedBox.square(
-          key: const ValueKey('no-wave-status-mark'),
-          dimension: NoWaveSizes.endMark,
-          child: DecoratedBox(
-            decoration: actionable
-                ? const BoxDecoration(color: AppPalette.orange)
-                : BoxDecoration(
-                    border: Border.all(
-                      color: scheme.onSurfaceVariant,
-                      width: NoWaveStroke.hairline,
-                    ),
+              if (actionable) ...[
+                const SizedBox(height: NoWaveSpacing.large),
+                _arrive(
+                  _action,
+                  NoWaveButton(
+                    label: widget.actionLabel!,
+                    onPressed: onAction,
+                    variant: NoWaveButtonVariant.secondary,
                   ),
+                  still,
+                ),
+              ],
+            ],
           ),
         ),
-        const SizedBox(width: NoWaveSpacing.small),
-        _rule(hairline, AlignmentDirectional.centerStart),
-      ],
-    );
-  }
-
-  /// One hairline, growing away from the square: [anchor] is the end that
-  /// touches it.
-  Widget _rule(Color color, AlignmentDirectional anchor) {
-    final line = SizedBox(
-      width: NoWaveSizes.statusRule,
-      height: NoWaveStroke.hairline,
-      child: ColoredBox(color: color),
-    );
-    final drawn = this.drawn;
-    if (drawn == null) return line;
-    return AnimatedBuilder(
-      animation: drawn,
-      builder: (context, child) {
-        final textDirection = Directionality.of(context);
-        return Transform(
-          alignment: anchor.resolve(textDirection),
-          transform: Matrix4.diagonal3Values(drawn.value, 1, 1),
-          child: child,
-        );
-      },
-      child: line,
+      ),
     );
   }
 }
