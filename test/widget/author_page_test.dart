@@ -129,6 +129,15 @@ Future<void> _pumpPage(
   );
 }
 
+/// The page's vertical list. The article order switch scrolls sideways, so
+/// the page holds more than one Scrollable.
+final Finder _pageList = find
+    .byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable && widget.axisDirection == AxisDirection.down,
+    )
+    .first;
+
 void main() {
   late MockGetAuthorProfile getAuthorProfile;
   late MockFollowAuthor followAuthor;
@@ -305,7 +314,11 @@ void main() {
         findsWidgets,
       );
       expect(tester.takeException(), isNull);
-      await tester.scrollUntilVisible(find.text('No articles yet'), 140);
+      await tester.scrollUntilVisible(
+        find.text('No articles yet'),
+        140,
+        scrollable: _pageList,
+      );
       expect(find.text('No articles yet'), findsOneWidget);
 
       await tester.ensureVisible(find.text('Follow'));
@@ -481,7 +494,11 @@ void main() {
             ),
             findsOneWidget,
           );
-          await tester.scrollUntilVisible(find.text('作者的文章'), 140);
+          await tester.scrollUntilVisible(
+            find.text('作者的文章'),
+            140,
+            scrollable: _pageList,
+          );
           expect(find.text('作者的文章'), findsOneWidget);
           expect(tester.takeException(), isNull);
         } finally {

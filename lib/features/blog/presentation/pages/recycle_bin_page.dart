@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
@@ -101,7 +102,7 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
           if (blogs.isEmpty) {
             return Center(child: Text(context.l10n.recycleBinEmpty));
           }
-          return RefreshIndicator(
+          return NoWaveRefresh(
             onRefresh: () async {
               context.read<RecycleBinBloc>().add(RecycleBinRequested());
               await context.read<RecycleBinBloc>().stream.firstWhere(

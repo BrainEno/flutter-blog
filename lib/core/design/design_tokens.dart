@@ -94,6 +94,10 @@ abstract final class NoWaveTypeScale {
   /// 14: inline code inside body text.
   static const codeInline = 14.0;
 
+  /// 11: the eyebrow line above a section heading - small, tracked, and the
+  /// only all-caps type in the app.
+  static const eyebrow = 11.0;
+
   /// 15: chip labels and list-row titles (tags, categories, history rows).
   static const label = 15.0;
 
@@ -243,6 +247,16 @@ abstract final class NoWaveSizes {
   /// How far a row's forward arrow steps ahead while the row is pressed,
   /// hovered or focused: the row answers "yes, this goes somewhere".
   static const arrowNudge = 4.0;
+
+  /// The short orange rule that leads an eyebrow line above a section
+  /// heading: a printer's mark, shorter than [tabIndicator] so it reads as
+  /// punctuation rather than as an underline.
+  static const eyebrowRule = 16.0;
+
+  /// Share of the list's width the running refresh segment covers while it
+  /// travels along the top edge: long enough to read as a rule, short enough
+  /// to read as moving.
+  static const refreshSegment = 0.3;
 }
 
 /// Opacity of lines and overlays that are not semantic colours.

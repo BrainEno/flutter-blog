@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
@@ -202,7 +203,7 @@ class _MessageInboxViewState extends State<_MessageInboxView> {
           }
           final loaded = state as MessageInboxLoaded;
           final showStartCard = _showStartCard(loaded);
-          return RefreshIndicator(
+          return NoWaveRefresh(
             onRefresh: () =>
                 context.read<MessageInboxCubit>().load(showLoading: false),
             child: loaded.isEmpty && !showStartCard

@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -108,7 +109,7 @@ class _PublishQueueView extends StatelessWidget {
               body: context.l10n.publishQueueEmptyBody,
             );
           }
-          return RefreshIndicator(
+          return NoWaveRefresh(
             // Pulling the list re-sends what is due, which is what a reader of
             // this screen wants after reconnecting.
             onRefresh: () => context.read<PublishQueueCubit>().sendNow(),

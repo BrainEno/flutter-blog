@@ -91,6 +91,8 @@
 | `NoWaveSizes.tabIndicator` | 24 | 底栏选中标记的长度（≈一个图标宽，读作下划线而不是分隔线） |
 | `NoWaveSizes.entranceRise` | 12 | 列表项进场时上浮的距离 |
 | `NoWaveSizes.arrowNudge` | 4 | 按下 / 悬停 / 聚焦时行尾箭头向前迈出的距离 |
+| `NoWaveSizes.eyebrowRule` | 16 | 章节标题上方小标题（eyebrow）前的橙色短线；比底栏标记短，读作标点而不是下划线 |
+| `NoWaveSizes.refreshSegment` | 0.3 | 下拉刷新进行中，沿列表顶边移动的橙色线段占列表宽度的比例 |
 
 编辑式界面本身仍是方角（`none`）：`inline` 到 `container` 这几档记录的是内容面
 **已经在用**的圆角（#294 盘点时散落为 18 处 `BorderRadius.circular(数字)`），给它们起名
@@ -107,6 +109,7 @@
 
 | token | 值 | 用在哪 |
 | --- | --- | --- |
+| `eyebrow` | 11 | 章节标题上方的小标题：小、字距拉开，也是全应用唯一的全大写文字 |
 | `codeBlock` | 13 | 等宽块：代码块、诊断报告 |
 | `codeInline` | 14 | 正文里的行内代码 |
 | `label` | 15 | 标签/分类 chip 与列表行标题（阅读历史） |
@@ -207,7 +210,7 @@
 | `NoWaveNotice` | `design/components/no_wave_notice.dart` | 内联提示（说明、限制、失败 + 重试） |
 | `showNoWaveConfirmDialog` | `design/components/no_wave_confirm_dialog.dart` | 破坏性动作的二次确认 |
 | `NoWaveStatus` | `common/widgets/no_wave_status.dart` | 空态/错误态（带可选行动） |
-| `NoWaveSectionHeading` | `common/widgets/no_wave_section_heading.dart` | 编辑式大标题（可换行、带 eyebrow） |
+| `NoWaveSectionHeading` / `NoWaveEyebrow` | `common/widgets/no_wave_section_heading.dart` | 编辑式大标题（可换行）；可选的小标题 `NoWaveEyebrow`：橙色短线 + 小号、拉开字距的一行，拉丁字母全大写 |
 | `NoWaveActionRow` | `common/widgets/no_wave_action_row.dart` | 个人中心式的可点行动行 |
 | `NoWaveMasthead` | `common/widgets/no_wave_masthead.dart` | 双字体字标 |
 | `NoWaveAvatar` | `common/widgets/no_wave_avatar.dart` | 方形头像，失败回退中性图 |
@@ -217,7 +220,8 @@
 | `BlogGridSkeleton` | `features/blog/presentation/widgets/blog_grid_skeleton.dart` | 网格首帧：与 `blogGridDelegate` 同列数、同高，封面沿用 4/3 |
 | `NoWaveFadeTransition` | `design/components/no_wave_fade_transition.dart` | 标签切换的淡入；少动时不构建转场 |
 | `NoWaveTabIndicator` | `design/components/no_wave_tab_indicator.dart` | 底栏选中项上方的橙色短线，切换时滑到新位置；少动时直接落位 |
-| `NoWaveSlidingTabs` / `NoWaveSlidingTab` | `design/components/no_wave_sliding_tabs.dart` | 页内的一排词（首页 feed 切换）：选中词下的橙线像一笔划过去，先伸长再收拢；大字号时横向滚动；少动时直接落位 |
+| `NoWaveRefresh` | `design/components/no_wave_refresh.dart` | 下拉刷新：沿用系统手势，不画转圈；顶边一道线随手指从中间长出，过了松手点变橙，刷新时一段橙线沿顶边走过 |
+| `NoWaveSlidingTabs` / `NoWaveSlidingTab` | `design/components/no_wave_sliding_tabs.dart` | 页内的一排词（首页 feed 切换、作者页「最新 / 热门」）：选中词下的橙线像一笔划过去，先伸长再收拢；大字号时横向滚动；少动时直接落位 |
 | `NoWaveReadingProgress` | `design/components/no_wave_reading_progress.dart` | 阅读页顶部随滚动填满的橙色细线；跟手、不计时，读屏不读 |
 | `NoWavePressable` / `NoWavePressArrow` | `design/components/no_wave_pressable.dart` | 文章卡片与网格项的可点表面：保留 InkWell 的水波、焦点与语义，按下时下沉，行尾箭头向前迈一步 |
 | `NoWaveEntranceScope` / `NoWaveEntrance` | `design/components/no_wave_entrance.dart` | 新列表前一屏逐个上浮进场；同一位置只进场一次，换列表（`generation`）才重来 |
@@ -335,11 +339,50 @@
     `NoWavePressable` 下沉，焦点和悬停用橙色洗色。
   - 「关注」在未登录时会先去登录：组件只报告点了哪个词，选中与否由调用方决定，
     所以橙线不会先走过去再弹回来。
+  - 每个词贴着自己槽位的起点排，橙线从词的起点画起、与词同宽。`inset` 是这一排的
+    页边距：首页传 `page`；作者页的栏本身已有页边距，传 `0`，第一个词与上方标题的
+    左边对齐，不再多缩进一格。
 - 这几道橙线都是装饰：`ExcludeSemantics` + `IgnorePointer`，选中态和位置由控件本身告诉
   读屏。进度线由手指驱动、没有时钟，所以「减少动效」下无需关闭；底栏标记在少动时
   直接落位，不做 0ms 动画；页内这排词同样直接落位，滚动改为跳转。
+- **`NoWaveRefresh`**：系统的下拉刷新会在列表上落下一个转圈的圆片——全屏唯一一个
+  不属于这套字体和配色的元素，也正是 `no_spinner_test.dart` 在别处挡掉的东西。现在
+  12 处（11 个页面）都换成 `NoWaveRefresh`：手势仍由 Flutter 的
+  `RefreshIndicator.noSpinner` 判定（什么时候开始、什么时候算数、iOS 的回弹），只换
+  画的东西，全部在列表顶边一条 `accentRule` 厚的线上：
+  - **下拉中**：一道发丝色的线从中间向两边长出，长度就是离松手点还有多远；
+  - **过了松手点**：线变橙、碰到两边，并轻轻一次选择触感——「可以松手了」，不用一个字；
+  - **刷新中**：一段 `refreshSegment` 宽的橙线以 `enter` 为周期、`travel` 曲线沿顶边
+    从起点走到终点，像排字，直到 `onRefresh` 完成；
+  - **完成 / 取消**：线淡出（`normal`）。
+  - 松手点与框架一致：拉过视口高度的 25%。在会回弹的列表上（iOS、macOS），框架一进入
+    `armed` 就会在回弹时刷新，所以那里 `armed` 就算过了松手点。
+  - 线是装饰（`ExcludeSemantics` + `IgnorePointer`）。刷新中有一个 `liveRegion`，读出
+    系统自带、已本地化的「刷新」标签，不新增文案。少动时线段不走，整条橙线停住直到
+    完成，然后直接消失。
+  - `no_spinner_test.dart` 现在也拦 `RefreshIndicator(`、`RefreshIndicator.adaptive(`、
+    `RefreshProgressIndicator` 与 `CupertinoSliverRefreshControl`；只有
+    `.noSpinner` 可以出现，而且只在这个组件里。
 - 橙色在纸色上的非文字对比度约 3.5:1、墨色上约 4.8:1，都过 3:1 的图形要求，所以两种
   主题都用 `AppPalette.orange`，不换成牛血红。
+
+### 小标题：章节标题上方的一行
+
+杂志在栏目标题上方会印一行小字，说明这是什么栏目。`NoWaveSectionHeading` 的
+`eyebrow` 现在画成 `NoWaveEyebrow`，不再是普通的元信息字：
+
+- 一道 `eyebrowRule` × `accentRule` 的橙色短线，与「位置」标记同色同厚，间隔 `small`
+  后接文字；
+- 文字用 `NoWaveTypography.metaLabel`，字号 `NoWaveTypeScale.eyebrow`（11）、w600、
+  `onSurfaceVariant` 色；
+- 拉丁字母全大写，字距为字号的 14%——全应用只有这里用全大写，所以它读作标签，不会
+  被当成一句话；中文没有大小写，保持原字，字距收到 8%，足以和正文区分，又不会把词
+  拆成一个个孤立的字；
+- 读屏读原文（`semanticsLabel`），不读大写，英文不会被逐字母拼读；短线没有语义；
+- 长句在 2× 字号下换行，不截断。
+
+用在：首页 feed（`feedEyebrow`）、搜索（`searchEyebrow`）、离线书库
+（`offlineLibraryEyebrow`）、作者页文章区（`authorArticlesEyebrow`）。
 
 ### 触感：按下、进场、盖章
 

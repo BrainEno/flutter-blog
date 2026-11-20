@@ -94,6 +94,52 @@ void main() {
     expect(rule.top, greaterThan(word.bottom));
   });
 
+  testWidgets('words are set from the start, and the rule starts with them', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_tabs(selected: 2));
+    final word = tester.getRect(_word('Popular'));
+    expect(_rule(tester).left, closeTo(word.left, 1));
+    // The default inset lines the first word up with the page margin.
+    expect(
+      tester.getRect(_word('Latest')).left,
+      closeTo(
+        tester.getRect(find.byType(NoWaveSlidingTabs)).left +
+            NoWaveSpacing.page,
+        1,
+      ),
+    );
+  });
+
+  testWidgets('inside a padded column the first word sits flush', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.all(NoWaveSpacing.page),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Heading'),
+                NoWaveSlidingTabs(
+                  inset: 0,
+                  labels: _labels,
+                  selected: 0,
+                  onSelected: (_) {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    final heading = tester.getRect(find.text('Heading'));
+    expect(tester.getRect(_word('Latest')).left, closeTo(heading.left, 1));
+    expect(_rule(tester).left, closeTo(heading.left, 1));
+  });
+
   testWidgets('a tap reports the word; the caller decides', (tester) async {
     final taps = <int>[];
     await tester.pumpWidget(_tabs(selected: 0, onSelected: taps.add));
