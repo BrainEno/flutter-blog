@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/core/utils/article_resource_url.dart';
 
 /// A known taxonomy selection and whether the author changed it. Null at the
@@ -93,7 +94,7 @@ class StructuredCoverSelection {
   }
 
   /// no-wave's REST image upload limit at the audited upstream revision.
-  static const int maxImageBytes = 8 * 1024 * 1024;
+  static const int maxImageBytes = AppLimits.mediaUploadMaxBytes;
   final StructuredCoverKind kind;
   final String? url;
   final String? mimeType;

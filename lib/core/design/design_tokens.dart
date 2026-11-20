@@ -220,6 +220,15 @@ abstract final class NoWaveSizes {
   /// Height of an activity-chart bar on a day without activity, as a fraction
   /// of the chart: a visible baseline so the day still reads as a day.
   static const activityBarEmpty = 0.06;
+
+  /// Thickness of an accent rule that marks a position: the tab indicator and
+  /// the reading-progress line. Thinner than [splashProgress] because it sits
+  /// on the app all the time rather than on a curtain for a second.
+  static const accentRule = 2.0;
+
+  /// Length of the tab indicator: about the width of a tab icon, so the rule
+  /// reads as underlining the destination rather than as a divider.
+  static const tabIndicator = 24.0;
 }
 
 /// Opacity of lines and overlays that are not semantic colours.

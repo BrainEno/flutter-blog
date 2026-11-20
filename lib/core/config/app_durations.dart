@@ -16,9 +16,19 @@ abstract final class AppDurations {
   /// Each phase (send, body read) of an ordinary JSON exchange.
   static const Duration requestTimeout = Duration(seconds: 30);
 
-  /// A single media upload. Photos taken on a phone are several megabytes and
-  /// the upload competes with the user's other traffic on mobile networks, so
-  /// it gets three times the JSON budget (#295 Q11: deliberate).
+  /// Each phase of a single media upload (#295 Q11, decided in round 4).
+  ///
+  /// `_request` applies the budget twice: once until the response headers
+  /// arrive (the whole request body has to be sent and the server has to
+  /// re-encode the image to WebP first), and once more to read the response.
+  /// The first phase has to carry the largest image the server accepts,
+  /// `AppLimits.mediaUploadMaxBytes` (8 MiB). Over a weak mobile uplink of
+  /// `AppLimits.slowUplinkBytesPerSecond` (1 Mbit/s) that alone takes about
+  /// 67 s; the ordinary 30 s budget would abort every image above roughly
+  /// 3.7 MB on such a link and turn a slow success into a failure the user has
+  /// to retry by hand. 90 s covers the transfer plus re-encode headroom while
+  /// a stalled connection still fails inside a bound instead of hanging the
+  /// editor. `app_config_test.dart` keeps this budget tied to the size limit.
   static const Duration mediaUploadTimeout = Duration(seconds: 90);
 
   /// A Notion import copies remote images server-side before it answers.
