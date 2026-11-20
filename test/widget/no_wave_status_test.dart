@@ -131,9 +131,10 @@ void main() {
       ),
       findsNothing,
     );
+    // (The route's own transition fades sit above the status; look inside.)
     expect(
-      find.ancestor(
-        of: find.text('Nothing here yet'),
+      find.descendant(
+        of: find.byType(NoWaveStatus),
         matching: find.byType(FadeTransition),
       ),
       findsNothing,
