@@ -2,6 +2,7 @@ import 'package:belog/core/design/components/no_wave_sliding_tabs.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _labels = ['Latest', 'Featured', 'Popular', 'Following'];
