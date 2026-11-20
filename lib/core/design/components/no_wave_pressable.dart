@@ -22,12 +22,18 @@ class NoWavePressable extends StatefulWidget {
     super.key,
     required this.onTap,
     this.onLongPress,
+    this.sink = true,
     required this.child,
   });
 
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final Widget child;
+
+  /// Whether the content sinks while pressed. A card or a word sinks; a
+  /// full-width row ruled at its top does not - scaling it would pull the rule
+  /// in from the edges - and answers with its arrow and the wash instead.
+  final bool sink;
 
   @override
   State<NoWavePressable> createState() => _NoWavePressableState();
@@ -55,7 +61,7 @@ class _NoWavePressableState extends State<NoWavePressable> {
   @override
   Widget build(BuildContext context) {
     final still = NoWaveMotionPolicy.reducesMotion(context);
-    final content = still
+    final content = still || !widget.sink
         ? widget.child
         : AnimatedScale(
             scale: _pressed ? NoWaveMotion.pressScale : 1,

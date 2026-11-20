@@ -1,3 +1,4 @@
+import 'package:belog/core/common/widgets/no_wave_action_row.dart';
 import 'package:belog/core/design/components/no_wave_pressable.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/gestures.dart' show kPressTimeout;
@@ -89,6 +90,68 @@ void main() {
     await tester.pumpAndSettle();
     expect(_scale(tester), 1);
     expect(_arrowOffset(tester), Offset.zero);
+  });
+
+  testWidgets('a row that does not sink still steps its arrow ahead', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        NoWavePressable(
+          onTap: () {},
+          sink: false,
+          child: const SizedBox(
+            width: 300,
+            height: 64,
+            child: Row(
+              children: [
+                Expanded(child: Text('A row')),
+                NoWavePressArrow(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('A row')),
+    );
+    await tester.pump(kPressTimeout);
+
+    expect(_inside(AnimatedScale), findsNothing);
+    expect(_arrowOffset(tester).dx, greaterThan(0));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(_arrowOffset(tester), Offset.zero);
+  });
+
+  testWidgets('an action row answers like a card, without sinking', (
+    tester,
+  ) async {
+    var taps = 0;
+    await tester.pumpWidget(
+      _app(
+        SizedBox(
+          width: 360,
+          child: NoWaveActionRow(
+            label: 'Settings',
+            icon: Icons.settings_outlined,
+            onTap: () => taps++,
+          ),
+        ),
+      ),
+    );
+    expect(find.byType(NoWavePressArrow), findsOneWidget);
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('Settings')),
+    );
+    await tester.pump(kPressTimeout);
+    expect(_inside(AnimatedScale), findsNothing);
+    expect(_arrowOffset(tester).dx, greaterThan(0));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(taps, 1);
   });
 
   testWidgets('taps and long presses still reach the caller', (tester) async {

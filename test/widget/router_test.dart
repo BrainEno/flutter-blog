@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belog/core/design/components/no_wave_end_mark.dart';
+import 'package:belog/core/design/components/no_wave_running_head.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/locale_bloc.dart';
@@ -692,6 +693,46 @@ void main() {
     // The page bounds the package-info lookup; advance past it so no timer
     // outlives the test.
     await tester.pump(const Duration(seconds: 3));
+  });
+
+  testWidgets('the reader shows a running head once the title scrolls away', (
+    tester,
+  ) async {
+    final harness = Harness()..buildRouter(initialLocation: '/view/abc');
+    when(() => harness.remote.getBlogById(any())).thenAnswer(
+      (_) async => BlogModel(
+        id: 'abc',
+        title: '深链文章',
+        content: List.filled(60, '一段足够长的正文。').join('\n\n'),
+        posterId: 'author',
+        imageUrl: '',
+        tags: const ['诗歌'],
+        updatedAt: DateTime.utc(2025),
+      ),
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+
+    final head = find.byType(NoWaveRunningHead);
+    final headTitle = find.descendant(of: head, matching: find.text('深链文章'));
+    expect(head, findsOneWidget);
+    expect(headTitle, findsNothing, reason: 'the title is still on screen');
+
+    final article = find
+        .descendant(
+          of: find.byType(BlogViewerPage),
+          matching: find.byType(CustomScrollView),
+        )
+        .first;
+    await tester.drag(article, const Offset(0, -1200));
+    await tester.pumpAndSettle();
+    expect(headTitle, findsOneWidget);
+
+    await tester.tap(headTitle);
+    await tester.pumpAndSettle();
+    expect(headTitle, findsNothing, reason: 'back at the top, title in view');
+    expect(find.text('深链文章'), findsOneWidget);
   });
 
   testWidgets('deep link /view/:id loads the article by id', (tester) async {

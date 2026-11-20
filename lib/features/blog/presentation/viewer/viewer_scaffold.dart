@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_running_head.dart';
 import 'package:belog/core/design/components/no_wave_reading_progress.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/design/motion/no_wave_motion_policy.dart';
@@ -47,6 +48,13 @@ class ViewerScaffold extends StatefulWidget {
 class _ViewerScaffoldState extends State<ViewerScaffold>
     with WidgetsBindingObserver, RouteAware {
   final ScrollController _scrollController = ScrollController();
+
+  /// The title, when read-aloud has not keyed it as its first block.
+  final GlobalKey _titleKey = GlobalKey();
+
+  /// Whether the title has scrolled under the app bar, so the running head
+  /// shows.
+  final ValueNotifier<bool> _runningHead = ValueNotifier(false);
   ReadAloudDocument? _document;
   ReadAloudController? _reader;
   List<GlobalKey> _blockKeys = const [];
@@ -118,6 +126,7 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
       _document = null;
       _blockKeys = const [];
       _scrollRequest++;
+      _runningHead.value = false;
       _prepareReader();
     }
   }
@@ -218,22 +227,46 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
     WidgetsBinding.instance.removeObserver(this);
     _reader?.dispose();
     _scrollController.dispose();
+    _runningHead.dispose();
     super.dispose();
+  }
+
+  /// Shows the running head once the title has passed under the app bar.
+  /// Only the article's own scroll view counts, not a code block scrolling
+  /// sideways inside it.
+  bool _trackTitle(ScrollNotification notification) {
+    if (notification.depth != 0) return false;
+    final anchor = _blockKeys.isEmpty ? _titleKey : _blockKeys.first;
+    _runningHead.value = NoWaveRunningHead.passed(
+      anchor.currentContext,
+      notification,
+    );
+    return false;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: ReaderAppBar(blog: blog, onRequestLogin: onRequestLogin),
+      appBar: ReaderAppBar(
+        blog: blog,
+        onRequestLogin: onRequestLogin,
+        runningHead: _runningHead,
+        onRunningHeadTap: () =>
+            NoWaveRunningHead.toTop(context, _scrollController),
+      ),
       body: NoWaveReadingProgress(
-        child: ViewerArticleBody(
-          blog: blog,
-          document: _document,
-          reader: _reader,
-          blockKeys: _blockKeys,
-          scrollController: _scrollController,
-          getRelatedArticles: getRelatedArticles,
-          onRequestLogin: onRequestLogin,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: _trackTitle,
+          child: ViewerArticleBody(
+            blog: blog,
+            document: _document,
+            reader: _reader,
+            blockKeys: _blockKeys,
+            scrollController: _scrollController,
+            getRelatedArticles: getRelatedArticles,
+            onRequestLogin: onRequestLogin,
+            titleKey: _titleKey,
+          ),
         ),
       ),
     );

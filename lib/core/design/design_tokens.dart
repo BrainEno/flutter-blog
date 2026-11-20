@@ -107,6 +107,11 @@ abstract final class NoWaveTypeScale {
   /// 17: the hint inside the cover drop zone.
   static const hint = 17.0;
 
+  /// 17: the running head - the article title repeated in the reader's app
+  /// bar once the real one has scrolled away. Smaller than the app bar title
+  /// it replaces, because it is a reminder, not a heading.
+  static const runningHead = 17.0;
+
   /// 18: a section heading under an article (comments, related reading).
   static const sectionTitle = 18.0;
 
@@ -357,6 +362,11 @@ abstract final class NoWaveMotion {
   /// The rule stretches across the gap and gathers under the new word, like a
   /// pen stroke; a quarter is visible without reading as elastic.
   static const strokeLag = 0.25;
+
+  /// How far below its place the running head starts as it appears, as a
+  /// share of its own height: enough to read as rising into the bar, not as
+  /// sliding in from somewhere else.
+  static const runningHeadRise = 0.5;
 }
 
 /// Layout breakpoints and the grid they imply.

@@ -1,3 +1,5 @@
+import 'package:belog/core/design/components/no_wave_running_head.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/design/components/no_wave_stamp_switcher.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
@@ -6,6 +8,7 @@ import 'package:belog/core/utils/article_share.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -19,6 +22,8 @@ class ReaderAppBar extends StatelessWidget implements PreferredSizeWidget {
     super.key,
     required this.blog,
     required this.onRequestLogin,
+    this.runningHead,
+    this.onRunningHeadTap,
   });
 
   final Blog blog;
@@ -26,12 +31,47 @@ class ReaderAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Opens the login flow, keeping the current location as the redirect.
   final VoidCallback onRequestLogin;
 
+  /// Whether the title has scrolled under the bar; the running head and the
+  /// hairline under the bar show while it is true.
+  final ValueListenable<bool>? runningHead;
+
+  /// Usually: back to the top of the article.
+  final VoidCallback? onRunningHeadTap;
+
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
   Widget build(BuildContext context) {
+    final runningHead = this.runningHead;
+    if (runningHead == null) return _bar(context, headVisible: false);
+    return ValueListenableBuilder<bool>(
+      valueListenable: runningHead,
+      builder: (context, visible, _) => _bar(context, headVisible: visible),
+    );
+  }
+
+  Widget _bar(BuildContext context, {required bool headVisible}) {
+    final theme = Theme.of(context);
+    final rule = theme.dividerTheme.color ?? theme.colorScheme.outlineVariant;
     return AppBar(
+      title: runningHead == null
+          ? null
+          : NoWaveRunningHead(
+              title: blog.title,
+              visible: headVisible,
+              semanticLabel: context.l10n.readerRunningHead(blog.title),
+              onTap: onRunningHeadTap,
+            ),
+      // A hairline under the bar while text runs beneath it, the way a
+      // printed running head sits on a rule; transparent at the top, where
+      // nothing is under the bar. Material fades between the two.
+      shape: Border(
+        bottom: BorderSide(
+          color: headVisible ? rule : rule.withAlpha(0),
+          width: NoWaveStroke.hairline,
+        ),
+      ),
       actions: [
         // Only share a canonical URL when WEB_BASE_URL is configured, and
         // never for the viewer's own draft: the public web page would not
