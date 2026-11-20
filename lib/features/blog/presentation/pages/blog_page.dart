@@ -1,6 +1,7 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/design/components/no_wave_entrance.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
+import 'package:belog/core/design/components/no_wave_sliding_tabs.dart';
 import 'package:belog/core/common/widgets/no_wave_masthead.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
@@ -176,30 +177,22 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
 
   Widget _feedSelector(BlogState state) {
     final l10n = context.l10n;
+    const kinds = BlogFeedKind.values;
     return _contentWidth(
       Padding(
-        padding: const EdgeInsets.fromLTRB(
-          NoWaveSpacing.page,
-          NoWaveSpacing.small,
-          NoWaveSpacing.page,
-          0,
-        ),
-        child: Wrap(
-          spacing: NoWaveSpacing.small,
-          runSpacing: NoWaveSpacing.xs,
-          children: [
-            for (final (kind, label) in [
-              (BlogFeedKind.latest, l10n.feedTabLatest),
-              (BlogFeedKind.featured, l10n.feedTabFeatured),
-              (BlogFeedKind.popular, l10n.feedTabPopular),
-              (BlogFeedKind.following, l10n.feedTabFollowing),
-            ])
-              ChoiceChip(
-                label: Text(label),
-                selected: state.kind == kind,
-                onSelected: (_) => _selectFeed(kind, state),
-              ),
+        padding: const EdgeInsets.only(top: NoWaveSpacing.small),
+        child: NoWaveSlidingTabs(
+          labels: [
+            for (final kind in kinds)
+              switch (kind) {
+                BlogFeedKind.latest => l10n.feedTabLatest,
+                BlogFeedKind.featured => l10n.feedTabFeatured,
+                BlogFeedKind.popular => l10n.feedTabPopular,
+                BlogFeedKind.following => l10n.feedTabFollowing,
+              },
           ],
+          selected: kinds.indexOf(state.kind),
+          onSelected: (index) => _selectFeed(kinds[index], state),
         ),
       ),
     );

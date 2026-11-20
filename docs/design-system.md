@@ -142,6 +142,7 @@
 | `pressScale` | 0.98 | 文章被按下时下沉到的比例（像纸被指尖压下，不像玩具按钮） |
 | `stampScale` | 1.3 | 切换态图标落下时的初始放大比例（盖章，而不是换图） |
 | `entranceCount` | 6 | 新列表里逐个上浮进场的条目数（约一屏），间隔 `stagger` |
+| `strokeLag` | 0.25 | 橙线移动时后沿比前沿晚走、晚到的比例（占 `slow`）：先伸长再收拢，像一笔，而不像橡皮筋 |
 
 幕布那几行只在冷启动用，语义与时序见 [冷启动与墨色幕布](startup.md)。
 
@@ -216,6 +217,7 @@
 | `BlogGridSkeleton` | `features/blog/presentation/widgets/blog_grid_skeleton.dart` | 网格首帧：与 `blogGridDelegate` 同列数、同高，封面沿用 4/3 |
 | `NoWaveFadeTransition` | `design/components/no_wave_fade_transition.dart` | 标签切换的淡入；少动时不构建转场 |
 | `NoWaveTabIndicator` | `design/components/no_wave_tab_indicator.dart` | 底栏选中项上方的橙色短线，切换时滑到新位置；少动时直接落位 |
+| `NoWaveSlidingTabs` / `NoWaveSlidingTab` | `design/components/no_wave_sliding_tabs.dart` | 页内的一排词（首页 feed 切换）：选中词下的橙线像一笔划过去，先伸长再收拢；大字号时横向滚动；少动时直接落位 |
 | `NoWaveReadingProgress` | `design/components/no_wave_reading_progress.dart` | 阅读页顶部随滚动填满的橙色细线；跟手、不计时，读屏不读 |
 | `NoWavePressable` / `NoWavePressArrow` | `design/components/no_wave_pressable.dart` | 文章卡片与网格项的可点表面：保留 InkWell 的水波、焦点与语义，按下时下沉，行尾箭头向前迈一步 |
 | `NoWaveEntranceScope` / `NoWaveEntrance` | `design/components/no_wave_entrance.dart` | 新列表前一屏逐个上浮进场；同一位置只进场一次，换列表（`generation`）才重来 |
@@ -306,9 +308,9 @@
 
 ### 位置标记：一道会走的橙线
 
-橙色在这套系统里只做两件事：大色块，和「你在这里」。底栏和阅读页各有一道 2pt 的
-橙线（`accentRule`）回答这个问题，这是本应用最有辨识度的动效，也是唯一会「走」
-的装饰：
+橙色在这套系统里只做两件事：大色块，和「你在这里」。底栏、首页 feed 切换和阅读页
+各有一道 2pt 的橙线（`accentRule`）回答这个问题。这是本应用最有辨识度的动效，也是
+唯一会「走」的装饰：
 
 - **`NoWaveTabIndicator`**：主题已经关掉了 `NavigationBar` 的胶囊指示器（胶囊是本
   系统不用的形状），选中态只靠字重和颜色又不够。于是在底栏上沿画一道
@@ -319,9 +321,23 @@
   猜。它包在阅读页正文外，只跟最外层纵向滚动（notification depth 0，横向代码块不
   影响），内容变长（图片加载完）时也会缩回真实比例；不滚动的页面算「没读」，不
   显示满格。
-- 两者都是装饰：`ExcludeSemantics` + `IgnorePointer`，选中态和位置由控件本身告诉
+- **`NoWaveSlidingTabs`**：首页 feed 的「最新 / 精选 / 热门 / 关注」原本是一排
+  Material 的 `ChoiceChip`。胶囊形状和填色切换都不属于这套系统，而且它们只会换色、
+  不会「走」。现在改成一排词，下面是一道发丝线，选中词下压一道与词同宽的
+  `accentRule` 橙线，和底栏是同一种标记。切换时橙线像一笔划过去：朝前进方向的那条边
+  先走，另一条边晚 `strokeLag` 才出发，用 `slow` + `travel` 完成。所以橙线会先伸长
+  跨过中间的词，再收拢到新词下面。从右往左的语言里方向也跟着反过来。
+  - 每个槽位的宽度在布局前按选中字重（以及系统粗体设置）量好。选中只改变颜色和字重，
+    不会挤动相邻的词，橙线在同一帧就知道每个词的位置。
+  - 2× 字体、320dp 屏幕下这一排横向滚动，不换行。选中的词如果在屏幕外，会被滚进视野，
+    并保留页边距。
+  - 每个词都是互斥组里一个「已选中 / 未选中」的按钮，至少 `tapTarget` 高。按下用
+    `NoWavePressable` 下沉，焦点和悬停用橙色洗色。
+  - 「关注」在未登录时会先去登录：组件只报告点了哪个词，选中与否由调用方决定，
+    所以橙线不会先走过去再弹回来。
+- 这几道橙线都是装饰：`ExcludeSemantics` + `IgnorePointer`，选中态和位置由控件本身告诉
   读屏。进度线由手指驱动、没有时钟，所以「减少动效」下无需关闭；底栏标记在少动时
-  直接落位，不做 0ms 动画。
+  直接落位，不做 0ms 动画；页内这排词同样直接落位，滚动改为跳转。
 - 橙色在纸色上的非文字对比度约 3.5:1、墨色上约 4.8:1，都过 3:1 的图形要求，所以两种
   主题都用 `AppPalette.orange`，不换成牛血红。
 
