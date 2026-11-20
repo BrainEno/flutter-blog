@@ -54,7 +54,12 @@
 | token | 值 | 说明 |
 | --- | --- | --- |
 | `NoWaveRadius.none` | 0 | 按钮、输入框、卡片、对话框、面板 |
-| `NoWaveRadius.badge` | 2 | 封面角标（系统里唯一的圆角） |
+| `NoWaveRadius.badge` | 2 | 封面角标 |
+| `NoWaveRadius.inline` | 4 | 正文里行内代码的底色 |
+| `NoWaveRadius.thumbnail` | 6 | 列表行缩略图（阅读历史） |
+| `NoWaveRadius.surface` | 8 | 嵌入的内容面：代码块、正文图片、编辑器正文框、评论区登录提示 |
+| `NoWaveRadius.container` | 12 | 大内容容器：封面上传框、私信气泡、发布队列条目、参与者面板头 |
+| `NoWaveRadius.pill` | 999 | 胶囊：未读计数角标、面板拖拽条；无论位数和系统字号，两端都保持圆形 |
 | `NoWaveStroke.hairline` | 1 | 分隔线、输入框边框、角标描边 |
 | `NoWaveStroke.focus` | 2 | 焦点环、聚焦输入框边框 |
 | `NoWaveIconSize.inline` | 18 | 与元信息文字同行 |
@@ -79,6 +84,29 @@
 | `NoWaveSizes.splashProgressLength` | 72 | 该装饰段的长度 |
 | `NoWaveSizes.loadingRule` | 40 | 加载标签上方那道短横线 |
 | `NoWaveSizes.skeletonLine` | 12 | 骨架屏一行的高度（≈正文 x-height） |
+
+编辑式界面本身仍是方角（`none`）：`inline` 到 `container` 这几档记录的是内容面
+**已经在用**的圆角（#294 盘点时散落为 18 处 `BorderRadius.circular(数字)`），给它们起名
+是为了让页面不再自己写数字，不是鼓励新圆角——要加一档，先在这里改表。原来的离群值
+11 与 13 都是计数角标（`minWidth` 的一半），归入 `pill`：默认字号下渲染完全一致，
+放大字号时角标保持胶囊而不是变成圆角矩形。两处拖拽条的 2 同理（高 4 的胶囊）。
+
+### 直接字号 `NoWaveTypeScale`
+
+优先使用主题文字角色（`TextTheme`）或 `NoWaveTypography`；下面几档只服务于仍需
+直接设字号的地方，让它们有名字、能一起迁移。页面里不再出现 `fontSize: 数字`
+（`test/unit/design/no_magic_radius_and_type_test.dart` 守护，`lib/core/theme/` 与
+`lib/core/design/` 之外一处也不许）。
+
+| token | 值 | 用在哪 |
+| --- | --- | --- |
+| `codeBlock` | 13 | 等宽块：代码块、诊断报告 |
+| `codeInline` | 14 | 正文里的行内代码 |
+| `label` | 15 | 标签/分类 chip 与列表行标题（阅读历史） |
+| `emptyState` | 16 | 空态说明句 |
+| `hint` | 17 | 封面上传框里的提示 |
+| `sectionTitle` | 18 | 文章下方的分节标题（评论、相关阅读） |
+| `authTitle` | 32 | 登录 / 注册页标题 |
 
 ### 线与遮罩的不透明度 `NoWaveOpacity`
 

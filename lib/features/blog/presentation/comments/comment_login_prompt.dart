@@ -22,7 +22,7 @@ class CommentLoginPrompt extends StatelessWidget {
         // A theme role instead of a fixed 10 % grey (issue #24): the tint
         // keeps its contrast against both the light and the dark paper.
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(NoWaveRadius.surface),
       ),
       child: Column(
         children: [

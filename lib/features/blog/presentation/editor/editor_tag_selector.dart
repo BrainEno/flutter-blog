@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/l10n/tag_l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
@@ -42,7 +43,7 @@ class EditorTagSelector extends StatelessWidget {
             label: Text(
               localizedTag(context.l10n, tag),
               style: TextStyle(
-                fontSize: 15,
+                fontSize: NoWaveTypeScale.label,
                 fontWeight: FontWeight.w500,
                 color: selectedTags.contains(tag)
                     ? AppPalette.ink

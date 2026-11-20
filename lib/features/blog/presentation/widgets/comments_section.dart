@@ -161,7 +161,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                 Text(
                   context.l10n.commentsTitle,
                   style: const TextStyle(
-                    fontSize: 18,
+                    fontSize: NoWaveTypeScale.sectionTitle,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

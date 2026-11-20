@@ -116,7 +116,7 @@ class MarkdownRenderer {
             padding: const EdgeInsets.all(NoWaveSpacing.small),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(NoWaveRadius.surface),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,7 +135,7 @@ class MarkdownRenderer {
                     ),
                     style: const TextStyle(
                       fontFamily: 'monospace',
-                      fontSize: 13,
+                      fontSize: NoWaveTypeScale.codeBlock,
                       height: 1.4,
                     ),
                   ),
@@ -379,7 +379,7 @@ class MarkdownRenderer {
               ),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(NoWaveRadius.inline),
               ),
               child: Text.rich(
                 readAloudTextSpan(
@@ -391,13 +391,17 @@ class MarkdownRenderer {
                     structuredMarksStyle(node, link: link != null).decoration,
                   ),
                 ),
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 14)
-                    .merge(structuredMarksStyle(node, link: link != null))
-                    .copyWith(
-                      color: link == null
-                          ? null
-                          : Theme.of(context).colorScheme.primary,
-                    ),
+                style:
+                    const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: NoWaveTypeScale.codeInline,
+                        )
+                        .merge(structuredMarksStyle(node, link: link != null))
+                        .copyWith(
+                          color: link == null
+                              ? null
+                              : Theme.of(context).colorScheme.primary,
+                        ),
               ),
             ),
           ),
@@ -460,7 +464,7 @@ class MarkdownRenderer {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.xs),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(NoWaveRadius.surface),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 320),
                 child: Semantics(

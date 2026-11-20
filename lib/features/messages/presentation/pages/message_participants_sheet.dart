@@ -329,7 +329,7 @@ class _MessageParticipantsSheetState extends State<MessageParticipantsSheet> {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.secondaryContainer,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(NoWaveRadius.container),
         ),
         child: Padding(
           padding: const EdgeInsets.all(NoWaveSpacing.small),

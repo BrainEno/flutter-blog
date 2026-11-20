@@ -69,7 +69,7 @@ class _ArticleConflictReviewSheet extends StatelessWidget {
                 width: 38,
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(NoWaveRadius.pill),
                 ),
               ),
               Padding(

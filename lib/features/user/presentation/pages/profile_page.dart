@@ -344,7 +344,7 @@ class _UnreadBadge extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: scheme.primary,
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(NoWaveRadius.pill),
         ),
         child: Text(
           label,

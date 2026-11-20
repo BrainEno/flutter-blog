@@ -89,7 +89,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         context.l10n.signUpTitle,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 32,
+                          fontSize: NoWaveTypeScale.authTitle,
                           fontWeight: FontWeight.bold,
                         ),
                       ),

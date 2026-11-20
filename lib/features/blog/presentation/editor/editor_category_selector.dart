@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
@@ -122,7 +123,7 @@ class EditorCategorySelector extends StatelessWidget {
                   label: Text(
                     category.name,
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: NoWaveTypeScale.label,
                       fontWeight: FontWeight.w500,
                       color: selectedIds.contains(category.id)
                           ? AppPalette.ink

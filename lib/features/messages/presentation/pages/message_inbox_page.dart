@@ -478,7 +478,7 @@ class _UnreadPill extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: scheme.primary,
-          borderRadius: BorderRadius.circular(11),
+          borderRadius: BorderRadius.circular(NoWaveRadius.pill),
         ),
         child: Text(
           count > 99 ? '99+' : '$count',

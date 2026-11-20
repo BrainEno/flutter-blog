@@ -313,7 +313,7 @@ class _StatusChip extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(NoWaveRadius.container),
       ),
       child: Text(
         label,

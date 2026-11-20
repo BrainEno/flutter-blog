@@ -125,7 +125,7 @@ class _LoginPageState extends State<LoginPage> {
                         context.l10n.loginTitle,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 32,
+                          fontSize: NoWaveTypeScale.authTitle,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
