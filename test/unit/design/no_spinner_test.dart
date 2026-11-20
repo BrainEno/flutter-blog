@@ -13,27 +13,17 @@ import '../../support/source_files.dart';
 /// `NoWaveLoadingLabel` (a rule and a sentence) or `NoWaveSkeleton*` (the shape
 /// of the content).
 ///
-/// Two kinds of exception are allowed, and both are enumerated here rather than
-/// inferred from the source:
-///
-/// - **Inside a control.** `NoWaveButton(isLoading: true)` uses a small spinner
-///   in the slot where the label already is, and two pages put one in an icon
-///   slot. A sentence does not fit in an icon.
-/// - **The cold-start curtain** deliberately asserts the *absence* of one.
+/// Controls too: a button's busy state, a row action and the send icon had no
+/// room for a sentence and kept a small spinner until `NoWaveBusyMark` took
+/// their slot - a segment running along a hairline. The allowlist is empty
+/// and should stay so; an entry needs a reason no rule or sentence can meet.
 ///
 /// Pull to refresh counts: the stock `RefreshIndicator` (and its `.adaptive`
 /// form) drops a spinning disc over the list. Pages use `NoWaveRefresh`, which
 /// keeps the gesture through `RefreshIndicator.noSpinner` and draws a rule.
 void main() {
   /// `path: <why a spinner is still the right answer here>`
-  const allowed = <String, String>{
-    'lib/core/design/components/no_wave_button.dart':
-        'the busy state of a button, in the slot its own label keeps',
-    'lib/features/blog/presentation/pages/recycle_bin_page.dart':
-        'the "restoring" state of one row action, in an icon-sized slot',
-    'lib/features/messages/presentation/pages/message_thread_page.dart':
-        'the sending state of the send IconButton',
-  };
+  const allowed = <String, String>{};
 
   test('pages and sections do not spin', () {
     final offenders = <String>[];

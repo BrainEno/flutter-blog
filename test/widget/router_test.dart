@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_end_mark.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/locale_bloc.dart';
@@ -492,6 +493,9 @@ void main() {
     await tester.tap(find.byType(BlogCard));
     await tester.pumpAndSettle();
     expect(find.byType(BlogViewerPage), findsOneWidget);
+    // The body ends with the end mark, before related reading and comments.
+    expect(find.byType(NoWaveEndMark, skipOffstage: false), findsOneWidget);
+    expect(find.textContaining('全文完', skipOffstage: false), findsOneWidget);
 
     // Switch to the search tab and back.
     await tester.tap(find.text('搜索'));

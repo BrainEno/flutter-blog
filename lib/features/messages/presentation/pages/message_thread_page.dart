@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_busy_mark.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
@@ -350,10 +351,7 @@ class _ThreadBody extends StatelessWidget {
                   onPressed: state.sending ? null : () => onSend(),
                   tooltip: l10n.actionSend,
                   icon: state.sending
-                      ? const SizedBox.square(
-                          dimension: NoWaveIconSize.inline,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                      ? const NoWaveBusyMark()
                       : const Icon(Icons.send_outlined),
                 ),
               ],

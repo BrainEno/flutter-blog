@@ -87,9 +87,11 @@
 - 骨架屏是纯装饰，并且**不动**：没有 shimmer、没有扫光，开着「减少动效」的用户与截图
   里看到的一致。列表页（通知、私信、阅读历史）与首页 feed（`BlogFeedSkeleton`）用的是
   这个形状，语义仍是一句 `loading` / `loadingArticles`，播报次数不变。
-- 控件内部的忙碌态仍保留系统小转圈（`NoWaveButton` 加载态、回收站行内恢复、私信发送
-  图标位）——那些槽位放不下一句文案，三个位置在 `test/unit/design/no_spinner_test.dart`
-  里带理由登记。
+- 控件内部的忙碌态（`NoWaveButton` 加载态、回收站行内恢复、私信发送图标位）放不下一句
+  文案，现在用 `NoWaveBusyMark`：图标大小的一道细线上走过一小段，与下拉刷新同一个图形。
+  它本身不读（按钮的「不可用」已经说明了忙碌）；回收站那一处单独占一个槽位，带
+  `loading` 标签的 `liveRegion`。「减少动效」下线段停在中间。`no_spinner_test.dart`
+  的白名单因此清空。
 
 ### 封面与图片
 

@@ -253,6 +253,14 @@ abstract final class NoWaveSizes {
   /// punctuation rather than as an underline.
   static const eyebrowRule = 16.0;
 
+  /// Share of an icon slot the busy mark's running segment covers: the same
+  /// figure as the refresh segment, longer because the slot is tiny.
+  static const busySegment = 0.4;
+
+  /// Side of the small orange square that ends an article - the end mark a
+  /// magazine prints after the last line.
+  static const endMark = 8.0;
+
   /// Share of the list's width the running refresh segment covers while it
   /// travels along the top edge: long enough to read as a rule, short enough
   /// to read as moving.
