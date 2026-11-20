@@ -328,6 +328,13 @@ abstract final class NoWaveMotion {
   /// About one phone screen. Items further down are not on screen when the
   /// list appears, and making them wait would be a delay, not an entrance.
   static const entranceCount = 6;
+
+  /// How far behind the leading edge the trailing edge of a travelling rule
+  /// starts and finishes, as a share of the move ([NoWaveMotion.slow]).
+  ///
+  /// The rule stretches across the gap and gathers under the new word, like a
+  /// pen stroke; a quarter is visible without reading as elastic.
+  static const strokeLag = 0.25;
 }
 
 /// Layout breakpoints and the grid they imply.

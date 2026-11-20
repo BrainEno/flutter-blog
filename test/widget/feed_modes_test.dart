@@ -1,6 +1,7 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/locale_bloc.dart';
 import 'package:belog/core/common/entities/user.dart';
+import 'package:belog/core/design/components/no_wave_sliding_tabs.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
@@ -90,6 +91,24 @@ Future<void> _pumpPage(
   );
 }
 
+/// The feed's own vertical list. The feed switch above it scrolls sideways,
+/// so "the first Scrollable" is no longer the feed.
+final Finder _feedList = find
+    .byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable && widget.axisDirection == AxisDirection.down,
+    )
+    .first;
+
+/// Taps a feed word, scrolling the row first: with 2x text on a narrow screen
+/// the later words start off screen, as they would for a reader.
+Future<void> _tapFeed(WidgetTester tester, String label) async {
+  final tab = find.widgetWithText(NoWaveSlidingTab, label);
+  await tester.ensureVisible(tab);
+  await tester.pumpAndSettle();
+  await tester.tap(tab);
+}
+
 void main() {
   for (final locale in [const Locale('zh'), const Locale('en')]) {
     testWidgets(
@@ -115,20 +134,25 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('Article latest'), findsOneWidget);
 
-        await tester.tap(find.widgetWithText(ChoiceChip, l10n.feedTabFeatured));
+        await _tapFeed(tester, l10n.feedTabFeatured);
         await tester.pumpAndSettle();
         expect(find.text('Article featured'), findsOneWidget);
         expect(requests.last.kind, BlogFeedKind.featured);
+        bool selected(String label) => tester
+            .widget<NoWaveSlidingTab>(
+              find.widgetWithText(NoWaveSlidingTab, label),
+            )
+            .selected;
+        expect(selected(l10n.feedTabFeatured), isTrue);
+        expect(selected(l10n.feedTabLatest), isFalse);
 
-        await tester.tap(find.widgetWithText(ChoiceChip, l10n.feedTabPopular));
+        await _tapFeed(tester, l10n.feedTabPopular);
         await tester.pumpAndSettle();
         expect(find.text('Article popular'), findsOneWidget);
         expect(find.text(l10n.feedPopularDescription), findsOneWidget);
         expect(requests.last.kind, BlogFeedKind.popular);
 
-        await tester.tap(
-          find.widgetWithText(ChoiceChip, l10n.feedTabFollowing),
-        );
+        await _tapFeed(tester, l10n.feedTabFollowing);
         await tester.pumpAndSettle();
         expect(find.text('Article following'), findsOneWidget);
         expect(requests.last.kind, BlogFeedKind.following);
@@ -176,21 +200,19 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        await tester.tap(find.widgetWithText(ChoiceChip, l10n.feedTabFeatured));
+        await _tapFeed(tester, l10n.feedTabFeatured);
         await tester.pumpAndSettle();
         await tester.drag(find.byType(ListView), const Offset(0, -400));
         await tester.pumpAndSettle();
         expect(find.text(l10n.feedFeaturedEmpty), findsOneWidget);
 
-        await tester.tap(find.widgetWithText(ChoiceChip, l10n.feedTabPopular));
+        await _tapFeed(tester, l10n.feedTabPopular);
         await tester.pumpAndSettle();
         // At 2x text the status can be below the initial viewport.
         await tester.drag(find.byType(ListView), const Offset(0, -400));
         await tester.pumpAndSettle();
         expect(find.text(l10n.feedPopularEmpty), findsOneWidget);
-        await tester.tap(
-          find.widgetWithText(ChoiceChip, l10n.feedTabFollowing),
-        );
+        await _tapFeed(tester, l10n.feedTabFollowing);
         await tester.pumpAndSettle();
         await tester.drag(find.byType(ListView), const Offset(0, -400));
         await tester.pumpAndSettle();
@@ -228,7 +250,7 @@ void main() {
     addTearDown(user.close);
     await _pumpPage(tester, feed: feed, user: user, locale: locale);
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ChoiceChip, l10n.feedTabPopular));
+    await _tapFeed(tester, l10n.feedTabPopular);
     await tester.pumpAndSettle();
     // Three full pages reach the bound; the fourth load-more stops locally.
     for (var i = 0; i < 3; i++) {
@@ -249,6 +271,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.widgetWithText(TextButton, l10n.feedPopularDepthAction),
       400,
+      scrollable: _feedList,
     );
     expect(find.text(l10n.feedPopularDepthLimit), findsOneWidget);
     await tester.tap(
@@ -314,7 +337,7 @@ void main() {
     addTearDown(user.close);
     await _pumpPage(tester, feed: feed, user: user, locale: const Locale('en'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Following'));
+    await _tapFeed(tester, 'Following');
     await tester.pumpAndSettle();
 
     expect(find.text('Login redirect: /'), findsOneWidget);

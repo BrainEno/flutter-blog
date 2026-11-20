@@ -81,6 +81,15 @@ Widget _app({required Locale locale, required Widget child}) => MaterialApp(
   home: child,
 );
 
+/// The feed's own vertical list. The feed switch above it scrolls sideways,
+/// so "the first Scrollable" is no longer the feed.
+final Finder _feedList = find
+    .byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable && widget.axisDirection == AxisDirection.down,
+    )
+    .first;
+
 void main() {
   for (final language in ['zh', 'en']) {
     final locale = Locale(language);
@@ -140,7 +149,7 @@ void main() {
         await tester.scrollUntilVisible(
           find.text(l10n.feedNoMore),
           200,
-          scrollable: find.byType(Scrollable).first,
+          scrollable: _feedList,
         );
         expect(find.text(l10n.feedNoMore), findsOneWidget);
         expect(tester.takeException(), isNull);
@@ -247,7 +256,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text(l10n.feedCachedNoMore),
         200,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: _feedList,
       );
       expect(find.text(l10n.feedNoMore), findsNothing);
 
@@ -258,7 +267,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text(l10n.feedNoMore),
         200,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: _feedList,
       );
       expect(find.text(l10n.feedCachedNoMore), findsNothing);
       expect(tester.takeException(), isNull);
@@ -544,7 +553,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Retry'),
       200,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: _feedList,
     );
     expect(find.text('Retry'), findsOneWidget);
     await tester.tap(find.text('Retry'));
