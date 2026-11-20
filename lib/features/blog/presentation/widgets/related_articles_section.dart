@@ -44,7 +44,7 @@ class RelatedArticlesSection extends StatelessWidget {
               Text(
                 context.l10n.relatedReading,
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: NoWaveTypeScale.sectionTitle,
                   fontWeight: FontWeight.bold,
                 ),
               ),

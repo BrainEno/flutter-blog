@@ -42,7 +42,7 @@ IPA 经过归档结构、iPhoneOS/arm64 架构、包标识/版本、隐私提示
 
 已有用户时应使用原签名 key，不要生成新 key。首次安装且没有旧 key 时，可在自己的电脑用 JDK `keytool -genkeypair -keystore <安全位置> -alias <别名> -keyalg RSA -keysize 3072 -validity 10000` 创建并按交互提示设置密码；妥善备份 keystore 与密码，切勿提交到仓库或发到聊天。用 `keytool -exportcert -rfc -keystore <安全位置> -alias <别名> | openssl x509 -noout -fingerprint -sha256` 独立取得指纹并去掉冒号；本机安全地将 keystore 的 base64 值放入对应 GitHub Secret。不要在公开终端、日志、截图或工作流输入里粘贴它们。丢失 key 将影响未来覆盖升级。
 
-尚未配置个人 key 时，可选 `debug` 获取 `BottomThink-android-debug-temporary-key.apk` 用于临时调试。它**可调试、使用临时 debug 证书、允许 debug 明文网络策略**，不是正式包，每次 GitHub runner 生成的证书可能不同，不能保证升级或和个人签名版互相覆盖；不应分发或用于长期保存唯一数据。只有 `personal` 能提供由所有者控制的持续签名身份。项目最低 Android API 23。
+尚未配置个人 key 时，可选 `debug` 获取 `BottomThink-android-debug-temporary-key.apk` 用于临时调试。它**可调试、使用临时 debug 证书、允许 debug 明文网络策略**，不是正式包，每次 GitHub runner 生成的证书可能不同，不能保证升级或和个人签名版互相覆盖；不应分发或用于长期保存唯一数据。只有 `personal` 能提供由所有者控制的持续签名身份。项目最低 Android API 24（`flutter_secure_storage` 11 起的下限）。
 
 ## 实际权限与检查
 

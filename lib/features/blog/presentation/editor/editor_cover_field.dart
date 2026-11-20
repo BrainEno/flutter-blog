@@ -69,7 +69,7 @@ class EditorCoverField extends StatelessWidget {
         height: NoWaveSizes.coverEditorBox,
         width: double.infinity,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(NoWaveRadius.container),
           child: Image.file(
             picked,
             fit: BoxFit.cover,
@@ -85,7 +85,7 @@ class EditorCoverField extends StatelessWidget {
         height: NoWaveSizes.coverEditorBox,
         width: double.infinity,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(NoWaveRadius.container),
           child: Image.memory(
             bytes,
             fit: BoxFit.cover,
@@ -103,7 +103,7 @@ class EditorCoverField extends StatelessWidget {
         height: NoWaveSizes.coverEditorBox,
         width: double.infinity,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(NoWaveRadius.container),
           child: CachedNetworkImage(
             imageUrl: selectedCover,
             fit: BoxFit.cover,
@@ -119,7 +119,7 @@ class EditorCoverField extends StatelessWidget {
         height: NoWaveSizes.coverEditorBox,
         width: double.infinity,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(NoWaveRadius.container),
           child: CachedNetworkImage(
             // Cover media are immutable on no-wave (each upload is a new
             // asset id), so the URL is used as-is: no cache-busting suffix.
@@ -148,7 +148,7 @@ class EditorCoverField extends StatelessWidget {
       // object. Keep the former rounded, softly dashed visual treatment.
       options: RoundedRectDottedBorderOptions(
         color: dashedColor,
-        radius: const Radius.circular(12),
+        radius: const Radius.circular(NoWaveRadius.container),
         dashPattern: const [6, 3],
         strokeCap: StrokeCap.round,
       ),
@@ -156,7 +156,7 @@ class EditorCoverField extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 250),
         width: double.infinity,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(NoWaveRadius.container),
           color: surface,
         ),
         child: Center(
@@ -170,7 +170,7 @@ class EditorCoverField extends StatelessWidget {
                 context.l10n.uploadCoverHint,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 17,
+                  fontSize: NoWaveTypeScale.hint,
                   fontWeight: FontWeight.w500,
                   color: muted,
                 ),

@@ -96,8 +96,8 @@
 ### B2 启动时只允许一个后端
 
 `lib/init_dependencies.dart` 在入口就要求 `API_BASE_URL`（缺失直接 `StateError`），
-然后立刻构造唯一的 `NowaveApiClient`（:161）、唯一的 `NowaveSessionManager`，并在
-:320 注册唯一的 `BlogRepository`。没有“内容源”这个概念，也没有“两个源都注册、
+然后立刻构造唯一的 `NowaveApiClient`、唯一的 `NowaveSessionManager`；`BlogRepository`
+只由 `lib/di/blog_module.dart` 注册一次（#304 起各功能的注册拆到 `lib/di/`）。没有“内容源”这个概念，也没有“两个源都注册、
 由谁激活”的机制。
 
 - 清法：引入 `ContentSourceId`（`nowave` / `notion`）与一个

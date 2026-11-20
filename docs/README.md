@@ -1,10 +1,18 @@
 # 文档索引
 
-> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+> 状态：active ｜ 最后核对：2026-11-19 @ de5e8bc
 
 以当前源码和 GitHub issue/PR 状态为准。审计文件固定在所列快照，不是自动更新
 的部署或生产验收报告；未合并 PR 不代表主线功能。根 [README](../README.md)
-说明当前运行、配置和主要功能。
+只做入口（#298）：功能摘要、快速开始和本索引的链接；被移出的细则都在下面能找到。
+
+## 入门与本地开发
+
+- [功能清单（详细版）](features.md)：根 README 功能表每一行的完整边界说明。
+- [本地开发](local-development.md)：初始配置、Windows/macOS 一键脚本、明文 HTTP、
+  手动命令与依赖升级。
+- [本地启动排障](troubleshooting.md)：版本不符、Pub 哈希错误、白屏、「无法连接到网络」
+  与后端未启动时的表现。
 
 ## 日常使用、隐私与发布
 
@@ -33,9 +41,13 @@
   已知限制。
 - [SQLite 存储](sqlite-storage.md)：schema 版本、迁移、Isar 移除与降级限制。
 - [未归属旧草稿](unclaimed-drafts.md)：保留、只读导出范围和降级风险。
+- [分享与深链](deep-links.md)：出站分享 payload、`nowave://` 入站与通用链接的验收边界。
 - [会话生命周期](session-lifecycle.md)：refresh 单飞、账号 fence、花费策略与改动守则。
 
 ## 架构、编辑器与后端集成
+
+- [架构与约定](architecture.md)：目录分层、数据流、正文模型、Failure 契约、本地存储、
+  首页离线范围与图片/媒体约定；依赖注入模块在 `lib/di/`。
 
 - [冷启动与墨色幕布](startup.md)：`main` 之后不再 await 的启动顺序、幕布时序与
   原生静态启动图的边界。
@@ -48,6 +60,7 @@
 - [结构化正文历史](structured-session-body-history.md)：会话内历史不是远程版本控制。
 - [本地结构化正文传输](structured-body-transfer.md)：带版本的正文剪贴板交换和预览。
 - [no-wave 传输层](nowave-transport.md)：URL 组合、响应信封映射与 401 重放决策。
+- [后端差距摘要](backend-gaps.md)：客户端视角的当前差距与服务端待办。
 - [no-wave API 差距](nowave-api-gap-audit.md)：指定审计快照的已接入与未接入能力。
 - [API 连通性证据](api-connectivity-evidence.md)：探测、诊断和网络验证的证据边界。
 - [API 重定向策略](api-redirect-policy.md)：HTTP 重定向的安全边界与客户端行为。
@@ -61,6 +74,7 @@
 - [Agent 开发流程](agent-development.md) 和 [AGENTS.md](../AGENTS.md)：工程约束、
   验证与 PR 证据；会话平台若限定工作分支，应遵守该更高优先级的约束。
 - [CI 可观测性](ci-observability.md)：失败证据与构建诊断。
+- [路线图](roadmap.md)：已落地阶段与重点修复（开放工作以 issue 列表为准）。
 - [代码健壮性审查](code-audit.md)：指定基线的已修复项与剩余风险。
 - [未引用资源来源](assets-source/README.md)：保留在仓库、但不再随应用打包的历史图片。
 

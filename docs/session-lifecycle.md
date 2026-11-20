@@ -68,3 +68,29 @@ imports keep working; new code may import the unit it needs directly.
 `nowave_session_test` (lifecycle), `nowave_session_race_test` (interleavings
 across account changes), `nowave_session_refresh_unknown_test` (#101),
 `resilient_session_store_test` and `session_store_migration_test` (#102).
+
+## 认证接口与持久化摘要（原 README，#298）
+
+- **注册 / 登录**：`POST /auth/{register,login}`，body 仅 `{email,password}`；
+  注册密码最短 **12 位**（客户端已同步前移校验）。成功即返回
+  `{accessToken, refreshToken, …}`，注册后立即 `PUT /me/profile` 补写昵称。
+- **会话持久化**：token 对存平台安全存储（iOS Keychain / Android Keystore，
+  issue #46；SQLite 作为迁移源与降级兜底，`core/nowave/nowave_session.dart`）。
+  启动时恢复，`GET /me` + `GET /me/profile` 解析身份。
+  **哪一份副本有效由一个不含令牌的标记决定**（SQLite `metadata`，`#102`）：
+  安全存储启动时先做写/读/删探针，不可用就直接写 SQLite，会话照常登录；迁移
+  先把旧行复制到安全存储并**读回校验**才删除旧行，写坏或读不回就保留 SQLite
+  副本；退出时**先写「无会话」标记**再清两处副本，即使 Keychain 删除失败，重启
+  也不会复活旧账号，并把「本地副本未清干净」作为退出结果提示给用户。
+- **刷新轮换**：`POST /auth/refresh` 单次有效且轮换；**重用已轮换的 refresh
+  token 会撤销整个会话族**，因此客户端的刷新严格单飞（single-flight），
+  access token 过期遇 401 时自动刷新并重放请求一次。刷新遇到超时、断流或 5xx
+  时结果不明，客户端**不会重发同一个 refresh token**：会话保留（access token
+  仍可继续用），但该 token 会被标记为已作废并持久化，重启后同样不会重发；
+  access token 过期或再次需要刷新时本地登出，要求重新登录。刷新成功但新 token
+  写盘失败时会清除存储里的旧副本，避免重启后拿旧 token 触发重放撤销。
+- **退出**：`DELETE /me/session` 尽力撤销会话族并清除内存中的当前会话；
+  安全存储或 SQLite 清除失败时旧副本可能留存，不能承诺已物理擦除。
+- **会话同步**：`lib/features/auth/auth_session_sync.dart` 订阅会话状态流；
+  后台刷新失败导致的登出会立即把用户带出登录态 UI。
+- **email 展示**：在 no-wave 审计快照 [`55a24bd`](https://github.com/BrainEno/no-wave/tree/55a24bdaa1c01888fb5ecb5bf41befe219348049) 中，`GET /me` 可返回邮箱和验证状态；本客户端目前只使用其中的 id，账号页邮箱仍来自登录/注册时的本地缓存（见迁移文档）。

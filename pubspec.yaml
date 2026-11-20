@@ -37,7 +37,7 @@ dependencies:
   # own (lib/features/blog/presentation/widgets/markdown_body.dart), so no
   # HTML is ever built or executed (issue #17).
   markdown: ^7.2.1
-  flutter_secure_storage: ^10.3.4
+  flutter_secure_storage: ^11.2.0
   flutter_bloc: ^9.0.0
   get_it: ^8.0.3
   dotted_border: ^3.1.0
@@ -46,7 +46,7 @@ dependencies:
   # The only database engine: Drift on SQLite. Isar was retired in #107
   # (unmaintained upstream; the one-time importer is gone). See
   # docs/sqlite-storage.md before touching the schema.
-  drift: 2.35.3
+  drift: 2.35.4
   path_provider: ^2.1.5
   go_router: ^14.8.0
   equatable: ^2.0.7
@@ -60,7 +60,7 @@ dependencies:
   # Real app version for the about page and the diagnostics header
   # (issue #49 follow-up); replaces a hardcoded, already-stale string.
   package_info_plus: ^10.2.2
-  cached_network_image: ^3.4.1
+  cached_network_image: ^4.0.7
   # Localized Material/Cupertino widget chrome (issue #24). The ARB
   # pipeline is driven by `generate: true` below plus l10n.yaml.
   flutter_localizations:

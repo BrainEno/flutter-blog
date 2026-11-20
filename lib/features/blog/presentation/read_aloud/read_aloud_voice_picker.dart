@@ -84,7 +84,7 @@ class _ReadAloudVoicePickerState extends State<ReadAloudVoicePicker> {
                     height: 4,
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.outlineVariant,
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: BorderRadius.circular(NoWaveRadius.pill),
                     ),
                   ),
                 ),

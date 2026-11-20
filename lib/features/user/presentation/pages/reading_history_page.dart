@@ -285,7 +285,10 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                   const SizedBox(height: NoWaveSpacing.small),
                   Text(
                     context.l10n.historyEmpty,
-                    style: TextStyle(fontSize: 16, color: mutedColor),
+                    style: TextStyle(
+                      fontSize: NoWaveTypeScale.emptyState,
+                      color: mutedColor,
+                    ),
                   ),
                   const SizedBox(height: NoWaveSpacing.xs),
                   Text(
@@ -326,7 +329,9 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                       vertical: NoWaveSpacing.xs,
                     ),
                     leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(
+                        NoWaveRadius.thumbnail,
+                      ),
                       child: Semantics(
                         image: true,
                         label: context.l10n.coverOf(entry.title),
@@ -356,7 +361,7 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: NoWaveTypeScale.label,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

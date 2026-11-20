@@ -266,7 +266,7 @@ class _AboutPageState extends State<AboutPage> {
                                   '${l10n.diagnosticsEmptyHint}'
                             : report,
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: NoWaveTypeScale.codeBlock,
                           fontFamily: 'monospace',
                         ),
                       ),

@@ -22,569 +22,129 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
 [docs/nowave-api-gap-audit.md](docs/nowave-api-gap-audit.md)。其他运行、
 发布与历史资料见 [文档索引](docs/README.md)。
 
-## 移动端视觉与组件
-
-客户端正逐步向 [no-wave 移动网页设计](https://github.com/BrainEno/no-wave/blob/157aa6f5799d33891910ceb606cbaa8ec90f4e40/apps/web/docs/UI_DESIGN_SYSTEM.md) 靠拢（原生落地方式见 [界面设计系统](docs/design-system.md)）：纸色与墨色、橙红强调、衬线标题、细线分隔和留白，并保留原生四标签导航及各自的页面栈。首页、搜索、阅读、作者主页和个人中心采用一致的编辑式布局；收藏和个人作品继续使用可操作的网格。这是逐步迭代，并非所有页面均已统一或与网页逐像素相同；发布身份已统一为 `com.nodeman24.nowave`，启动图标美术仍可能继续迭代。
-
-- 颜色与文字样式集中在 `lib/core/theme/`；品牌、标题、作品行、封面、方形头像与操作行为可复用展示组件。作品行和操作行通过回调交给页面处理导航或动作，不依赖路由或业务状态；评论区的作者点击也由阅读页接管，保持所在标签的导航栈。
-- 头像与作品封面优先展示原有 HTTP(S) 图片 URL，提供本地化图片语义。缺失、无效或加载失败时，头像使用中性人像图标；封面使用随包附带的原创抽象兜底图（由 AI 生成，不代表文章内容）。
-- Latin 字体使用 [Instrument Serif](https://github.com/google/fonts/tree/main/ofl/instrumentserif) 和 [Inter Tight](https://github.com/google/fonts/tree/main/ofl/intertight)，各自的 SIL Open Font License 随 `assets/fonts/` 打包；中文使用系统衬线/无衬线字体回退。实际字形与行高会因设备而异。
-- 继续支持浅色、深色、系统主题、系统字体缩放与中英文界面；系统要求减少动画时关闭标签切换淡入。视觉组件不翻译作品、作者或评论；内容请求仍为 `zh-CN`（见下文“本地化与无障碍”）。
+> 本 README 只保留入口信息（#298）。细节已下沉到 `docs/`，每节末尾给出链接；
+> 完整列表见 [文档索引](docs/README.md)。
 
 ## 功能
 
-- 账号：邮箱注册（注册即登录，无邮箱确认步骤）/ 登录 / 退出，
-  个人资料编辑（昵称、网站、头像）
-- 文章：发布 / 编辑，简单 v0 正文按 **Markdown** 阅读并支持编辑预览；只读
-  显示 no-wave v0/v1 结构化正文的标题、引用、列表、代码、行内样式及多图。
-  不兼容的正文拒绝使用普通编辑器保存，避免覆盖格式。封面图与标签均可选
-  （仅标题与正文必填），封面上传后由服务端统一转码 WebP、资产不可变
-- 浏览：分页 Feed、下拉刷新、滚动加载更多、按标签筛选、文章搜索
-  （含防抖与结果上限；已升级的服务端也搜索正文块文本，旧部署可能只查标题或摘要）；搜索页
-  另有本机**离线书库**，可在不联网时浏览当前服务器/内容语言的有界公开缓存，并以子串匹配
-  标题、作者、标签和可读正文，提供命名空间级清空（不是完整服务器搜索或下载列表，见
-  [离线书库](docs/offline-library.md)）。文末相关阅读推荐（服务端 related，最多 6 篇）；首页可切换
-  最新、编辑精选、按收藏排序的作品，以及登录后查看关注作者的作品。精选、收藏榜和关注
-  仅在线读取，不能用公共缓存伪造排序或关注关系。
-- 互动：点赞 / 取消点赞（乐观更新 + 服务端状态校准，显式置态），个人收藏列表，
-  评论（纯文本 v0：嵌套回复、最旧在前；按需加载后续页，每页最多 50 个顶级评论，
-  回复树随根返回，计数仅表示已加载的评论（含回复）；发送带幂等键安全重试，自有评论删除需确认且级联子回复；
-  未登录显示登录提示）
-- 作者：公开作者主页（资料、粉丝/关注数、TA 的文章），从搜索页按昵称或用户 ID
-  发现作者，也可从作者页查看粉丝和关注用户，或从个人中心进入自己的作者页。
-  搜索页的空输入框就是**作者目录**：只列当前内容语言下有已发表作品的作者，
-  不输入关键词时按粉丝数排列，输入后按相关度搜索——名单本身说明「这里有人可读」，
-  而不是把所有注册账户摆出来。作者目录与关系列表仅在线、无需登录且不附带会话凭据；
-  每页 100 人，底部「加载更多作者」按 offset 续读（服务端上限 100000，短页即结束；
-  翻页期间粉丝数变化导致的重复按 `userId` 去重，不重复显示）。搜索词和结果
-  资料仅保留在页面内存，目录不带头像（头像依赖读者，改成姓名首字）；内容语言随
-  界面语言推导。
-  关注 / 取消关注由服务端校准（重复请求幂等，防连点；未登录引导登录；自己
-  主页不显示关注按钮）。站点相对头像只在配置可信 `WEB_BASE_URL` 时解析；未配置或地址不安全时
-  显示中性占位，不从 API origin 猜测。
-- 阅读：设备本地阅读历史（按账号隔离，退出时尽力清理），分享文章到系统
-  分享面板（标题 + 摘要 + 指向 no-wave web 文章页的 canonical URL，需配置
-  `WEB_BASE_URL`），`nowave://article/<slug>` 深链在应用内打开同一篇文章
-  （见下文「分享与深链」）
-- 数据导出：个人资料及最多 100 篇简体中文已发布作品的部分文字导出为 JSON，
-  经系统分享面板保存；不含服务端草稿、其他语言及完整正文格式或图片，**不是完整备份**
-- Notion bundle：编辑器可预览后导入经 no-wave 后端处理的 Notion bundle，也可把已保存
-  的编辑内容导出为 bundle；两者均由用户显式发起，不等同于连接或浏览 Notion 数据库
-- 草稿：按 API 后端、账号和文章隔离的本地草稿、恢复 / 丢弃对话框及 2 秒
-  防抖自动保存；发布前保存快照，成功后仅在快照未变化时尝试清理。旧版无法
-  证明归属的草稿保留但不自动显示或分配，服务端草稿是独立功能
-- 发布队列（#23）：发布时网络失败或离线，会把这篇文章连同封面存进本地队列，联网
-  后自动重试；每次尝试都带同一个幂等键，因此「响应丢了」不会变成两篇文章。队列按
-  账号和 API 后端隔离，只由当前账号发送；账号过期时暂停而不消耗重试次数，被服务端
-  拒绝的内容才停下来等人处理。个人中心 → 发布队列可查看、立即发送、重试或移除，
-  详见 [发布队列](docs/publish-queue.md)
-- 离线：最新列表及通过详情接口取得的文章会缓存在 SQLite，可离线阅读；精选、
-  收藏榜、关注等网络列表不写入普通列表缓存。结构化正文随已缓存文章保存，图片
-  不保证离线可用。离线书库只读当前 API 后端和内容语言的公开缓存，列表与搜索不发
-  网络请求；其估算大小不包含图片/WAL，清空不会碰草稿、队列、历史或其它命名空间。
-  旧版 no-wave 缓存可能已经压平结构，升级后会提示可能不完整，联网重新获取可恢复。
-  首页按每页 10 条读取缓存并标明可能不完整或过期；其他网络操作离线时快速失败并提示
-- 语言与无障碍：简体中文 / 英文界面跟随系统语言；日期和数字按区域格式化，
-  图片与操作提供语义标签，常用操作支持键盘与较大的字体；主题支持亮 / 暗 /
-  跟随系统并在本地持久化
+| 领域 | 摘要 | 详情 |
+| --- | --- | --- |
+| 账号 | 邮箱注册（注册即登录）/ 登录 / 退出；资料编辑；登录态改密、改邮箱、忘记密码 | [会话生命周期](docs/session-lifecycle.md)、[账户邮箱](docs/account-email.md)、[密码恢复](docs/password-recovery.md) |
+| 文章 | 发布 / 编辑 v0 Markdown 正文并预览；只读展示 v0/v1 结构化正文；不兼容正文拒绝普通编辑器覆盖 | [编辑器路线图](docs/editor-architecture-roadmap.md)、[语言版本](docs/article-editions.md) |
+| 浏览 | 分页 Feed（最新 / 精选 / 收藏榜 / 关注）、标签与分类、文章搜索、文末相关阅读 | [首页分页](docs/latest-feed-cursor.md) |
+| 离线 | SQLite 缓存可离线阅读；搜索页「离线书库」按服务器与内容语言有界检索 | [离线书库](docs/offline-library.md)、[SQLite 存储](docs/sqlite-storage.md) |
+| 互动 | 点赞（乐观更新 + 服务端校准）、收藏列表、纯文本嵌套评论（幂等发送） | [评论线程](docs/comments.md) |
+| 作者 | 公开作者主页、关注 / 取关、粉丝与关注列表、作者目录与搜索 | [功能清单](docs/features.md) |
+| 消息 | 通知收件箱与私信，打开时读取、不轮询，按账号围栏 | [通知](docs/notifications.md)、[私信](docs/messages.md) |
+| 阅读 | 设备本地阅读历史、系统朗读、分享到系统面板、`nowave://article/<slug>` 深链 | [分享与深链](docs/deep-links.md)、[朗读](docs/read-aloud.md) |
+| 草稿与发布 | 按后端 / 账号 / 文章隔离的本地草稿与 2 秒防抖自动保存；离线发布队列带幂等键重试 | [发布队列](docs/publish-queue.md)、[未归属旧草稿](docs/unclaimed-drafts.md) |
+| Notion bundle | 编辑器可预览后导入、或把已保存内容导出为经 no-wave 后端处理的 Notion bundle | 见下文「Notion 的范围」 |
+| 数据导出 | 资料与最多 100 篇简体中文已发布作品的部分文字导出为 JSON，**不是完整备份** | [功能清单](docs/features.md) |
+| 语言与无障碍 | 简体中文 / 英文界面，日期数字按区域格式化，语义标签、键盘与系统字体缩放 | [无障碍](docs/accessibility.md) |
 
-## 分享与深链（#21）
+两条容易误解的边界：
 
-**出站分享（可用）**：阅读页的分享按钮只在配置了 `WEB_BASE_URL` 时出现，payload
-是**标题 + 一段纯文本摘要 + canonical URL**（`https://<WEB_BASE_URL>/articles/<slug>`）。
-摘要取正文第一条有内容的行，去掉标题/引用/列表/链接/强调标记后最多 120 字符；
-分享内容只由公开 slug 拼接，不含草稿、本机路径、token 或临时签名 URL。
+- **站点相对资源**：分享入口、站点相对的正文图片 / 链接和头像（`/avatars/...`）
+  只在配置可信 `WEB_BASE_URL` 时可用；未配置或地址不安全时头像显示中性占位，
+  不从 API origin 猜测。
+- **隐私**：阅读历史、本地草稿和缓存不会自动同步；诊断信息只由用户主动查看、
+  复制或导出，不自动上传。
 
-**入站深链（已接入，真机未验收）**：
+每项功能的完整边界说明见 [功能清单（详细版）](docs/features.md)。
 
-| 形式 | 今天的行为 |
-| --- | --- |
-| `nowave://article/<slug>` | 应用内打开文章。Android intent-filter 与 iOS `CFBundleURLTypes` 已声明，冷启动与运行中收到都会改写成 `/view/<slug>` |
-| `https://<WEB_BASE_URL>/articles/<slug>` | 应用会把**自己 web origin** 上的文章 URL 解析成同一篇文章；但系统目前仍把它交给浏览器。要让点击直接进 App 需要把 `assetlinks.json` / `apple-app-site-association` 托管在 web origin 并完成域名校验——本仓库没有这些文件，也不声称做过 |
-| 其它 scheme / 其它站点 / 缺少 slug | 不当成文章：按普通路由处理，未知路径落到「页面不存在 + 返回首页」 |
-| 文章不存在、已删除或未公开 | 链接只携带 slug，可见性仍由服务端决定：阅读页按普通取文失败展示本地化错误与重试，不因「来自链接」而绕过 |
+### Notion 的范围（#287，核对于 2026-11-19）
 
-实现只有两处：`core/utils/article_deep_link.dart` 是纯函数（URL → 应用内位置，
-含 scheme/主机/路径段/编码/超长校验），`router/app_router.dart` 的 `redirect`
-在匹配前改写。`flutter test` 覆盖这些映射和「冷启动、运行中」两种进入方式，
-但不能代替真机：Android 用
-`adb shell am start -a android.intent.action.VIEW -d "nowave://article/<slug>"`，
-iOS 用 `xcrun simctl openurl booted "nowave://article/<slug>"`，各跑一次才算验收。
+- **已实现**：编辑器内由用户显式发起的 Notion bundle **导入 / 导出**，经 no-wave
+  后端处理（`lib/features/blog/data/notion_import/`、
+  `lib/features/blog/data/notion_export/`，入口在
+  `lib/features/blog/presentation/editor/editor_notion_coordinator.dart`）。App 不直连
+  Notion API、不保存 Notion token。
+- **未实现**：把 Notion 数据库作为第二个**运行时文章内容源**（直接读取 Notion 数据库
+  的文章列表与正文）。方案、风险与分期见
+  [Notion 内容源评估](docs/notion-content-source-assessment.md)；现有 no-wave 行为不受影响。
 
-## 认证与会话（no-wave）
+## 快速开始
 
-- **注册 / 登录**：`POST /auth/{register,login}`，body 仅 `{email,password}`；
-  注册密码最短 **12 位**（客户端已同步前移校验）。成功即返回
-  `{accessToken, refreshToken, …}`，注册后立即 `PUT /me/profile` 补写昵称。
-- **会话持久化**：token 对存平台安全存储（iOS Keychain / Android Keystore，
-  issue #46；SQLite 作为迁移源与降级兜底，`core/nowave/nowave_session.dart`）。
-  启动时恢复，`GET /me` + `GET /me/profile` 解析身份。
-  **哪一份副本有效由一个不含令牌的标记决定**（SQLite `metadata`，`#102`）：
-  安全存储启动时先做写/读/删探针，不可用就直接写 SQLite，会话照常登录；迁移
-  先把旧行复制到安全存储并**读回校验**才删除旧行，写坏或读不回就保留 SQLite
-  副本；退出时**先写「无会话」标记**再清两处副本，即使 Keychain 删除失败，重启
-  也不会复活旧账号，并把「本地副本未清干净」作为退出结果提示给用户。
-- **刷新轮换**：`POST /auth/refresh` 单次有效且轮换；**重用已轮换的 refresh
-  token 会撤销整个会话族**，因此客户端的刷新严格单飞（single-flight），
-  access token 过期遇 401 时自动刷新并重放请求一次。刷新遇到超时、断流或 5xx
-  时结果不明，客户端**不会重发同一个 refresh token**：会话保留（access token
-  仍可继续用），但该 token 会被标记为已作废并持久化，重启后同样不会重发；
-  access token 过期或再次需要刷新时本地登出，要求重新登录。刷新成功但新 token
-  写盘失败时会清除存储里的旧副本，避免重启后拿旧 token 触发重放撤销。
-- **退出**：`DELETE /me/session` 尽力撤销会话族并清除内存中的当前会话；
-  安全存储或 SQLite 清除失败时旧副本可能留存，不能承诺已物理擦除。
-- **会话同步**：`lib/features/auth/auth_session_sync.dart` 订阅会话状态流；
-  后台刷新失败导致的登出会立即把用户带出登录态 UI。
-- **email 展示**：在 no-wave 审计快照 [`55a24bd`](https://github.com/BrainEno/no-wave/tree/55a24bdaa1c01888fb5ecb5bf41befe219348049) 中，`GET /me` 可返回邮箱和验证状态；本客户端目前只使用其中的 id，账号页邮箱仍来自登录/注册时的本地缓存（见迁移文档）。
+本项目固定使用 **Flutter 3.47.8**（`tool/flutter_version.txt`，CI 与发布构建严格校验）。
 
-## 后端与客户端差距
+1. 复制配置：`cp env.example.json env.json`（Windows：`copy env.example.json env.json`），
+   把 `API_BASE_URL` 改成**设备 / 模拟器能访问的** no-wave API origin（不要带
+   `/api/v1`、路径、查询或凭据；Android 模拟器访问宿主机用 `http://10.0.2.2:端口`）。
+   `WEB_BASE_URL` 可留空。`env.json` 会编译进应用，**不要放任何秘密**。
+2. 运行：
 
-以下状态依据 no-wave 审计快照 `effeb9a7`，不代表部署或生产验收结果；完整清单见 [API 差距审计](docs/nowave-api-gap-audit.md)：
+   ```bash
+   flutter pub get
+   flutter run --debug --dart-define-from-file=env.json
+   flutter test
+   ```
 
-- **我的文章与服务端草稿**：我的文章页读取账号作用域的 `GET /me/articles`（非公开作者列表），因此回收站恢复出来的草稿仍然可见，并带草稿标记；在编辑器中保存即按发布提交。结构不兼容（富文本/未知块）的草稿仍只能到 no-wave 网页编辑。旧部署没有该接口时自动回退到公开作者列表，只失去草稿可见性。
-- **账号安全**（G2）：个人中心可修改登录态密码，需当前密码；输入按原样保留空格。旧版注册/登录曾自动去除首尾空格，旧账号请使用当时服务器实际收到的密码（可能不含首尾空格），不会自动尝试另一种密码。改密不自动重放；网络中断或服务器异常后密码可能已生效，但其他设备仍可能保持登录，请先使用新密码确认。服务端当前会话可能被错误撤销及异常时部分成功的问题分别见 [no-wave #129](https://github.com/BrainEno/no-wave/issues/129) 和 [#132](https://github.com/BrainEno/no-wave/issues/132)。修改邮箱、忘记/重置密码、邮箱验证及邮件链接处理仍未接入；邮件默认关闭，实际投递需配置并验证，验证邮箱当前不是登录或发布的前置条件。
-- **内容语言**：界面语言决定内容请求的 `locale`，首页、搜索和详情均按当前 `zh-CN` 或 `en` 请求，缓存按 backend 与语言隔离；应用仍没有繁体中文界面，`zh-TW` 仅作为作者「全部语言版本」中的已有版本可见。离线书库同样只显示当前内容语言，不把另一版本伪装成空结果或回退结果。
-- **富文本和多图**：已按当前 v0/v1 契约只读展示；未知或损坏格式及升级前已压平的 no-wave 缓存会提示可能不完整。站点相对图片和链接只有显式配置可信 `WEB_BASE_URL` 才可使用。富文本编辑尚未实现，普通编辑器拒绝覆盖不兼容结构；已读取摘要会回传，但不解决并发修改，正文块 ID 会重建，空摘要仍可能由服务端重算。
+3. 或者用一键脚本：Windows 双击 `scripts\run_android.cmd`（首次会提示输入 API origin
+   并生成 `env.json`），macOS 运行 `./scripts/run_ios.sh`。
 
-## 图片与媒体约定
-
-- **上传**：`POST /me/media`，请求体为图片原始字节，MIME 放 `Content-Type`
-  头。服务端统一**重编码为 WebP** 并剥离元数据，资产不可变（每次上传新 id）。
-- **读取**：`GET /api/v1/media/:id`，immutable + ETag。公开 URL 由客户端统一
-  构造为 `$API_BASE_URL/api/v1/media/<id>`（上传响应的 `src` 字段缺 `/v1`
-  段，属上游不一致，勿直接使用）。
-- **取消 ≠ 失败**：`pickImage()` 取消返回 `null`，真失败抛
-  `PickImageException`，调用方（编辑器/资料页）对失败弹提示，不再吞掉。
-- **重试与回收**：媒体上传当前没有服务端幂等键，相同内容多次提交仍会创建独立资产；封面和头像在连接失败或超时后不自动重发。失败时服务端是否已保存可能未知，手动重试仍可能产生重复资产；明确的 401 经刷新会话后的单次重放不属于断流盲重试。no-wave `13271b21` 已新增媒体库与手动删除，但其引用检查存在[误删风险](https://github.com/BrainEno/no-wave/issues/146)；修复前不要使用网页媒体库删除图片。Flutter 没有接入媒体列表或删除，也不提供回滚；没有定时回收。
-- **缓存**：封面与头像 URL 不可变，无需 `?v=` cache-busting（`Blog.imageUrl`
-  直接使用；曾经包一层的 `presentation/utils/cover_url.dart` 是恒等函数，
-  2026-11 的整理中已删除）。
+脚本参数、Android / iOS 前置条件、明文 HTTP 策略、IPA 打包与依赖升级见
+[本地开发](docs/local-development.md)；版本不符、Pub 哈希错误、白屏、「无法连接到网络」
+等常见阻塞见 [本地启动排障](docs/troubleshooting.md)。
 
 ## 架构
 
-按 feature-first + 核心层分层的简化整洁架构：
+feature-first + 核心层的简化整洁架构：
 
 ```
 lib/
-├── core/                  # 与业务无关的基础设施
-│   ├── common/            # 全局 cubit（AppUser）与通用控件
-│   ├── error/             # Failure 契约 + 异常映射（error_mapper）
-│   ├── l10n/              # 界面语言、内容语言，以及 Failure/标签/作者名文案 helper
-│   ├── network/           # 连接检查
-│   ├── nowave/            # API 客户端（envelope/401 刷新/媒体上传）+ 会话管理
-│   ├── secrets/           # 编译期环境（API base URL、WEB base URL）
-│   ├── startup/           # 启动失败兜底界面（依赖初始化抛错时）
-│   ├── storage/           # Drift/SQLite：建表、迁移与原始行读写（Isar 已于 #107 移除）
-│   ├── theme/             # 主题与 ThemeBloc
-│   ├── usecase/           # UseCase 抽象
-│   └── utils/             # AppLogger、重试、Snackbar、分享/深链解析等
-├── features/
-│   ├── auth/              # 登录注册（no-wave /auth/*）
-│   ├── blog/              # 文章域：datasources / repository / usecases / blocs / pages
-│   └── user/              # 个人资料
-├── l10n/                  # ARB 目录（中文/英文）+ 生成物（git 忽略，pub get 生成）
-├── router/                # go_router 路由（页面级 bloc 随页面创建销毁）
-└── main.dart              # 入口 + 全局错误钩子
+├── core/        # 与业务无关的基础设施：API 客户端与会话、存储、主题、l10n、设计 token
+├── features/    # auth / blog / user / messages / notifications：data / domain / presentation
+├── di/          # 按功能拆分的依赖注册模块（#304），由 app_modules.dart 汇总
+├── boot/        # 冷启动编排与墨色幕布
+├── router/      # go_router 路由（页面级 bloc 随页面创建销毁）
+├── l10n/        # ARB（中文 / 英文）
+├── init_dependencies.dart  # 组合根：校验 API origin、打开存储与会话、注册 lib/di 模块
+└── main.dart    # 入口 + 全局错误钩子
 ```
 
-关键约定：
+- **数据流**：UI → Bloc → Usecase → Repository（`Either<Failure, T>`）→ Datasource；
+  Repository 是唯一把异常翻译成 `Failure` 的地方。
+- **分层方向**：依赖只能从 feature 指向 `lib/core`，由
+  `tool/ci/check_core_dependencies.py` 在 CI 中强制。
+- **依赖注入**：新功能在 `lib/di/` 加一个模块并在 `lib/di/app_modules.dart` 登记；
+  `test/unit/di/app_modules_test.dart` 会从真实模块解析每一个注册类型。
+- **设计系统**：页面只读 `lib/core/design/design_tokens.dart` 的 token，间距、圆角与
+  直接字号都有测试守护，见 [界面设计系统](docs/design-system.md)。
 
-- **数据流向**：UI → Bloc → Usecase → Repository（`Either<Failure, T>`）→
-  Datasource。Repository 是唯一把异常翻译成 `Failure` 的地方。
-- **文章后端与 Notion bundle**：文章列表、详情、互动与发布仍由 no-wave `apps/api`
-  提供。编辑器已支持用户主动导入或导出经 no-wave 后端处理的 Notion bundle；这不会
-  直连 Notion API、读取 Notion 数据库或把 token 写入 App。把 Notion 数据库作为第二个
-  运行时文章内容源仍处于评估阶段，所需抽象、风险与分期见
-  [Notion 内容源评估](docs/notion-content-source-assessment.md)，现有 no-wave 行为
-  不受影响。
-- **分层方向**：依赖只能从 feature 指向 `lib/core`，不能反向；`lib/core/storage`
-  不得导入 Flutter UI 类型。规则由 `tool/ci/check_core_dependencies.py` 在 CI 中
-  强制（`--root` 可对任意目录跑，unittest 也在真实仓库上验证）。
-- **文章寻址双轨**：公开读 / 点赞按 slug（即 `Blog.id`），更新按服务端 UUID
-  （`BlogModel.articleId`，仅写入路径使用）。
-- **正文模型**：普通编辑器写入 no-wave `contentBlocks` v0 纯文本块（首张图
-  视为封面）；只读的结构化 v0/v1 解析器保留块、行内样式与媒体顺序，转换为
-  阅读和朗读共用的惰性 AST，不构造 HTML。未知/损坏格式明确警告。站点相对
-  资源与头像（`/avatars/me.webp`，no-wave `validateProfileUrl` 允许的格式）
-  仅按 `WEB_BASE_URL` 解析，不猜测 API origin；未配置时保留中性占位；
-  不安全的 URL 不可交互、也不会被加载。
-- **Failure 契约**（`core/error/failures.dart`）：`kind`
-  （network/timeout/auth/permission/validation/storage/server/unknown）+
-  面向用户的中文兜底 `message` + 稳定 `code` + 可选本地化标识 `l10nKey` +
-  仅供诊断的 `cause`。UI 根据标识使用 ARB 资源显示本地化错误；原始异常
-  文本不进入 UI（后端错误码经 `error_mapper` 分类）。
-- **本地存储**：Drift (SQLite) 保存文章缓存、草稿、阅读历史与离线资料；
-  会话通常保存在平台安全存储，不可用时可能回退 SQLite。新版草稿按后端、
-  账号与文章隔离；旧版无归属草稿保留但不自动展示或分配，导出与降级限制见
-  [旧草稿说明](docs/unclaimed-drafts.md)。阅读历史按用户 ID 去重（不区分
-  后端），退出时尽力清理。
-  离线资料按后端和账号隔离；旧版没有归属信息的资料缓存保留但不再展示，
-  联网后重新获取。存储失败、已在途写入或系统备份可能使退出清理不完整，
-  不承诺物理擦除。
-- **首页离线范围**：本机只保存曾获取的文章，不会预下载完整站点；其他设备
-  上的删除或更新可能尚未同步，图片也不保证已缓存。首页在连接探测离线或
-  首次请求遇到网络/超时错误时显示本机缓存；服务端权限、校验等错误不会
-  被伪装成缓存成功。同一次滚动固定使用首页选定的数据源：恢复网络后下拉
-  刷新以重新选择；在线翻页期间断网则提示错误并保留已有列表。缓存按
-  `updated_at DESC, id ASC` 排序，SQLite 执行分页，每页最多解码 10 条。
-  在线「最新」在兼容服务器使用游标；旧部署回退 offset，缓存、热门、精选和关注
-  仍使用 offset，列表变化时可能重复或遗漏。游标对高密度时间边界会明确停止并提示，
-  不是完整快照；具体限制见 [首页分页说明](docs/latest-feed-cursor.md)。下拉刷新可重新加载。
-  v4 数据库迁移仅添加对应索引，不删除文章、草稿或其他本地数据；索引会占用
-  少量额外空间，首次升级的耗时随缓存大小增长。回退到旧版前应备份数据库，
-  旧版不保证能打开新版 schema。
-
-## 本地化与无障碍
-
-界面由 `lib/l10n/app_zh.arb` 和 `app_en.arb` 维护，使用 Flutter 官方
-`flutter_localizations` 与 `gen-l10n`；`flutter pub get` 会依据 `l10n.yaml`
-生成被 git 忽略的 Dart 文件。新增文案时同时更新两种语言，带参数的消息在
-英文模板中声明占位符（复数使用 ICU plural），然后运行 `flutter gen-l10n`
-和测试。日期和计数使用 `intl`，内置标签只翻译显示文本，不改变已存储的值。
-系统语言为中文或英文时自动匹配；其他语言暂回退简体中文。英文内容是界面
-功能翻译，并非经过独立审校的营销文案。
-
-iOS 的系统照片权限提示也提供双语资源。文章、评论、作者资料等用户内容不会
-被机器翻译；目前 no-wave 按文章语言精确过滤且缺少跨语言回退，因此客户端的
-内容 API 仍请求 `zh-CN`，切换界面语言不会改变既有内容或保存文章的语言。
-
-常用操作提供文字/语义标签及可聚焦的按钮，布局遵循系统字体缩放（测试会断言
-源码里没有夹取系统字体缩放的写法）。面向用户的文案只能来自 ARB：
-`test/unit/core/ui_copy_literals_test.dart` 扫描 `lib/`，任何写死的界面中文都
-会让测试失败，只有启动失败页因为 locale 可能尚未就绪而登记为双语例外。中文
-标点统一全角，品牌名统一 `No Wave`、`GitHub` 等写法。诊断信息仍仅由用户主动
-查看、复制或分享，不因语言切换自动上传。作者页与个人中心的
-中英、亮暗、窄屏大字和键盘操作有自动化覆盖，中英 2× 字体与 320 dp 窄屏由
-`test/widget/a11y_text_scale_test.dart` 覆盖。CI 已编译 iOS 模拟器版本并
-检查测试配置的 ad-hoc IPA，但未完成 iOS/Android 真机视觉与 VoiceOver/TalkBack
-验收，不能以自动测试或打包代替这些检查；人工验收清单见
-[无障碍说明](docs/accessibility.md)。
-
-## 本地开发
-
-本项目固定使用 **Flutter 3.47.8**（版本写在 `tool/flutter_version.txt`，CI 与
-发布构建严格校验）。本地调试脚本只要求本机 SDK 的 Dart 版本满足 `pubspec.yaml`：
-版本不一致时打印警告后继续启动，版本过低则给出升级步骤。需要精确匹配时可设置
-`BELOG_STRICT_FLUTTER_VERSION=1`（PowerShell 也可加 `-StrictFlutterVersion`）；
-iOS IPA 打包脚本始终要求精确版本。
-Android 需要 Android Studio、Android SDK 的 emulator/platform-tools、已创建的
-AVD 和 JDK 17（支持 17–20）。iOS 需要 macOS、完整 Xcode、iOS Simulator runtime、
-CocoaPods 以及 Xcode 命令行工具。脚本只检查并使用现有工具，不安装 SDK、修改 AVD、
-关闭模拟器或清除数据。
-
-### 初始配置（每台机器一次）
-
-从仓库根目录复制 `env.example.json` 为 `env.json`（Windows 用
-`copy env.example.json env.json`，macOS 用 `cp env.example.json env.json`），
-将 `API_BASE_URL` 改成 **设备/模拟器可访问的真实 no-wave API origin**。
-`WEB_BASE_URL` 是可选的 no-wave Web origin，未使用时保持空字符串，分享入口
-会隐藏，站点相对的正文图片、链接和头像（`/avatars/...`）也无法加载或打开；
-它与 API origin 不能互相推导。
-地址不要附加 `/api/v1`、路径、查询或
-凭据，客户端会添加 `/api/v1`。模板的 `example.com` 是占位符，不可直接使用。
-
-首次运行 Android 启动脚本时不必手工复制：`scripts\run_android.ps1`（及
-`run_android.cmd`）发现默认 `env.json` 不存在时，会在交互终端里提示输入
-`API_BASE_URL`（非法输入可重试三次）并写好后继续启动；也可以直接传入
-`-ApiBaseUrl http://10.0.2.2:端口`，或设置 `BELOG_NO_PROMPT=1` 让脚本改为只打印
-创建命令而不提问。脚本只写入这两个公开字段，不会猜测或验证你的后端地址。
-
-`env.json` 和根目录下的 `env.*.json` 被 Git 忽略；传给 Flutter 的所有定义会
-编译进应用，**不要放密码、API key、token、证书或其他秘密**，即使文件已忽略。
-脚本只接受上述两个公开配置字段，不会输出文件内容。也可以用 `--config`/
-`-Config` 指向其他本地 JSON（相对路径从仓库根目录解析）。
-
-### Windows：一键启动 Android 调试
-
-在仓库目录双击 `scripts\run_android.cmd`，或者在 PowerShell/命令提示符运行：
-
-```powershell
-.\scripts\run_android.cmd
-.\scripts\run_android.cmd -ApiBaseUrl http://10.0.2.2:3000
-.\scripts\run_android.cmd -Avd Pixel_8_API_35 -Config env.android.json -BootTimeoutSeconds 600
-```
-
-首次运行且没有 `env.json` 时，脚本会提示输入 API origin 并生成该文件（HTTPS 也可
-直接传 `-ApiBaseUrl`）；已有的 `env.json` 不会被参数覆盖，需要换地址请直接编辑
-文件或用 `-Config` 指向另一份。生成的 JSON 不带 BOM，只含两个公开字段。
-
-脚本优先复用已运行的模拟器；指定 `-Avd` 时只使用该 AVD，否则在未运行时
-选择按名称排序的第一个可用 AVD。它等待 `adb` 报告开机完成，执行
-`flutter pub get` 并以指定模拟器启动 `flutter run --debug --no-pub`。如果检测到
-Pub 镜像归档哈希与 lockfile 不符，会仅重试一次官方 `pub.dev`；失败时提示而不
-自动安装、删除或杀掉任何模拟器。若没有 AVD，请先在 Android Studio 的
-Device Manager 创建；如找不到 SDK，设置 `ANDROID_SDK_ROOT` 或将 emulator 和
-platform-tools 加入 PATH。可用 `emulator -list-avds` 查看 AVD 名称。
-
-Android 模拟器中的 `localhost` 是模拟器自身，访问宿主机本地 API 通常使用
-`http://10.0.2.2:端口`。一键脚本也支持已有配置使用 `localhost`、`127.0.0.1`
-或 `::1`：开机后会自动执行 `adb reverse tcp:端口 tcp:端口`，把模拟器回环端口
-转发到主机；手动运行 `flutter run` 时则需自行设置转发或改用 `10.0.2.2`。映射
-保留到设备断开或手动移除；例如 `adb -s emulator-5554 reverse --remove tcp:4000`。
-真机或其他模拟器必须使用它们能访问的地址。后端须自行启动，脚本不会启动或验证生产服务。
-
-### macOS：一键模拟器调试与 IPA
-
-双击可执行的 `scripts/run_ios.command` 启动或复用 iPhone Simulator；也可以在
-Terminal 运行：
-
-```bash
-./scripts/run_ios.sh
-./scripts/run_ios.sh --device '<simulator UDID>' --config env.ios.json --boot-timeout 600
-```
-
-默认优先复用已启动的 iPhone，否则选择最新已安装 iOS runtime 的一个 iPhone；
-用 `xcrun simctl list devices available` 查看精确 UDID。脚本等待启动完成后运行
-`flutter pub get` 和 `flutter run --debug`，不会擦除或关闭模拟器。Mac 上的 iOS
-模拟器访问宿主机本地后端通常用 `http://localhost:端口`。
-
-双击 `scripts/build_ios_ipa.command`，或运行：
-
-```bash
-./scripts/build_ios_ipa.sh --config env.release.json
-# 可选：仅在本机已配置团队、证书与 provisioning 时使用真实 Xcode 导出设置
-./scripts/build_ios_ipa.sh --mode signed --export-options /path/to/ExportOptions.plist --config env.release.json
-```
-
-默认生成 **ad-hoc 签名的 AltStore IPA**，位于 `build/ios/local-ipa/`，保留旧
-产物、不覆盖；必须由 AltStore 用用户自己的 Apple ID 重新签名，**不是**
-App Store/TestFlight 分发包。`signed` 模式调用 Xcode/Flutter 导出并要求本机
-提供正确 Team、证书、provisioning 和 ExportOptions，不会创建或上传凭据。
-两种模式均构建 release，要求 API（若配置 Web 也包括 Web）使用有效 HTTPS；
-自签名证书还须被设备信任。仅结构/本地签名检查不代表已在真机安装或验证
-分发资质，发布策略详见 [docs/releasing.md](docs/releasing.md)。
-
-### 本地启动常见阻塞
-
-- **Flutter 版本不符**：脚本会打印实际版本与固定版本。若 Dart 版本仍满足
-  `pubspec.yaml`（当前 `>=3.10.0`），调试会继续，只是与 CI 结果可能有差异。
-  需要与 CI 完全一致时执行 `flutter upgrade`（或安装 3.47.8 并放在 PATH 最前），
-  也可以设置 `BELOG_STRICT_FLUTTER_VERSION=1` 让漂移直接失败。
-- **`flutter upgrade` 报 `upstream branch 'refs/heads/stable' not stored as a
-  remote-tracking branch`**：这是 Flutter SDK 自身 Git 克隆缺少上游跟踪，不是
-  本项目的问题。先修复 SDK，再升级：
-
-  ```bash
-  git -C "<Flutter SDK 目录>" fetch origin stable
-  git -C "<Flutter SDK 目录>" branch --set-upstream-to=origin/stable stable
-  flutter upgrade
-  ```
-
-- **`flutter pub get` 提示 `Downloaded archive ... had wrong content-hash`**：这是 Pub
-  镜像返回的归档内容与 `pubspec.lock` 的 SHA-256 不符，不是 Flutter 版本问题。不要改锁文件
-  哈希或关闭校验；`run_android.cmd` 会在明确的哈希不符时向官方 `https://pub.dev`
-  重试一次，继续使用 Pub 的锁文件完整性校验，随后以 `flutter run --no-pub` 启动，
-  避免再次访问坏镜像。若机器无法访问 `pub.dev`，需要恢复官方源连通性，或换用能返回
-  锁定原始归档的可信镜像；
-  `FLUTTER_STORAGE_BASE_URL`（Flutter SDK/引擎下载源）不受影响。
-- **`flutter pub get` 版本求解失败（`sqlite3` / `hooks` / `record_use` / `meta`）**：
-  旧 Flutter SDK 把 `meta` 固定在旧版本，而 `sqlite3 >=3.6.0` 经 `hooks`
-  → `record_use` 要求 `meta ^1.19.0`，于是报 `version solving failed`。dev-only 的
-  `sqlite3` 约束已放宽到 `^3.5.2`（应用本身只用 Drift，它接受 `^3.4.0`），pub 会在
-  旧 SDK 上解析到 3.5.2；固定版本的 CI 仍按 `pubspec.lock` 使用 3.8.0。若本地 lock
-  仍按旧约束卡住，运行一次 `flutter pub upgrade sqlite3` 再启动，不要为了本地调试
-  改回更高的下限。注意 CI 只在固定版本上验证，3.5.2 这一组合没有 CI 作业覆盖；
-  出现构建钩子（native assets）错误时仍应升级到固定版本。
-- **启动后白屏**：现在不会再白屏。缺少 `API_BASE_URL`、地址非法或本地存储
-  打不开时，首帧显示“无法启动 · Unable to start”，包含原始原因和修复命令
-  （复制 `env.example.json` 为 `env.json`，或用启动脚本运行；启动脚本首次会
-  提示/接受 `-ApiBaseUrl` 并自己生成 `env.json`）。VS Code 的默认
-  `No Wave` 调试配置已带上 `--dart-define-from-file=env.json`。
-- **env.json 填对了仍提示 API base URL not configured**：旧提交把
-  `String.fromEnvironment('API_BASE_URL')` 写在普通 getter 里，而不是 `const`
-  字段；Dart 只在 const 上下文保证读到 `--dart-define`/`--dart-define-from-file`
-  的值，Android 上会静默回落成空字符串，于是启动脚本已经打印
-  `Public client configuration OK.`，App 首帧仍显示“无法启动”。现在
-  `AppSecrets` 用 `static const` 字段读取，这两个值只在 const 上下文求值；
-  CI 增加了一步用 `--dart-define-from-file=env.json` 运行的
-  `test/unit/core/app_secrets_define_test.dart`，防止再次退化成非 const 读取。
-  拉取最新代码重新 `flutter run` 即可，不需要改 `env.json` 或启动脚本。
-- **登录/点赞时提示“无法连接到网络”**：这条提示有两个来源，先分清再看。
-  一是**前置探测**（任何请求发出之前）：**所有构建模式、所有 origin** 都直接用
-  `GET /api/v1/health` 探测配置的后端本身（不带 Authorization/Cookie），公网探测
-  不参与任何判定——公网探测在机器或模拟器连不上自己的公共端点时会把可达的后端
-  判成离线，release/profile 里甚至会让真实请求一次都没发出（#105：私网部署、
-  离线演示、公网受限但 API 可达的网络）。`BELOG_DEV_BACKEND_CHECK` 启动脚本仍会
-  传，但已不改变行为。探测**只在明确的传输失败**
-  （`SocketException`/`ClientException`：拒绝连接、无路由、明文被拦）时判离线；
-  **探测超时（`TimeoutException`）不再等于离线**——冷启动的开发服务器、断点暂停或
-  慢代理都可能超过 3 秒探测预算却仍能响应真实请求（真实请求的预算长得多），
-  所以超时按“无法判定”处理，交给请求自己报错。二是**真实请求的传输错误**，
-  说明配置的 origin 连不上。两种情况都会留下证据：登录页底部、登录失败提示条上的
-  「查看诊断信息」按钮，以及「我的 → 关于我们」（按钮或长按版本号）都会打开诊断弹窗，
-  也可直接访问 `/about?diagnostics=1`。弹窗内可复制、分享，或「导出日志文件」——把应用版本、
-  构建、API origin 与最近至多 100 条脱敏记录写成文本文件交给系统分享面板，仅由用户
-  主动触发，不自动上传（缓冲最多保留 24 小时，见 `lib/core/utils/diagnostics_file_export.dart`）；探测与请求记录形如
-  `probe GET /api/v1/health inconclusive (TimeoutException after 3001ms, budget 3000ms)`
-  或 `request POST /api/v1/auth/login unreachable (SocketException)`，debug 控制台里
-  也会打印实际探测的 origin。本机先自查 `curl http://localhost:4000/api/v1/health`；
-  连不上时重点看后端监听地址：Node/Express 里 `listen(4000, 'localhost')` 在 Windows
-  上只绑定 `::1`，而模拟器的 `10.0.2.2` 走 IPv4 回环，可能被直接拒绝——改成监听
-  `0.0.0.0`（或 `::`）。不改绑定时，`adb reverse tcp:4000 tcp:4000` 可将模拟器
-  `localhost:4000` 转回主机；一键脚本检测到 `localhost` / `127.0.0.1` / `::1`
-  配置会自动执行。手动运行 Flutter 时仍需自己执行 reverse，或改用
-  `http://10.0.2.2:4000`。
-- **先看这一行**：`API_BASE_URL` 是**编译期**注入的（`AppSecrets`），所以「连不上」先要确认
-  手上这个包到底指向哪个后端。debug 控制台启动时会打印
-  `api origin: http://10.0.2.2:4000 (http, debug build allows cleartext)`；同一个头部
-  行也出现在诊断信息里（登录页底部 / 「我的 → 关于我们 → 查看诊断信息」，或
-  `/about?diagnostics=1`），装好的包也能直接看到。读法：
-  - origin 是 `https://example.invalid` → 这是 CI 编出来的 QA 包（CI 固定用不可达的
-    假地址，见发布文档），它永远连不上你的后端，换成本地构建；
-  - 结尾是 `(http, release/profile builds block cleartext on Android and iOS)` →
-    这个包是 release/profile，系统会直接拦掉明文 HTTP，只能用 debug 构建或让后端走 HTTPS；
-  - origin 里是 `localhost`/`127.0.0.1` → 模拟器里那是模拟器自己，见下一条；
-  - 改过 `env.json` 后必须**重新构建**，热重启不会重新读取编译期常量。
-- **后端没有启动**：App 仍可正常启动，不会崩溃或卡死。首帧会话恢复最多等待
-  3 秒；首页在没有缓存时显示本地化网络错误与“重试”，有缓存时先显示缓存并
-  标注来源；登录、发布等操作以同样的本地化错误反馈。前置探测（所有构建模式）
-  只请求配置后端的 `/api/v1/health`：拒绝连接会立即判离线并提示，
-  超时则视为无法判定、放行真实请求（最多 30 秒后按请求自身的结果报错，
-  诊断里会留下 `timeout POST /api/v1/auth/login (budget 30000ms)`）。把后端地址改成
-  模拟器可访问的 origin（宿主机本地服务用 `http://10.0.2.2:端口`），或在后端启动后
-  重试即可；模拟器里也可用 `adb shell "toybox wget -O - http://10.0.2.2:4000/api/v1/health"`
-  直接验证连通性。
-
-### 调试网络与手动命令
-
-Android `debug` 和 iOS `Debug` **仅开发构建**允许明文 HTTP（包括非本地地址）；
-profile/release 不放宽平台安全策略。HTTP 会明文传输密码和会话，请仅在受信任
-的隔离开发环境使用测试账号，生产及 IPA 使用 HTTPS。前置探测在所有构建模式
-都请求配置后端的 `/api/v1/health`（无凭据），使没有公网的本地后端、私网部署和
-离线演示环境仍可使用；HTTP 错误响应表示服务器可达，具体错误由真实 API 请求
-报告。每次检查多一次短请求，不做任何公网探测；`BELOG_DEV_BACKEND_CHECK`
-仍可传入但已无作用。
-
-```bash
-flutter pub get
-flutter gen-l10n
-flutter run --debug --dart-define-from-file=env.json --dart-define=BELOG_DEV_BACKEND_CHECK=true
-flutter analyze --fatal-infos
-flutter test
-dart format lib test
-```
-
-如 Android JDK 冲突，可用 `flutter config --jdk-dir=<JDK_DIRECTORY>` 指向 JDK 17。
-应用图标仍由 `flutter_launcher_icons` 管理（`dart run flutter_launcher_icons`）。
-脚本控制流测试使用模拟工具：`python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v`；
-Windows PowerShell mock 测试为 `powershell -File scripts/tests/test_android.ps1`。
-它们不等同于真实模拟器、后端、IPA 安装或签名验收。代码审查的修复与剩余
-风险见 [docs/code-audit.md](docs/code-audit.md)。
-
-### 依赖升级
-
-`pubspec.lock` 已入库，但 CI 与所有脚本只跑 `flutter pub get`（没有
-`--enforce-lockfile`），所以改约束不会被锁死，也不会自动升级。升级目标包前先确认
-它与固定的 Flutter 3.47.8 兼容：
-
-```bash
-flutter pub outdated                 # 需要能访问 pub.dev
-flutter pub upgrade --major-versions # 或逐个改 pubspec.yaml
-flutter pub get
-```
-
-`flutter_lints`、`drift`（当前精确锁定）、`sqlite3` 的约束都带历史原因（见下面的
-「本地启动常见阻塞」与 `docs/code-audit.md`），不要顺手改高下限。升级后至少跑
-`flutter analyze --fatal-infos`、`flutter test` 与
-`python3 -m unittest discover -s scripts/tests`，再交给 CI 判定。
+正文模型、Failure 契约、本地存储、首页离线范围与图片 / 媒体约定见
+[架构与约定](docs/architecture.md)。
 
 ## 测试与 CI
 
-`.github/workflows/ci.yml`（PR / push 到 main 时运行，Flutter 3.47.8 + JDK 17）：
+`.github/workflows/ci.yml`（PR 与 push 到 main，Flutter 3.47.8 + JDK 17）：
 
-1. **format**：对本次改动的 `.dart` 文件强制 `dart format` 通过
-   （全仓库格式审计仅告警，不阻断）。
-2. **analyze**：`flutter analyze --fatal-infos`，零告警门禁（`avoid_print`
-   已启用，请使用 `AppLogger`）。
-3. **test**：`flutter test --coverage --concurrency=1`，随后
-   `python3 tool/ci/check_coverage.py` 按 `tool/ci/coverage_threshold.json` 的最低行覆盖率
-   门禁（排除生成的本地化类）；覆盖率增长后再有意上调，不得为通过 PR 而下调。
-4. **android-release**：使用显式 QA debug 签名和不可路由配置构建 Android release APK，
-   另编译 debug APK 并检查两者网络策略；不发布、不代表正式签名已验证。
+1. **format**：改动的 `.dart` 文件必须通过 `dart format`。
+2. **analyze**：`flutter analyze --fatal-infos`，零告警。
+3. **test**：`flutter test --coverage --concurrency=1`，随后按
+   `tool/ci/coverage_threshold.json` 的最低行覆盖率门禁（只升不降）。
+4. **android-release**：QA debug 签名的 release APK 与网络策略检查（不是正式签名）。
 
-`.github/workflows/local-scripts.yml` 在 Linux/macOS/Windows 上运行本地脚本的
-mock 控制流测试，并在 macOS 上编译 iOS debug 模拟器版本、运行默认 ad-hoc IPA
-脚本及检查 debug/release 网络策略。`.github/workflows/dart.yml` 的额外 iOS
-无签名编译只在手动选择 `include_ios` 时执行。CI 编译/打包不等同于真实模拟器
-启动、设备安装、后端或分发签名实测。
+其余工作流（本地脚本 mock、iOS 模拟器编译、桌面 runner）与覆盖范围见
+[CI 可观测性](docs/ci-observability.md)。工程约束与 PR 证据要求见 [AGENTS.md](AGENTS.md)。
 
-单元与 widget 测试覆盖：分页/刷新竞态（BlogBloc）、搜索竞态（BlogSearchBloc）、
-点赞并发与回滚、草稿隔离与自动保存、异常映射矩阵、离线行为、API 客户端
-envelope/401 刷新重放、会话刷新单飞、contentBlocks 编解码、Markdown 渲染
-（结构/样式/原始 HTML 惰性/javascript: 链接不可点）、阅读历史（去重/排序/
-按账号隔离/清空/v2→v3 升级）、导出文档形状、分享 URL 构造等。
+## 安装包与发布
 
-## GitHub Actions：个人设备安装包
+- **个人设备安装包**：合并到 `main` 后在 **Actions → Build personal mobile packages**
+  手动构建 IPA / APK；IPA 需用 AltStore Classic 以个人 Apple ID 重签。详见
+  [个人安装 IPA / APK](docs/mobile-packages.md)。
+- **发布**：签名、版本与发布身份（`com.nodeman24.nowave`、`0.2.0+1`）见
+  [发布流程](docs/releasing.md)。CI 的 release-mode QA 构建**不得**当作生产构建分发。
 
-改动合并到 `main` 后，可在 **Actions → Build personal mobile packages → Run workflow**
-手动构建 IPA、APK 或两者。必须提供设备可访问的公开 no-wave HTTPS API origin；
-地址会被编译进应用，不能填 token 或密码。IPA 不需要付费 Apple Developer 会员，
-但下载后必须由 **AltStore Classic** 使用个人 Apple ID 重签；免费账号通常需每 7 天
-刷新。Android `personal` 模式需要预先配置所有者的稳定签名密钥；`debug` 模式仅供
-临时测试且不能保证跨构建升级。配置、下载、权限、限制与真机验收步骤详见
-[docs/mobile-packages.md](docs/mobile-packages.md)。
+## 后端差距与路线图
 
-## 发布
+客户端已迁移到 no-wave `apps/api`；仍需服务端补齐或部署验证的能力（媒体上传幂等、
+举报与屏蔽、通用链接 / App Links 等）见 [后端差距摘要](docs/backend-gaps.md) 与
+[API 差距审计](docs/nowave-api-gap-audit.md)。已落地阶段与重点修复见
+[路线图](docs/roadmap.md)；开放工作以
+[GitHub issue 列表](https://github.com/BrainEno/flutter-blog/issues) 的优先级为准。
 
-发布流程、签名与版本规则见 [docs/releasing.md](docs/releasing.md)。
-CI 的 release-mode QA 构建需要显式 `BELOG_QA_BUILD=true` 且使用 debug 签名，
-**不得**当作生产构建分发。另见
-[docs/ci-observability.md](docs/ci-observability.md)、
-[docs/sqlite-storage.md](docs/sqlite-storage.md)、
-[docs/session-lifecycle.md](docs/session-lifecycle.md)、
-[docs/supabase-to-nowave-migration.md](docs/supabase-to-nowave-migration.md)、
-[docs/agent-development.md](docs/agent-development.md)、
-[Notion 内容源评估](docs/notion-content-source-assessment.md)。
+## 状态
 
-## 服务端（no-wave）差距与待办
-
-客户端侧已迁移至 no-wave `apps/api`；剩余差距包含尚未接入的现有服务端能力、
-部署验证和仍需服务端补齐的能力（以 [API 差距审计](docs/nowave-api-gap-audit.md)
-及对应 issue 为准）：
-
-- **G1 删除文章**：~~待补~~ **已解决**（软删 + 回收站 + 恢复已接入，
-  `purgesAt` 30 天）。
-- **G2 账号安全**：客户端已接入登录态改密（需当前密码；不自动重放，结果不明时提示先用新密码确认）。服务端“保留当前会话”的语义仍有问题，见 no-wave [#129](https://github.com/BrainEno/no-wave/issues/129) 与 [#132](https://github.com/BrainEno/no-wave/issues/132)；改邮箱 / 密码重置 / 邮箱验证尚未接入，邮件投递需单独配置和验证。
-- **#23 离线发布队列**：客户端已实现持久 outbox —— 发布时离线或网络失败会把文章
-  连同封面入库，之后按账号与后端作用域重试，每次尝试都带同一个
-  `Idempotency-Key`（no-wave #105 的 `POST /articles` 支持），因此重放不会建出第二
-  篇。仍需注意：实际部署版本是否包含该幂等支持要按部署验证；媒体上传仍无幂等键，
-  重试可能留下未被引用的封面资源（孤儿清理属于服务端范围）。细节见
-  [发布队列](docs/publish-queue.md)。
-- **G3 `GET /me` 返回 email**：服务端已有返回；客户端当前仍使用本地登录邮箱。
-- **媒体 `src` 字段缺 `/v1` 段**：上游小修（客户端已绕过）。
-
-## 路线图
-
-按 [issue 列表](https://github.com/BrainEno/flutter-blog/issues) 的优先级：
-
-- **P2 已落地**：Markdown 正文与编辑预览（#17）、阅读历史与有限数据导出（#22）、
-  工程清理与图标配置修复（#25）、README/文档（#26）、中文文案与日期/阅读
-  时长与中英双语本地化、无障碍适配（#24，仅剩真机读屏与视觉人工验收，见
-  [无障碍说明](docs/accessibility.md)）、分享（#21 出站 + `nowave://` 入站）、
-  评论（#19）、作者主页与关注（#20）
-- **P2 进行中/延后**：分享的通用链接/App Links（#21，等 web origin 部署
-  `assetlinks.json` 与 `apple-app-site-association` 才可验证）、
-  离线发布队列（#23 客户端 outbox 已实现，封面媒体幂等与孤儿清理仍待服务端，
-  见上）、举报屏蔽（#18）、
-  架构收敛的后续拆分（#107 的依赖规则、存储端口去 UI 类型、
-  会话时序单元与 Isar 移除已完成；`nowave_api_client` 等仍有拆分空间）
-- **P0/P1 已关闭**：#4 工具链升级、#7 schema 版本管理、#8 离线缓存语义
-
-开放工作按 [GitHub issue 列表](https://github.com/BrainEno/flutter-blog/issues) 的优先级处理。
-举报与屏蔽仍依赖 no-wave 侧提供迁移、服务和 REST 接口；在这些门槛完成前，客户端不能
-只增加一个入口来伪造安全闭环。其当前边界见
-[no-wave ADR 0026](https://github.com/BrainEno/no-wave/blob/bbe9d198208cc9f4267e18e3a4ddcc88b2ad535a/docs/architecture/decisions/0026-moderation-reports-and-appeals.md)。
-
-**许可证**：[Apache License 2.0](LICENSE)。随包分发的字体等第三方资源及其
-许可证见 [NOTICE](NOTICE)；Dart/Flutter 依赖各自的许可随 pub 包分发，解析结果
-固定在 `pubspec.lock`。版本与发布身份（`com.nodeman24.nowave`、`0.2.0+1`）见
-[发布策略](docs/releasing.md)。
-
-已完成的重点修复：草稿按后端、账号和文章隔离及快照安全清理（#14、#79）、Feed 分页与刷新竞态（#13）、
-点赞并发与离线行为（#9）、异常契约统一（#12）、iOS 发布流水线（#6）、
-点赞离线假成功（#3）、Supabase → no-wave 后端迁移、删除与回收站（G1）、
-Markdown 正文（#17）、阅读历史与导出（#22）、Isar 依赖及其一次性导入器的彻底
-移除（#107，见 [SQLite 存储](docs/sqlite-storage.md)）、深链入站与分享（#21）、
-中文文案统一与无障碍扫描（#24）、无调用方代码与 `build_runner` 的清理（2026-11，
-见 [docs/code-audit.md](docs/code-audit.md)）等。
+- 文档结构核对于 2026-11-19（#298）：本 README 只做入口，事实以 `docs/` 与源码为准。
+- **许可证**：[Apache License 2.0](LICENSE)。随包分发的字体等第三方资源及其许可证见
+  [NOTICE](NOTICE)；Dart/Flutter 依赖的解析结果固定在 `pubspec.lock`。

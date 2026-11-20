@@ -45,15 +45,69 @@ abstract final class NoWaveSpacing {
   static const page = 16.0;
 }
 
-/// Corner radius. The design is square: badges get [badge], everything else
-/// [none]. Circles come from shape, not radius (see `NoWaveAvatar`).
+/// Corner radius.
+///
+/// The editorial surfaces are square: buttons, inputs, cards, dialogs and
+/// sheets use [none], and a cover badge gets [badge]. Circles come from shape,
+/// not radius (see `NoWaveAvatar`).
+///
+/// The rounded steps below record the corners that content surfaces already
+/// use (#294), so a screen names one instead of writing a number. They are a
+/// closed list: a new corner is a design decision made here, not in a page.
 abstract final class NoWaveRadius {
   /// Square corners: buttons, inputs, cards, dialogs, sheets.
   static const none = 0.0;
 
-  /// The only rounded corner in the system: a small overlay badge on a cover.
-  /// 2 is deliberate - a 4pt radius already reads as "Material chip".
+  /// A small overlay badge on a cover. 2 is deliberate - a 4pt radius already
+  /// reads as "Material chip".
   static const badge = 2.0;
+
+  /// 4: the highlight behind inline code inside running text.
+  static const inline = 4.0;
+
+  /// 6: a list-row thumbnail (reading history).
+  static const thumbnail = 6.0;
+
+  /// 8: an embedded content surface - a code block, an image in an article,
+  /// the editor's body field, the sign-in prompt under the comments.
+  static const surface = 8.0;
+
+  /// 12: a large content container - the cover drop zone, a message bubble,
+  /// a queued article, the participants sheet's header.
+  static const container = 12.0;
+
+  /// A stadium: count badges and sheet drag handles. Larger than any badge or
+  /// handle can grow, so the ends stay round whatever the digit count or the
+  /// system text scale.
+  static const pill = 999.0;
+}
+
+/// Font sizes for the few places that set one directly instead of reading a
+/// role from the theme (`TextTheme`) or `NoWaveTypography`.
+///
+/// Prefer a theme role. These exist so the remaining direct sizes are named
+/// and can be moved together (#294); a page never writes `fontSize: 15`.
+abstract final class NoWaveTypeScale {
+  /// 13: monospace blocks - code blocks and the diagnostics report.
+  static const codeBlock = 13.0;
+
+  /// 14: inline code inside body text.
+  static const codeInline = 14.0;
+
+  /// 15: chip labels and list-row titles (tags, categories, history rows).
+  static const label = 15.0;
+
+  /// 16: the sentence of an empty state.
+  static const emptyState = 16.0;
+
+  /// 17: the hint inside the cover drop zone.
+  static const hint = 17.0;
+
+  /// 18: a section heading under an article (comments, related reading).
+  static const sectionTitle = 18.0;
+
+  /// 32: the sign-in and sign-up page titles.
+  static const authTitle = 32.0;
 }
 
 /// Line weights.

@@ -54,7 +54,12 @@
 | token | 值 | 说明 |
 | --- | --- | --- |
 | `NoWaveRadius.none` | 0 | 按钮、输入框、卡片、对话框、面板 |
-| `NoWaveRadius.badge` | 2 | 封面角标（系统里唯一的圆角） |
+| `NoWaveRadius.badge` | 2 | 封面角标 |
+| `NoWaveRadius.inline` | 4 | 正文里行内代码的底色 |
+| `NoWaveRadius.thumbnail` | 6 | 列表行缩略图（阅读历史） |
+| `NoWaveRadius.surface` | 8 | 嵌入的内容面：代码块、正文图片、编辑器正文框、评论区登录提示 |
+| `NoWaveRadius.container` | 12 | 大内容容器：封面上传框、私信气泡、发布队列条目、参与者面板头 |
+| `NoWaveRadius.pill` | 999 | 胶囊：未读计数角标、面板拖拽条；无论位数和系统字号，两端都保持圆形 |
 | `NoWaveStroke.hairline` | 1 | 分隔线、输入框边框、角标描边 |
 | `NoWaveStroke.focus` | 2 | 焦点环、聚焦输入框边框 |
 | `NoWaveIconSize.inline` | 18 | 与元信息文字同行 |
@@ -79,6 +84,29 @@
 | `NoWaveSizes.splashProgressLength` | 72 | 该装饰段的长度 |
 | `NoWaveSizes.loadingRule` | 40 | 加载标签上方那道短横线 |
 | `NoWaveSizes.skeletonLine` | 12 | 骨架屏一行的高度（≈正文 x-height） |
+
+编辑式界面本身仍是方角（`none`）：`inline` 到 `container` 这几档记录的是内容面
+**已经在用**的圆角（#294 盘点时散落为 18 处 `BorderRadius.circular(数字)`），给它们起名
+是为了让页面不再自己写数字，不是鼓励新圆角——要加一档，先在这里改表。原来的离群值
+11 与 13 都是计数角标（`minWidth` 的一半），归入 `pill`：默认字号下渲染完全一致，
+放大字号时角标保持胶囊而不是变成圆角矩形。两处拖拽条的 2 同理（高 4 的胶囊）。
+
+### 直接字号 `NoWaveTypeScale`
+
+优先使用主题文字角色（`TextTheme`）或 `NoWaveTypography`；下面几档只服务于仍需
+直接设字号的地方，让它们有名字、能一起迁移。页面里不再出现 `fontSize: 数字`
+（`test/unit/design/no_magic_radius_and_type_test.dart` 守护，`lib/core/theme/` 与
+`lib/core/design/` 之外一处也不许）。
+
+| token | 值 | 用在哪 |
+| --- | --- | --- |
+| `codeBlock` | 13 | 等宽块：代码块、诊断报告 |
+| `codeInline` | 14 | 正文里的行内代码 |
+| `label` | 15 | 标签/分类 chip 与列表行标题（阅读历史） |
+| `emptyState` | 16 | 空态说明句 |
+| `hint` | 17 | 封面上传框里的提示 |
+| `sectionTitle` | 18 | 文章下方的分节标题（评论、相关阅读） |
+| `authTitle` | 32 | 登录 / 注册页标题 |
 
 ### 线与遮罩的不透明度 `NoWaveOpacity`
 
@@ -336,3 +364,12 @@
   `lib/features/auth/presentation/auth_rhythm.dart` 的 `AuthRhythm` 里。它们是一屏
   的构图（标题—字段堆—按钮），不是别处可复用的间距；写进 `NoWaveSpacing` 会让每个
   页面都以为自己也该喘这么宽。字段之间仍用 `medium`、链接行之间仍用 `small`。
+
+## 移动端视觉方向（原 README，#298）
+
+客户端正逐步向 [no-wave 移动网页设计](https://github.com/BrainEno/no-wave/blob/157aa6f5799d33891910ceb606cbaa8ec90f4e40/apps/web/docs/UI_DESIGN_SYSTEM.md) 靠拢（原生落地方式即本文）：纸色与墨色、橙红强调、衬线标题、细线分隔和留白，并保留原生四标签导航及各自的页面栈。首页、搜索、阅读、作者主页和个人中心采用一致的编辑式布局；收藏和个人作品继续使用可操作的网格。这是逐步迭代，并非所有页面均已统一或与网页逐像素相同；发布身份已统一为 `com.nodeman24.nowave`，启动图标美术仍可能继续迭代。
+
+- 颜色与文字样式集中在 `lib/core/theme/`；品牌、标题、作品行、封面、方形头像与操作行为可复用展示组件。作品行和操作行通过回调交给页面处理导航或动作，不依赖路由或业务状态；评论区的作者点击也由阅读页接管，保持所在标签的导航栈。
+- 头像与作品封面优先展示原有 HTTP(S) 图片 URL，提供本地化图片语义。缺失、无效或加载失败时，头像使用中性人像图标；封面使用随包附带的原创抽象兜底图（由 AI 生成，不代表文章内容）。
+- Latin 字体使用 [Instrument Serif](https://github.com/google/fonts/tree/main/ofl/instrumentserif) 和 [Inter Tight](https://github.com/google/fonts/tree/main/ofl/intertight)，各自的 SIL Open Font License 随 `assets/fonts/` 打包；中文使用系统衬线/无衬线字体回退。实际字形与行高会因设备而异。
+- 继续支持浅色、深色、系统主题、系统字体缩放与中英文界面；系统要求减少动画时关闭标签切换淡入。视觉组件不翻译作品、作者或评论；内容请求的语言随界面语言推导（见 [无障碍](accessibility.md)）。

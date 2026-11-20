@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/features/blog/presentation/widgets/editor_field.dart';
@@ -64,7 +65,7 @@ class _EditorBodyFieldState extends State<EditorBodyField> {
       width: double.infinity,
       padding: const EdgeInsets.all(NoWaveSpacing.small),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(NoWaveRadius.surface),
         border: Border.all(color: borderColor),
       ),
       child: text.trim().isEmpty
