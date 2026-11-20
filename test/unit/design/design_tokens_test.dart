@@ -197,6 +197,30 @@ void main() {
           (shape! as RoundedRectangleBorder).borderRadius,
           const BorderRadius.all(Radius.circular(NoWaveRadius.none)),
         );
+        // Flat and on the same paper, so a hairline edge in the text colour
+        // is what lifts it off the scrim.
+        expect(theme.dialogTheme.elevation, 0);
+        expect(
+          (shape as RoundedRectangleBorder).side,
+          BorderSide(
+            color: theme.colorScheme.onSurface,
+            width: NoWaveStroke.hairline,
+          ),
+        );
+        expect(theme.dialogTheme.titleTextStyle?.fontFamily, 'InstrumentSerif');
+      });
+
+      test('$label: a sheet carries the same hairline on its top edge', () {
+        final shape = theme.bottomSheetTheme.shape;
+        expect(shape, isA<Border>());
+        expect(
+          (shape! as Border).top,
+          BorderSide(
+            color: theme.colorScheme.onSurface,
+            width: NoWaveStroke.hairline,
+          ),
+        );
+        expect((shape as Border).bottom, BorderSide.none);
       });
 
       test('$label: inputs use the same hairline and focus weight', () {

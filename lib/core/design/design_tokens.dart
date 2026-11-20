@@ -115,6 +115,10 @@ abstract final class NoWaveTypeScale {
   /// 18: a section heading under an article (comments, related reading).
   static const sectionTitle = 18.0;
 
+  /// 24: a dialog's title, in the serif - a question put to the reader is
+  /// editorial copy, so it is set like a heading rather than a system alert.
+  static const dialogTitle = 24.0;
+
   /// 32: the sign-in and sign-up page titles.
   static const authTitle = 32.0;
 }
@@ -367,6 +371,11 @@ abstract final class NoWaveMotion {
   /// share of its own height: enough to read as rising into the bar, not as
   /// sliding in from somewhere else.
   static const runningHeadRise = 0.5;
+
+  /// How many screens from the top a tab-reselect return starts travelling.
+  /// From farther down it jumps here first, so the return is one short
+  /// movement rather than a long blur of everything in between.
+  static const returnLeap = 1.0;
 }
 
 /// Layout breakpoints and the grid they imply.
