@@ -43,6 +43,12 @@ import 'package:get_it/get_it.dart';
 void registerBlogModule(GetIt locator, DependencyContext context) {
   final apiClient = context.apiClient;
   final sessionManager = context.sessionManager;
+  // One channel for the whole app: every page's BlogLikedBloc hears a save
+  // made on any other page.
+  locator.registerLazySingleton<SavedArticlesChanges>(
+    SavedArticlesChanges.new,
+    dispose: (changes) => changes.dispose(),
+  );
   locator.registerLazySingleton<RecordArticleView>(
     () => RecordArticleView(
       NowaveArticleViewRecorder(client: apiClient, identity: sessionManager),
@@ -119,6 +125,7 @@ void registerBlogModule(GetIt locator, DependencyContext context) {
         isBlogLiked: locator<IsBlogLiked>(),
         getUserLikedBlogs: locator<GetUserLikedBlogs>(),
         sessionIdentity: sessionManager,
+        savedChanges: locator<SavedArticlesChanges>(),
       ),
     )
     ..registerFactory(

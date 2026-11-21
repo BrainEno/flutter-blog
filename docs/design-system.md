@@ -498,8 +498,8 @@
   还是停顿。杂志的做法是在最后一行后面印一枚实心小方块。这里把它做成一个分节符：
   两段与 `Divider` 同色同粗的发丝线，中间一枚 `endMark`（8）见方的**墨色**方块——印刷
   里的终止符本来就是黑的，结构性记号一律用墨色。下面一行 `metaLabel` 居中：
-  `articleEnd`（全文完 / The end），作者已知时接 `articleEndByline`（中文直接是作者名，
-  英文 Words by …）；匿名作者不写署名，而不是写「匿名作者」。线和方块不读，那一行
+  `articleEnd`（全文完 / The end）。文章页不再接署名——作者在文章顶部已经介绍过，
+  文末再写一遍是重复（组件仍保留可选的 `byline`）。线和方块不读，那一行
   照常朗读，读屏用户和看屏幕的人同样知道文章在哪里结束。
   首页 feed 与搜索结果翻到底时也印这一枚（`feedNoMore` / `feedCachedNoMore` /
   `searchNoMore` / `searchLimitReached` 作为那一行），最后一张卡片读起来是「最后」，
