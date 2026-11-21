@@ -31,7 +31,12 @@ class NoWaveSectionHead extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.medium),
+        // The border paints inside the box, so the top inset clears it: the
+        // gap is measured from the rule's lower edge.
+        padding: const EdgeInsets.only(
+          top: NoWaveSpacing.medium + NoWaveStroke.focus,
+          bottom: NoWaveSpacing.medium,
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,

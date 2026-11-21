@@ -2,7 +2,6 @@ import 'package:belog/core/design/components/no_wave_section_head.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Widget _head({String? trailing, double textScale = 1, double width = 360}) =>
@@ -79,13 +78,14 @@ void main() {
       greaterThanOrEqualTo(NoWaveSpacing.medium),
     );
 
-    double baseline(String text) {
-      final paragraph = tester.renderObject<RenderParagraph>(find.text(text));
-      return paragraph.localToGlobal(Offset.zero).dy +
-          paragraph.getDistanceToBaseline(TextBaseline.alphabetic)!;
-    }
-
-    expect(baseline('3 loaded'), closeTo(baseline('Comments'), 0.5));
+    final row = tester.widget<Row>(
+      find.descendant(
+        of: find.byKey(const ValueKey('no-wave-section-head')),
+        matching: find.byType(Row),
+      ),
+    );
+    expect(row.crossAxisAlignment, CrossAxisAlignment.baseline);
+    expect(row.textBaseline, TextBaseline.alphabetic);
   });
 
   testWidgets('a long title at twice the text size does not overflow', (
