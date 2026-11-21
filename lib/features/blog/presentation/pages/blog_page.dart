@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_column.dart';
 import 'package:belog/core/design/components/no_wave_list_note.dart';
 import 'package:belog/core/design/components/no_wave_end_mark.dart';
 import 'package:belog/core/design/components/no_wave_refresh.dart';
@@ -13,6 +14,7 @@ import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/l10n/locale_bloc.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
+import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/blog_feed_page.dart';
@@ -26,7 +28,10 @@ import 'package:go_router/go_router.dart';
 import 'package:belog/router/route_paths.dart';
 
 class BlogPage extends StatefulWidget {
-  const BlogPage({super.key});
+  const BlogPage({super.key, this.clock = DateTime.now});
+
+  /// The clock the dateline reads; injectable so a test can pin the day.
+  final DateTime Function() clock;
 
   @override
   State<BlogPage> createState() => _BlogPageState();
@@ -140,7 +145,12 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
       listener: (context, state) =>
           context.read<BlogBloc>().add(BlogViewerChanged(_viewerId(state))),
       child: Scaffold(
-        appBar: AppBar(title: const NoWaveMasthead()),
+        appBar: AppBar(
+          // The masthead starts on the same edge as the column under it, on
+          // a phone (the gutter) and on a wide window (the column's margin).
+          titleSpacing: NoWaveColumn.inset(MediaQuery.sizeOf(context).width),
+          title: const NoWaveMasthead(),
+        ),
         body: BlocConsumer<BlogBloc, BlogState>(
           listener: (context, state) {
             if (state is BlogListFailure &&
@@ -181,8 +191,11 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
   Widget _feedSelector(BlogState state) {
     final l10n = context.l10n;
     const kinds = BlogFeedKind.values;
-    return _contentWidth(
-      Padding(
+    // The words start where the column below starts (the inset is the page
+    // gutter), and the hairline under them runs a gutter wider on each side.
+    return NoWaveColumn(
+      maxWidth: NoWaveSizes.contentColumn + 2 * NoWaveSpacing.page,
+      child: Padding(
         padding: const EdgeInsets.only(top: NoWaveSpacing.small),
         child: NoWaveSlidingTabs(
           labels: [
@@ -201,6 +214,8 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     );
   }
 
+  DateTime _clock() => widget.clock();
+
   Widget _heading(BlogFeedKind kind) {
     final l10n = context.l10n;
     final title = switch (kind) {
@@ -218,6 +233,9 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
               ? l10n.feedHeadingCompanion
               : null,
           eyebrow: l10n.feedEyebrow,
+          // Today's date at the end of the eyebrow line, like the dateline of
+          // a paper: the feed is an edition, not an endless stream.
+          aside: formatDateline(Localizations.localeOf(context), _clock()),
         ),
         if (kind == BlogFeedKind.popular) ...[
           const SizedBox(height: NoWaveSpacing.small),
@@ -230,13 +248,7 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _contentWidth(Widget child) => Align(
-    alignment: Alignment.topCenter,
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: NoWaveSizes.contentColumn),
-      child: child,
-    ),
-  );
+  Widget _contentWidth(Widget child) => NoWaveColumn(child: child);
 
   Widget _statusList(Widget status, BlogFeedKind kind) => ListView(
     physics: const AlwaysScrollableScrollPhysics(),

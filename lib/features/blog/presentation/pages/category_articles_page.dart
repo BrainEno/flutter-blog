@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_column.dart';
 import 'package:belog/core/design/components/no_wave_end_mark.dart';
 import 'package:belog/core/design/components/no_wave_list_note.dart';
 import 'package:belog/core/design/components/no_wave_refresh.dart';
@@ -255,11 +256,5 @@ class _CategoryArticlesPageState extends State<CategoryArticlesPage> {
     );
   }
 
-  Widget _contentWidth(Widget child) => Align(
-    alignment: Alignment.topCenter,
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: NoWaveSizes.contentColumn),
-      child: child,
-    ),
-  );
+  Widget _contentWidth(Widget child) => NoWaveColumn(child: child);
 }

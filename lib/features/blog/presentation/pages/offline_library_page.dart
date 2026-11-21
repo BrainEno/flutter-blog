@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_column.dart';
 import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
@@ -398,13 +399,8 @@ class _OfflineLibraryPageState extends State<OfflineLibraryPage> {
     ],
   );
 
-  Widget _contentWidth(Widget child) => Align(
-    alignment: Alignment.topCenter,
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: NoWaveSizes.maxReadingWidth),
-      child: child,
-    ),
-  );
+  Widget _contentWidth(Widget child) =>
+      NoWaveColumn(maxWidth: NoWaveSizes.maxReadingWidth, child: child);
 
   String _formatBytes(BuildContext context, int bytes) {
     final l10n = context.l10n;

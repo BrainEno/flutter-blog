@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_tab_bar.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/presentation/pages/search_blog_page.dart';
 import 'package:belog/features/user/data/models/author_profile_model.dart';
@@ -64,7 +65,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('读者乙的主页'), findsOneWidget);
     expect(
-      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      tester.widget<NoWaveTabBar>(find.byType(NoWaveTabBar)).selectedIndex,
       1,
     );
     verify(() => harness.authorRemote.getAuthorProfile(readerId)).called(1);

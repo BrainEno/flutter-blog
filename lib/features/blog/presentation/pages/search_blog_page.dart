@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_column.dart';
 import 'package:belog/core/common/widgets/no_wave_masthead.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
@@ -73,13 +74,7 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
     context.read<BlogSearchBloc>().add(SearchBlogsEvent(query: trimmed));
   }
 
-  Widget _contentWidth(Widget child) => Align(
-    alignment: Alignment.topCenter,
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: NoWaveSizes.contentColumn),
-      child: child,
-    ),
-  );
+  Widget _contentWidth(Widget child) => NoWaveColumn(child: child);
 
   Widget _state(Widget child) => SliverFillRemaining(
     hasScrollBody: false,
@@ -97,6 +92,7 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
     final foreground = Theme.of(context).colorScheme.onSurface;
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: NoWaveColumn.inset(MediaQuery.sizeOf(context).width),
         title: const NoWaveMasthead(),
         actions: [
           IconButton(

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_tab_bar.dart';
 import 'package:belog/core/design/components/no_wave_end_mark.dart';
 import 'package:belog/core/design/components/no_wave_running_head.dart';
 import 'package:belog/l10n/app_localizations.dart';
@@ -945,14 +946,14 @@ void main() {
       expect(find.byType(AuthorRelationshipsPage), findsOneWidget);
       expect(find.text('读者乙'), findsOneWidget);
       expect(
-        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+        tester.widget<NoWaveTabBar>(find.byType(NoWaveTabBar)).selectedIndex,
         1,
       );
       await tester.tap(find.text('读者乙'));
       await tester.pumpAndSettle();
       expect(find.text('读者乙的主页'), findsOneWidget);
       expect(
-        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+        tester.widget<NoWaveTabBar>(find.byType(NoWaveTabBar)).selectedIndex,
         1,
       );
       verify(() => harness.authorRemote.getAuthorProfile(readerId)).called(1);
@@ -999,7 +1000,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('没有可显示的关注用户'), findsOneWidget);
     expect(
-      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      tester.widget<NoWaveTabBar>(find.byType(NoWaveTabBar)).selectedIndex,
       3,
     );
   });
@@ -1021,7 +1022,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(BlogViewerPage), findsOneWidget);
     expect(
-      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      tester.widget<NoWaveTabBar>(find.byType(NoWaveTabBar)).selectedIndex,
       1,
     );
 
@@ -1029,7 +1030,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(AuthorPage), findsOneWidget);
     expect(
-      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      tester.widget<NoWaveTabBar>(find.byType(NoWaveTabBar)).selectedIndex,
       1,
     );
     await tester.ensureVisible(find.text('作者的另一篇文章'));
@@ -1040,7 +1041,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(BlogViewerPage), findsOneWidget);
     expect(
-      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      tester.widget<NoWaveTabBar>(find.byType(NoWaveTabBar)).selectedIndex,
       1,
     );
 

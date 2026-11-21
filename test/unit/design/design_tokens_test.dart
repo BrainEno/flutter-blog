@@ -48,6 +48,7 @@ void main() {
         expect(size, greaterThanOrEqualTo(NoWaveSizes.tapTarget));
       }
       expect(NoWaveSizes.row, greaterThanOrEqualTo(NoWaveSizes.tapTarget));
+      expect(NoWaveSizes.tabBar, greaterThanOrEqualTo(NoWaveSizes.tapTarget));
     });
 
     test('the cover ratios match the ones the cards use', () {

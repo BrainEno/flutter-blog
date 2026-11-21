@@ -101,6 +101,9 @@ abstract final class NoWaveTypeScale {
   /// only all-caps type in the app.
   static const eyebrow = 11.0;
 
+  /// 12: the words of the bottom tab bar, under their glyphs.
+  static const tabLabel = 12.0;
+
   /// 15: chip labels (tags, categories) and the words of the sliding tabs.
   static const label = 15.0;
 
@@ -124,6 +127,10 @@ abstract final class NoWaveTypeScale {
 
   /// 32: the sign-in and sign-up page titles.
   static const authTitle = 32.0;
+
+  /// 36: a page's section heading (`NoWaveSectionHeading`) - the largest
+  /// type on a list page.
+  static const heading = 36.0;
 
   /// 40: a counted figure in a summary (the reading-history totals), in the
   /// display face with tabular figures.
@@ -165,6 +172,10 @@ abstract final class NoWaveSizes {
 
   /// Minimum height of a tappable list row.
   static const row = 64.0;
+
+  /// Height of the bottom tab bar, above the system inset: an icon and its
+  /// word, each slot well over [tapTarget].
+  static const tabBar = 64.0;
 
   /// Cover aspect ratio of an article tile in a grid.
   static const coverAspect = 4 / 3;

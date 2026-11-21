@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:belog/core/design/components/no_wave_fade_transition.dart';
 import 'package:belog/core/design/components/no_wave_return_to_top.dart';
-import 'package:belog/core/design/design_tokens.dart';
+import 'package:belog/core/design/components/no_wave_tab_bar.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/router/read_aloud_route_observers.dart';
@@ -11,8 +11,8 @@ import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-/// Root scaffold hosting four independent navigator stacks. The native tab
-/// bar keeps the app's existing navigation while using the no-wave palette.
+/// Root scaffold hosting four independent navigator stacks under the app's
+/// own [NoWaveTabBar].
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key, required this.shell});
   final StatefulNavigationShell shell;
@@ -105,39 +105,28 @@ class _HomeShellState extends State<HomeShell> with RouteAware {
           ),
         ),
       ),
-      bottomNavigationBar: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withAlpha(NoWaveOpacity.dividerAlpha),
+      // The bar hangs from a hairline and marks the chosen destination with
+      // the same ink rule as the in-page tabs, drawn across when it changes.
+      bottomNavigationBar: NoWaveTabBar(
+        selectedIndex: widget.shell.currentIndex,
+        onSelected: (index) {
+          // Re-tapping the active destination preserves its existing
+          // stack and takes the list on screen back to its top.
+          if (index != widget.shell.currentIndex) {
+            _stopAfterNavigation();
+            widget.shell.goBranch(index);
+          } else {
+            _returnToTop.currentState?.toTop();
+          }
+        },
+        destinations: [
+          for (var i = 0; i < _icons.length; i++)
+            NoWaveTabDestination(
+              icon: _icons[i],
+              selectedIcon: _selectedIcons[i],
+              label: labels[i],
             ),
-          ),
-        ),
-        // The bar's pill indicator is off in the theme: the chosen tab is the
-        // one set in ink with a filled icon, the rest are muted outlines.
-        child: NavigationBar(
-          selectedIndex: widget.shell.currentIndex,
-          onDestinationSelected: (index) {
-            // Re-tapping the active destination preserves its existing
-            // stack and takes the list on screen back to its top.
-            if (index != widget.shell.currentIndex) {
-              _stopAfterNavigation();
-              widget.shell.goBranch(index);
-            } else {
-              _returnToTop.currentState?.toTop();
-            }
-          },
-          destinations: [
-            for (var i = 0; i < _icons.length; i++)
-              NavigationDestination(
-                icon: Icon(_icons[i]),
-                selectedIcon: Icon(_selectedIcons[i]),
-                label: labels[i],
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }
