@@ -153,6 +153,9 @@ class CommentTile extends StatelessWidget {
                         name: authorName,
                         imageUrl: comment.authorAvatarUrl,
                         size: depth == 0 ? 32 : 26,
+                        // The thread lies on the end-matter sheet, which is
+                        // the avatar's own tone: a paper tile keeps it seen.
+                        background: scheme.surface,
                       ),
                     ),
                   ),

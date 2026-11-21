@@ -259,7 +259,7 @@
 | `NoWaveCoverPlate` | `design/cover/no_wave_cover_plate.dart` | 四张编辑式默认封面，按文章身份稳定选一张 |
 | `ArticleCover` | `features/blog/presentation/widgets/article_cover.dart` | 真封面 / 加载 / 失败三种状态共用同一张版 |
 | `ArticleCategoryLabel` | `features/blog/presentation/widgets/article_category_label.dart` | 文章所属的分类（服务端给的名称；可点进分类列表）。默认是填充色块；阅读页的 kicker 里用 `quiet: true`，只是一个粗墨色的词 |
-| `ArticleTagLabel` | `features/blog/presentation/widgets/article_tag_label.dart` | 作者写的标签（可点进标签列表）。默认描边；`quiet: true` 时是一个浅色的词（阅读页 kicker、相关阅读行） |
+| `ArticleTagLabel` | `features/blog/presentation/widgets/article_tag_label.dart` | 作者写的标签（可点进标签列表）。默认描边；`quiet: true` 时是一个浅色的词（阅读页 kicker） |
 
 ### 加载态：一句文案或一个形状
 
@@ -453,9 +453,9 @@
 - **文末换纸**：正文之后只有一枚墨色方块和「全文完」（不带线）；相关阅读与评论放在一整块
   通栏的 `surfaceContainer` 上（`article-end-matter`），内容不足一屏时用
   `SliverFillRemaining` 把这块纸铺到底。一次换色比任何一道线都更明确地说「文章结束了」，
-  所以里面的分节头、相关阅读行（`BlogCard(quiet: true)`）和评论串都不再画线：评论串之间
-  靠 `large` 留白分组，回复挂在父评论的文字栏下。登录提示是一张页面本色的卡片，放在这块
-  深一档的纸上。
+  所以里面的分节头、相关阅读行（`BlogCard(quiet: true)`：只留序号、日期、标题、作者，不列标签）和评论串都不再画线：评论串之间
+  靠 `large` 留白分组，回复挂在父评论的文字栏下。登录提示和评论头像的底色是页面本色，放在这块
+  深一档的纸上才看得见。
 
 ### 书眉：标题滚走以后
 

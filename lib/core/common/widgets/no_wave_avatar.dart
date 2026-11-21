@@ -22,7 +22,13 @@ class NoWaveAvatar extends StatelessWidget {
     this.imageUrl = '',
     this.size = 80,
     this.webBaseUrl,
+    this.background,
   });
+
+  /// The tile behind a missing or loading picture. Defaults to the surface
+  /// tone; something already set on that tone (the article's end matter)
+  /// passes the paper colour so the square still shows.
+  final Color? background;
 
   final String name;
   final String imageUrl;
@@ -57,7 +63,7 @@ class NoWaveAvatar extends StatelessWidget {
         child: SizedBox.square(
           dimension: size,
           child: ColoredBox(
-            color: scheme.surfaceContainerHighest,
+            color: background ?? scheme.surfaceContainerHighest,
             child: ClipRect(
               child: url != null
                   ? CachedNetworkImage(

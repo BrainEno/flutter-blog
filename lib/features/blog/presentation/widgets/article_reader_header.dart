@@ -91,7 +91,9 @@ class ArticleReaderHeader extends StatelessWidget {
         // The kicker: what kind of piece this is, in one quiet line.
         if (categories.isNotEmpty || blog.tags.isNotEmpty) ...[
           Wrap(
-            spacing: NoWaveSpacing.medium,
+            // Each word sits in a 48pt target that is already wider than
+            // a short word, so the gap between them stays small.
+            spacing: NoWaveSpacing.small,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               for (final category in categories)
