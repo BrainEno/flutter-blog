@@ -184,7 +184,6 @@ class _MessageThreadViewState extends State<_MessageThreadView> {
         return Scaffold(
           appBar: AppBar(
             title: Text(_title(state)),
-            centerTitle: true,
             actions:
                 state is MessageThreadLoaded &&
                     state.conversation.createdBy == state.viewerId &&

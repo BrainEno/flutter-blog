@@ -48,7 +48,6 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(color: foreground, fontWeight: FontWeight.bold),
       ),
-      centerTitle: true,
       actions: [
         // A square, full-weight primary action - the previous pill was the
         // last rounded button in the app. Its min size and padding now come

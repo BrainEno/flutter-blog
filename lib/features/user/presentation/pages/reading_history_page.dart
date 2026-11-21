@@ -1,17 +1,19 @@
 import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
-import 'package:belog/core/common/media/no_wave_image_decode_size.dart';
+import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
+import 'package:belog/core/design/components/no_wave_entrance.dart';
+import 'package:belog/core/design/components/no_wave_pressable.dart';
 import 'package:belog/core/design/components/no_wave_skeleton.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/router/app_router.dart';
 import 'package:belog/features/blog/domain/entities/reading_stats.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
 import 'package:belog/features/user/presentation/widgets/reading_stats_card.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -259,20 +261,13 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
       );
 
   Widget _buildScaffold(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    // Every colour below comes from the theme palette (issue #24): the
-    // earlier hardcoded greys/reds were tuned for one brightness and could
-    // drop below the contrast budget in the other.
-    final mutedColor = scheme.onSurfaceVariant;
     final userId = _userId;
     final ownerMatches = userId != null && userId == _entriesUserId;
     final entries = ownerMatches ? _entries : <ReadingHistoryEntry>[];
     final loading = userId != null && (!ownerMatches || _loading);
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
         title: Text(context.l10n.historyTitle),
-        elevation: 1.0,
         actions: [
           if (ownerMatches && _legacyAvailable)
             IconButton(
@@ -292,125 +287,172 @@ class _ReadingHistoryPageState extends State<ReadingHistoryPage>
           ? NoWaveSkeletonList(semanticLabel: context.l10n.loading)
           : entries.isEmpty
           ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.history, size: 64, color: mutedColor),
-                  const SizedBox(height: NoWaveSpacing.small),
-                  Text(
-                    context.l10n.historyEmpty,
-                    style: TextStyle(
-                      fontSize: NoWaveTypeScale.emptyState,
-                      color: mutedColor,
-                    ),
-                  ),
-                  const SizedBox(height: NoWaveSpacing.xs),
-                  Text(
-                    context.l10n.historyEmptyHint,
-                    style: Theme.of(context).textTheme.bodySmall,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.all(NoWaveSpacing.page),
+                child: NoWaveStatus(
+                  message: context.l10n.historyEmpty,
+                  detail: context.l10n.historyEmptyHint,
+                ),
               ),
             )
-          : ListView.separated(
-              // Row 0 is the reading summary; history rows follow it.
-              itemCount: entries.length + 1,
-              separatorBuilder: (context, index) => index == 0
-                  ? const SizedBox.shrink()
-                  : const Divider(height: 1),
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return ReadingStatsCard(
-                    stats: ReadingStats.from(entries, now: widget.clock()),
-                  );
-                }
-                final entry = entries[index - 1];
-                final readAtLabel = formatDate(
-                  Localizations.localeOf(context),
-                  entry.readAt,
-                );
-                final decode = noWaveDecodeSizeForFixed(
-                  context,
-                  logicalWidth: NoWaveSizes.listThumbnail,
-                  logicalHeight: NoWaveSizes.listThumbnail,
-                );
-                return Dismissible(
-                  key: ValueKey(entry.blogId),
-                  direction: DismissDirection.endToStart,
-                  onDismissed: (_) => _remove(entry),
-                  background: Container(
-                    color: scheme.error,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: NoWaveSpacing.medium),
-                    child: Icon(Icons.delete, color: scheme.onError),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: NoWaveSpacing.medium,
-                      vertical: NoWaveSpacing.xs,
+          : NoWaveEntranceScope(
+              // Another account's history is a new list; a re-read that moves
+              // a row to the top is not.
+              generation: _entriesUserId,
+              child: ListView.builder(
+                padding: const EdgeInsets.only(bottom: NoWaveSpacing.section),
+                // Row 0 is the reading summary; history rows follow it.
+                itemCount: entries.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return ReadingStatsCard(
+                      stats: ReadingStats.from(entries, now: widget.clock()),
+                    );
+                  }
+                  final entry = entries[index - 1];
+                  return Dismissible(
+                    key: ValueKey(entry.blogId),
+                    direction: DismissDirection.endToStart,
+                    onDismissed: (_) => _remove(entry),
+                    background: _SwipeToRemove(
+                      label: context.l10n.actionDelete,
                     ),
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(
-                        NoWaveRadius.thumbnail,
-                      ),
-                      child: Semantics(
-                        image: true,
-                        label: context.l10n.coverOf(entry.title),
-                        child: SizedBox.square(
-                          dimension: NoWaveSizes.listThumbnail,
-                          child: entry.imageUrl.isEmpty
-                              ? Icon(Icons.article, size: 32, color: mutedColor)
-                              : CachedNetworkImage(
-                                  imageUrl: entry.imageUrl,
-                                  fit: BoxFit.cover,
-                                  width: NoWaveSizes.listThumbnail,
-                                  height: NoWaveSizes.listThumbnail,
-                                  memCacheWidth: decode.width,
-                                  memCacheHeight: decode.height,
-                                  errorWidget: (context, error, stackTrace) =>
-                                      Icon(
-                                        Icons.broken_image,
-                                        size: 32,
-                                        color: mutedColor,
-                                      ),
-                                ),
+                    child: NoWaveEntrance(
+                      index: index - 1,
+                      child: _HistoryRow(
+                        entry: entry,
+                        onRemove: () => _remove(entry),
+                        // Stay on the profile tab's stack so popping the
+                        // reader returns here and didPopNext refreshes.
+                        onOpen: () => context.push(
+                          shellBranchLocation(
+                            GoRouterState.of(context).uri,
+                            RoutePaths.view(entry.blogId),
+                          ),
                         ),
                       ),
                     ),
-                    title: Text(
-                      entry.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: NoWaveTypeScale.label,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    subtitle: Text(
-                      entry.posterName.isEmpty
-                          ? readAtLabel
-                          : '${entry.posterName} · $readAtLabel',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: IconButton(
-                      tooltip: context.l10n.removeHistoryEntry,
-                      icon: Icon(Icons.close, size: 20, color: mutedColor),
-                      onPressed: () => _remove(entry),
-                    ),
-                    // Stay on the profile tab's stack so popping the
-                    // reader returns here and didPopNext refreshes.
-                    onTap: () => context.push(
-                      shellBranchLocation(
-                        GoRouterState.of(context).uri,
-                        RoutePaths.view(entry.blogId),
-                      ),
-                    ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
+    );
+  }
+}
+
+/// One read, set like a row of the feed (every colour from the theme, issue
+/// #24): when it was read, the title in the
+/// serif, who wrote it - on a rule, with the press response of an article
+/// card. No thumbnail: the history is an index of what was read, and the
+/// feed's own rows are type alone, so the two lists now look like one
+/// publication.
+class _HistoryRow extends StatelessWidget {
+  const _HistoryRow({
+    required this.entry,
+    required this.onOpen,
+    required this.onRemove,
+  });
+
+  final ReadingHistoryEntry entry;
+  final VoidCallback onOpen;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    final readAt = formatDate(Localizations.localeOf(context), entry.readAt);
+    return NoWavePressable(
+      onTap: onOpen,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: NoWaveSpacing.page),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: scheme.onSurface.withAlpha(NoWaveOpacity.dividerAlpha),
+              ),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.only(
+              top: NoWaveSpacing.medium,
+              bottom: NoWaveSpacing.medium,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(readAt, style: NoWaveTypography.meta(context)),
+                      const SizedBox(height: NoWaveSpacing.xs),
+                      Text(
+                        entry.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        // A step under the feed row's 24: a log, not a
+                        // front page.
+                        style: NoWaveTypography.title(context, size: 20),
+                      ),
+                      if (entry.posterName.isNotEmpty) ...[
+                        const SizedBox(height: NoWaveSpacing.xs),
+                        Text(
+                          entry.posterName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: NoWaveTypography.meta(context),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: NoWaveSpacing.small),
+                IconButton(
+                  tooltip: l10n.removeHistoryEntry,
+                  icon: Icon(
+                    Icons.close,
+                    size: NoWaveIconSize.row,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  onPressed: onRemove,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// What a swipe uncovers: the inverted slip of a snackbar with the word for
+/// what letting go does, instead of a red field and a bin icon - removing a
+/// line from a private list is not an alarm.
+class _SwipeToRemove extends StatelessWidget {
+  const _SwipeToRemove({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ColoredBox(
+      color: scheme.inverseSurface,
+      child: Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(end: NoWaveSpacing.page),
+          child: Text(
+            label,
+            style: NoWaveTypography.metaLabel(
+              context,
+              color: scheme.onInverseSurface,
+            ).copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
@@ -178,6 +179,10 @@ void main() {
     expect(find.text('较早的文章'), findsOneWidget);
     // No poster name: the date renders alone, never as "null · ...".
     expect(find.textContaining('null'), findsNothing);
+    // Rows are set like the feed's: the author on a line of its own, and no
+    // thumbnail.
+    expect(find.text('作者'), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
   });
 
   testWidgets('switching accounts hides the old list and ignores late loads', (
@@ -268,6 +273,15 @@ void main() {
 
     expect(find.text('还没有阅读记录'), findsOneWidget);
     expect(find.byType(ListTile), findsNothing);
+    // One status with its caption, not a page-drawn icon and two lines.
+    expect(
+      find.descendant(
+        of: find.byType(NoWaveStatus),
+        matching: find.text('阅读过的文章会记录在这台设备上，仅自己可见'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.history), findsNothing);
   });
 
   testWidgets('the trailing button removes one entry', (tester) async {

@@ -71,6 +71,21 @@ void main() {
     );
   });
 
+  test('page titles start on the gutter, set once in the theme', () {
+    // appBarTheme sets centerTitle: false next to titleSpacing; a page that
+    // centres its own title puts it on a different axis from the masthead.
+    final hits = offenders(RegExp(r'centerTitle:'), {
+      'lib/core/theme/theme.dart',
+    });
+    expect(
+      hits,
+      isEmpty,
+      reason:
+          'leave the title alignment to appBarTheme in '
+          'lib/core/theme/theme.dart:\n${hits.join('\n')}',
+    );
+  });
+
   test('the scan reaches the helpers it protects', () {
     // A rule whose allowlisted file vanished would pass forever.
     for (final path in const [
@@ -78,6 +93,7 @@ void main() {
       'lib/core/utils/format_date.dart',
       'lib/core/utils/search_debounce.dart',
       'lib/core/config/app_durations.dart',
+      'lib/core/theme/theme.dart',
     ]) {
       expect(File(path).existsSync(), isTrue, reason: path);
     }

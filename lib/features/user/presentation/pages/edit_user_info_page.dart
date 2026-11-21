@@ -280,7 +280,6 @@ class _EditUserInfoPageState extends State<EditUserInfoPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(context.l10n.editProfileTitle),
-        centerTitle: true,
         elevation: 0,
         actions: [
           IconButton(

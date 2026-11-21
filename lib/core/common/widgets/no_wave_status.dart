@@ -21,6 +21,11 @@ import 'package:flutter/rendering.dart';
 /// * **ink**, with a bordered [NoWaveButton] under it, when the state comes
 ///   with an action (retry, sign in): it is addressed to the reader.
 ///
+/// An optional [detail] sits under the sentence in the small sans of a
+/// caption ([NoWaveTypography.metaLabel], muted): what will appear here, or
+/// why. It belongs to the sentence, so it arrives with it and shares its
+/// measure; pages no longer stack their own caption under a status.
+///
 /// On arrival the block fades in and rises [NoWaveSizes.entranceRise] over
 /// `slow`, the button [NoWaveMotion.strokeLag] behind the words - so a retry
 /// that fails again visibly lands again instead of looking like nothing
@@ -31,11 +36,15 @@ class NoWaveStatus extends StatefulWidget {
   const NoWaveStatus({
     super.key,
     required this.message,
+    this.detail,
     this.actionLabel,
     this.onAction,
   }) : assert((actionLabel == null) == (onAction == null));
 
   final String message;
+
+  /// A caption under [message]: what will appear here, or why.
+  final String? detail;
   final String? actionLabel;
   final VoidCallback? onAction;
 
@@ -118,6 +127,7 @@ class _NoWaveStatusState extends State<NoWaveStatus>
     final scheme = Theme.of(context).colorScheme;
     final onAction = widget.onAction;
     final actionable = onAction != null;
+    final detail = widget.detail;
     return Semantics(
       liveRegion: true,
       // Its own measure even where the parent stretches it (a list row).
@@ -131,19 +141,35 @@ class _NoWaveStatusState extends State<NoWaveStatus>
             children: [
               _arrive(
                 _words,
-                Text(
-                  widget.message,
-                  textAlign: TextAlign.center,
-                  style:
-                      NoWaveTypography.title(
-                        context,
-                        size: NoWaveTypeScale.sectionTitle,
-                      ).copyWith(
-                        fontWeight: FontWeight.w400,
-                        color: actionable
-                            ? scheme.onSurface
-                            : scheme.onSurfaceVariant,
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.message,
+                      textAlign: TextAlign.center,
+                      style:
+                          NoWaveTypography.title(
+                            context,
+                            size: NoWaveTypeScale.sectionTitle,
+                          ).copyWith(
+                            fontWeight: FontWeight.w400,
+                            color: actionable
+                                ? scheme.onSurface
+                                : scheme.onSurfaceVariant,
+                          ),
+                    ),
+                    if (detail != null) ...[
+                      const SizedBox(height: NoWaveSpacing.small),
+                      Text(
+                        detail,
+                        textAlign: TextAlign.center,
+                        style: NoWaveTypography.metaLabel(
+                          context,
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
+                    ],
+                  ],
                 ),
                 still,
               ),

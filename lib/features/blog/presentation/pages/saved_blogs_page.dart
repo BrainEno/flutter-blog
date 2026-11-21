@@ -75,11 +75,7 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: Text(context.l10n.savedTitle),
-        elevation: 1.0,
-      ),
+      appBar: AppBar(title: Text(context.l10n.savedTitle)),
       body: BlocConsumer<BlogLikedBloc, BlogLikedState>(
         listener: (context, state) {
           if (state is UserLikedBlogsFailure) {

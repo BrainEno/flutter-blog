@@ -67,7 +67,8 @@ abstract final class NoWaveRadius {
   /// 4: the highlight behind inline code inside running text.
   static const inline = 4.0;
 
-  /// 6: a list-row thumbnail (reading history).
+  /// 6: a list-row thumbnail. No caller since the reading history became
+  /// type-only rows; the value is kept because #294 pinned it.
   static const thumbnail = 6.0;
 
   /// 8: an embedded content surface - a code block, an image in an article,
@@ -100,7 +101,7 @@ abstract final class NoWaveTypeScale {
   /// only all-caps type in the app.
   static const eyebrow = 11.0;
 
-  /// 15: chip labels and list-row titles (tags, categories, history rows).
+  /// 15: chip labels (tags, categories) and the words of the sliding tabs.
   static const label = 15.0;
 
   /// 16: the sentence of an empty state.
@@ -123,6 +124,10 @@ abstract final class NoWaveTypeScale {
 
   /// 32: the sign-in and sign-up page titles.
   static const authTitle = 32.0;
+
+  /// 40: a counted figure in a summary (the reading-history totals), in the
+  /// display face with tabular figures.
+  static const figure = 40.0;
 }
 
 /// Line weights.
@@ -190,7 +195,7 @@ abstract final class NoWaveSizes {
   /// relate, and every list that shows one starts in the same place.
   static const emptyStateOffset = 48.0;
 
-  /// Leading thumbnail of a list row (reading history, recycling bin).
+  /// Leading thumbnail of a list row, as the list skeleton draws it.
   static const listThumbnail = 56.0;
 
   /// The smaller leading thumbnail used where the row also carries actions.

@@ -214,7 +214,6 @@ class _UserBlogsPageState extends State<UserBlogsPage>
     return Scaffold(
       appBar: AppBar(
         title: Text(context.l10n.myArticlesTitle),
-        centerTitle: true,
         actions: [
           IconButton(
             tooltip: _allEditions

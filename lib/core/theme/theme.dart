@@ -106,7 +106,11 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         // Titles start on the page gutter, so the masthead and a page title
-        // line up with the column under them.
+        // line up with the column under them - on every page and platform.
+        // A centred title (iOS's default, and what half the pages used to ask
+        // for) floats free of the column and puts the masthead and a page
+        // title on two different axes.
+        centerTitle: false,
         titleSpacing: NoWaveSpacing.page,
         titleTextStyle: TextStyle(
           color: foreground,

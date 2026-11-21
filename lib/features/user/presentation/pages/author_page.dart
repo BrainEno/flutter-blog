@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_badge.dart';
 import 'package:belog/core/design/components/no_wave_list_note.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
@@ -476,8 +477,12 @@ class _FollowButton extends StatelessWidget {
   Widget build(BuildContext context) {
     if (isSelf) {
       // No Align: a wrapping parent lays this out by its own width, and an
-      // Align would claim the whole line.
-      return Chip(label: Text(context.l10n.thisIsYou));
+      // Align would claim the whole line. A square badge, not a Material
+      // chip: the rounded pill was the last one on the page.
+      return NoWaveBadge(
+        label: context.l10n.thisIsYou,
+        tone: NoWaveBadgeTone.neutral,
+      );
     }
 
     final following = loaded.profile.isFollowing;

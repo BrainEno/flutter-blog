@@ -1,6 +1,8 @@
+import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/design/motion/no_wave_motion_policy.dart';
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/reading_stats.dart';
 import 'package:flutter/material.dart';
@@ -21,85 +23,77 @@ class ReadingStatsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final locale = Localizations.localeOf(context);
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = Theme.of(context).colorScheme;
+    // Set on the page like the opening of a report - a small eyebrow, three
+    // counted figures, a chart on a baseline - not in a tinted box: the grey
+    // panel read as a widget dropped onto the page, and it was the only
+    // rounded surface on it.
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         NoWaveSpacing.page,
-        NoWaveSpacing.medium,
+        NoWaveSpacing.large,
         NoWaveSpacing.page,
-        NoWaveSpacing.small,
+        NoWaveSpacing.large,
       ),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(NoWaveRadius.container),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(NoWaveSpacing.medium),
-          child: Column(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(header: true, child: NoWaveEyebrow(l10n.readingStatsTitle)),
+          const SizedBox(height: NoWaveSpacing.medium),
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Semantics(
-                header: true,
-                child: Text(
-                  l10n.readingStatsTitle,
-                  style: const TextStyle(
-                    fontSize: NoWaveTypeScale.sectionTitle,
-                    fontWeight: FontWeight.w600,
-                  ),
+              Expanded(
+                child: _Figure(
+                  key: const ValueKey('reading-stats-window'),
+                  value: formatNumber(locale, stats.articlesInWindow),
+                  label: l10n.readingStatsWindowLabel,
                 ),
               ),
-              const SizedBox(height: NoWaveSpacing.medium),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: _Figure(
-                      key: const ValueKey('reading-stats-window'),
-                      value: formatNumber(locale, stats.articlesInWindow),
-                      label: l10n.readingStatsWindowLabel,
-                    ),
-                  ),
-                  Expanded(
-                    child: _Figure(
-                      key: const ValueKey('reading-stats-streak'),
-                      value: formatNumber(locale, stats.currentStreakDays),
-                      label: l10n.readingStatsStreakLabel,
-                    ),
-                  ),
-                  Expanded(
-                    child: _Figure(
-                      key: const ValueKey('reading-stats-total'),
-                      value: formatNumber(locale, stats.totalArticles),
-                      label: l10n.readingStatsTotalLabel,
-                    ),
-                  ),
-                ],
+              Expanded(
+                child: _Figure(
+                  key: const ValueKey('reading-stats-streak'),
+                  value: formatNumber(locale, stats.currentStreakDays),
+                  label: l10n.readingStatsStreakLabel,
+                ),
               ),
-              const SizedBox(height: NoWaveSpacing.medium),
-              _ActivityStrip(stats: stats),
-              const SizedBox(height: NoWaveSpacing.small),
-              Text(
-                l10n.readingStatsLongest(stats.longestStreakDays),
-                style: theme.textTheme.bodyMedium,
-              ),
-              const SizedBox(height: NoWaveSpacing.xs),
-              Text(
-                l10n.readingStatsFootnote,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
+              Expanded(
+                child: _Figure(
+                  key: const ValueKey('reading-stats-total'),
+                  value: formatNumber(locale, stats.totalArticles),
+                  label: l10n.readingStatsTotalLabel,
                 ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: NoWaveSpacing.large),
+          _ActivityStrip(stats: stats),
+          const SizedBox(height: NoWaveSpacing.medium),
+          Text(
+            l10n.readingStatsLongest(stats.longestStreakDays),
+            style: NoWaveTypography.meta(
+              context,
+            ).copyWith(color: scheme.onSurface),
+          ),
+          const SizedBox(height: NoWaveSpacing.xs),
+          Text(
+            l10n.readingStatsFootnote,
+            style: NoWaveTypography.metaLabel(
+              context,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// One figure: a large number over its caption, read as one phrase.
+/// One figure: a counted number over its caption, read as one phrase.
+///
+/// The number is the display face with tabular figures
+/// ([NoWaveTypography.display] at [NoWaveTypeScale.figure]), so a count that
+/// changes after a removal keeps its width.
 class _Figure extends StatelessWidget {
   final String value;
   final String label;
@@ -108,21 +102,25 @@ class _Figure extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final scheme = Theme.of(context).colorScheme;
     return MergeSemantics(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             value,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: NoWaveTypography.display(
+              context,
+              size: NoWaveTypeScale.figure,
+              color: scheme.onSurface,
+            ).copyWith(height: 1),
           ),
+          const SizedBox(height: NoWaveSpacing.small),
           Text(
             label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+            style: NoWaveTypography.metaLabel(
+              context,
+              color: scheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -132,6 +130,11 @@ class _Figure extends StatelessWidget {
 }
 
 /// Seven bars, oldest day first, each labelled with its short weekday.
+///
+/// The bars are ink and square, standing on a hairline baseline like a chart
+/// in print; a day without reading is a short stub in the hairline colour, so
+/// the week keeps its rhythm. Today's weekday is set in ink and the rest are
+/// muted - the strip reads from "then" to "now" without a legend.
 ///
 /// Screen readers get one sentence listing every day instead of fourteen
 /// unlabeled boxes and captions.
@@ -199,7 +202,8 @@ class _ActivityStripState extends State<_ActivityStrip>
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final locale = Localizations.localeOf(context);
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final stats = widget.stats;
     final peak = stats.windowPeak;
     final reduce = NoWaveMotionPolicy.reducesMotion(context);
@@ -207,49 +211,75 @@ class _ActivityStripState extends State<_ActivityStrip>
       for (final day in stats.window)
         l10n.readingStatsDay(formatWeekdayShort(locale, day.day), day.count),
     ].join(', ');
+    final hairline = theme.dividerTheme.color ?? scheme.outlineVariant;
+    final lastIndex = stats.window.length - 1;
+    Widget label(int index, DateTime day) {
+      final today = index == lastIndex;
+      return Text(
+        formatWeekdayShort(locale, day),
+        maxLines: 1,
+        overflow: TextOverflow.fade,
+        softWrap: false,
+        style: NoWaveTypography.metaLabel(
+          context,
+          size: NoWaveTypeScale.eyebrow,
+          color: today ? scheme.onSurface : scheme.onSurfaceVariant,
+        ).copyWith(fontWeight: today ? FontWeight.w600 : null),
+      );
+    }
+
     return Semantics(
       container: true,
       label: l10n.readingStatsChart(spoken),
       child: ExcludeSemantics(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final (index, day) in stats.window.indexed)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: NoWaveSpacing.xs,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        height: NoWaveSizes.activityChart,
+            SizedBox(
+              height: NoWaveSizes.activityChart,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final (index, day) in stats.window.indexed)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: NoWaveSpacing.xs,
+                        ),
                         child: _bar(
                           heightFactor: day.count == 0
                               ? NoWaveSizes.activityBarEmpty
                               : day.count / peak,
-                          color: day.count == 0
-                              ? scheme.outlineVariant
-                              : scheme.primary,
+                          color: day.count == 0 ? hairline : scheme.onSurface,
                           rise: reduce || index >= _rises.length
                               ? null
                               : _rises[index],
                           animateChanges: !reduce,
                         ),
                       ),
-                      const SizedBox(height: NoWaveSpacing.xs),
-                      Text(
-                        formatWeekdayShort(locale, day.day),
-                        maxLines: 1,
-                        overflow: TextOverflow.fade,
-                        softWrap: false,
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
+                ],
               ),
+            ),
+            // The baseline the week stands on.
+            SizedBox(
+              height: NoWaveStroke.hairline,
+              child: ColoredBox(color: hairline),
+            ),
+            const SizedBox(height: NoWaveSpacing.small),
+            Row(
+              children: [
+                for (final (index, day) in stats.window.indexed)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: NoWaveSpacing.xs,
+                      ),
+                      child: label(index, day.day),
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
@@ -262,12 +292,7 @@ class _ActivityStripState extends State<_ActivityStrip>
     required Animation<double>? rise,
     required bool animateChanges,
   }) {
-    Widget bar = DecoratedBox(
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(NoWaveRadius.inline),
-      ),
-    );
+    Widget bar = ColoredBox(color: color);
     if (rise != null) {
       bar = AnimatedBuilder(
         animation: rise,

@@ -384,22 +384,7 @@ class _OfflineLibraryPageState extends State<OfflineLibraryPage> {
     child: Center(
       child: Padding(
         padding: const EdgeInsets.all(NoWaveSpacing.page),
-        child: _contentWidth(
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              NoWaveStatus(message: message),
-              if (detail != null) ...[
-                const SizedBox(height: NoWaveSpacing.small),
-                Text(
-                  detail,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ],
-          ),
-        ),
+        child: _contentWidth(NoWaveStatus(message: message, detail: detail)),
       ),
     ),
   );

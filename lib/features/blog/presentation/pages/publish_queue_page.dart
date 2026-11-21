@@ -49,7 +49,6 @@ class _PublishQueueView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(context.l10n.publishQueueTitle),
-        centerTitle: true,
         actions: [
           BlocBuilder<PublishQueueCubit, PublishQueueState>(
             builder: (context, state) {

@@ -59,7 +59,7 @@
 | `NoWaveRadius.none` | 0 | 按钮、输入框、卡片、对话框、面板 |
 | `NoWaveRadius.badge` | 2 | 封面角标 |
 | `NoWaveRadius.inline` | 4 | 正文里行内代码的底色 |
-| `NoWaveRadius.thumbnail` | 6 | 列表行缩略图（阅读历史） |
+| `NoWaveRadius.thumbnail` | 6 | 列表行缩略图（阅读历史改成纯文字行后暂无调用方，数值保留） |
 | `NoWaveRadius.surface` | 8 | 嵌入的内容面：代码块、正文图片、编辑器正文框、评论区登录提示 |
 | `NoWaveRadius.container` | 12 | 大内容容器：封面上传框、私信气泡、发布队列条目、参与者面板头 |
 | `NoWaveRadius.pill` | 999 | 胶囊：未读计数角标、面板拖拽条；无论位数和系统字号，两端都保持圆形 |
@@ -78,7 +78,7 @@
 | `NoWaveSizes.contentColumn` | 680 | 列表、表单、设置等页面主栏的最大宽度（比正文窄，平板上居中） |
 | `NoWaveSizes.coverEditorBox` | 250 | 编辑器里固定的封面框（三种状态同框，表单不跳） |
 | `NoWaveSizes.emptyStateOffset` | 48 | 空态/加载态在列表里从多高开始 |
-| `NoWaveSizes.listThumbnail` | 56 | 列表行前导缩略图（阅读历史） |
+| `NoWaveSizes.listThumbnail` | 56 | 列表行前导缩略图（骨架屏的列表行） |
 | `NoWaveSizes.listThumbnailSmall` | 48 | 行内还要放操作时的小缩略图（回收站、评论头像框） |
 | `NoWaveSizes.splashColumns` | 6 | 冷启动幕布切成的竖列数 |
 | `NoWaveSizes.splashCounterMax` | 220 | 幕布计数器字号上限；实际取 `30vw` 与它的较小值（`splashCounterViewport`） |
@@ -116,13 +116,14 @@
 | `eyebrow` | 11 | 章节标题上方的小标题：小、字距拉开，也是全应用唯一的全大写文字 |
 | `codeBlock` | 13 | 等宽块：代码块、诊断报告 |
 | `codeInline` | 14 | 正文里的行内代码 |
-| `label` | 15 | 标签/分类 chip 与列表行标题（阅读历史） |
+| `label` | 15 | 标签/分类 chip、页内切换词 |
 | `emptyState` | 16 | 空态说明句 |
 | `hint` | 17 | 封面上传框里的提示 |
 | `runningHead` | 17 | 阅读页书眉：标题滚走后，应用栏里重复的那行小标题 |
 | `sectionTitle` | 18 | 文章下方的分节标题（评论、相关阅读） |
 | `dialogTitle` | 24 | 对话框标题（衬线）：问读者的一句话是编辑文字，不是系统警告 |
 | `authTitle` | 32 | 登录 / 注册页标题 |
+| `figure` | 40 | 摘要里数出来的数字（阅读历史的三个总数）；展示字体、等宽数字 |
 
 ### 线与遮罩的不透明度 `NoWaveOpacity`
 
@@ -203,6 +204,9 @@
 - 卡片：0 阴影、0 色调、方角、`surface` 底色；列表项：`NoWaveSizes.row` 最小
   高度、`medium` 内边距、方角；
 - 应用栏：0 阴影，标题从 `page` 起排（`titleSpacing`），与下面的栏左对齐；
+  `centerTitle: false` 也写在主题里——原来 12 个页面各自要求居中、两个页面加了
+  `elevation: 1`，同一个应用里标题一会儿居中一会儿靠左。页面不再自己设
+  （`ui_consistency_guard_test` 守着）；
 - 底部面板：底色同页面、0 阴影、方角，只在上沿有同样的发丝线（它从底边升起，
   另外三边贴着屏幕）；SnackBar：浅色下墨底纸字、深色下纸底墨字，
   方角 0 阴影，行动文字用强调色（深色用橙、浅色用牛血红）；
@@ -220,7 +224,7 @@
 | `NoWaveBadge` | `design/components/no_wave_badge.dart` | 封面或标题旁的短标签（草稿、语言版本） |
 | `NoWaveNotice` | `design/components/no_wave_notice.dart` | 内联提示（说明、限制、失败 + 重试） |
 | `showNoWaveConfirmDialog` | `design/components/no_wave_confirm_dialog.dart` | 破坏性动作的二次确认 |
-| `NoWaveStatus` | `common/widgets/no_wave_status.dart` | 空态/错误态：一句衬线排的话（无事可做是浅色，有行动是墨色）、至多一个描边按钮；没有装饰记号；出现时淡入上浮，按钮稍晚 |
+| `NoWaveStatus` | `common/widgets/no_wave_status.dart` | 空态/错误态：一句衬线排的话（无事可做是浅色，有行动是墨色）、可选一行小号说明（`detail`）、至多一个描边按钮；没有装饰记号；出现时淡入上浮，按钮稍晚 |
 | `NoWaveSectionHeading` / `NoWaveEyebrow` | `common/widgets/no_wave_section_heading.dart` | 编辑式大标题（可换行）；可选的小标题 `NoWaveEyebrow`：只有一行小号、拉开字距的浅色字，拉丁字母全大写，前面不加线 |
 | `NoWaveActionRow` | `common/widgets/no_wave_action_row.dart` | 个人中心式的可点行动行；与文章卡片同样的回应（水波、橙色焦点/悬停洗色、行尾箭头前移），但不下沉 |
 | `NoWaveMasthead` | `common/widgets/no_wave_masthead.dart` | 双字体字标 |
@@ -447,6 +451,9 @@
   重试后又失败时会重新落一次，而不是看起来什么都没发生。只动绘制：句子和按钮从第一帧
   起就在原位、能点、能读（`alwaysIncludeSemantics`）。少动时不构建任何动画。
 - **读屏**：整体仍是 live region。
+- **说明（`detail`）**：需要多说一句「这里以后会出现什么」时，写在句子下面，
+  `metaLabel`、`onSurfaceVariant`，隔 `small`，同一个宽度、和句子一起进场。阅读历史
+  和离线文库原来各自在状态下面叠一行 `bodySmall`，阅读历史还画了一个 64pt 的图标。
 - **整页失败也走它**：阅读页打不开、我的收藏、评论区整段加载失败，原来各自是一行正文
   字 + 一个裸 `TextButton`，现在都是同一句衬线话和描边按钮。
 
@@ -500,6 +507,13 @@
   的 `Interval` 表达，不开定时器，条目提前销毁也不会留下悬空回调。
   同一套进场也接在标签、分类文章列表与搜索结果上：标签/分类页每页一个 scope；搜索每次
   都会经过加载态，所以每次结果都是新的 scope、各进场一次。
+- **阅读历史**：页面像一份报告的开头，而不是一张灰色圆角卡片里的仪表盘——
+  `NoWaveEyebrow` 小标题，三个数字用展示字体的等宽数字（`figure`，40），说明是浅色
+  `metaLabel`；活动条是墨色方柱，站在一道发丝线基线上，没读的那天是一截发丝线颜色的
+  短柱，今天的星期写成墨色。下面每条记录照 feed 的行来排：上沿一道线，阅读日期、衬线
+  标题（20）、作者各一行，行尾一个移除按钮，按下的回应与文章卡片相同，首屏逐条进场。
+  去掉了缩略图——阅读历史是读过什么的索引，feed 的行本来就只有字。左滑露出的是提示条
+  那样的反色纸条和一个「删除」，而不是红底加垃圾桶：从私人列表里划掉一行不是警报。
 - **长出来（阅读统计活动条）**：阅读历史顶部的 7 天活动条第一次出现时，从基线由旧到新
   依次「长」出来，间隔半个 `stagger`、每根 `slow`——一周是从左往右读的，就从左往右
   画。只动绘制（以底边为锚的纵向缩放），柱高从第一帧起就是最终值；删除一条记录后，
