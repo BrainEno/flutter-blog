@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_section_head.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -40,15 +41,7 @@ class RelatedArticlesSection extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Divider(height: 32),
-              Text(
-                context.l10n.relatedReading,
-                style: const TextStyle(
-                  fontSize: NoWaveTypeScale.sectionTitle,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: NoWaveSpacing.xs),
+              NoWaveSectionHead(title: context.l10n.relatedReading),
               for (var index = 0; index < state.blogs.length; index++)
                 BlogCard(
                   blog: state.blogs[index],
@@ -56,6 +49,9 @@ class RelatedArticlesSection extends StatelessWidget {
                   onTagTap: (tag) => openTagArticles(context, tag),
                   onTap: () => onOpenArticle(state.blogs[index]),
                 ),
+              // The comments that follow open with their own rule; this
+              // keeps the last row from running into it.
+              const SizedBox(height: NoWaveSpacing.section),
             ],
           );
         },

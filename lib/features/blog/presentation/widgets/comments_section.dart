@@ -3,6 +3,7 @@ import 'package:belog/core/design/components/no_wave_list_note.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
+import 'package:belog/core/design/components/no_wave_section_head.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -155,30 +156,14 @@ class _CommentsSectionState extends State<CommentsSection> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Divider(height: 32),
-            Wrap(
-              spacing: NoWaveSpacing.xs,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  context.l10n.commentsTitle,
-                  style: const TextStyle(
-                    fontSize: NoWaveTypeScale.sectionTitle,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  context.l10n.commentsLoadedCount(
-                    formatNumber(
-                      Localizations.localeOf(context),
-                      state.totalCount,
-                    ),
-                  ),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
+            // The count is a figure about the list, not part of its name:
+            // it sits flush right on the title's baseline.
+            NoWaveSectionHead(
+              title: context.l10n.commentsTitle,
+              trailing: context.l10n.commentsLoadedCount(
+                formatNumber(Localizations.localeOf(context), state.totalCount),
+              ),
             ),
-            const SizedBox(height: NoWaveSpacing.medium),
             if (!signedIn)
               CommentLoginPrompt(onRequestLogin: widget.onRequestLogin)
             else
@@ -190,7 +175,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                 onCancelReply: _cancelReply,
                 onSubmit: _submit,
               ),
-            const SizedBox(height: NoWaveSpacing.medium),
+            const SizedBox(height: NoWaveSpacing.large),
             _buildList(state, signedIn: signedIn),
           ],
         );

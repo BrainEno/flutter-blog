@@ -268,7 +268,13 @@ void main() {
     await _shot(tester, '09-article-end');
     await tester.drag(
       find.byType(CustomScrollView).first,
-      const Offset(0, 900),
+      const Offset(0, 450),
+    );
+    await tester.pump(const Duration(seconds: 2));
+    await _shot(tester, '09a-article-comments-head');
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, 600),
     );
     await tester.pump(const Duration(seconds: 2));
     await _shot(tester, '09b-article-related');

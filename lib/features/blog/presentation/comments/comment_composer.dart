@@ -5,6 +5,7 @@ import 'package:belog/features/blog/presentation/blocs/comment/comment_bloc.dart
 import 'package:belog/features/blog/presentation/blocs/comment/comment_state.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:belog/core/design/design_tokens.dart';
+import 'package:belog/core/theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 /// The comment input: an optional "replying to" banner, the text field and the
@@ -35,6 +36,7 @@ class CommentComposer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final replyTarget = commentAuthorDisplayName(
       context.l10n,
       replyTo?.authorName,
@@ -66,29 +68,63 @@ class CommentComposer extends StatelessWidget {
               ),
             ),
           ),
-        TextField(
-          controller: controller,
-          focusNode: focusNode,
-          enabled: !state.submitting,
-          maxLines: 4,
-          minLines: 1,
-          textInputAction: TextInputAction.newline,
-          maxLength: CommentBloc.maxContentLength,
-          decoration: InputDecoration(
-            hintText: context.l10n.commentComposerHint,
-            border: const OutlineInputBorder(),
-            isDense: true,
-          ),
-        ),
-        const SizedBox(height: NoWaveSpacing.small),
-        Align(
-          alignment: Alignment.centerRight,
-          child: NoWaveButton(
-            label: context.l10n.actionSend,
-            icon: Icons.send,
-            isLoading: state.submitting,
-            onPressed: state.submitting ? null : onSubmit,
-          ),
+        // The field and its action share one line, the way a reply is
+        // written under a letter: a ruled line to write on and a small,
+        // square "send" at its end - not a full-width coloured slab that
+        // outweighs the comments it is part of.
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                enabled: !state.submitting,
+                maxLines: 4,
+                minLines: 1,
+                textInputAction: TextInputAction.newline,
+                maxLength: CommentBloc.maxContentLength,
+                // The count only matters near the limit; until then it is
+                // one more number under every comment box.
+                buildCounter:
+                    (
+                      context, {
+                      required currentLength,
+                      required isFocused,
+                      required maxLength,
+                    }) => maxLength == null || currentLength < maxLength * 0.8
+                    ? null
+                    : Text('$currentLength / $maxLength'),
+                decoration: InputDecoration(
+                  hintText: context.l10n.commentComposerHint,
+                  filled: false,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: NoWaveSpacing.medium,
+                  ),
+                  border: UnderlineInputBorder(
+                    borderSide: BorderSide(color: scheme.onSurface),
+                  ),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: scheme.onSurface),
+                  ),
+                  focusedBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(
+                      color: AppPalette.orange,
+                      width: NoWaveStroke.focus,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: NoWaveSpacing.medium),
+            NoWaveButton(
+              label: context.l10n.actionSend,
+              variant: NoWaveButtonVariant.secondary,
+              isLoading: state.submitting,
+              onPressed: state.submitting ? null : onSubmit,
+            ),
+          ],
         ),
       ],
     );
