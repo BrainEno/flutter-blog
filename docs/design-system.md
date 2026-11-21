@@ -41,7 +41,7 @@
 | `medium` | 16 | 两组之间的距离 |
 | `large` | 24 | 标题块与它引入的内容之间 |
 | `section` | 32 | 一页之中两个 section 之间 |
-| `page` | 24 | 页面左右边距（= `large`）：手机上一栏两侧要留够空气，文字才不贴着屏幕边；应用栏标题（`titleSpacing`）也从这里起排，与下面的栏对齐 |
+| `page` | 28 | 页面左右边距：比 `large` 再宽一格，手机上一栏两侧要留够空气，文字才不贴着屏幕边；应用栏标题（`titleSpacing`）也从这里起排，与下面的栏对齐 |
 
 这张表只有五档，是故意的：档位少，页面才不会每一处都自己决定。**12 不在表里**，
 因为它在代码里同时扮演两种角色，逐处判断后分给了相邻两档：
@@ -73,6 +73,7 @@
 | `NoWaveSizes.primaryAction` | 52 | 整宽主按钮高度 |
 | `NoWaveSizes.row` | 64 | 可点列表行最小高度 |
 | `NoWaveSizes.tabBar` | 64 | 底栏高度（不含系统手势区）：图标加一个词，每格都远超 48 的点击区 |
+| `NoWaveSizes.seekThumb` | 12 | 朗读进度条上的方形滑块：与文末墨色方块同一语言，不用 Material 的圆钮 |
 | `NoWaveSizes.coverAspect` | 4/3 | 网格项里的封面比例 |
 | `NoWaveSizes.coverAspectWide` | 16/10 | feed 头条卡片与阅读页头的封面比例 |
 | `NoWaveSizes.maxReadingWidth` | 720 | 平板上的正文最大宽度 |

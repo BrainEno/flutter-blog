@@ -34,6 +34,7 @@ class ViewerArticleBody extends StatelessWidget {
     required this.getRelatedArticles,
     required this.onRequestLogin,
     this.titleKey,
+    this.controlsKey,
   });
 
   final Blog blog;
@@ -54,6 +55,10 @@ class ViewerArticleBody extends StatelessWidget {
   /// Marks the title when read-aloud has not already keyed it, so the
   /// running head can tell when it has scrolled away.
   final GlobalKey? titleKey;
+
+  /// Marks the full read-aloud controls, so the page can dock a compact
+  /// player once they have scrolled away.
+  final GlobalKey? controlsKey;
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +118,11 @@ class ViewerArticleBody extends StatelessWidget {
                         ),
                       ),
                     ],
-                    if (reader != null) ReadAloudControls(controller: reader!),
+                    if (reader != null)
+                      KeyedSubtree(
+                        key: controlsKey,
+                        child: ReadAloudControls(controller: reader!),
+                      ),
                     MarkdownBody(
                       markdown: blog.content,
                       readAloudDocument: document,

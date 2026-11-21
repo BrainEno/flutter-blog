@@ -30,9 +30,12 @@ void main() {
     });
 
     test('the page gutter is a real step of the same scale', () {
-      // 24, not 16: on a phone the column needs air at its edges, and the
-      // gap between two groups inside it stays at `medium`.
-      expect(NoWaveSpacing.large, NoWaveSpacing.page);
+      // Wider than `large`, short of `section`, on the same 4-point grid:
+      // on a phone the column needs air at its edges, and the gap between
+      // two groups inside it stays at `medium`.
+      expect(NoWaveSpacing.page, greaterThan(NoWaveSpacing.large));
+      expect(NoWaveSpacing.page, lessThan(NoWaveSpacing.section));
+      expect(NoWaveSpacing.page % 4, 0);
     });
   });
 
@@ -186,6 +189,23 @@ void main() {
           );
           final minSize = style?.minimumSize?.resolve({});
           expect(minSize?.height, greaterThanOrEqualTo(NoWaveSizes.tapTarget));
+        }
+      });
+
+      test('$label: button labels are set in the app face', () {
+        // A button's text style replaces the inherited one, so a style with
+        // only a weight silently drops the family and the label falls back
+        // to the platform font.
+        for (final style in [
+          theme.filledButtonTheme.style,
+          theme.outlinedButtonTheme.style,
+          theme.textButtonTheme.style,
+          theme.elevatedButtonTheme.style,
+          theme.segmentedButtonTheme.style,
+        ]) {
+          final text = style?.textStyle?.resolve({});
+          if (text == null) continue;
+          expect(text.fontFamily, 'InterTight');
         }
       });
 

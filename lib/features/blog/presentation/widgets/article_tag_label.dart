@@ -56,6 +56,10 @@ class ArticleTagLabel extends StatelessWidget {
             // The chip keeps its compact look; the button around it owns the
             // accessible target so labels in a wrap stay visually unchanged.
             minimumSize: const Size(48, 48),
+            // A short label is narrower than the target: keep it on the
+            // start edge, where the title under it starts, rather than
+            // centred a few points in from the gutter.
+            alignment: AlignmentDirectional.centerStart,
             padding: EdgeInsets.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             shape: const RoundedRectangleBorder(),

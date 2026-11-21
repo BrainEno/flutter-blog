@@ -63,6 +63,10 @@ class ArticleCategoryLabel extends StatelessWidget {
           style: TextButton.styleFrom(
             foregroundColor: foreground,
             minimumSize: const Size(48, 48),
+            // A short label is narrower than the target: keep it on the
+            // start edge, where the title under it starts, rather than
+            // centred a few points in from the gutter.
+            alignment: AlignmentDirectional.centerStart,
             padding: EdgeInsets.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             shape: const RoundedRectangleBorder(),

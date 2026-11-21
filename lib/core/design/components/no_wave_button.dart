@@ -112,7 +112,12 @@ class NoWaveButton extends StatelessWidget {
         borderRadius: BorderRadius.all(Radius.circular(NoWaveRadius.none)),
       ),
       side: border,
-      textStyle: const TextStyle(fontWeight: FontWeight.w700),
+      // Names the family: a button's text style replaces the inherited one,
+      // so a weight alone would set the label in the platform font.
+      textStyle: const TextStyle(
+        fontFamily: 'InterTight',
+        fontWeight: FontWeight.w700,
+      ),
       tapTargetSize: MaterialTapTargetSize.padded,
     );
 

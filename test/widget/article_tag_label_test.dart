@@ -55,6 +55,19 @@ void main() {
     handle.dispose();
   });
 
+  testWidgets('a short chip sits on the start edge of its target', (
+    tester,
+  ) async {
+    // One character: the drawn chip is narrower than the 48pt target.
+    await _pump(tester, ArticleTagLabel(tag: '诗', onTap: () {}));
+    final target = tester.getRect(find.byType(TextButton));
+    final chip = tester.getRect(
+      find.ancestor(of: find.text('诗'), matching: find.byType(Container)).first,
+    );
+    expect(chip.width, lessThan(target.width));
+    expect(chip.left, closeTo(target.left, 0.5));
+  });
+
   testWidgets('the chip keeps its compact drawn size', (tester) async {
     await _pump(tester, ArticleTagLabel(tag: '诗歌', onTap: () {}));
 

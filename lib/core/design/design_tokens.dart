@@ -40,11 +40,11 @@ abstract final class NoWaveSpacing {
   /// 32: between two sections of one page.
   static const section = 32.0;
 
-  /// The page gutter: the same value as [large]. Wider than the gap between
-  /// two groups ([medium]) so a phone's column has air at its edges and the
-  /// text does not run to the glass; named for where it is used so gutters
-  /// and group spacing can change independently.
-  static const page = 24.0;
+  /// The page gutter: one notch wider than [large], short of [section].
+  /// At 24 the column still ran close to the glass on Android phones, so the
+  /// gutter now has its own value; named for where it is used so gutters and
+  /// group spacing change independently.
+  static const page = 28.0;
 }
 
 /// Corner radius.
@@ -176,6 +176,9 @@ abstract final class NoWaveSizes {
   /// Height of the bottom tab bar, above the system inset: an icon and its
   /// word, each slot well over [tapTarget].
   static const tabBar = 64.0;
+
+  /// Side of the square seek thumb on the read-aloud progress track.
+  static const seekThumb = 12.0;
 
   /// Cover aspect ratio of an article tile in a grid.
   static const coverAspect = 4 / 3;
