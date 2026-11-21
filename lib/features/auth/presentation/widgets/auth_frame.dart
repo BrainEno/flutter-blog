@@ -116,7 +116,13 @@ class AuthLink extends StatelessWidget {
     required this.onPressed,
     this.prompt,
     this.alignment = AlignmentDirectional.centerStart,
+    this.quiet = false,
   });
+
+  /// A way out rather than a step forward ("browse without signing in"):
+  /// set in the muted tone at regular weight, so the form's own actions
+  /// stay the loudest words on the page.
+  final bool quiet;
 
   /// Which edge of the column the line keeps to.
   final AlignmentDirectional alignment;
@@ -160,8 +166,8 @@ class AuthLink extends StatelessWidget {
               TextSpan(
                 text: label,
                 style: base.copyWith(
-                  color: scheme.onSurface,
-                  fontWeight: FontWeight.w700,
+                  color: quiet ? scheme.onSurfaceVariant : scheme.onSurface,
+                  fontWeight: quiet ? FontWeight.w500 : FontWeight.w700,
                 ),
               ),
             ],

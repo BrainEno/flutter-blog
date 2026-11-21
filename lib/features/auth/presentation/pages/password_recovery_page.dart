@@ -125,6 +125,7 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
             const SizedBox(height: NoWaveSpacing.small),
             AuthLink(
               label: l10n.passwordRecoveryBackToSignIn,
+              quiet: true,
               onPressed: _backToSignIn,
             ),
           ] else if (mailDisabled || unsupported) ...[
@@ -144,6 +145,7 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
             ],
             AuthLink(
               label: l10n.passwordRecoveryBackToSignIn,
+              quiet: true,
               onPressed: _backToSignIn,
             ),
           ] else ...[
@@ -190,6 +192,7 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
             ),
             AuthLink(
               label: l10n.passwordRecoveryBackToSignIn,
+              quiet: true,
               onPressed: _backToSignIn,
             ),
           ],

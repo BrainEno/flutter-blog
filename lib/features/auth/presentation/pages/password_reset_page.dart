@@ -228,6 +228,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
             ),
             AuthLink(
               label: l10n.passwordRecoveryBackToSignIn,
+              quiet: true,
               onPressed: _backToSignIn,
             ),
           ],

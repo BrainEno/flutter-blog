@@ -170,12 +170,14 @@ class _LoginPageState extends State<LoginPage> {
                   // after the form is done.
                   AuthLink(
                     label: l10n.browseWithoutSignIn,
+                    quiet: true,
                     onPressed: () => context.go(RoutePaths.feed),
                   ),
                   // Public entry: signing in is exactly when the report is
                   // needed, so it must not hide behind the profile tab.
                   AuthLink(
                     label: l10n.diagnosticsEntry,
+                    quiet: true,
                     onPressed: () => context.push(RoutePaths.about),
                   ),
                 ],

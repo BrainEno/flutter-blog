@@ -136,6 +136,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   const SizedBox(height: NoWaveSpacing.section),
                   AuthLink(
                     label: l10n.browseWithoutSignUp,
+                    quiet: true,
                     onPressed: () => context.go(RoutePaths.feed),
                   ),
                 ],
