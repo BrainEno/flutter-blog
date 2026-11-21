@@ -7,9 +7,9 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/auth/domain/password_recovery.dart';
 import 'package:belog/features/auth/domain/password_rules.dart';
 import 'package:belog/features/auth/domain/usecases/reset_password.dart';
-import 'package:belog/features/auth/presentation/auth_rhythm.dart';
 import 'package:belog/features/auth/presentation/password_validation_l10n.dart';
 import 'package:belog/features/auth/presentation/widgets/auth_field.dart';
+import 'package:belog/features/auth/presentation/widgets/auth_frame.dart';
 import 'package:flutter/material.dart';
 import 'package:fpdart/fpdart.dart' show Either, left;
 import 'package:go_router/go_router.dart';
@@ -119,138 +119,119 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
     final l10n = context.l10n;
     final failure = _failure;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.passwordRecoveryResetTitle)),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(NoWaveSpacing.page),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
+    return AuthFrame(
+      title: l10n.passwordRecoveryResetTitle,
+      lead: l10n.passwordRecoveryResetInfo,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (failure != null) ...[
+            NoWaveNotice(
+              message: localizedFailure(l10n, failure),
+              tone: _outcomeUnknown
+                  ? NoWaveNoticeTone.warning
+                  : NoWaveNoticeTone.error,
+              isLive: true,
+            ),
+            const SizedBox(height: NoWaveSpacing.large),
+          ],
+          if (_complete) ...[
+            NoWaveNotice(
+              message: l10n.passwordRecoveryResetSuccess,
+              isLive: true,
+            ),
+            const SizedBox(height: NoWaveSpacing.large),
+            NoWaveButton(
+              label: l10n.passwordRecoveryBackToSignIn,
+              onPressed: _backToSignIn,
+              expand: true,
+            ),
+          ] else if (_outcomeUnknown) ...[
+            NoWaveButton(
+              label: l10n.passwordRecoveryBackToSignIn,
+              onPressed: _backToSignIn,
+              expand: true,
+            ),
+            const SizedBox(height: NoWaveSpacing.small),
+            AuthLink(
+              label: l10n.passwordRecoveryRequestAnotherLink,
+              onPressed: _requestAnotherLink,
+            ),
+          ] else if (failure?.code == 'auth.passwordRecoveryUnsupported') ...[
+            NoWaveButton(
+              label: l10n.passwordRecoveryBackToSignIn,
+              onPressed: _backToSignIn,
+              expand: true,
+            ),
+          ] else ...[
+            Form(
+              key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: AuthRhythm.title),
-                  Text(
-                    l10n.passwordRecoveryResetInfo,
-                    style: Theme.of(context).textTheme.bodyMedium,
+                  AuthField(
+                    hintText: l10n.passwordRecoveryTokenLabel,
+                    controller: _token,
+                    keyboardType: TextInputType.url,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    enabled: !_resetting,
+                    validator: _tokenProblem,
+                  ),
+                  const SizedBox(height: NoWaveSpacing.medium),
+                  AuthField(
+                    hintText: l10n.passwordRecoveryNewPassword,
+                    controller: _password,
+                    isObscureText: true,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    enabled: !_resetting,
+                    validator: (value) => passwordProblemMessage(
+                      l10n,
+                      validateNewPassword(value),
+                    ),
+                  ),
+                  const SizedBox(height: NoWaveSpacing.medium),
+                  AuthField(
+                    hintText: l10n.passwordRecoveryConfirmPassword,
+                    controller: _confirmPassword,
+                    isObscureText: true,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    enabled: !_resetting,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return l10n.passwordRequired;
+                      }
+                      if (value != _password.text) {
+                        return l10n.passwordConfirmMismatch;
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: NoWaveSpacing.large),
-                  if (failure != null) ...[
-                    NoWaveNotice(
-                      message: localizedFailure(l10n, failure),
-                      tone: _outcomeUnknown
-                          ? NoWaveNoticeTone.warning
-                          : NoWaveNoticeTone.error,
-                      isLive: true,
-                    ),
-                    const SizedBox(height: NoWaveSpacing.large),
-                  ],
-                  if (_complete) ...[
-                    NoWaveNotice(
-                      message: l10n.passwordRecoveryResetSuccess,
-                      isLive: true,
-                    ),
-                    const SizedBox(height: NoWaveSpacing.large),
-                    NoWaveButton(
-                      label: l10n.passwordRecoveryBackToSignIn,
-                      onPressed: _backToSignIn,
-                      expand: true,
-                    ),
-                  ] else if (_outcomeUnknown) ...[
-                    NoWaveButton(
-                      label: l10n.passwordRecoveryBackToSignIn,
-                      onPressed: _backToSignIn,
-                      expand: true,
-                    ),
-                    const SizedBox(height: NoWaveSpacing.small),
-                    TextButton(
-                      onPressed: _requestAnotherLink,
-                      child: Text(l10n.passwordRecoveryRequestAnotherLink),
-                    ),
-                  ] else if (failure?.code ==
-                      'auth.passwordRecoveryUnsupported') ...[
-                    NoWaveButton(
-                      label: l10n.passwordRecoveryBackToSignIn,
-                      onPressed: _backToSignIn,
-                      expand: true,
-                    ),
-                  ] else ...[
-                    Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          AuthField(
-                            hintText: l10n.passwordRecoveryTokenLabel,
-                            controller: _token,
-                            prefixIcon: Icons.link,
-                            keyboardType: TextInputType.url,
-                            autocorrect: false,
-                            enableSuggestions: false,
-                            enabled: !_resetting,
-                            validator: _tokenProblem,
-                          ),
-                          const SizedBox(height: NoWaveSpacing.medium),
-                          AuthField(
-                            hintText: l10n.passwordRecoveryNewPassword,
-                            controller: _password,
-                            isObscureText: true,
-                            prefixIcon: Icons.lock_outline,
-                            autocorrect: false,
-                            enableSuggestions: false,
-                            enabled: !_resetting,
-                            validator: (value) => passwordProblemMessage(
-                              l10n,
-                              validateNewPassword(value),
-                            ),
-                          ),
-                          const SizedBox(height: NoWaveSpacing.medium),
-                          AuthField(
-                            hintText: l10n.passwordRecoveryConfirmPassword,
-                            controller: _confirmPassword,
-                            isObscureText: true,
-                            prefixIcon: Icons.lock_outline,
-                            autocorrect: false,
-                            enableSuggestions: false,
-                            enabled: !_resetting,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return l10n.passwordRequired;
-                              }
-                              if (value != _password.text) {
-                                return l10n.passwordConfirmMismatch;
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: NoWaveSpacing.large),
-                          NoWaveButton(
-                            label: _resetting
-                                ? l10n.passwordRecoveryResetting
-                                : l10n.passwordRecoveryReset,
-                            onPressed: _resetting ? null : _submit,
-                            isLoading: _resetting,
-                            expand: true,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: NoWaveSpacing.small),
-                    TextButton(
-                      onPressed: _requestAnotherLink,
-                      child: Text(l10n.passwordRecoveryRequestAnotherLink),
-                    ),
-                    TextButton(
-                      onPressed: _backToSignIn,
-                      child: Text(l10n.passwordRecoveryBackToSignIn),
-                    ),
-                  ],
+                  NoWaveButton(
+                    label: _resetting
+                        ? l10n.passwordRecoveryResetting
+                        : l10n.passwordRecoveryReset,
+                    onPressed: _resetting ? null : _submit,
+                    isLoading: _resetting,
+                    expand: true,
+                  ),
                 ],
               ),
             ),
-          ),
-        ),
+            const SizedBox(height: NoWaveSpacing.small),
+            AuthLink(
+              label: l10n.passwordRecoveryRequestAnotherLink,
+              onPressed: _requestAnotherLink,
+            ),
+            AuthLink(
+              label: l10n.passwordRecoveryBackToSignIn,
+              onPressed: _backToSignIn,
+            ),
+          ],
+        ],
       ),
     );
   }

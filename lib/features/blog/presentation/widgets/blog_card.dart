@@ -60,8 +60,11 @@ class BlogCard extends StatelessWidget {
         // author say enough, and a row of tags would only be noise.
         if (!quiet)
           for (final tag in blog.tags)
+            // Words, not boxed chips: the same kicker the article opens
+            // on, so a tag looks the same in the list and in the piece.
             ArticleTagLabel(
               tag: tag,
+              quiet: true,
               onTap: onTagTap == null ? null : () => onTagTap!(tag),
             ),
         Text(

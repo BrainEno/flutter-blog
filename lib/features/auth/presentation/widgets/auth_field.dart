@@ -1,8 +1,10 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
-/// A validated auth field which inherits colors and shape from the app theme.
+/// A validated auth field: a labelled underline in ink, orange on focus.
 class AuthField extends StatelessWidget {
   final String hintText;
   final bool isObscureText;
@@ -37,12 +39,19 @@ class AuthField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    OutlineInputBorder border(Color color, {double width = 1}) =>
-        OutlineInputBorder(
-          borderRadius: BorderRadius.zero,
-          borderSide: BorderSide(color: color, width: width),
+    final scheme = Theme.of(context).colorScheme;
+    UnderlineInputBorder line(Color color, {double? width}) =>
+        UnderlineInputBorder(
+          borderSide: BorderSide(
+            color: color,
+            width: width ?? NoWaveStroke.hairline,
+          ),
         );
 
+    // A line to write on, not a box: the same underline as the comment
+    // composer, with the label set above the text once it has any. Focus
+    // turns the line orange and thicker, the one place accent answers a
+    // touch on this page.
     return TextFormField(
       controller: controller,
       obscureText: isObscureText,
@@ -50,16 +59,26 @@ class AuthField extends StatelessWidget {
       autocorrect: autocorrect,
       enableSuggestions: enableSuggestions,
       enabled: enabled,
-      style: style,
+      style: style ?? Theme.of(context).textTheme.bodyLarge,
       decoration: InputDecoration(
         labelText: hintText,
-        hintText: hintText,
         hintStyle: hintStyle,
+        filled: false,
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: NoWaveSpacing.medium,
+        ),
+        labelStyle: TextStyle(color: scheme.onSurfaceVariant),
+        floatingLabelStyle: TextStyle(color: scheme.onSurface),
         prefixIcon: prefixIcon == null ? null : Icon(prefixIcon),
-        enabledBorder: borderColor == null ? null : border(borderColor!),
-        focusedBorder: focusedBorderColor == null
-            ? null
-            : border(focusedBorderColor!, width: 2),
+        border: line(borderColor ?? scheme.onSurface),
+        enabledBorder: line(borderColor ?? scheme.onSurface),
+        disabledBorder: line(scheme.onSurfaceVariant),
+        focusedBorder: line(
+          focusedBorderColor ?? AppPalette.orange,
+          width: NoWaveStroke.focus,
+        ),
+        errorBorder: line(scheme.error),
+        focusedErrorBorder: line(scheme.error, width: NoWaveStroke.focus),
       ),
       validator: (value) => _effectiveValidator(context.l10n, value),
     );

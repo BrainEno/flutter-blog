@@ -112,15 +112,22 @@ class BlogGridItem extends StatelessWidget {
             blog.title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: NoWaveTypography.title(context, size: 19),
+            style: _titleStyle(context),
           ),
           if (description.isNotEmpty) ...[
             const SizedBox(height: NoWaveSpacing.xs),
-            Text(
-              description,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: NoWaveTypography.meta(context),
+            // Every tile in a row has the same height, sized for a title on
+            // two lines. A one-line title gives that line to the excerpt
+            // instead of leaving a gap under the date.
+            LayoutBuilder(
+              builder: (context, constraints) => Text(
+                description,
+                maxLines: _titleLines(context, constraints.maxWidth) > 1
+                    ? 2
+                    : 3,
+                overflow: TextOverflow.ellipsis,
+                style: NoWaveTypography.meta(context),
+              ),
             ),
           ],
           const SizedBox(height: NoWaveSpacing.xs),
@@ -139,5 +146,22 @@ class BlogGridItem extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  TextStyle _titleStyle(BuildContext context) =>
+      NoWaveTypography.title(context, size: 19);
+
+  /// How many lines the title sets in at [width], up to its two.
+  int _titleLines(BuildContext context, double width) {
+    final painter = TextPainter(
+      text: TextSpan(text: blog.title, style: _titleStyle(context)),
+      maxLines: 2,
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      locale: Localizations.maybeLocaleOf(context),
+    )..layout(maxWidth: width);
+    final lines = painter.computeLineMetrics().length;
+    painter.dispose();
+    return lines;
   }
 }

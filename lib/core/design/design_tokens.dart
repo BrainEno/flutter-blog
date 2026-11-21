@@ -299,6 +299,11 @@ abstract final class NoWaveSizes {
   /// instead of one line running across the page.
   static const statusMeasure = 320.0;
 
+  /// The widest a sign-in or recovery form grows: a column of fields reads
+  /// as one form at this width; at the article column's 680 the underlines
+  /// run so far that the eye loses which label it belongs to.
+  static const formMeasure = 480.0;
+
   /// Share of the list's width the running refresh segment covers while it
   /// travels along the top edge: long enough to read as a rule, short enough
   /// to read as moving.
