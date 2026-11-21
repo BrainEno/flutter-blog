@@ -1,14 +1,12 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
-import 'package:belog/core/common/widgets/language_menu_button.dart';
 import 'package:belog/core/l10n/l10n.dart';
-import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
-import 'package:belog/features/auth/presentation/auth_rhythm.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/auth/presentation/widgets/auth_field.dart';
+import 'package:belog/features/auth/presentation/widgets/auth_frame.dart';
 import 'package:belog/features/auth/presentation/widgets/auth_primary_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -85,124 +83,108 @@ class _LoginPageState extends State<LoginPage> {
           _onAuthenticated();
         }
       },
-      child: Scaffold(
-        appBar: AppBar(
-          actions: const [
-            LanguageMenuButton(),
-            SizedBox(width: NoWaveSpacing.small),
-          ],
-        ),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(NoWaveSpacing.page),
-            child: BlocConsumer<AuthBloc, AuthState>(
-              listener: (context, state) {
-                if (state is AuthFailure) {
-                  if (attemptedLogin) {
-                    final failure = state.failure;
-                    // A transport failure is the case where the diagnostics
-                    // report actually answers the question: make it one tap
-                    // away instead of hoping the user finds the About page.
-                    final offerDiagnostics =
-                        failure.kind == FailureKind.network ||
-                        failure.kind == FailureKind.timeout;
-                    showSnackBar(
-                      context,
-                      localizedFailure(context.l10n, failure),
-                      action: offerDiagnostics
-                          ? SnackBarAction(
-                              label: context.l10n.diagnosticsEntry,
-                              onPressed: _openDiagnostics,
-                            )
-                          : null,
-                    );
-                  }
-                }
-              },
-              builder: (context, state) {
-                if (state is AuthLoading) {
-                  return const Center(child: NoWaveLoadingLabel());
-                }
-                return Form(
-                  key: formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: AuthRhythm.hero),
-                      Text(
-                        context.l10n.loginTitle,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: NoWaveTypeScale.authTitle,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: AuthRhythm.title),
-                      AuthField(
-                        hintText: context.l10n.fieldEmail,
-                        controller: emailController,
-                        prefixIcon: Icons.email_outlined,
-                      ),
-                      const SizedBox(height: NoWaveSpacing.medium),
-                      AuthField(
-                        hintText: context.l10n.fieldPassword,
-                        controller: passwordController,
-                        isObscureText: true,
-                        prefixIcon: Icons.lock_outline,
-                      ),
-                      Align(
-                        alignment: AlignmentDirectional.centerEnd,
-                        child: TextButton(
-                          onPressed: _openPasswordRecovery,
-                          child: Text(context.l10n.passwordRecoveryTitle),
-                        ),
-                      ),
-                      const SizedBox(height: AuthRhythm.action),
-                      AuthPrimaryButton(
-                        buttonText: context.l10n.loginTitle,
-                        onPressed: () {
-                          if (formKey.currentState!.validate()) {
-                            attemptedLogin = true;
-                            context.read<AuthBloc>().add(
-                              AuthLogin(
-                                email: emailController.text.trim(),
-                                // Match no-wave's exact password semantics.
-                                password: passwordController.text,
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                      const SizedBox(height: AuthRhythm.action),
-                      Center(
-                        child: TextButton(
-                          onPressed: _openSignUp,
-                          child: Text(
-                            '${context.l10n.noAccountPrompt}${context.l10n.signUpLink}',
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: NoWaveSpacing.small),
-                      TextButton(
-                        onPressed: () => context.go(RoutePaths.feed),
-                        child: Text(context.l10n.browseWithoutSignIn),
-                      ),
-                      // Public entry: signing in is exactly when the report
-                      // is needed, so it must not hide behind the profile tab.
-                      TextButton(
-                        onPressed: () => context.push(RoutePaths.about),
-                        child: Text(context.l10n.diagnosticsEntry),
-                      ),
-                      const SizedBox(height: AuthRhythm.hero),
-                    ],
+      child: BlocConsumer<AuthBloc, AuthState>(
+        listener: (context, state) {
+          if (state is AuthFailure) {
+            if (attemptedLogin) {
+              final failure = state.failure;
+              // A transport failure is the case where the diagnostics
+              // report actually answers the question: make it one tap
+              // away instead of hoping the user finds the About page.
+              final offerDiagnostics =
+                  failure.kind == FailureKind.network ||
+                  failure.kind == FailureKind.timeout;
+              showSnackBar(
+                context,
+                localizedFailure(context.l10n, failure),
+                action: offerDiagnostics
+                    ? SnackBarAction(
+                        label: context.l10n.diagnosticsEntry,
+                        onPressed: _openDiagnostics,
+                      )
+                    : null,
+              );
+            }
+          }
+        },
+        builder: (context, state) {
+          final l10n = context.l10n;
+          final busy = state is AuthLoading;
+          return AuthFrame(
+            title: l10n.loginTitle,
+            companion: l10n.loginHeadingCompanion,
+            eyebrow: l10n.loginEyebrow,
+            languageMenu: true,
+            child: Form(
+              key: formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AuthField(
+                    hintText: l10n.fieldEmail,
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    enabled: !busy,
                   ),
-                );
-              },
+                  const SizedBox(height: NoWaveSpacing.medium),
+                  AuthField(
+                    hintText: l10n.fieldPassword,
+                    controller: passwordController,
+                    isObscureText: true,
+                    enabled: !busy,
+                  ),
+                  // Belongs to the password above it, so it sits right under
+                  // the line, at its end.
+                  AuthLink(
+                    label: l10n.passwordRecoveryTitle,
+                    onPressed: _openPasswordRecovery,
+                    alignment: AlignmentDirectional.centerEnd,
+                  ),
+                  const SizedBox(height: NoWaveSpacing.large),
+                  AuthPrimaryButton(
+                    buttonText: l10n.loginTitle,
+                    isLoading: busy,
+                    onPressed: () {
+                      if (formKey.currentState!.validate()) {
+                        attemptedLogin = true;
+                        context.read<AuthBloc>().add(
+                          AuthLogin(
+                            email: emailController.text.trim(),
+                            // Match no-wave's exact password semantics.
+                            password: passwordController.text,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  const SizedBox(height: NoWaveSpacing.medium),
+                  AuthLink(
+                    prompt: l10n.noAccountPrompt,
+                    label: l10n.signUpLink,
+                    onPressed: _openSignUp,
+                  ),
+                  const SizedBox(height: NoWaveSpacing.section),
+                  // The ways out that are not signing in: quieter, together,
+                  // after the form is done.
+                  AuthLink(
+                    label: l10n.browseWithoutSignIn,
+                    quiet: true,
+                    onPressed: () => context.go(RoutePaths.feed),
+                  ),
+                  // Public entry: signing in is exactly when the report is
+                  // needed, so it must not hide behind the profile tab.
+                  AuthLink(
+                    label: l10n.diagnosticsEntry,
+                    quiet: true,
+                    onPressed: () => context.push(RoutePaths.about),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

@@ -99,6 +99,7 @@
 | `NoWaveSizes.busySegment` | 0.4 | 忙碌标记里走动线段占图标槽位的比例（槽位很小，所以比刷新线段长） |
 | `NoWaveSizes.endMark` | 8 | 文末那枚墨色小方块（杂志的终止符）的边长 |
 | `NoWaveSizes.statusMeasure` | 320 | 空态/出错态那句话的最大行宽：断成居中的一小段，像引文，而不是横贯一页的一行 |
+| `NoWaveSizes.formMeasure` | 480 | 账号页表单栏的最大宽度：再宽，下划线拉得太长，眼睛对不上标签 |
 | `NoWaveSizes.refreshSegment` | 0.3 | 下拉刷新进行中，沿列表顶边移动的橙色线段占列表宽度的比例 |
 
 编辑式界面本身仍是方角（`none`）：`inline` 到 `container` 这几档记录的是内容面
@@ -259,7 +260,7 @@
 | `NoWaveCoverPlate` | `design/cover/no_wave_cover_plate.dart` | 四张编辑式默认封面，按文章身份稳定选一张 |
 | `ArticleCover` | `features/blog/presentation/widgets/article_cover.dart` | 真封面 / 加载 / 失败三种状态共用同一张版 |
 | `ArticleCategoryLabel` | `features/blog/presentation/widgets/article_category_label.dart` | 文章所属的分类（服务端给的名称；可点进分类列表）。默认是填充色块；阅读页的 kicker 里用 `quiet: true`，只是一个粗墨色的词 |
-| `ArticleTagLabel` | `features/blog/presentation/widgets/article_tag_label.dart` | 作者写的标签（可点进标签列表）。默认描边；`quiet: true` 时是一个浅色的词（阅读页 kicker） |
+| `ArticleTagLabel` | `features/blog/presentation/widgets/article_tag_label.dart` | 作者写的标签（可点进标签列表）。默认描边；`quiet: true` 时是一个浅色的词（阅读页 kicker、首页与各列表的文章行） |
 
 ### 加载态：一句文案或一个形状
 
@@ -456,6 +457,26 @@
   所以里面的分节头、相关阅读行（`BlogCard(quiet: true)`：只留序号、日期、标题、作者，不列标签）和评论串都不再画线：评论串之间
   靠 `large` 留白分组，回复挂在父评论的文字栏下。登录提示和评论头像的底色是页面本色，放在这块
   深一档的纸上才看得见。
+
+### 账号页：和其他页面同一种排法
+
+登录曾是一屏居中的粗黑体「登录」、两只带图标的方框输入框和一串居中的文字链接——很多人
+打开应用看到的第一屏，却不像应用里任何一页。现在登录、注册、找回密码、重设密码都放在
+`features/auth/presentation/widgets/auth_frame.dart` 的 `AuthFrame` 上：
+
+- **同一套页头**：应用栏是 No Wave 刊头（有返回箭头时跟在箭头后，否则对齐栏边），下面是
+  `NoWaveSectionHeading`——眉题说明这页做什么（「收藏、评论和写作，从这里开始」），
+  标题 + 斜体副词（「登录 *Sign in*」）。需要先解释的页面（找回、重设）在标题下放一句
+  `sectionTitle` 号的浅色衬线导语。
+- **一条左边线**：栏宽止于 `NoWaveSizes.formMeasure`（480）；更宽的屏幕上整栏居中，
+  刊头也从栏边开始。
+- **输入框是一条线**：`AuthField` 不再是方框，而是墨色发丝下划线，标签在上方浮起；
+  聚焦时线变成 2pt 橙色（「回应触摸」的那一处强调），出错时变成错误色。不再放前置图标。
+- **按钮忙时不换页**：`AuthPrimaryButton(isLoading:)`——请求进行中按钮保留文字并报告
+  忙碌，输入框暂时不可编辑；以前整页会换成一个加载标签，表单消失又出现。
+- **链接贴左、分层**：`AuthLink` 是一行「浅色问句 + 粗体动作词」（「没有账号？**注册**」），
+  紧跟主按钮；「暂不登录，先去逛逛」「查看诊断信息」这些不登录的出口放在更下面一组，
+  同样贴左、同样 48pt 可点。「找回密码」贴在密码线下的行尾，因为它属于那一栏。
 
 ### 书眉：标题滚走以后
 
@@ -654,10 +675,10 @@
   `EdgeInsets` 上方不起作用。加标记的唯一理由是「这不是尺度上的一档」，不是为了让
   数字过关。
 
-- **登录/注册页的比例不进军全局尺度**：这两屏的 `60 / 40 / 30` 放在
-  `lib/features/auth/presentation/auth_rhythm.dart` 的 `AuthRhythm` 里。它们是一屏
-  的构图（标题—字段堆—按钮），不是别处可复用的间距；写进 `NoWaveSpacing` 会让每个
-  页面都以为自己也该喘这么宽。字段之间仍用 `medium`、链接行之间仍用 `small`。
+- **登录/注册页不再有自己的尺度**：它们曾用一组 `60 / 40 / 30` 把居中的表单
+  「撑」在屏幕中间。现在四个账号页（登录、注册、找回密码、重设密码）都放在同一个
+  `AuthFrame` 上，和其他页面一样从顶部排起，只用 `NoWaveSpacing` 的档位，那组局部
+  常量随之删除。
 
 ## 移动端视觉方向（原 README，#298）
 

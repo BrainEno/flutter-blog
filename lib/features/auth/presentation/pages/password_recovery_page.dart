@@ -6,8 +6,8 @@ import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/auth/domain/email_rules.dart';
 import 'package:belog/features/auth/domain/usecases/request_password_reset.dart';
-import 'package:belog/features/auth/presentation/auth_rhythm.dart';
 import 'package:belog/features/auth/presentation/widgets/auth_field.dart';
+import 'package:belog/features/auth/presentation/widgets/auth_frame.dart';
 import 'package:flutter/material.dart';
 import 'package:fpdart/fpdart.dart' show Either, left;
 import 'package:go_router/go_router.dart';
@@ -105,111 +105,98 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
         unsupported ||
         failure?.code == 'auth.passwordRecoveryRequestOutcomeUnknown';
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.passwordRecoveryTitle)),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(NoWaveSpacing.page),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
+    return AuthFrame(
+      title: l10n.passwordRecoveryTitle,
+      lead: l10n.passwordRecoveryInfo,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_accepted) ...[
+            NoWaveNotice(
+              message: l10n.passwordRecoveryRequestAccepted,
+              isLive: true,
+            ),
+            const SizedBox(height: NoWaveSpacing.large),
+            NoWaveButton(
+              label: l10n.passwordRecoveryAlreadyHaveLink,
+              onPressed: _openReset,
+              expand: true,
+            ),
+            const SizedBox(height: NoWaveSpacing.small),
+            AuthLink(
+              label: l10n.passwordRecoveryBackToSignIn,
+              quiet: true,
+              onPressed: _backToSignIn,
+            ),
+          ] else if (mailDisabled || unsupported) ...[
+            NoWaveNotice(
+              message: localizedFailure(l10n, failure!),
+              tone: NoWaveNoticeTone.warning,
+              isLive: true,
+            ),
+            const SizedBox(height: NoWaveSpacing.large),
+            if (mailDisabled) ...[
+              NoWaveButton(
+                label: l10n.passwordRecoveryAlreadyHaveLink,
+                onPressed: _openReset,
+                expand: true,
+              ),
+              const SizedBox(height: NoWaveSpacing.small),
+            ],
+            AuthLink(
+              label: l10n.passwordRecoveryBackToSignIn,
+              quiet: true,
+              onPressed: _backToSignIn,
+            ),
+          ] else ...[
+            Form(
+              key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: AuthRhythm.title),
-                  Text(
-                    l10n.passwordRecoveryInfo,
-                    style: Theme.of(context).textTheme.bodyMedium,
+                  AuthField(
+                    hintText: l10n.fieldEmail,
+                    controller: _email,
+                    keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    enabled: !_sending,
+                    validator: _emailProblem,
                   ),
                   const SizedBox(height: NoWaveSpacing.large),
-                  if (_accepted) ...[
+                  if (failure != null) ...[
                     NoWaveNotice(
-                      message: l10n.passwordRecoveryRequestAccepted,
+                      message: localizedFailure(l10n, failure),
+                      tone: failureIsWarning
+                          ? NoWaveNoticeTone.warning
+                          : NoWaveNoticeTone.error,
                       isLive: true,
                     ),
-                    const SizedBox(height: NoWaveSpacing.large),
-                    NoWaveButton(
-                      label: l10n.passwordRecoveryAlreadyHaveLink,
-                      onPressed: _openReset,
-                      expand: true,
-                    ),
-                    const SizedBox(height: NoWaveSpacing.small),
-                    TextButton(
-                      onPressed: _backToSignIn,
-                      child: Text(l10n.passwordRecoveryBackToSignIn),
-                    ),
-                  ] else if (mailDisabled || unsupported) ...[
-                    NoWaveNotice(
-                      message: localizedFailure(l10n, failure!),
-                      tone: NoWaveNoticeTone.warning,
-                      isLive: true,
-                    ),
-                    const SizedBox(height: NoWaveSpacing.large),
-                    if (mailDisabled) ...[
-                      NoWaveButton(
-                        label: l10n.passwordRecoveryAlreadyHaveLink,
-                        onPressed: _openReset,
-                        expand: true,
-                      ),
-                      const SizedBox(height: NoWaveSpacing.small),
-                    ],
-                    TextButton(
-                      onPressed: _backToSignIn,
-                      child: Text(l10n.passwordRecoveryBackToSignIn),
-                    ),
-                  ] else ...[
-                    Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          AuthField(
-                            hintText: l10n.fieldEmail,
-                            controller: _email,
-                            prefixIcon: Icons.email_outlined,
-                            keyboardType: TextInputType.emailAddress,
-                            autocorrect: false,
-                            enableSuggestions: false,
-                            enabled: !_sending,
-                            validator: _emailProblem,
-                          ),
-                          const SizedBox(height: NoWaveSpacing.large),
-                          if (failure != null) ...[
-                            NoWaveNotice(
-                              message: localizedFailure(l10n, failure),
-                              tone: failureIsWarning
-                                  ? NoWaveNoticeTone.warning
-                                  : NoWaveNoticeTone.error,
-                              isLive: true,
-                            ),
-                            const SizedBox(height: NoWaveSpacing.medium),
-                          ],
-                          NoWaveButton(
-                            label: _sending
-                                ? l10n.passwordRecoverySending
-                                : l10n.passwordRecoverySend,
-                            onPressed: _sending ? null : _submit,
-                            isLoading: _sending,
-                            expand: true,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: NoWaveSpacing.small),
-                    TextButton(
-                      onPressed: _openReset,
-                      child: Text(l10n.passwordRecoveryAlreadyHaveLink),
-                    ),
-                    TextButton(
-                      onPressed: _backToSignIn,
-                      child: Text(l10n.passwordRecoveryBackToSignIn),
-                    ),
+                    const SizedBox(height: NoWaveSpacing.medium),
                   ],
+                  NoWaveButton(
+                    label: _sending
+                        ? l10n.passwordRecoverySending
+                        : l10n.passwordRecoverySend,
+                    onPressed: _sending ? null : _submit,
+                    isLoading: _sending,
+                    expand: true,
+                  ),
                 ],
               ),
             ),
-          ),
-        ),
+            const SizedBox(height: NoWaveSpacing.small),
+            AuthLink(
+              label: l10n.passwordRecoveryAlreadyHaveLink,
+              onPressed: _openReset,
+            ),
+            AuthLink(
+              label: l10n.passwordRecoveryBackToSignIn,
+              quiet: true,
+              onPressed: _backToSignIn,
+            ),
+          ],
+        ],
       ),
     );
   }

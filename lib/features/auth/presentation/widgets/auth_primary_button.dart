@@ -7,13 +7,23 @@ class AuthPrimaryButton extends StatelessWidget {
     super.key,
     required this.buttonText,
     required this.onPressed,
+    this.isLoading = false,
   });
 
   final String buttonText;
   final VoidCallback onPressed;
 
+  /// Keeps the form on screen while the request runs: the button holds its
+  /// label and reports itself busy instead of the page swapping to a loader.
+  final bool isLoading;
+
   @override
   Widget build(BuildContext context) {
-    return NoWaveButton(label: buttonText, onPressed: onPressed, expand: true);
+    return NoWaveButton(
+      label: buttonText,
+      onPressed: onPressed,
+      isLoading: isLoading,
+      expand: true,
+    );
   }
 }
