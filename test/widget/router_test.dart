@@ -1068,7 +1068,9 @@ void main() {
     await tester.tap(find.byTooltip(backLabel));
     await tester.pumpAndSettle();
     expect(find.byType(BlogViewerPage), findsOneWidget);
-    expect(find.text('深链文章'), findsOneWidget);
+    // The reader comes back where it was left - scrolled to the byline -
+    // so the running head may repeat the title in the app bar.
+    expect(find.text('深链文章'), findsWidgets);
   });
 
   testWidgets('article deletion still requires confirmation', (tester) async {
