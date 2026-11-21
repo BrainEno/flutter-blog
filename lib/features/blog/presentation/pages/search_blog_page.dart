@@ -90,6 +90,12 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final foreground = Theme.of(context).colorScheme.onSurface;
+    // Glyph on the column edge: the button's own inset sits after the word.
+    final browse = TextButton.styleFrom(
+      foregroundColor: foreground,
+      padding: const EdgeInsetsDirectional.only(end: NoWaveSpacing.small),
+      minimumSize: const Size(0, NoWaveSizes.tapTarget),
+    );
     return Scaffold(
       appBar: AppBar(
         titleSpacing: NoWaveColumn.inset(MediaQuery.sizeOf(context).width),
@@ -124,27 +130,35 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                       companion: l10n.searchHeadingCompanion,
                       eyebrow: l10n.searchEyebrow,
                     ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Wrap(
-                        alignment: WrapAlignment.end,
-                        spacing: NoWaveSpacing.small,
-                        children: [
-                          // Both are browsing doors out of search: the editor's
-                          // categories, and the public author directory.
-                          TextButton.icon(
-                            onPressed: () => openCategories(context),
-                            icon: const Icon(Icons.category_outlined),
-                            label: Text(l10n.categoriesBrowse),
+                    const SizedBox(height: NoWaveSpacing.small),
+                    // Both are browsing doors out of search: the editor's
+                    // categories, and the public author directory. They
+                    // start on the column edge under the heading, like the
+                    // eyebrow above it; pushed to the right they read as
+                    // stray buttons rather than part of the heading.
+                    Wrap(
+                      spacing: NoWaveSpacing.large,
+                      children: [
+                        TextButton.icon(
+                          style: browse,
+                          onPressed: () => openCategories(context),
+                          icon: const Icon(
+                            Icons.category_outlined,
+                            size: NoWaveIconSize.inline,
                           ),
-                          TextButton.icon(
-                            onPressed: () =>
-                                context.push(RoutePaths.searchAuthors),
-                            icon: const Icon(Icons.person_search_outlined),
-                            label: Text(l10n.authorSearchTitle),
+                          label: Text(l10n.categoriesBrowse),
+                        ),
+                        TextButton.icon(
+                          style: browse,
+                          onPressed: () =>
+                              context.push(RoutePaths.searchAuthors),
+                          icon: const Icon(
+                            Icons.person_search_outlined,
+                            size: NoWaveIconSize.inline,
                           ),
-                        ],
-                      ),
+                          label: Text(l10n.authorSearchTitle),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: NoWaveSpacing.small),
                     TextField(

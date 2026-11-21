@@ -8,6 +8,7 @@ import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/read_aloud/read_aloud_settings.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controller.dart';
+import 'package:belog/features/blog/presentation/read_aloud/read_aloud_dock.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/features/blog/presentation/read_aloud/structured_article_nodes.dart';
@@ -55,6 +56,27 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
   /// Whether the title has scrolled under the app bar, so the running head
   /// shows.
   final ValueNotifier<bool> _runningHead = ValueNotifier(false);
+
+  /// The full read-aloud controls, so the dock can tell when they are gone.
+  final GlobalKey _controlsKey = GlobalKey();
+
+  /// Whether the full controls have scrolled above the top of the page.
+  final ValueNotifier<bool> _controlsPassed = ValueNotifier(false);
+
+  /// Where the sentence being read is when the reader has taken the scroll
+  /// away from the voice; null while the page follows it.
+  ///
+  /// Following used to win every time: each new word scrolled the page back
+  /// to it, so a reader who scrolled up to the controls to stop the voice was
+  /// pulled straight back down. A drag (or wheel, or the running head) now
+  /// lets go of the voice. The page takes it up again when the reader asks
+  /// (the dock's way back), when the spoken line comes back into view by
+  /// itself, or when playback starts over.
+  final ValueNotifier<VerticalDirection?> _voiceAway = ValueNotifier(null);
+
+  /// A finger is on the article: never scroll under it.
+  bool _dragging = false;
+  ReadAloudPhase _lastPhase = ReadAloudPhase.idle;
   ReadAloudDocument? _document;
   ReadAloudController? _reader;
   List<GlobalKey> _blockKeys = const [];
@@ -109,6 +131,8 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
       onFollowScroll: _followScroll,
     );
     _reader = reader;
+    _lastPhase = reader.phase;
+    reader.addListener(_onReaderChanged);
     unawaited(reader.initialize());
   }
 
@@ -121,14 +145,45 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
         oldWidget.blog.document != blog.document ||
         oldWidget.speechCoordinator != widget.speechCoordinator ||
         oldWidget.readAloudPreferences != widget.readAloudPreferences) {
+      _reader?.removeListener(_onReaderChanged);
       _reader?.dispose();
       _reader = null;
       _document = null;
       _blockKeys = const [];
       _scrollRequest++;
       _runningHead.value = false;
+      _voiceAway.value = null;
       _prepareReader();
     }
+  }
+
+  /// Starting or stopping the voice hands the scroll back to it.
+  void _onReaderChanged() {
+    final phase = _reader?.phase ?? ReadAloudPhase.idle;
+    final startedOrStopped =
+        (phase == ReadAloudPhase.idle) != (_lastPhase == ReadAloudPhase.idle);
+    _lastPhase = phase;
+    if (startedOrStopped) _voiceAway.value = null;
+  }
+
+  /// The reader moved the page: stop following until they come back.
+  void _letGo() {
+    final reader = _reader;
+    if (reader == null ||
+        !reader.follow ||
+        reader.phase == ReadAloudPhase.idle ||
+        _voiceAway.value != null) {
+      return;
+    }
+    // Cancels a follow scroll that was waiting for the next frame.
+    _scrollRequest++;
+    _voiceAway.value = VerticalDirection.down;
+  }
+
+  /// The dock's way back: follow again, and go to the voice now.
+  void _returnToVoice() {
+    _voiceAway.value = null;
+    _reader?.revealPosition();
   }
 
   @override
@@ -195,7 +250,21 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
       final viewportY = viewport.localToGlobal(Offset.zero).dy;
       final relativeY = screenY - viewportY;
       final height = viewport.size.height;
-      if (relativeY >= 80 && relativeY <= height - 72) return;
+      final inView = relativeY >= 80 && relativeY <= height - 72;
+      if (_voiceAway.value != null) {
+        // The reader has the scroll. If they have brought the spoken line
+        // back on screen themselves, follow again from here; otherwise only
+        // note which way the voice is.
+        if (inView && !_dragging) {
+          _voiceAway.value = null;
+        } else if (!inView) {
+          _voiceAway.value = relativeY < 80
+              ? VerticalDirection.up
+              : VerticalDirection.down;
+        }
+        return;
+      }
+      if (inView) return;
       final position = _scrollController.position;
       final destination = (position.pixels + relativeY - height * .38).clamp(
         position.minScrollExtent,
@@ -220,6 +289,7 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
   @override
   void dispose() {
     _scrollRequest++;
+    _reader?.removeListener(_onReaderChanged);
     for (final observer in readAloudBranchObservers) {
       observer.unsubscribe(this);
     }
@@ -228,6 +298,8 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
     _reader?.dispose();
     _scrollController.dispose();
     _runningHead.dispose();
+    _controlsPassed.dispose();
+    _voiceAway.dispose();
     super.dispose();
   }
 
@@ -241,7 +313,51 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
       anchor.currentContext,
       notification,
     );
+    _controlsPassed.value = NoWaveRunningHead.passed(
+      _controlsKey.currentContext,
+      notification,
+    );
+    switch (notification) {
+      case ScrollStartNotification(dragDetails: _?):
+        _dragging = true;
+        _letGo();
+      case UserScrollNotification(direction: final direction)
+          when direction != ScrollDirection.idle:
+        _letGo();
+      case ScrollEndNotification():
+        _dragging = false;
+      default:
+        break;
+    }
     return false;
+  }
+
+  /// The docked player: shown while the voice is on and either the full
+  /// controls have scrolled away or the reader has left the voice behind.
+  Widget? _dock() {
+    final reader = _reader;
+    if (reader == null) return null;
+    return ListenableBuilder(
+      listenable: Listenable.merge([reader, _controlsPassed, _voiceAway]),
+      builder: (context, _) {
+        final away = reader.follow ? _voiceAway.value : null;
+        final show =
+            reader.phase != ReadAloudPhase.idle &&
+            (_controlsPassed.value || away != null);
+        return AnimatedSize(
+          duration: NoWaveMotionPolicy.resolve(context, NoWaveMotion.normal),
+          curve: NoWaveMotionPolicy.travel,
+          alignment: Alignment.topCenter,
+          child: show
+              ? ReadAloudDock(
+                  controller: reader,
+                  voiceAway: away,
+                  onReturn: _returnToVoice,
+                )
+              : const SizedBox(width: double.infinity),
+        );
+      },
+    );
   }
 
   @override
@@ -251,9 +367,12 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
         blog: blog,
         onRequestLogin: onRequestLogin,
         runningHead: _runningHead,
-        onRunningHeadTap: () =>
-            NoWaveRunningHead.toTop(context, _scrollController),
+        onRunningHeadTap: () {
+          _letGo();
+          NoWaveRunningHead.toTop(context, _scrollController);
+        },
       ),
+      bottomNavigationBar: _dock(),
       body: NoWaveReadingProgress(
         child: NotificationListener<ScrollNotification>(
           onNotification: _trackTitle,
@@ -266,6 +385,7 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
             getRelatedArticles: getRelatedArticles,
             onRequestLogin: onRequestLogin,
             titleKey: _titleKey,
+            controlsKey: _controlsKey,
           ),
         ),
       ),

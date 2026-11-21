@@ -110,6 +110,8 @@
   "readAloudSleepTimerFinished": "Sleep timer stopped listening",
   "readAloudFollow": "Follow text",
   "readAloudFollowHint": "Highlight the current text and scroll with playback",
+  "readAloudReturn": "Back to the voice",
+  "@readAloudReturn": {"description": "Docked player action: scrolls back to the sentence being read after the reader scrolled away."},
   "readAloudSeek": "Playback position",
   "readAloudSeekHint": "Drag to jump through the article",
   "readAloudHint": "Listen to this article",

@@ -79,6 +79,7 @@
   "readAloudSleepTimerFinished": "定时停止已结束朗读",
   "readAloudFollow": "跟随文字",
   "readAloudFollowHint": "高亮当前文字并随朗读自动滚动",
+  "readAloudReturn": "回到朗读处",
   "readAloudSeek": "朗读进度",
   "readAloudSeekHint": "拖动以跳转文章位置",
   "readAloudHint": "收听这篇文章",

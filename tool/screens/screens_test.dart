@@ -75,10 +75,10 @@ void main() {
       'assets/fonts/InstrumentSerif-Regular.ttf',
       'assets/fonts/InstrumentSerif-Italic.ttf',
     ]);
-    await _family('InterTight', [
-      'assets/fonts/InterTight-Variable.ttf',
-      '$_fonts/NotoSansSC.otf',
-    ]);
+    // A phone falls back to its system CJK sans for InterTight; the test
+    // engine has no system fonts, so the CJK sans stands in for both.
+    await _family('InterTight', ['$_fonts/NotoSansSC.otf']);
+    await _family('FlutterTest', ['$_fonts/NotoSansSC.otf']);
     await _family('Noto Serif CJK SC', ['$_fonts/NotoSerifSC.otf']);
     await _family('Noto Sans CJK SC', ['$_fonts/NotoSansSC.otf']);
     await _family('Roboto', ['$_fonts/NotoSansSC.otf']);
@@ -123,6 +123,7 @@ void main() {
           BlocProvider<LocaleBloc>(create: (_) => systemLocaleBloc()),
         ],
         child: MaterialApp.router(
+          debugShowCheckedModeBanner: false,
           locale: const Locale('zh'),
           theme: AppTheme.lightThemeMode,
           darkTheme: AppTheme.darkThemeMode,
@@ -188,6 +189,20 @@ void main() {
     );
     await tester.pump(const Duration(seconds: 1));
     await _shot(tester, '04-article-reading');
+    // Up to the top to reach the full controls: the page must stay there.
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, 3000),
+    );
+    await tester.pump(const Duration(seconds: 1));
+    _engine.event(
+      _engine.calls.last.id,
+      SpeechEventType.range,
+      start: 60,
+      end: 62,
+    );
+    await tester.pump(const Duration(seconds: 1));
+    await _shot(tester, '04b-article-reading-top');
   });
 
   testWidgets('search', (tester) async {

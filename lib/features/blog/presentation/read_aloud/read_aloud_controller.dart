@@ -202,6 +202,20 @@ class ReadAloudController extends ChangeNotifier implements SpeechOwner {
     );
   }
 
+  /// Asks the page to bring the passage being read back into view - after
+  /// the reader scrolled away from it and asked to return. Nothing happens
+  /// while stopped or with following turned off.
+  void revealPosition() {
+    if (_disposed ||
+        !follow ||
+        phase == ReadAloudPhase.idle ||
+        _activeIndex >= document.chunks.length) {
+      return;
+    }
+    final chunk = document.chunks[_activeIndex];
+    onFollowScroll?.call(chunk.blockIndex, chunk.blockOffset + _offset);
+  }
+
   /// Select one installed voice for all passages requesting [language]. Null
   /// returns that language to the operating-system default. A stale ID or an
   /// ID for another language is ignored rather than being passed to native TTS.

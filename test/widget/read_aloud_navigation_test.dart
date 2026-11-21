@@ -159,4 +159,89 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'scrolling away lets go of the voice; the dock stops it or goes back',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final harness = Harness()..buildRouter(initialLocation: '/view/abc');
+      when(() => harness.remote.getBlogById('abc')).thenAnswer(
+        (_) async => BlogModel(
+          id: 'abc',
+          title: '长文章',
+          content: '字' * 1200,
+          posterId: 'author',
+          imageUrl: '',
+          tags: const [],
+          updatedAt: DateTime.utc(2026),
+        ),
+      );
+      final engine = FakeSpeechEngine();
+      installSpeech(engine);
+      addTearDown(() async {
+        await harness.dispose();
+        await engine.close();
+      });
+      await harness.pump(tester);
+      await tester.pumpAndSettle();
+      await startPlayback(tester);
+      final view = tester.widget<CustomScrollView>(
+        find
+            .descendant(
+              of: find.byType(BlogViewerPage),
+              matching: find.byType(CustomScrollView),
+            )
+            .first,
+      );
+      final scroll = view.controller!;
+      // Title, then a few passages into the paragraph: the page follows.
+      for (var i = 0; i < 4; i++) {
+        engine.event(engine.calls.last.id, SpeechEventType.completed);
+        await tester.pumpAndSettle();
+      }
+      expect(scroll.offset, greaterThan(0));
+      // Following has carried the full controls away: the dock holds the
+      // buttons now.
+      expect(find.byKey(const ValueKey('read-aloud-dock')), findsOneWidget);
+
+      // The reader drags back up to the top...
+      await tester.drag(
+        find
+            .descendant(
+              of: find.byType(BlogViewerPage),
+              matching: find.byType(CustomScrollView),
+            )
+            .first,
+        const Offset(0, 4000),
+      );
+      await tester.pumpAndSettle();
+      expect(scroll.offset, 0);
+
+      // ...and the voice going on no longer pulls the page down.
+      for (var i = 0; i < 2; i++) {
+        engine.event(engine.calls.last.id, SpeechEventType.completed);
+        await tester.pumpAndSettle();
+      }
+      expect(scroll.offset, 0);
+      // The dock offers the way back, pointing down to the voice.
+      expect(find.text('回到朗读处'), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_downward), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('read-aloud-return')));
+      await tester.pumpAndSettle();
+      expect(scroll.offset, greaterThan(0));
+      expect(find.byKey(const ValueKey('read-aloud-return')), findsNothing);
+
+      // Stop from the dock, wherever the page is.
+      final stops = engine.stopCount;
+      await tester.tap(find.byKey(const ValueKey('read-aloud-dock-stop')));
+      await tester.pumpAndSettle();
+      expect(engine.stopCount, greaterThan(stops));
+      expect(find.byKey(const ValueKey('read-aloud-dock')), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
