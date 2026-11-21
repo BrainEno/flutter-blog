@@ -20,7 +20,12 @@ class BlogCard extends StatelessWidget {
     this.index,
     this.labelAuthor = false,
     this.onTagTap,
+    this.quiet = false,
   });
+
+  /// A row without its rule or its tags: for a short list laid on a surface
+  /// (related reading), where the space between rows is enough.
+  final bool quiet;
 
   final Blog blog;
   final VoidCallback onTap;
@@ -51,11 +56,14 @@ class BlogCard extends StatelessWidget {
       runSpacing: NoWaveSpacing.small,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        for (final tag in blog.tags)
-          ArticleTagLabel(
-            tag: tag,
-            onTap: onTagTap == null ? null : () => onTagTap!(tag),
-          ),
+        // A quiet row is a pointer to the next piece: its date, title and
+        // author say enough, and a row of tags would only be noise.
+        if (!quiet)
+          for (final tag in blog.tags)
+            ArticleTagLabel(
+              tag: tag,
+              onTap: onTagTap == null ? null : () => onTagTap!(tag),
+            ),
         Text(
           formatDate(Localizations.localeOf(context), blog.updatedAt),
           style: NoWaveTypography.meta(context),
@@ -103,9 +111,11 @@ class BlogCard extends StatelessWidget {
   Widget _row(BuildContext context, String author) {
     final foreground = Theme.of(context).colorScheme.onSurface;
     return Container(
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: foreground.withAlpha(130))),
-      ),
+      decoration: quiet
+          ? null
+          : BoxDecoration(
+              border: Border(top: BorderSide(color: foreground.withAlpha(130))),
+            ),
       padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.medium),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

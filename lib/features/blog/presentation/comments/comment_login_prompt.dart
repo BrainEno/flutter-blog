@@ -19,9 +19,10 @@ class CommentLoginPrompt extends StatelessWidget {
         vertical: NoWaveSpacing.large,
       ),
       decoration: BoxDecoration(
-        // A theme role instead of a fixed 10 % grey (issue #24): the tint
-        // keeps its contrast against both the light and the dark paper.
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        // The comments sit on the article's darker end-matter sheet; the
+        // prompt is a card of the page's own paper laid on it. A theme role
+        // instead of a fixed grey (issue #24), so it holds in both themes.
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(NoWaveRadius.surface),
       ),
       child: Column(

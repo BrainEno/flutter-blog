@@ -13,9 +13,12 @@ import 'package:flutter/material.dart';
 /// Size the cover and text independently so wider screens and large system
 /// fonts do not overflow a fixed-height tile.
 SliverGridDelegateWithFixedCrossAxisCount blogGridDelegate(
-  BuildContext context,
-) {
-  final width = MediaQuery.sizeOf(context).width;
+  BuildContext context, {
+  double gutter = 0,
+}) {
+  // The tiles share what is left between the page's gutters; measuring the
+  // whole screen made every tile taller than its cover and text needed.
+  final width = MediaQuery.sizeOf(context).width - 2 * gutter;
   final columns = NoWaveBreakpoints.columnsFor(width);
   final gap = NoWaveSpacing.medium;
   final tileWidth = (width - gap * (columns - 1)) / columns;

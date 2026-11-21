@@ -881,8 +881,8 @@ void main() {
           ),
           findsOneWidget,
         );
-        // The editorial header places the cover below the title and author;
-        // at large text sizes it can start outside the viewport.
+        // The cover opens the page; scrolling to it keeps the check honest
+        // whatever the header's order.
         await tester.ensureVisible(
           find
               .descendant(
@@ -1032,6 +1032,9 @@ void main() {
       1,
     );
 
+    // The byline sits under the full-bleed cover; bring it on screen first.
+    await tester.ensureVisible(find.text('匿名作者'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('匿名作者'));
     await tester.pumpAndSettle();
     expect(find.byType(AuthorPage), findsOneWidget);
@@ -1065,7 +1068,9 @@ void main() {
     await tester.tap(find.byTooltip(backLabel));
     await tester.pumpAndSettle();
     expect(find.byType(BlogViewerPage), findsOneWidget);
-    expect(find.text('深链文章'), findsOneWidget);
+    // The reader comes back where it was left - scrolled to the byline -
+    // so the running head may repeat the title in the app bar.
+    expect(find.text('深链文章'), findsWidgets);
   });
 
   testWidgets('article deletion still requires confirmation', (tester) async {

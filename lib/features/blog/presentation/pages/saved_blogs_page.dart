@@ -1,7 +1,11 @@
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/common/widgets/no_wave_masthead.dart';
+import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
+import 'package:belog/core/design/components/no_wave_column.dart';
 import 'package:belog/core/design/design_tokens.dart';
+import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
@@ -72,66 +76,44 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
     }
   }
 
+  Future<void> _refresh() async {
+    final likes = context.read<BlogLikedBloc>();
+    _fetchSavedBlogs();
+    await likes.stream.firstWhere(
+      (state) =>
+          state is UserLikedBlogsSuccess || state is UserLikedBlogsFailure,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    // One gutter for the masthead, the heading and the grid, so all three
+    // start on the same edge as every other tab.
+    final gutter = NoWaveColumn.inset(MediaQuery.sizeOf(context).width);
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.savedTitle)),
+      appBar: AppBar(titleSpacing: gutter, title: const NoWaveMasthead()),
       body: BlocConsumer<BlogLikedBloc, BlogLikedState>(
         listener: (context, state) {
           if (state is UserLikedBlogsFailure) {
-            showSnackBar(
-              context,
-              localizedFailure(context.l10n, state.failure),
-            );
+            showSnackBar(context, localizedFailure(l10n, state.failure));
           }
         },
         builder: (context, state) {
           if (state is UserLikedBlogsSuccess) {
             _lastBlogs = state.blogs;
           }
-
-          if (state is UserLikedBlogsLoading) {
-            return const BlogGridSkeleton();
-          } else if (state is UserLikedBlogsSuccess || _lastBlogs.isNotEmpty) {
-            final blogsToShow = state is UserLikedBlogsSuccess
-                ? state.blogs
-                : _lastBlogs;
-            if (blogsToShow.isEmpty) {
-              return Center(
-                child: Text(
-                  context.l10n.savedEmpty,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              );
-            }
-            return NoWaveRefresh(
-              onRefresh: () async {
-                _fetchSavedBlogs();
-                await context.read<BlogLikedBloc>().stream.firstWhere(
-                  (newState) =>
-                      newState is UserLikedBlogsSuccess ||
-                      newState is UserLikedBlogsFailure,
-                );
-              },
-              child: GridView.builder(
-                gridDelegate: blogGridDelegate(context),
-                itemCount: blogsToShow.length,
-                itemBuilder: (context, index) {
-                  final blog = blogsToShow[index];
-                  return BlogGridItem(
-                    blog: blog,
-                    onTap: () {
-                      context.push(RoutePaths.savedView(blog.id), extra: blog);
-                    },
-                  );
-                },
-              ),
-            );
-          } else if (state is UserLikedBlogsFailure) {
-            final l10n = context.l10n;
-            return Center(
+          final blogs = state is UserLikedBlogsSuccess
+              ? state.blogs
+              : _lastBlogs;
+          // A refresh in the background keeps the list it has; only a first
+          // read shows the skeleton.
+          final Widget body;
+          if (state is UserLikedBlogsFailure && blogs.isEmpty) {
+            body = SliverFillRemaining(
+              hasScrollBody: false,
               child: Padding(
-                padding: const EdgeInsets.all(NoWaveSpacing.page),
+                padding: EdgeInsets.all(gutter),
                 child: NoWaveStatus(
                   message: l10n.loadErrorPrefix(
                     localizedFailure(l10n, state.failure),
@@ -141,35 +123,83 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
                 ),
               ),
             );
-          }
-          return _lastBlogs.isEmpty
-              ? const BlogGridSkeleton()
-              : NoWaveRefresh(
-                  onRefresh: () async {
-                    _fetchSavedBlogs();
-                    await context.read<BlogLikedBloc>().stream.firstWhere(
-                      (newState) =>
-                          newState is UserLikedBlogsSuccess ||
-                          newState is UserLikedBlogsFailure,
-                    );
-                  },
-                  child: GridView.builder(
-                    gridDelegate: blogGridDelegate(context),
-                    itemCount: _lastBlogs.length,
-                    itemBuilder: (context, index) {
-                      final blog = _lastBlogs[index];
-                      return BlogGridItem(
-                        blog: blog,
-                        onTap: () {
-                          context.push(
-                            RoutePaths.savedView(blog.id),
-                            extra: blog,
-                          );
-                        },
-                      );
+          } else if (blogs.isEmpty && state is! UserLikedBlogsSuccess) {
+            body = SliverFillRemaining(
+              child: BlogGridSkeleton(
+                padding: EdgeInsets.symmetric(horizontal: gutter),
+              ),
+            );
+          } else if (blogs.isEmpty) {
+            body = SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  gutter,
+                  NoWaveSizes.emptyStateOffset,
+                  gutter,
+                  NoWaveSpacing.section,
+                ),
+                child: Text(
+                  l10n.savedEmpty,
+                  textAlign: TextAlign.center,
+                  style:
+                      NoWaveTypography.title(
+                        context,
+                        size: NoWaveTypeScale.sectionTitle,
+                      ).copyWith(
+                        fontWeight: FontWeight.w400,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ),
+            );
+          } else {
+            body = SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                gutter,
+                0,
+                gutter,
+                NoWaveSpacing.section,
+              ),
+              sliver: SliverGrid.builder(
+                gridDelegate: blogGridDelegate(context, gutter: gutter),
+                itemCount: blogs.length,
+                itemBuilder: (context, index) {
+                  final blog = blogs[index];
+                  return BlogGridItem(
+                    blog: blog,
+                    onTap: () {
+                      context.push(RoutePaths.savedView(blog.id), extra: blog);
                     },
+                  );
+                },
+              ),
+            );
+          }
+          return NoWaveRefresh(
+            onRefresh: _refresh,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      gutter,
+                      NoWaveSpacing.large,
+                      gutter,
+                      NoWaveSpacing.large,
+                    ),
+                    child: NoWaveSectionHeading(
+                      title: l10n.tabSaved,
+                      companion: l10n.savedHeadingCompanion,
+                      eyebrow: l10n.savedEyebrow,
+                    ),
                   ),
-                );
+                ),
+                body,
+              ],
+            ),
+          );
         },
       ),
     );

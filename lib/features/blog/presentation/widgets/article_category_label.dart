@@ -15,7 +15,15 @@ import 'package:flutter/material.dart';
 /// With [onTap] it becomes a real button with a 48×48 target, like the tag
 /// label; the drawn plate stays compact.
 class ArticleCategoryLabel extends StatelessWidget {
-  const ArticleCategoryLabel({super.key, required this.category, this.onTap});
+  const ArticleCategoryLabel({
+    super.key,
+    required this.category,
+    this.onTap,
+    this.quiet = false,
+  });
+
+  /// Set as the first, ink word of the article's kicker instead of a plate.
+  final bool quiet;
 
   /// The category as the article response described it. A ref with an empty
   /// slug or name is not addressable or printable, so callers filter it out.
@@ -29,24 +37,32 @@ class ArticleCategoryLabel extends StatelessWidget {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final foreground = scheme.onSurface;
-    final plate = Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: NoWaveSpacing.small,
-        vertical: 2, // design-token-ok: badge padding, optical not a step
-      ),
-      decoration: BoxDecoration(
-        color: AppPalette.orange.withAlpha(38),
-        // The fill is what separates a category from a tag; the border keeps
-        // the same weight as the tag's so neither reads as "more important".
-        border: Border.all(color: foreground),
-      ),
-      child: Text(
-        category.name,
-        style: NoWaveTypography.meta(
-          context,
-        ).copyWith(color: foreground, fontWeight: FontWeight.w600),
-      ),
-    );
+    final plate = quiet
+        ? Text(
+            category.name,
+            style: NoWaveTypography.metaLabel(
+              context,
+              color: foreground,
+            ).copyWith(fontWeight: FontWeight.w700),
+          )
+        : Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: NoWaveSpacing.small,
+              vertical: 2, // design-token-ok: badge padding, optical not a step
+            ),
+            decoration: BoxDecoration(
+              color: AppPalette.orange.withAlpha(38),
+              // The fill is what separates a category from a tag; the border keeps
+              // the same weight as the tag's so neither reads as "more important".
+              border: Border.all(color: foreground),
+            ),
+            child: Text(
+              category.name,
+              style: NoWaveTypography.meta(
+                context,
+              ).copyWith(color: foreground, fontWeight: FontWeight.w600),
+            ),
+          );
 
     final handler = onTap;
     if (handler == null) return plate;
