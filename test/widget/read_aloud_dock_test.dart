@@ -52,7 +52,9 @@ void main() {
       await engine.close();
     });
     reader.togglePlayback();
-    await flushSpeech();
+    // Lets the speech engine's queued calls run. A real timer
+    // (`flushSpeech`) would never fire inside the test's fake clock.
+    await tester.pump();
     return (engine, reader);
   }
 
@@ -76,7 +78,7 @@ void main() {
     final stops = engine.stopCount;
     await tester.tap(find.byTooltip(l10n.readAloudStop));
     await tester.pump();
-    await flushSpeech();
+    await tester.pump();
     expect(reader.phase, ReadAloudPhase.idle);
     expect(engine.stopCount, greaterThan(stops));
   });
