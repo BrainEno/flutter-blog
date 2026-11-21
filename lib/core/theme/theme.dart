@@ -11,6 +11,15 @@ abstract final class AppTheme {
   static final lightThemeMode = _build(Brightness.light);
   static final darkThemeMode = _build(Brightness.dark);
 
+  /// Every button's label. A button's text style replaces the inherited
+  /// one instead of merging with it, so a style naming only the weight
+  /// drops the family and the label falls back to the platform font
+  /// (Roboto on Android) - which every button label did until this named it.
+  static const buttonLabel = TextStyle(
+    fontFamily: 'InterTight',
+    fontWeight: FontWeight.w700,
+  );
+
   static ThemeData _build(Brightness brightness) {
     final dark = brightness == Brightness.dark;
     final background = dark ? AppPalette.ink : AppPalette.paper;
@@ -167,7 +176,7 @@ abstract final class AppTheme {
             horizontal: NoWaveSpacing.large,
             vertical: NoWaveSpacing.small,
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: buttonLabel,
           shape: square,
         ),
       ),
@@ -184,7 +193,7 @@ abstract final class AppTheme {
             horizontal: NoWaveSpacing.large,
             vertical: NoWaveSpacing.small,
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: buttonLabel,
           shape: square,
         ),
       ),
@@ -192,7 +201,7 @@ abstract final class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: foreground,
           minimumSize: const Size(NoWaveSizes.tapTarget, NoWaveSizes.tapTarget),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: buttonLabel,
           shape: square,
           side: BorderSide(color: foreground, width: NoWaveStroke.hairline),
         ),
@@ -201,7 +210,7 @@ abstract final class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: foreground,
           minimumSize: const Size(NoWaveSizes.tapTarget, NoWaveSizes.tapTarget),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: buttonLabel,
           shape: square,
         ),
       ),
@@ -312,9 +321,7 @@ abstract final class AppTheme {
           minimumSize: const WidgetStatePropertyAll<Size?>(
             Size(NoWaveSizes.tapTarget, NoWaveSizes.tapTarget),
           ),
-          textStyle: const WidgetStatePropertyAll<TextStyle?>(
-            TextStyle(fontWeight: FontWeight.w700),
-          ),
+          textStyle: const WidgetStatePropertyAll<TextStyle?>(buttonLabel),
         ),
       ),
     );

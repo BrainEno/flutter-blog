@@ -113,6 +113,7 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                       key: const ValueKey('read-aloud-stop'),
                       tooltip: l10n.readAloudStop,
                       onPressed: controller.stop,
+                      color: scheme.onSurface,
                       icon: const Icon(Icons.stop),
                     ),
                 ],
@@ -361,8 +362,9 @@ String _sleepTimerLabel(
   };
 }
 
-/// The seek track runs the full width of the column, so its ends line up
-/// with the text above and below instead of sitting a thumb's width in.
+/// The seek track runs the width of the column, so the thumb's outer edge
+/// at either end lines up with the text above and below instead of sitting
+/// an overlay's width in.
 class _FlushTrack extends RectangularSliderTrackShape {
   const _FlushTrack();
 
@@ -376,7 +378,13 @@ class _FlushTrack extends RectangularSliderTrackShape {
   }) {
     final height = sliderTheme.trackHeight ?? NoWaveSizes.accentRule;
     final top = offset.dy + (parentBox.size.height - height) / 2;
-    return Rect.fromLTWH(offset.dx, top, parentBox.size.width, height);
+    const inset = NoWaveSizes.seekThumb / 2;
+    return Rect.fromLTWH(
+      offset.dx + inset,
+      top,
+      parentBox.size.width - 2 * inset,
+      height,
+    );
   }
 }
 

@@ -119,6 +119,11 @@ class ReadAloudDock extends StatelessWidget {
                                         l10n.readAloudReturn,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
+                                        style: NoWaveTypography.meta(context)
+                                            .copyWith(
+                                              color: scheme.onSurface,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                       ),
                                     ),
                                   )

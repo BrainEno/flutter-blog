@@ -192,6 +192,23 @@ void main() {
         }
       });
 
+      test('$label: button labels are set in the app face', () {
+        // A button's text style replaces the inherited one, so a style with
+        // only a weight silently drops the family and the label falls back
+        // to the platform font.
+        for (final style in [
+          theme.filledButtonTheme.style,
+          theme.outlinedButtonTheme.style,
+          theme.textButtonTheme.style,
+          theme.elevatedButtonTheme.style,
+          theme.segmentedButtonTheme.style,
+        ]) {
+          final text = style?.textStyle?.resolve({});
+          if (text == null) continue;
+          expect(text.fontFamily, 'InterTight');
+        }
+      });
+
       test('$label: dialogs share the page surface and the square corners', () {
         expect(
           theme.dialogTheme.backgroundColor,

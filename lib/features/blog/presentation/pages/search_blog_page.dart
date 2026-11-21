@@ -169,7 +169,17 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                       style: NoWaveTypography.title(context, size: 24),
                       decoration: InputDecoration(
                         labelText: l10n.searchHint,
-                        prefixIcon: const Icon(Icons.search),
+                        // The glyph sits on the column edge, where the
+                        // heading and the rule under the field start.
+                        prefixIcon: const Padding(
+                          padding: EdgeInsetsDirectional.only(
+                            end: NoWaveSpacing.medium,
+                          ),
+                          child: Icon(Icons.search),
+                        ),
+                        prefixIconConstraints: const BoxConstraints(
+                          minHeight: NoWaveSizes.tapTarget,
+                        ),
                         suffixIcon: _searchController.text.isEmpty
                             ? null
                             : IconButton(
