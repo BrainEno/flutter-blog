@@ -1032,6 +1032,9 @@ void main() {
       1,
     );
 
+    // The byline sits under the full-bleed cover; bring it on screen first.
+    await tester.ensureVisible(find.text('匿名作者'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('匿名作者'));
     await tester.pumpAndSettle();
     expect(find.byType(AuthorPage), findsOneWidget);
