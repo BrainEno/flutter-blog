@@ -174,7 +174,7 @@ class _MessageInboxViewState extends State<_MessageInboxView> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.messagesTitle), centerTitle: true),
+      appBar: AppBar(title: Text(l10n.messagesTitle)),
       body: BlocBuilder<MessageInboxCubit, MessageInboxState>(
         builder: (context, state) {
           // Handled while building rather than from a listener: the first load

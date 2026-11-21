@@ -94,6 +94,41 @@ void main() {
     expect(text.center.dx, closeTo(400, 1));
   });
 
+  testWidgets('a detail is a caption under the sentence, in its measure', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      const SizedBox(
+        width: 600,
+        child: NoWaveStatus(
+          message: 'No reading yet',
+          detail:
+              'Articles you read are recorded on this device and only you can '
+              'see them.',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final message = tester.getRect(find.text('No reading yet'));
+    final detailFinder = find.textContaining('recorded on this device');
+    final detail = tester.getRect(detailFinder);
+    expect(detail.top, greaterThan(message.bottom));
+    expect(detail.width, lessThanOrEqualTo(NoWaveSizes.statusMeasure));
+    final style = tester.widget<Text>(detailFinder).style!;
+    expect(style.fontFamily, 'InterTight');
+    expect(style.color, scheme.onSurfaceVariant);
+    // It arrives with the sentence, not on its own.
+    expect(
+      find.descendant(
+        of: find.byType(NoWaveStatus),
+        matching: find.byType(FadeTransition),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('a filler sized from it leaves room for every line', (
     tester,
   ) async {

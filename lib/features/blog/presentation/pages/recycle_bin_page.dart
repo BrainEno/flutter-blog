@@ -52,10 +52,7 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(context.l10n.recycleBinTitle),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: Text(context.l10n.recycleBinTitle)),
       body: BlocConsumer<RecycleBinBloc, RecycleBinState>(
         listener: (context, state) {
           if (state is RecycleBinRestoreFailure) {

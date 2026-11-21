@@ -84,7 +84,7 @@ class _TagArticlesPageState extends State<TagArticlesPage> {
     final l10n = context.l10n;
     final displayName = localizedTag(l10n, widget.tag);
     return Scaffold(
-      appBar: AppBar(title: Text('#$displayName'), centerTitle: true),
+      appBar: AppBar(title: Text('#$displayName')),
       body: BlocListener<TagArticlesBloc, TagArticlesState>(
         // Any settled page may be followed by another one; only a failure
         // needs the reader's consent first (see [_loadMore]).

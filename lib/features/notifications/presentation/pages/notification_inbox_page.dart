@@ -124,7 +124,6 @@ class _NotificationInboxView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(context.l10n.notificationsTitle),
-        centerTitle: true,
         actions: [
           BlocBuilder<NotificationInboxCubit, NotificationInboxState>(
             builder: (context, state) {

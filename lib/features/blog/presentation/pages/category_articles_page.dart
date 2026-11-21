@@ -89,7 +89,6 @@ class _CategoryArticlesPageState extends State<CategoryArticlesPage> {
     final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
         title: BlocBuilder<CategoryArticlesBloc, CategoryArticlesState>(
           buildWhen: (previous, current) =>
               current is CategoryArticlesSuccess ||

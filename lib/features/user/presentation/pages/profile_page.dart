@@ -93,7 +93,6 @@ class _ProfileView extends StatelessWidget {
     final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
         title: Text(l10n.profileTitle),
         actions: const [
           ThemeToggleButton(),
