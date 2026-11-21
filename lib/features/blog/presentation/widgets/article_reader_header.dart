@@ -16,6 +16,7 @@ import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
 import 'package:belog/features/blog/presentation/widgets/article_tag_label.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show OverflowBoxFit;
 
 /// Article identity and author details, independent of routing and state.
 class ArticleReaderHeader extends StatelessWidget {
