@@ -1,3 +1,5 @@
+import 'package:belog/core/common/widgets/no_wave_status.dart';
+import 'package:belog/core/design/components/no_wave_list_note.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
@@ -209,25 +211,13 @@ class _CommentsSectionState extends State<CommentsSection> {
       case CommentListStatus.failure:
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.large),
-          child: Column(
-            children: [
-              Text(
-                state.error.isNotEmpty
-                    ? localizedFailureOr(
-                        context.l10n,
-                        state.failure,
-                        state.error,
-                      )
-                    : context.l10n.commentsLoadFailed,
-                style: Theme.of(context).textTheme.bodySmall,
-                textAlign: TextAlign.center,
-              ),
-              TextButton(
-                onPressed: () =>
-                    context.read<CommentBloc>().add(const CommentsRequested()),
-                child: Text(context.l10n.actionRetry),
-              ),
-            ],
+          child: NoWaveStatus(
+            message: state.error.isNotEmpty
+                ? localizedFailureOr(context.l10n, state.failure, state.error)
+                : context.l10n.commentsLoadFailed,
+            actionLabel: context.l10n.actionRetry,
+            onAction: () =>
+                context.read<CommentBloc>().add(const CommentsRequested()),
           ),
         );
       case CommentListStatus.loaded:
@@ -278,26 +268,16 @@ class _CommentsSectionState extends State<CommentsSection> {
       );
     }
     if (state.loadMoreFailure != null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.medium),
-        child: Column(
-          children: [
-            Text(
-              localizedFailureOr(
-                l10n,
-                state.loadMoreFailure,
-                l10n.commentsLoadFailed,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            TextButton(
-              onPressed: () => context.read<CommentBloc>().add(
-                const MoreCommentsRequested(),
-              ),
-              child: Text(l10n.actionRetry),
-            ),
-          ],
+      return NoWaveListNote(
+        message: localizedFailureOr(
+          l10n,
+          state.loadMoreFailure,
+          l10n.commentsLoadFailed,
         ),
+        actionLabel: l10n.actionRetry,
+        onAction: () =>
+            context.read<CommentBloc>().add(const MoreCommentsRequested()),
+        live: true,
       );
     }
     if (state.paginationUnavailable) {

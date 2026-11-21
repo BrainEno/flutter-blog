@@ -1,3 +1,5 @@
+import 'package:belog/core/design/components/no_wave_end_mark.dart';
+import 'package:belog/core/design/components/no_wave_list_note.dart';
 import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_entrance.dart';
@@ -6,7 +8,6 @@ import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/l10n/tag_l10n.dart';
-import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
 import 'package:belog/features/blog/presentation/tag_navigation.dart';
@@ -163,8 +164,6 @@ class _TagArticlesPageState extends State<TagArticlesPage> {
 
   Widget _list(TagArticlesSuccess state) {
     final l10n = context.l10n;
-    final hasFooter =
-        state.hasMore || state.loadingMore || state.loadMoreFailure != null;
     // The page is one list; its first screen sets in once, and a refresh or
     // next page holds still.
     return NoWaveEntranceScope(
@@ -177,28 +176,19 @@ class _TagArticlesPageState extends State<TagArticlesPage> {
           NoWaveSpacing.page,
           NoWaveSpacing.section,
         ),
-        itemCount: state.articles.length + (hasFooter ? 1 : 0),
+        // Always a footer: the next page, its failure, or - once the list
+        // is complete - the end mark, so the last card reads as last.
+        itemCount: state.articles.length + 1,
         itemBuilder: (context, index) {
           if (index == state.articles.length) {
             final failed = state.loadMoreFailure;
             if (failed != null) {
-              return Padding(
-                padding: const EdgeInsets.all(NoWaveSpacing.medium),
-                child: Center(
-                  child: Column(
-                    children: [
-                      Text(
-                        localizedFailure(l10n, failed),
-                        textAlign: TextAlign.center,
-                        style: NoWaveTypography.meta(context),
-                      ),
-                      const SizedBox(height: NoWaveSpacing.small),
-                      TextButton(
-                        onPressed: _loadMore,
-                        child: Text(l10n.actionRetry),
-                      ),
-                    ],
-                  ),
+              return _contentWidth(
+                NoWaveListNote(
+                  message: localizedFailure(l10n, failed),
+                  actionLabel: l10n.actionRetry,
+                  onAction: _loadMore,
+                  live: true,
                 ),
               );
             }
@@ -210,6 +200,16 @@ class _TagArticlesPageState extends State<TagArticlesPage> {
                     semanticLabel: l10n.loadingMoreArticles,
                     compact: true,
                   ),
+                ),
+              );
+            }
+            if (!state.hasMore) {
+              return _contentWidth(
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: NoWaveSpacing.large,
+                  ),
+                  child: NoWaveEndMark(label: l10n.feedNoMore),
                 ),
               );
             }

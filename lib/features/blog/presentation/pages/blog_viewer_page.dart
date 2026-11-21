@@ -1,3 +1,4 @@
+import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
@@ -212,17 +213,14 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
           return Scaffold(
             appBar: AppBar(),
             body: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(localizedFailure(context.l10n, state.failure)),
-                  const SizedBox(height: NoWaveSpacing.medium),
-                  TextButton(
-                    onPressed: () =>
-                        context.read<BlogViewerCubit>().load(widget.blogId),
-                    child: Text(context.l10n.actionRetry),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.all(NoWaveSpacing.page),
+                child: NoWaveStatus(
+                  message: localizedFailure(context.l10n, state.failure),
+                  actionLabel: context.l10n.actionRetry,
+                  onAction: () =>
+                      context.read<BlogViewerCubit>().load(widget.blogId),
+                ),
               ),
             ),
           );

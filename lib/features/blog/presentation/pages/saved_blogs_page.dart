@@ -1,3 +1,4 @@
+import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/design/design_tokens.dart';
@@ -133,18 +134,15 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
           } else if (state is UserLikedBlogsFailure) {
             final l10n = context.l10n;
             return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    l10n.loadErrorPrefix(localizedFailure(l10n, state.failure)),
+              child: Padding(
+                padding: const EdgeInsets.all(NoWaveSpacing.page),
+                child: NoWaveStatus(
+                  message: l10n.loadErrorPrefix(
+                    localizedFailure(l10n, state.failure),
                   ),
-                  const SizedBox(height: NoWaveSpacing.medium),
-                  TextButton(
-                    onPressed: _fetchSavedBlogs,
-                    child: Text(l10n.actionRetry),
-                  ),
-                ],
+                  actionLabel: l10n.actionRetry,
+                  onAction: _fetchSavedBlogs,
+                ),
               ),
             );
           }

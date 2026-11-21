@@ -225,6 +225,7 @@
 | `NoWaveActionRow` | `common/widgets/no_wave_action_row.dart` | 个人中心式的可点行动行；与文章卡片同样的回应（水波、橙色焦点/悬停洗色、行尾箭头前移），但不下沉 |
 | `NoWaveMasthead` | `common/widgets/no_wave_masthead.dart` | 双字体字标 |
 | `NoWaveAvatar` | `common/widgets/no_wave_avatar.dart` | 方形头像，失败回退中性图 |
+| `NoWaveListNote` | `design/components/no_wave_list_note.dart` | 列表半路停下时的页脚：下一页加载失败，或这个排序只能翻这么深。一行浅色 `metaLabel`（与「正在加载更多」同一个声音）+ 一个静默按钮；是 `NoWaveStatus` 的小号兄弟 |
 | `NoWaveLoadingLabel` | `design/components/no_wave_loading_label.dart` | 加载态：一道短横线 + 一句文案，没有转圈 |
 | `NoWaveSkeleton` / `...List` / `...Line` / `...Block` / `...Divider` | `design/components/no_wave_skeleton.dart` | 内容形状的占位（列表、行、块、行间细线） |
 | `BlogFeedSkeleton` | `features/blog/presentation/widgets/blog_feed_skeleton.dart` | feed 首帧与紧凑文章列表的静态占位；头条可关闭 |
@@ -446,6 +447,22 @@
   重试后又失败时会重新落一次，而不是看起来什么都没发生。只动绘制：句子和按钮从第一帧
   起就在原位、能点、能读（`alwaysIncludeSemantics`）。少动时不构建任何动画。
 - **读屏**：整体仍是 live region。
+- **整页失败也走它**：阅读页打不开、我的收藏、评论区整段加载失败，原来各自是一行正文
+  字 + 一个裸 `TextButton`，现在都是同一句衬线话和描边按钮。
+
+**列表翻到一半停下：`NoWaveListNote`**。下一页失败（首页、分类、标签、作者文章、作者
+目录、评论）和「热门只能翻这么深」原来是七份手写的 `Column`：有的正文字、有的 meta、
+有的 `bodySmall`，有的隔 8、有的不隔；首页的失败页脚甚至只有一个「重试」，不说为什么。
+现在都是：
+
+- 一行 `metaLabel`、`onSurfaceVariant`、居中，最宽 `statusMeasure`——和它替换掉的
+  「正在加载更多」是同一个音量，列表底部不会从耳语突然变成标题。
+- 下面隔 `xs` 一个 `NoWaveButton.quiet`：页脚不是这一页的主要行动，所以不加描边也不
+  填色，但点击区仍是 48pt。
+- 后台翻页失败是读者没看见发生的事，`live: true` 让读屏念出来；首页已经弹过提示条，
+  深度上限是一直在那里的说明，这两处不重复朗读。
+- 分类与标签列表翻完时也印 `NoWaveEndMark`（`feedNoMore`），和首页一样，最后一张卡片
+  读起来是「最后」。
 
 ### 文末与提示条
 

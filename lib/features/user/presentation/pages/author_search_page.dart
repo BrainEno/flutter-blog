@@ -1,3 +1,5 @@
+import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/design/components/no_wave_list_note.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
@@ -134,27 +136,20 @@ class _AuthorSearchPageState extends State<AuthorSearchPage> {
     }
     final failure = list.loadMoreFailure;
     if (failure != null) {
-      return Column(
-        children: [
-          const SizedBox(height: NoWaveSpacing.small),
-          Text(
-            localizedFailure(l10n, failure),
-            textAlign: TextAlign.center,
-            style: NoWaveTypography.meta(context),
-          ),
-          TextButton(
-            onPressed: () => context.read<AuthorSearchCubit>().loadMore(),
-            child: Text(l10n.actionRetry),
-          ),
-        ],
+      return NoWaveListNote(
+        message: localizedFailure(l10n, failure),
+        actionLabel: l10n.actionRetry,
+        onAction: () => context.read<AuthorSearchCubit>().loadMore(),
+        live: true,
       );
     }
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.small),
       child: Center(
-        child: TextButton(
+        child: NoWaveButton(
+          label: l10n.authorDirectoryLoadMore,
           onPressed: () => context.read<AuthorSearchCubit>().loadMore(),
-          child: Text(l10n.authorDirectoryLoadMore),
+          variant: NoWaveButtonVariant.quiet,
         ),
       ),
     );

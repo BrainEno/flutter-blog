@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_list_note.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/common/widgets/no_wave_section_heading.dart';
@@ -90,41 +91,19 @@ class _AuthorPageState extends State<AuthorPage> {
     if (state.depthLimited) {
       // The order ended, not the author's work: say where reading continues
       // instead of claiming there is nothing left.
-      return Padding(
-        padding: const EdgeInsets.all(NoWaveSpacing.medium),
-        child: Column(
-          children: [
-            Text(
-              l10n.feedPopularDepthLimit,
-              textAlign: TextAlign.center,
-              style: NoWaveTypography.meta(context),
-            ),
-            const SizedBox(height: NoWaveSpacing.small),
-            TextButton(
-              onPressed: () => _selectArticleOrder(BlogFeedKind.latest),
-              child: Text(l10n.feedPopularDepthAction),
-            ),
-          ],
-        ),
+      return NoWaveListNote(
+        message: l10n.feedPopularDepthLimit,
+        actionLabel: l10n.feedPopularDepthAction,
+        onAction: () => _selectArticleOrder(BlogFeedKind.latest),
       );
     }
     final loadMoreFailure = state.loadMoreFailure;
     if (loadMoreFailure != null) {
-      return Padding(
-        padding: const EdgeInsets.all(NoWaveSpacing.medium),
-        child: Column(
-          children: [
-            Text(
-              localizedFailure(l10n, loadMoreFailure),
-              textAlign: TextAlign.center,
-            ),
-            TextButton(
-              onPressed: () =>
-                  context.read<BlogByBloc>().add(BlogByMoreRequested()),
-              child: Text(l10n.actionRetry),
-            ),
-          ],
-        ),
+      return NoWaveListNote(
+        message: localizedFailure(l10n, loadMoreFailure),
+        actionLabel: l10n.actionRetry,
+        onAction: () => context.read<BlogByBloc>().add(BlogByMoreRequested()),
+        live: true,
       );
     }
     if (!state.hasMore) return const SizedBox.shrink();
