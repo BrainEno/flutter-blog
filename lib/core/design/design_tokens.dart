@@ -110,6 +110,10 @@ abstract final class NoWaveTypeScale {
   /// 16: the sentence of an empty state.
   static const emptyState = 16.0;
 
+  /// 16: what a comment says - a size under the article body, because a
+  /// reply is not the piece it answers. A reply to a reply is set at [label].
+  static const comment = 16.0;
+
   /// 17: the hint inside the cover drop zone.
   static const hint = 17.0;
 

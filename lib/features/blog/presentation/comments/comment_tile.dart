@@ -1,6 +1,7 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/design/design_tokens.dart';
+import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/format_date.dart';
@@ -115,9 +116,31 @@ class CommentTile extends StatelessWidget {
       (bloc) => bloc.state.deletingIds.contains(comment.id),
     );
 
-    final indent = depth == 0 ? 42.0 : 36.0; // design-token-ok: avatar column
-    return Padding(
-      padding: const EdgeInsets.only(bottom: NoWaveSpacing.medium),
+    // Replies hang from the parent's text column: their avatar starts where
+    // the parent's name and body do.
+    const indent = NoWaveSizes.listThumbnailSmall;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final quiet = NoWaveTypography.meta(
+      context,
+    ).copyWith(color: scheme.onSurfaceVariant);
+    // A thread opens on a hairline, like a row of any list here; its
+    // replies hang inside it without rules of their own, so the eye reads
+    // one conversation per band.
+    return Container(
+      decoration: depth == 0
+          ? BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: theme.dividerTheme.color ?? scheme.outlineVariant,
+                ),
+              ),
+            )
+          : null,
+      padding: EdgeInsets.only(
+        top: depth == 0 ? NoWaveSpacing.small : 0,
+        bottom: depth == 0 ? NoWaveSpacing.medium : NoWaveSpacing.xs,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -132,7 +155,10 @@ class CommentTile extends StatelessWidget {
                   onTap: () => onOpenAuthor(comment.authorId),
                   child: SizedBox.square(
                     dimension: NoWaveSizes.listThumbnailSmall,
-                    child: Center(
+                    // On the column edge, like every other first glyph on
+                    // the page; the rest of the 48pt target lies after it.
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
                       child: NoWaveAvatar(
                         name: authorName,
                         imageUrl: comment.authorAvatarUrl,
@@ -142,50 +168,61 @@ class CommentTile extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: NoWaveSpacing.small),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    InkWell(
-                      onTap: () => onOpenAuthor(comment.authorId),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(minHeight: 48),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            authorName,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ),
-                    ),
+                    // Name and date on one line beside the avatar: who and
+                    // when read as the comment's head, the body below it.
                     Wrap(
                       spacing: NoWaveSpacing.small,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
+                        InkWell(
+                          onTap: () => onOpenAuthor(comment.authorId),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              minHeight: NoWaveSizes.tapTarget,
+                            ),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: 1,
+                              child: Text(
+                                authorName,
+                                style: NoWaveTypography.meta(context).copyWith(
+                                  fontSize: NoWaveTypeScale.label,
+                                  fontWeight: FontWeight.w700,
+                                  color: scheme.onSurface,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                         Text(
                           formatDate(
                             Localizations.localeOf(context),
                             comment.createdAt,
                           ),
+                          style: quiet,
                         ),
                         if (comment.editedAt != null)
-                          Text(context.l10n.commentEdited),
+                          Text(context.l10n.commentEdited, style: quiet),
                       ],
                     ),
-                    const SizedBox(height: NoWaveSpacing.xs),
                     // Plain-text rendering (content version 0): no markup
                     // is interpreted, the body renders exactly as stored.
                     Text(
                       comment.content,
                       style: TextStyle(
-                        fontSize: depth == 0 ? 15 : 14,
-                        height: 1.4,
+                        fontSize: depth == 0
+                            ? NoWaveTypeScale.comment
+                            : NoWaveTypeScale.label,
+                        height: 1.65,
+                        color: scheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: NoWaveSpacing.xs),
                     Wrap(
-                      spacing: NoWaveSpacing.medium,
+                      spacing: NoWaveSpacing.small,
                       children: [
                         _ActionText(
                           label: replyRequiresLogin
@@ -230,7 +267,7 @@ class CommentTile extends StatelessWidget {
             Padding(
               // Limit indentation for deep (including legacy) threads.
               padding: depth < 2
-                  ? EdgeInsets.only(left: indent)
+                  ? const EdgeInsetsDirectional.only(start: indent)
                   : EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,6 +299,22 @@ class _ActionText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextButton(onPressed: onPressed, child: Text(label));
+    // Set like the date: the actions belong to the comment but should not
+    // compete with what it says. The first one starts on the body's edge;
+    // each keeps a full-height target.
+    final scheme = Theme.of(context).colorScheme;
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: scheme.onSurfaceVariant,
+        padding: const EdgeInsetsDirectional.only(end: NoWaveSpacing.small),
+        minimumSize: const Size(NoWaveSizes.tapTarget, NoWaveSizes.tapTarget),
+        alignment: AlignmentDirectional.centerStart,
+        textStyle: NoWaveTypography.meta(
+          context,
+        ).copyWith(fontWeight: FontWeight.w600),
+      ),
+      child: Text(label),
+    );
   }
 }

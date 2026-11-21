@@ -20,7 +20,18 @@ final class GetIsBlogLiked extends BlogLikedEvent {
 final class UserLikedBlogs extends BlogLikedEvent {
   final String userId;
 
-  UserLikedBlogs({required this.userId});
+  /// True when a page refreshes after its own toggle rather than because it
+  /// shows the saved list; only the latter follows changes made elsewhere.
+  final bool afterToggle;
+
+  UserLikedBlogs({required this.userId, this.afterToggle = false});
+}
+
+/// Another page saved or unsaved an article for this reader.
+final class SavedArticleChangedElsewhere extends BlogLikedEvent {
+  final SavedArticleChange change;
+
+  SavedArticleChangedElsewhere(this.change);
 }
 
 /// The signed-in account changed: the like state and saved list the bloc

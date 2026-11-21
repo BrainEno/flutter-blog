@@ -215,6 +215,9 @@ class Harness {
   final MockConnection connection = MockConnection();
   final MockAuthRepository authRepository = MockAuthRepository();
   final MockPasswordRecovery passwordRecovery = MockPasswordRecovery();
+
+  /// The app-wide save signal, shared by every page's like bloc.
+  final SavedArticlesChanges savedChanges = SavedArticlesChanges();
   late final ThemeBloc themeBloc;
   late final AppUserCubit appUserCubit;
   late final AuthBloc authBloc;
@@ -329,6 +332,7 @@ class Harness {
           toggleBlogLike: sl<ToggleLikeBlog>(),
           isBlogLiked: sl<IsBlogLiked>(),
           getUserLikedBlogs: sl<GetUserLikedBlogs>(),
+          savedChanges: savedChanges,
         ),
       )
       ..registerFactory(
@@ -437,6 +441,7 @@ class Harness {
     await authBloc.close();
     await appUserCubit.close();
     await themeBloc.close();
+    await savedChanges.dispose();
     await GetIt.instance.reset();
   }
 }
@@ -541,7 +546,8 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.textContaining('全文完', skipOffstage: false), findsOneWidget);
+    // Just "the end": the author is already introduced at the top.
+    expect(find.text('全文完', skipOffstage: false), findsOneWidget);
 
     // Switch to the search tab and back.
     await tester.tap(find.text('搜索'));

@@ -6,8 +6,11 @@ import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/usecase/get_user_liked_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/is_blog_liked.dart';
 import 'package:belog/features/blog/domain/usecase/toggle_like_blog.dart';
+import 'package:belog/features/blog/presentation/blocs/blog_liked/saved_articles_changes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+export 'package:belog/features/blog/presentation/blocs/blog_liked/saved_articles_changes.dart';
 
 part 'blog_liked_state.dart';
 part 'blog_liked_event.dart';
@@ -37,6 +40,10 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
   final NowaveSessionIdentity? _identity;
   StreamSubscription<void>? _identityChanges;
 
+  /// Saves and unsaves made on other pages; null in tests that do not care.
+  final SavedArticlesChanges? _savedChanges;
+  StreamSubscription<SavedArticleChange>? _savedChangesSubscription;
+
   /// The viewer the last event was issued for, and what the page is
   /// showing, so a switch can reload only what was actually on screen.
   String? _viewerId;
@@ -48,15 +55,21 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
     required IsBlogLiked isBlogLiked,
     required GetUserLikedBlogs getUserLikedBlogs,
     NowaveSessionIdentity? sessionIdentity,
+    SavedArticlesChanges? savedChanges,
   }) : _toggleBlogLike = toggleBlogLike,
        _isBlogLiked = isBlogLiked,
        _getUserLikedBlogs = getUserLikedBlogs,
        _identity = sessionIdentity,
+       _savedChanges = savedChanges,
        super(BlogLikedInitial()) {
     on<GetIsBlogLiked>(_onIsBlogLiked);
     on<ToggleBlogLike>(_onToggleBlogLike);
     on<UserLikedBlogs>(_onGetUserLikedBlogs);
     on<BlogLikedSessionChanged>(_onSessionChanged);
+    on<SavedArticleChangedElsewhere>(_onSavedElsewhere);
+    _savedChangesSubscription = savedChanges?.stream
+        .where((change) => !identical(change.source, this))
+        .listen((change) => add(SavedArticleChangedElsewhere(change)));
     final identity = sessionIdentity;
     _identityChanges = identity?.identityChanges.listen(
       (_) => add(BlogLikedSessionChanged(viewerId: identity.activeUserId)),
@@ -73,6 +86,7 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
   @override
   Future<void> close() async {
     await _identityChanges?.cancel();
+    await _savedChangesSubscription?.cancel();
     return super.close();
   }
 
@@ -166,8 +180,17 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
       );
     }
     if (anySuccess) {
+      // Tell the other pages - the saved tab above all - once per burst.
+      _savedChanges?.publish(
+        SavedArticleChange(
+          userId: event.userId,
+          blogId: event.blogId,
+          saved: serverLiked,
+          source: this,
+        ),
+      );
       // Refresh the collection list once per burst, not once per tap.
-      add(UserLikedBlogs(userId: event.userId));
+      add(UserLikedBlogs(userId: event.userId, afterToggle: true));
     }
   }
 
@@ -181,6 +204,33 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
         likedBlogs: updated,
       ),
     );
+  }
+
+  void _onSavedElsewhere(
+    SavedArticleChangedElsewhere event,
+    Emitter<BlogLikedState> emit,
+  ) {
+    final change = event.change;
+    // Another account's change is not this page's news.
+    if (_viewerId != null && _viewerId != change.userId) return;
+    if (_savedListRequested) {
+      // The saved list is on screen (or kept alive behind another tab):
+      // read it again rather than guessing where the article goes.
+      add(UserLikedBlogs(userId: change.userId));
+      return;
+    }
+    if (_likedBlogId == change.blogId) {
+      // The same article open in another tab follows the new state.
+      final updated = Map<String, bool>.from(state.likedBlogs);
+      updated[change.blogId] = change.saved;
+      emit(
+        GetBlogIsLikedSuccess(
+          blogId: change.blogId,
+          isLiked: change.saved,
+          likedBlogs: updated,
+        ),
+      );
+    }
   }
 
   void _onIsBlogLiked(
@@ -221,7 +271,7 @@ class BlogLikedBloc extends Bloc<BlogLikedEvent, BlogLikedState> {
   ) async {
     final generation = _generation;
     _viewerId = event.userId;
-    _savedListRequested = true;
+    if (!event.afterToggle) _savedListRequested = true;
     emit(UserLikedBlogsLoading(likedBlogs: state.likedBlogs));
     final res = await _getUserLikedBlogs(
       GetUserLikedBlogsParams(userId: event.userId),

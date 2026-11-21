@@ -135,14 +135,10 @@ class ViewerArticleBody extends StatelessWidget {
                       headingStyle: NoWaveTypography.title(context),
                     ),
                     const SizedBox(height: NoWaveSpacing.large),
-                    NoWaveEndMark(
-                      label: context.l10n.articleEnd,
-                      // An unknown author gets no byline rather than
-                      // "Words by Anonymous author".
-                      byline: (blog.posterName ?? '').trim().isEmpty
-                          ? null
-                          : context.l10n.articleEndByline(blog.posterName!),
-                    ),
+                    // Just "The end": the author is introduced at the top of
+                    // the piece, and naming them again here read as a
+                    // repeat.
+                    NoWaveEndMark(label: context.l10n.articleEnd),
                     const SizedBox(height: NoWaveSpacing.section),
                     if (getRelatedArticles case final related?)
                       RelatedArticlesSection(

@@ -121,6 +121,7 @@
 | `tabLabel` | 12 | 底栏图标下的词 |
 | `label` | 15 | 标签/分类 chip、页内切换词 |
 | `emptyState` | 16 | 空态说明句 |
+| `comment` | 16 | 评论正文（回复用 `label` 15），比正文小一号 |
 | `hint` | 17 | 封面上传框里的提示 |
 | `runningHead` | 17 | 阅读页书眉：标题滚走后，应用栏里重复的那行小标题 |
 | `sectionTitle` | 18 | 文章下方的分节标题（评论、相关阅读） |
@@ -243,7 +244,7 @@
 | `NoWaveColumn` | `design/components/no_wave_column.dart` | 页面的文字栏：手机上满宽，宽屏上居中一栏；子组件总是**撑满**这一栏（原来 7 份手写的 `Align` + `ConstrainedBox` 会让标题缩到字宽再居中）；`inset` 给栏外要对齐的东西（应用栏字标、页内切换） |
 | `NoWaveReturnToTop` | `design/components/no_wave_return_to_top.dart` | 再点当前底栏标签：屏幕上的列表回到顶部，栈不动；远处先跳近再走一屏；少动时直接跳 |
 | `NoWaveRunningHead` | `design/components/no_wave_running_head.dart` | 阅读页书眉：正文标题滚到应用栏下面后，栏里升起一行小标题并出现一道发丝线；点它回到开头 |
-| `NoWaveEndMark` | `design/components/no_wave_end_mark.dart` | 文末终止符：两段发丝线中间一枚墨色小方块，下面一行「全文完 · 作者名」；阅读页正文之后、相关阅读之前 |
+| `NoWaveEndMark` | `design/components/no_wave_end_mark.dart` | 文末终止符：两段发丝线中间一枚墨色小方块，下面一行「全文完」（作者已在文章顶部介绍，不再重复）；阅读页正文之后、相关阅读之前 |
 | `NoWaveSnackBarContent` | `core/utils/show_snackbar.dart` | 所有提示条的内容：只有那句话（反色纸条本身就是信号）；由 `showSnackBar` 统一使用 |
 | `NoWaveBusyMark` | `design/components/no_wave_busy_mark.dart` | 控件槽位里的忙碌态（按钮加载、行内恢复、发送图标）：图标大小的细线上走过一小段，颜色随控件；少动时停在中间 |
 | `NoWaveRefresh` | `design/components/no_wave_refresh.dart` | 下拉刷新：沿用系统手势，不画转圈；顶边一道线随手指从中间长出，过了松手点变橙，刷新时一段橙线沿顶边走过 |
@@ -252,6 +253,7 @@
 | `NoWavePressable` / `NoWavePressArrow` | `design/components/no_wave_pressable.dart` | 文章卡片与网格项的可点表面：保留 InkWell 的水波、焦点与语义，按下时下沉，行尾箭头向前迈一步 |
 | `NoWaveEntranceScope` / `NoWaveEntrance` | `design/components/no_wave_entrance.dart` | 新列表前一屏逐个上浮进场；同一位置只进场一次，换列表（`generation`）才重来 |
 | `NoWaveStampSwitcher` | `design/components/no_wave_stamp_switcher.dart` | 切换态图标的「盖章」：新状态放大落下再归位（阅读页收藏） |
+| `NoWaveSectionHead` | `design/components/no_wave_section_head.dart` | 文章下方的分节头：墨线、标题上下等距、可选右对齐数字（相关阅读、评论） |
 | `NoWaveCoverPlate` | `design/cover/no_wave_cover_plate.dart` | 四张编辑式默认封面，按文章身份稳定选一张 |
 | `ArticleCover` | `features/blog/presentation/widgets/article_cover.dart` | 真封面 / 加载 / 失败三种状态共用同一张版 |
 | `ArticleCategoryLabel` | `features/blog/presentation/widgets/article_category_label.dart` | 文章所属的分类（填充色块，与服务端给的名称；可点进分类列表） |
@@ -494,12 +496,20 @@
 
 ### 文末与提示条
 
+- **`NoWaveSectionHead`**：文章下方的分节头（相关阅读、评论）。整栏一道 2pt 墨色线，
+  标题 `sectionTitle`（18）上下各留 `medium`（16），所以上面的墨线和下面第一行的发丝线
+  到标题的距离相等；可选的数字（「已加载 3 条」）用 `meta` 次要色、右对齐、和标题同一
+  基线，不再紧贴在标题后面。列表行用发丝线，分节头用墨线，层级靠线的轻重区分。
+  评论区里每个话题一行发丝线，回复缩进在里面不另加线；名字和时间同一行，正文
+  `comment`（16）/回复 `label`（15），「回复 / 编辑 / 删除」用 `meta` 次要色，第一个
+  贴齐正文左边；发送按钮是输入线末端一个 48pt 的方形描边按钮，不再是整块主色按钮。
+
 - **`NoWaveEndMark`**：手机上正文直接接「相关阅读」和评论，读者分不清最后一段是结束
   还是停顿。杂志的做法是在最后一行后面印一枚实心小方块。这里把它做成一个分节符：
   两段与 `Divider` 同色同粗的发丝线，中间一枚 `endMark`（8）见方的**墨色**方块——印刷
   里的终止符本来就是黑的，结构性记号一律用墨色。下面一行 `metaLabel` 居中：
-  `articleEnd`（全文完 / The end），作者已知时接 `articleEndByline`（中文直接是作者名，
-  英文 Words by …）；匿名作者不写署名，而不是写「匿名作者」。线和方块不读，那一行
+  `articleEnd`（全文完 / The end）。文章页不再接署名——作者在文章顶部已经介绍过，
+  文末再写一遍是重复（组件仍保留可选的 `byline`）。线和方块不读，那一行
   照常朗读，读屏用户和看屏幕的人同样知道文章在哪里结束。
   首页 feed 与搜索结果翻到底时也印这一枚（`feedNoMore` / `feedCachedNoMore` /
   `searchNoMore` / `searchLimitReached` 作为那一行），最后一张卡片读起来是「最后」，
