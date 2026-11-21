@@ -69,6 +69,18 @@ void main() {
       expect(gb, contains('14:05:09'));
     });
 
+    test('a dateline is month, day and weekday, without the year', () {
+      final date = DateTime(2026, 11, 19, 9);
+      final zh = formatDateline(const Locale('zh'), date);
+      final en = formatDateline(const Locale('en'), date);
+      expect(zh, contains('11月19日'));
+      expect(zh, contains('周四'));
+      expect(en, contains('Nov 19'));
+      expect(en, contains('Thu'));
+      expect(zh.contains('2026'), isFalse);
+      expect(en.contains('2026'), isFalse);
+    });
+
     test('the date-only form stays the default', () {
       final instant = DateTime(2026, 10, 30, 14, 5, 9);
       expect(

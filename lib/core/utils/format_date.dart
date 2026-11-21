@@ -27,6 +27,11 @@ String formatDate(Locale locale, DateTime date, {bool withTime = false}) {
 String formatWeekdayShort(Locale locale, DateTime date) =>
     DateFormat.E(locale.toString()).format(date.toLocal());
 
+/// The locale's month, day and weekday of [date] in local time, without the
+/// year ("Thu, Nov 19", "11月19日周四"): a dateline, read as "today".
+String formatDateline(Locale locale, DateTime date) =>
+    DateFormat.MMMEd(locale.toString()).format(date.toLocal());
+
 /// Formats a count according to the resolved locale, including grouping.
 String formatNumber(Locale locale, int number) =>
     NumberFormat.decimalPattern(locale.toString()).format(number);

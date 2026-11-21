@@ -4,53 +4,100 @@ import 'package:flutter/material.dart';
 
 /// An editorial heading that wraps rather than clipping at large text sizes.
 ///
+/// The title and its [companion] (the italic gloss - "最新 *Latest*") are one
+/// paragraph: they share a baseline and wrap as words do. They used to be two
+/// boxes in a `Wrap` aligned by their bottoms, and a CJK serif and a Latin
+/// italic have different descents, so the gloss sat a few points off the
+/// title's line. The gloss is set in the muted colour, so the title is read
+/// first and the gloss as an aside.
+///
 /// An optional [eyebrow] sits above it as a [NoWaveEyebrow]: the small
 /// tracked line a magazine runs over a section title to say what kind of
-/// section it is.
+/// section it is. An optional [aside] shares that line at its far end - the
+/// home feed puts the day's date there, like a newspaper's dateline - and
+/// drops under the eyebrow when the two do not fit side by side.
 class NoWaveSectionHeading extends StatelessWidget {
   const NoWaveSectionHeading({
     super.key,
     required this.title,
     this.companion,
     this.eyebrow,
+    this.aside,
   });
 
   final String title;
   final String? companion;
   final String? eyebrow;
 
+  /// A short note at the end of the eyebrow line (a dateline).
+  final String? aside;
+
   @override
   Widget build(BuildContext context) {
-    final titleStyle = NoWaveTypography.title(context, size: 36);
+    final scheme = Theme.of(context).colorScheme;
+    final titleStyle = NoWaveTypography.title(
+      context,
+      size: NoWaveTypeScale.heading,
+    ).copyWith(height: _leading, color: scheme.onSurface);
     final eyebrow = this.eyebrow;
+    final aside = this.aside;
+    final companion = this.companion;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (eyebrow != null) ...[
-          NoWaveEyebrow(eyebrow),
+        if (eyebrow != null || aside != null) ...[
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.end,
+            spacing: NoWaveSpacing.medium,
+            runSpacing: NoWaveSpacing.xs,
+            children: [
+              if (eyebrow != null) NoWaveEyebrow(eyebrow),
+              if (aside != null)
+                Text(
+                  aside,
+                  style:
+                      NoWaveTypography.metaLabel(
+                        context,
+                        size: NoWaveTypeScale.eyebrow,
+                        color: scheme.onSurfaceVariant,
+                      ).copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                ),
+            ],
+          ),
           const SizedBox(height: NoWaveSpacing.small),
         ],
         Semantics(
           header: true,
-          child: Wrap(
-            spacing: NoWaveSpacing.small,
-            crossAxisAlignment: WrapCrossAlignment.end,
-            children: [
-              Text(title, style: titleStyle),
-              if (companion != null)
-                Text(
-                  companion!,
-                  style: titleStyle.copyWith(
-                    fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.w400,
+          child: companion == null
+              ? Text(title, style: titleStyle)
+              : Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: title),
+                      const TextSpan(text: ' '),
+                      TextSpan(
+                        text: companion,
+                        style: TextStyle(
+                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w400,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
+                  style: titleStyle,
                 ),
-            ],
-          ),
         ),
       ],
     );
   }
+
+  /// Line height of the title: tight, because a display line with the
+  /// body's leading looks double-spaced when it wraps.
+  static const _leading = 1.15;
 }
 
 /// The small line above a section heading: the words alone, small, muted

@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_column.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:belog/core/design/components/no_wave_list_note.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
@@ -69,13 +70,7 @@ class _AuthorSearchPageState extends State<AuthorSearchPage> {
     _onChanged('');
   }
 
-  Widget _contentWidth(Widget child) => Align(
-    alignment: Alignment.topCenter,
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: NoWaveSizes.contentColumn),
-      child: child,
-    ),
-  );
+  Widget _contentWidth(Widget child) => NoWaveColumn(child: child);
 
   Widget _state(Widget child) => SliverFillRemaining(
     hasScrollBody: false,

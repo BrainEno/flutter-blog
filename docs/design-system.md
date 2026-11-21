@@ -72,6 +72,7 @@
 | `NoWaveSizes.tapTarget` | 48 | 最小点击区域 |
 | `NoWaveSizes.primaryAction` | 52 | 整宽主按钮高度 |
 | `NoWaveSizes.row` | 64 | 可点列表行最小高度 |
+| `NoWaveSizes.tabBar` | 64 | 底栏高度（不含系统手势区）：图标加一个词，每格都远超 48 的点击区 |
 | `NoWaveSizes.coverAspect` | 4/3 | 网格项里的封面比例 |
 | `NoWaveSizes.coverAspectWide` | 16/10 | feed 头条卡片与阅读页头的封面比例 |
 | `NoWaveSizes.maxReadingWidth` | 720 | 平板上的正文最大宽度 |
@@ -116,6 +117,7 @@
 | `eyebrow` | 11 | 章节标题上方的小标题：小、字距拉开，也是全应用唯一的全大写文字 |
 | `codeBlock` | 13 | 等宽块：代码块、诊断报告 |
 | `codeInline` | 14 | 正文里的行内代码 |
+| `tabLabel` | 12 | 底栏图标下的词 |
 | `label` | 15 | 标签/分类 chip、页内切换词 |
 | `emptyState` | 16 | 空态说明句 |
 | `hint` | 17 | 封面上传框里的提示 |
@@ -123,6 +125,7 @@
 | `sectionTitle` | 18 | 文章下方的分节标题（评论、相关阅读） |
 | `dialogTitle` | 24 | 对话框标题（衬线）：问读者的一句话是编辑文字，不是系统警告 |
 | `authTitle` | 32 | 登录 / 注册页标题 |
+| `heading` | 36 | 页面大标题（`NoWaveSectionHeading`）：列表页上最大的字 |
 | `figure` | 40 | 摘要里数出来的数字（阅读历史的三个总数）；展示字体、等宽数字 |
 
 ### 线与遮罩的不透明度 `NoWaveOpacity`
@@ -235,6 +238,8 @@
 | `BlogFeedSkeleton` | `features/blog/presentation/widgets/blog_feed_skeleton.dart` | feed 首帧与紧凑文章列表的静态占位；头条可关闭 |
 | `BlogGridSkeleton` | `features/blog/presentation/widgets/blog_grid_skeleton.dart` | 网格首帧：与 `blogGridDelegate` 同列数、同高，封面沿用 4/3 |
 | `NoWaveFadeTransition` | `design/components/no_wave_fade_transition.dart` | 标签切换的淡入；少动时不构建转场 |
+| `NoWaveTabBar` / `NoWaveTabDestination` | `design/components/no_wave_tab_bar.dart` | 底栏：挂在上沿发丝线上，选中格在那条线上压一道与词同宽的墨线，换格时像一笔划过去；图标盖章成实心；少动时直接落位 |
+| `NoWaveColumn` | `design/components/no_wave_column.dart` | 页面的文字栏：手机上满宽，宽屏上居中一栏；子组件总是**撑满**这一栏（原来 7 份手写的 `Align` + `ConstrainedBox` 会让标题缩到字宽再居中）；`inset` 给栏外要对齐的东西（应用栏字标、页内切换） |
 | `NoWaveReturnToTop` | `design/components/no_wave_return_to_top.dart` | 再点当前底栏标签：屏幕上的列表回到顶部，栈不动；远处先跳近再走一屏；少动时直接跳 |
 | `NoWaveRunningHead` | `design/components/no_wave_running_head.dart` | 阅读页书眉：正文标题滚到应用栏下面后，栏里升起一行小标题并出现一道发丝线；点它回到开头 |
 | `NoWaveEndMark` | `design/components/no_wave_end_mark.dart` | 文末终止符：两段发丝线中间一枚墨色小方块，下面一行「全文完 · 作者名」；阅读页正文之后、相关阅读之前 |
@@ -336,10 +341,16 @@
 
 「你在这里」由三处回答：底栏、页内的一排词（首页 feed、作者页）和阅读页的进度线。
 
-- **底栏**：主题关掉了 `NavigationBar` 的胶囊指示器（胶囊是本系统不用的形状）。选中
-  的标签是墨色实心图标 + w700 墨色字，其余是浅色描边图标；上沿一道与 `Divider` 同色的
-  发丝线把栏和页面分开。原来上沿还有一道会滑动的橙色短线（`NoWaveTabIndicator`），
-  和图标、文字说的是同一件事，又是一道悬在半空的线，已删除。
+- **底栏（`NoWaveTabBar`）**：页内那排词的倒影。页内的词站在发丝线上、选中词下面压
+  一道墨线；底栏从上沿一道发丝线上**挂下来**，选中的那一格在这条线**上**压一道与它的
+  词同宽的 `accentRule` 墨线。换标签时墨线和页内一样像一笔划过去（同一个
+  `NoWaveSlidingTabs.ruleAt`：前进方向的边先走、另一条边晚 `strokeLag`），所以两层导航
+  只有一种「你在这里」的动作。选中的图标从描边「盖章」成实心（`NoWaveStampSwitcher`），
+  词变墨色 w600，其余是浅色描边；按下时整格微微下沉。高 `tabBar`（64），词 `tabLabel`
+  （12），字号最多随系统放大到 1.6 倍。每格是互斥组里的按钮，读屏读那个词；再点当前格
+  照旧回到顶部。之前用的是 Material `NavigationBar` 关掉胶囊——只剩图标换实心，和任何
+  一个默认应用没有区别；更早那道悬在半空的橙色短线也不会回来：这道线是墨色的，压在
+  栏的边上，不是另画的一道。
 - **`NoWaveReadingProgress`**：手机上没有滚动条也没有页码，长文读到哪儿只能靠
   猜。它包在阅读页正文外，只跟最外层纵向滚动（notification depth 0，横向代码块不
   影响），内容变长（图片加载完）时也会缩回真实比例；不滚动的页面算「没读」，不
@@ -400,6 +411,15 @@
   被当成一句话；中文没有大小写，保持原字，字距收到 8%，足以和正文区分，又不会把词
   拆成一个个孤立的字；
 - 读屏读原文（`semanticsLabel`），不读大写，英文不会被逐字母拼读；
+- **大标题**（`heading`，36，行高 1.15）和后面的斜体注（「最新 *Latest*」）是同一段文字：
+  共用基线、像词一样换行。原来是 `Wrap` 里按底边对齐的两个盒子，中文衬线和拉丁斜体的
+  下伸部不同，注总是比标题偏几个点；注现在用浅色，先读到标题；
+- **日期**（`aside`）：首页把当天的「月 日 星期」放在小标题这一行的另一端，像报纸的
+  报头日期——feed 读起来是「今天这一期」，而不是一条没有尽头的流；放不下时落到小标题
+  下面一行。格式来自 `formatDateline`（仍是唯一构造 `DateFormat` 的文件）；
+- **对齐**：标题块曾经被 `Align` 缩到字宽后**居中**，小标题比标题长时，整块看起来像
+  居中又不像。现在由 `NoWaveColumn` 撑满文字栏，宽屏上应用栏字标（`titleSpacing`）、
+  页内切换的第一个词、小标题、大标题和卡片都从同一条边起排；
 - 长句在 2× 字号下换行，不截断。
 
 用在：首页 feed（`feedEyebrow`）、搜索（`searchEyebrow`）、离线书库

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_column.dart';
 import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
@@ -38,13 +39,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
     context.read<CategoriesCubit>().load();
   }
 
-  Widget _contentWidth(Widget child) => Align(
-    alignment: Alignment.topCenter,
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: NoWaveSizes.contentColumn),
-      child: child,
-    ),
-  );
+  Widget _contentWidth(Widget child) => NoWaveColumn(child: child);
 
   @override
   Widget build(BuildContext context) {
