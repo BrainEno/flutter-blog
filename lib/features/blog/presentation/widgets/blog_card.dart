@@ -20,7 +20,12 @@ class BlogCard extends StatelessWidget {
     this.index,
     this.labelAuthor = false,
     this.onTagTap,
+    this.quiet = false,
   });
+
+  /// A row without its rule, its tags set as words: for a short list laid on
+  /// a surface (related reading), where the space between rows is enough.
+  final bool quiet;
 
   final Blog blog;
   final VoidCallback onTap;
@@ -54,6 +59,7 @@ class BlogCard extends StatelessWidget {
         for (final tag in blog.tags)
           ArticleTagLabel(
             tag: tag,
+            quiet: quiet,
             onTap: onTagTap == null ? null : () => onTagTap!(tag),
           ),
         Text(
@@ -103,9 +109,11 @@ class BlogCard extends StatelessWidget {
   Widget _row(BuildContext context, String author) {
     final foreground = Theme.of(context).colorScheme.onSurface;
     return Container(
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: foreground.withAlpha(130))),
-      ),
+      decoration: quiet
+          ? null
+          : BoxDecoration(
+              border: Border(top: BorderSide(color: foreground.withAlpha(130))),
+            ),
       padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.medium),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

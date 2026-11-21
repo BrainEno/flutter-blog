@@ -85,7 +85,7 @@ void main() {
     handle.dispose();
   });
 
-  testWidgets('the article header draws its categories above its tags', (
+  testWidgets('the article kicker reads categories first, then tags', (
     tester,
   ) async {
     var opened = <String>[];
@@ -108,10 +108,32 @@ void main() {
     expect(find.byType(ArticleCategoryLabel), findsNWidgets(2));
     expect(find.byType(ArticleTagLabel), findsOneWidget);
     // A category is editorial structure and a tag is the author's word; they
-    // are different widgets on purpose, and both come before the title.
+    // are different widgets on purpose. Both are set as words in one kicker
+    // line before the title - categories first, in heavier ink - with no
+    // box around either.
+    final poem = tester.getTopLeft(find.text('诗'));
+    final tag = tester.getTopLeft(find.text('诗歌'));
+    expect(tag.dy, closeTo(poem.dy, 0.5));
+    expect(tag.dx, greaterThan(poem.dx));
     expect(
-      tester.getTopLeft(find.byType(ArticleTagLabel)).dy,
-      greaterThan(tester.getTopLeft(find.text('诗')).dy),
+      tester.getTopLeft(find.text('标题')).dy,
+      greaterThan(tester.getBottomLeft(find.text('诗')).dy),
+    );
+    expect(
+      tester.widget<Text>(find.text('诗')).style?.fontWeight,
+      FontWeight.w700,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(ArticleReaderHeader),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Container &&
+              widget.decoration is BoxDecoration &&
+              (widget.decoration! as BoxDecoration).border != null,
+        ),
+      ),
+      findsNothing,
     );
 
     await tester.tap(find.text('随笔'));

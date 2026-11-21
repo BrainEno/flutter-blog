@@ -39,7 +39,7 @@ class BlogGridSkeleton extends StatelessWidget {
       child: GridView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: padding,
-        gridDelegate: blogGridDelegate(context),
+        gridDelegate: blogGridDelegate(context, gutter: padding?.left ?? 0),
         itemCount: tiles,
         itemBuilder: (context, index) => const _GridTileSkeleton(),
       ),

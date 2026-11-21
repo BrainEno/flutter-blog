@@ -1,4 +1,5 @@
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
@@ -26,7 +27,12 @@ class ArticleReaderHeader extends StatelessWidget {
     this.onCategoryTap,
     this.titleHighlight,
     this.titleKey,
+    this.bleed = NoWaveSpacing.page,
   });
+
+  /// How far the cover reaches past the text column on each side - the page
+  /// gutter, so the picture runs to the screen's edges on a phone.
+  final double bleed;
 
   final Blog blog;
   final VoidCallback onAuthorTap;
@@ -51,48 +57,68 @@ class ArticleReaderHeader extends StatelessWidget {
       for (final category in blog.categories)
         if (category.slug.isNotEmpty && category.name.isNotEmpty) category,
     ];
+    final quiet = NoWaveTypography.meta(
+      context,
+    ).copyWith(color: scheme.onSurfaceVariant);
+    final titleStyle = NoWaveTypography.title(
+      context,
+      size: NoWaveTypeScale.articleTitle,
+    ).copyWith(height: 1.15);
+    // Structured image blocks render in their original body positions.
+    // Avoid repeating the first one as an invented cover.
+    final showCover =
+        blog.document?.supported != true || blog.document?.hasImages != true;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (categories.isNotEmpty) ...[
+        // The piece opens on its picture, edge to edge, the way a magazine
+        // feature does; type follows on the paper below it. No rules: the
+        // picture, the size of the title and the space between them carry
+        // the order.
+        if (showCover) ...[
+          _Bleed(
+            gutter: bleed,
+            child: ArticleCover(
+              title: blog.title,
+              imageUrl: blog.imageUrl,
+              seed: blog.id,
+            ),
+          ),
+          const SizedBox(height: NoWaveSpacing.medium),
+        ] else
+          const SizedBox(height: NoWaveSpacing.medium),
+        // The kicker: what kind of piece this is, in one quiet line.
+        if (categories.isNotEmpty || blog.tags.isNotEmpty) ...[
           Wrap(
-            spacing: NoWaveSpacing.small,
-            runSpacing: NoWaveSpacing.small,
+            spacing: NoWaveSpacing.medium,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               for (final category in categories)
                 ArticleCategoryLabel(
                   category: category,
+                  quiet: true,
                   onTap: onCategoryTap == null
                       ? null
                       : () => onCategoryTap!(category),
                 ),
-            ],
-          ),
-          const SizedBox(height: NoWaveSpacing.medium),
-        ],
-        if (blog.tags.isNotEmpty) ...[
-          Wrap(
-            spacing: NoWaveSpacing.small,
-            runSpacing: NoWaveSpacing.small,
-            children: [
               for (final tag in blog.tags)
                 ArticleTagLabel(
                   tag: tag,
+                  quiet: true,
                   onTap: onTagTap == null ? null : () => onTagTap!(tag),
                 ),
             ],
           ),
-          const SizedBox(height: NoWaveSpacing.medium),
+          // The kicker's words sit in 48pt targets, which already put
+          // air between them and the title.
+          const SizedBox(height: NoWaveSpacing.xs),
         ],
         KeyedSubtree(
           key: titleKey,
           child: Semantics(
             header: true,
             child: titleHighlight == null
-                ? Text(
-                    blog.title,
-                    style: NoWaveTypography.title(context, size: 36),
-                  )
+                ? Text(blog.title, style: titleStyle)
                 : ValueListenableBuilder<ReadAloudHighlight?>(
                     valueListenable: titleHighlight!,
                     builder: (context, highlight, child) => Text.rich(
@@ -101,13 +127,13 @@ class ArticleReaderHeader extends StatelessWidget {
                         range: SpeechTextRange(0, blog.title.length),
                         highlight: highlight,
                       ),
-                      style: NoWaveTypography.title(context, size: 36),
+                      style: titleStyle,
                     ),
                   ),
           ),
         ),
-        const SizedBox(height: NoWaveSpacing.large),
-        Divider(height: 1, color: scheme.onSurface.withAlpha(130)),
+        const SizedBox(height: NoWaveSpacing.medium),
+        // The byline: who, and when. The whole line opens the author.
         Semantics(
           button: true,
           label: l10n.authorPageSemantic(name),
@@ -118,49 +144,47 @@ class ArticleReaderHeader extends StatelessWidget {
               focusColor: AppPalette.orange.withAlpha(55),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                  vertical: NoWaveSpacing.medium,
+                  vertical: NoWaveSpacing.small,
                 ),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     NoWaveAvatar(
                       name: name,
                       imageUrl: blog.posterAvatar ?? '',
-                      size: 48,
+                      size: NoWaveSizes.bylineAvatar,
                     ),
-                    const SizedBox(width: NoWaveSpacing.small),
+                    const SizedBox(width: NoWaveSpacing.medium),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             name,
-                            style: Theme.of(context).textTheme.titleMedium,
+                            style: NoWaveTypography.meta(context).copyWith(
+                              fontSize: NoWaveTypeScale.label,
+                              fontWeight: FontWeight.w700,
+                              color: scheme.onSurface,
+                            ),
                           ),
-                          const SizedBox(height: NoWaveSpacing.xs),
                           Wrap(
                             spacing: NoWaveSpacing.small,
-                            runSpacing: NoWaveSpacing.xs,
                             children: [
                               Text(
                                 formatDate(
                                   Localizations.localeOf(context),
                                   blog.updatedAt,
                                 ),
-                                style: NoWaveTypography.meta(context),
+                                style: quiet,
                               ),
+                              ExcludeSemantics(child: Text('·', style: quiet)),
                               Text(
                                 calculateReadingTime(l10n, blog.content),
-                                style: NoWaveTypography.meta(context),
+                                style: quiet,
                               ),
                             ],
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: NoWaveSpacing.small),
-                    const ExcludeSemantics(
-                      child: Icon(Icons.arrow_forward, size: 20),
                     ),
                   ],
                 ),
@@ -168,18 +192,31 @@ class ArticleReaderHeader extends StatelessWidget {
             ),
           ),
         ),
-        // Structured image blocks render in their original body positions.
-        // Avoid repeating the first one as an invented cover.
-        if (blog.document?.supported != true ||
-            blog.document?.hasImages != true) ...[
-          const SizedBox(height: NoWaveSpacing.small),
-          ArticleCover(
-            title: blog.title,
-            imageUrl: blog.imageUrl,
-            seed: blog.id,
-          ),
-        ],
       ],
+    );
+  }
+}
+
+/// Lets [child] run [gutter] past the column on both sides, while taking
+/// only the column's width in the layout.
+class _Bleed extends StatelessWidget {
+  const _Bleed({required this.gutter, required this.child});
+
+  final double gutter;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth + 2 * gutter;
+        return OverflowBox(
+          minWidth: width,
+          maxWidth: width,
+          fit: OverflowBoxFit.deferToChild,
+          child: child,
+        );
+      },
     );
   }
 }

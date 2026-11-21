@@ -326,7 +326,8 @@
       }
     }
   },
-  "savedTitle": "Saved articles",
+  "savedHeadingCompanion": "Shelf",
+  "savedEyebrow": "Pieces kept for a slower read",
   "savedEmpty": "No saved articles yet",
   "loadErrorPrefix": "Failed to load: {error}",
   "@loadErrorPrefix": {

@@ -119,27 +119,17 @@ class CommentTile extends StatelessWidget {
     // Replies hang from the parent's text column: their avatar starts where
     // the parent's name and body do.
     const indent = NoWaveSizes.listThumbnailSmall;
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = Theme.of(context).colorScheme;
     final quiet = NoWaveTypography.meta(
       context,
     ).copyWith(color: scheme.onSurfaceVariant);
-    // A thread opens on a hairline, like a row of any list here; its
-    // replies hang inside it without rules of their own, so the eye reads
-    // one conversation per band.
-    return Container(
-      decoration: depth == 0
-          ? BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: theme.dividerTheme.color ?? scheme.outlineVariant,
-                ),
-              ),
-            )
-          : null,
+    // Threads are told apart by space, not rules: each opens on its
+    // author's face and name, and its replies hang from its text column,
+    // so the eye reads one conversation per group.
+    return Padding(
       padding: EdgeInsets.only(
         top: depth == 0 ? NoWaveSpacing.small : 0,
-        bottom: depth == 0 ? NoWaveSpacing.medium : NoWaveSpacing.xs,
+        bottom: depth == 0 ? NoWaveSpacing.large : NoWaveSpacing.xs,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

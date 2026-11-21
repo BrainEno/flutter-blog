@@ -1,0 +1,49 @@
+# Temporary review aid: renders tool/screens/screens_test.dart to PNG and
+# commits the images back to the PR branch. Removed before merge.
+name: screens (temporary)
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  screens:
+    if: github.head_ref == 'arena/c2f37a8c-flutter-blog'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: "3.47.8"
+          cache: true
+          pub-cache: true
+      - run: flutter pub get
+      - name: Fonts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/screens_fonts
+          curl -fsSL -o build/screens_fonts/NotoSansSC.otf https://github.com/notofonts/noto-cjk/raw/main/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf
+          curl -fsSL -o build/screens_fonts/NotoSerifSC.otf https://github.com/notofonts/noto-cjk/raw/main/Serif/SubsetOTF/SC/NotoSerifSC-Regular.otf
+          root="$(dirname "$(dirname "$(command -v flutter)")")"
+          cp "$root/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf" build/screens_fonts/
+      - name: Render
+        shell: bash
+        run: |
+          rm -rf tool/screens/out
+          flutter test tool/screens/screens_test.dart --update-goldens --reporter expanded 2>&1 | tail -80 || true
+          ls -la tool/screens/out || true
+      - name: Commit images
+        shell: bash
+        run: |
+          git config user.name "screens-bot"
+          git config user.email "screens-bot@users.noreply.github.com"
+          git add -f tool/screens/out || true
+          git commit -m "chore: screens [skip ci]" || exit 0
+          git push origin HEAD:${{ github.head_ref }}

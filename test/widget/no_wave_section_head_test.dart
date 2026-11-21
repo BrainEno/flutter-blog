@@ -20,8 +20,6 @@ Widget _head({String? trailing, double textScale = 1, double width = 360}) =>
               child: Column(
                 children: [
                   NoWaveSectionHead(title: 'Comments', trailing: trailing),
-                  // The first row under it, ruled like every list row.
-                  const Divider(height: NoWaveStroke.hairline),
                 ],
               ),
             ),
@@ -31,33 +29,23 @@ Widget _head({String? trailing, double textScale = 1, double width = 360}) =>
     );
 
 void main() {
-  testWidgets('the title sits midway between the rule over it and the row '
-      'under it', (tester) async {
+  testWidgets('no rule: the title is told from the rows by size and space', (
+    tester,
+  ) async {
     await tester.pumpWidget(_head());
 
-    final head = tester.getRect(
-      find.byKey(const ValueKey('no-wave-section-head')),
-    );
-    final title = tester.getRect(find.text('Comments'));
-    final above = title.top - (head.top + NoWaveStroke.focus);
-    final below = head.bottom - title.bottom;
-    expect(above, closeTo(NoWaveSpacing.medium, 0.5));
-    expect(below, closeTo(above, 0.5));
-
-    final border =
-        (tester
-                    .widget<DecoratedBox>(
-                      find.byKey(const ValueKey('no-wave-section-head')),
-                    )
-                    .decoration
-                as BoxDecoration)
-            .border!
-            .top;
-    expect(border.width, NoWaveStroke.focus);
+    final headFinder = find.byKey(const ValueKey('no-wave-section-head'));
     expect(
-      border.color,
-      AppTheme.lightThemeMode.colorScheme.onSurface,
-      reason: 'structure is ink',
+      find.descendant(of: headFinder, matching: find.byType(DecoratedBox)),
+      findsNothing,
+    );
+    final head = tester.getRect(headFinder);
+    final title = tester.getRect(find.text('Comments'));
+    expect(title.top, closeTo(head.top, 0.5));
+    expect(head.bottom - title.bottom, closeTo(NoWaveSpacing.medium, 0.5));
+    expect(
+      tester.widget<Text>(find.text('Comments')).style?.fontSize,
+      NoWaveTypeScale.dialogTitle,
     );
   });
 

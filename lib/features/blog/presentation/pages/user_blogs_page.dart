@@ -372,7 +372,10 @@ class _UserBlogsPageState extends State<UserBlogsPage>
           SliverPadding(
             padding: const EdgeInsets.all(NoWaveSpacing.page),
             sliver: SliverGrid.builder(
-              gridDelegate: blogGridDelegate(context),
+              gridDelegate: blogGridDelegate(
+                context,
+                gutter: NoWaveSpacing.page,
+              ),
               itemCount: blogs.length,
               itemBuilder: (context, index) {
                 final blog = blogs[index];

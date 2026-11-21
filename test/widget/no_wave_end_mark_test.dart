@@ -6,24 +6,28 @@ import 'package:flutter_test/flutter_test.dart';
 
 const _square = ValueKey('no-wave-end-mark');
 
-Widget _mark({String? byline, double textScale = 1, double width = 400}) =>
-    MaterialApp(
-      theme: AppTheme.lightThemeMode,
-      home: MediaQuery(
-        data: MediaQueryData(
-          size: Size(width, 800),
-          textScaler: TextScaler.linear(textScale),
-        ),
-        child: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: width,
-              child: NoWaveEndMark(label: 'The end', byline: byline),
-            ),
-          ),
+Widget _mark({
+  String? byline,
+  double textScale = 1,
+  double width = 400,
+  bool ruled = true,
+}) => MaterialApp(
+  theme: AppTheme.lightThemeMode,
+  home: MediaQuery(
+    data: MediaQueryData(
+      size: Size(width, 800),
+      textScaler: TextScaler.linear(textScale),
+    ),
+    child: Scaffold(
+      body: Center(
+        child: SizedBox(
+          width: width,
+          child: NoWaveEndMark(label: 'The end', byline: byline, ruled: ruled),
         ),
       ),
-    );
+    ),
+  ),
+);
 
 void main() {
   testWidgets('an ink square centred between two hairlines', (tester) async {
@@ -85,5 +89,28 @@ void main() {
       ),
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('unruled, the square stands alone and stays centred', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_mark(ruled: false));
+
+    final square = tester.getRect(find.byKey(_square));
+    expect(
+      square.center.dx,
+      closeTo(tester.getRect(find.byType(NoWaveEndMark)).center.dx, 1),
+    );
+    expect(
+      find.descendant(
+        of: find.byType(NoWaveEndMark),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is SizedBox && widget.height == NoWaveStroke.hairline,
+        ),
+      ),
+      findsNothing,
+    );
+    expect(find.text('The end'), findsOneWidget);
   });
 }

@@ -69,18 +69,19 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
           padding: const EdgeInsetsDirectional.only(end: NoWaveSpacing.medium),
           minimumSize: const Size(0, NoWaveSizes.tapTarget),
         );
+        // A sheet of the darker paper rather than a band between two rules:
+        // the player is a separate object laid on the page, and the article
+        // around it keeps its quiet.
         return Container(
           key: const ValueKey('read-aloud-controls'),
           margin: const EdgeInsets.only(bottom: NoWaveSpacing.section),
-          padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.medium),
-          decoration: BoxDecoration(
-            border: Border.symmetric(
-              horizontal: BorderSide(
-                color: hairline,
-                width: NoWaveStroke.hairline,
-              ),
-            ),
+          padding: const EdgeInsets.fromLTRB(
+            NoWaveSpacing.medium,
+            NoWaveSpacing.medium,
+            NoWaveSpacing.medium,
+            NoWaveSpacing.small,
           ),
+          color: scheme.surfaceContainer,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -94,17 +95,31 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                     key: const ValueKey('read-aloud-play'),
                     style: flush,
                     onPressed: controller.togglePlayback,
-                    icon: Icon(
-                      controller.phase == ReadAloudPhase.playing
-                          ? Icons.pause
-                          : Icons.play_arrow,
-                      size: NoWaveIconSize.action,
+                    // The one solid object on the sheet: an ink square with
+                    // the glyph knocked out, so the eye lands on "play".
+                    icon: SizedBox.square(
+                      dimension: NoWaveSizes.tapTarget,
+                      child: ColoredBox(
+                        color: scheme.onSurface,
+                        child: Icon(
+                          controller.phase == ReadAloudPhase.playing
+                              ? Icons.pause
+                              : Icons.play_arrow,
+                          size: NoWaveIconSize.action,
+                          color: scheme.surface,
+                        ),
+                      ),
                     ),
-                    label: Text(
-                      label,
-                      style: NoWaveTypography.title(
-                        context,
-                        size: NoWaveTypeScale.sectionTitle,
+                    label: Padding(
+                      padding: const EdgeInsetsDirectional.only(
+                        start: NoWaveSpacing.small,
+                      ),
+                      child: Text(
+                        label,
+                        style: NoWaveTypography.title(
+                          context,
+                          size: NoWaveTypeScale.sectionTitle,
+                        ),
                       ),
                     ),
                   ),
@@ -253,6 +268,10 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                           children: [
                             Checkbox(
                               key: const ValueKey('read-aloud-follow'),
+                              // Ink, like the rest of the sheet: the accent
+                              // is kept for what answers a touch.
+                              activeColor: scheme.onSurface,
+                              checkColor: scheme.surface,
                               value: controller.follow,
                               onChanged: (value) =>
                                   controller.setFollow(value ?? false),

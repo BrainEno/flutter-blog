@@ -129,6 +129,10 @@ abstract final class NoWaveTypeScale {
   /// editorial copy, so it is set like a heading rather than a system alert.
   static const dialogTitle = 24.0;
 
+  /// 40: an article's own title on the reading page - the largest type a
+  /// reader meets inside a piece, set under its cover.
+  static const articleTitle = 40.0;
+
   /// 32: the sign-in and sign-up page titles.
   static const authTitle = 32.0;
 
@@ -218,6 +222,10 @@ abstract final class NoWaveSizes {
 
   /// The smaller leading thumbnail used where the row also carries actions.
   static const listThumbnailSmall = 48.0;
+
+  /// 40: the author's face in an article's byline - beside two lines of
+  /// type, not a thumbnail of its own.
+  static const bylineAvatar = 40.0;
 
   /// How many columns the cold-start curtain is cut into.
   ///

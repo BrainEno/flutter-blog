@@ -881,8 +881,8 @@ void main() {
           ),
           findsOneWidget,
         );
-        // The editorial header places the cover below the title and author;
-        // at large text sizes it can start outside the viewport.
+        // The cover opens the page; scrolling to it keeps the check honest
+        // whatever the header's order.
         await tester.ensureVisible(
           find
               .descendant(

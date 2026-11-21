@@ -71,6 +71,7 @@ class ViewerArticleBody extends StatelessWidget {
       );
     }
 
+    final endMatter = Theme.of(context).colorScheme.surfaceContainer;
     return CustomScrollView(
       controller: scrollController,
       slivers: [
@@ -82,9 +83,12 @@ class ViewerArticleBody extends StatelessWidget {
                 maxWidth: NoWaveSizes.contentColumn,
               ),
               child: Padding(
+                // No top inset: the cover meets the app bar and runs to
+                // the screen's edges; the header adds its own space when an
+                // article has no cover.
                 padding: const EdgeInsets.fromLTRB(
                   NoWaveSpacing.page,
-                  NoWaveSpacing.medium,
+                  0,
                   NoWaveSpacing.page,
                   NoWaveSpacing.section,
                 ),
@@ -134,34 +138,70 @@ class ViewerArticleBody extends StatelessWidget {
                       ).copyWith(fontWeight: FontWeight.w400, height: 1.9),
                       headingStyle: NoWaveTypography.title(context),
                     ),
-                    const SizedBox(height: NoWaveSpacing.large),
+                    const SizedBox(height: NoWaveSpacing.section),
                     // Just "The end": the author is introduced at the top of
                     // the piece, and naming them again here read as a
-                    // repeat.
-                    NoWaveEndMark(label: context.l10n.articleEnd),
-                    const SizedBox(height: NoWaveSpacing.section),
-                    if (getRelatedArticles case final related?)
-                      RelatedArticlesSection(
-                        getRelatedArticles: related,
-                        slug: blog.id,
-                        onOpenArticle: (article) => context.push(
-                          shellBranchLocation(
-                            GoRouterState.of(context).uri,
-                            RoutePaths.view(article.id),
-                          ),
-                          extra: article,
-                        ),
-                      ),
-                    CommentsSection(
-                      slug: blog.id,
-                      onRequestLogin: onRequestLogin,
-                      onOpenAuthor: openAuthor,
-                    ),
+                    // repeat. No rules either side - the change of paper
+                    // below is the break.
+                    NoWaveEndMark(label: context.l10n.articleEnd, ruled: false),
                   ],
                 ),
               ),
             ),
           ),
+        ),
+        // The end matter - related reading, then comments - is set on its
+        // own sheet of the darker paper, edge to edge. One change of tone
+        // says "the article is over" more plainly than any rule, and lets
+        // the sections inside it drop theirs.
+        SliverToBoxAdapter(
+          child: ColoredBox(
+            key: const ValueKey('article-end-matter'),
+            color: endMatter,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: NoWaveSizes.contentColumn,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    NoWaveSpacing.page,
+                    NoWaveSpacing.section,
+                    NoWaveSpacing.page,
+                    NoWaveSpacing.section,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (getRelatedArticles case final related?)
+                        RelatedArticlesSection(
+                          getRelatedArticles: related,
+                          slug: blog.id,
+                          onOpenArticle: (article) => context.push(
+                            shellBranchLocation(
+                              GoRouterState.of(context).uri,
+                              RoutePaths.view(article.id),
+                            ),
+                            extra: article,
+                          ),
+                        ),
+                      CommentsSection(
+                        slug: blog.id,
+                        onRequestLogin: onRequestLogin,
+                        onOpenAuthor: openAuthor,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        // A short thread still ends on the sheet, not on a strip of paper.
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: ColoredBox(color: endMatter),
         ),
       ],
     );

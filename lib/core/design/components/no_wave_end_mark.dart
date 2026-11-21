@@ -18,7 +18,17 @@ import 'package:flutter/material.dart';
 /// when there is one - so a screen-reader user hears where the article ends
 /// as clearly as a sighted reader sees it.
 class NoWaveEndMark extends StatelessWidget {
-  const NoWaveEndMark({super.key, required this.label, this.byline});
+  const NoWaveEndMark({
+    super.key,
+    required this.label,
+    this.byline,
+    this.ruled = true,
+  });
+
+  /// Whether hairlines run out from the square. A list's end keeps them; an
+  /// article's end sets the square alone, above a change of paper that
+  /// already makes the break.
+  final bool ruled;
 
   /// What the colophon says first ("The end").
   final String label;
@@ -40,25 +50,31 @@ class NoWaveEndMark extends StatelessWidget {
           ExcludeSemantics(
             child: Row(
               children: [
-                Expanded(
-                  child: SizedBox(
-                    height: NoWaveStroke.hairline,
-                    child: ColoredBox(color: hairline),
+                if (ruled) ...[
+                  Expanded(
+                    child: SizedBox(
+                      height: NoWaveStroke.hairline,
+                      child: ColoredBox(color: hairline),
+                    ),
                   ),
-                ),
-                const SizedBox(width: NoWaveSpacing.medium),
+                  const SizedBox(width: NoWaveSpacing.medium),
+                ] else
+                  const Spacer(),
                 SizedBox.square(
                   key: const ValueKey('no-wave-end-mark'),
                   dimension: NoWaveSizes.endMark,
                   child: ColoredBox(color: scheme.onSurface),
                 ),
-                const SizedBox(width: NoWaveSpacing.medium),
-                Expanded(
-                  child: SizedBox(
-                    height: NoWaveStroke.hairline,
-                    child: ColoredBox(color: hairline),
+                if (ruled) ...[
+                  const SizedBox(width: NoWaveSpacing.medium),
+                  Expanded(
+                    child: SizedBox(
+                      height: NoWaveStroke.hairline,
+                      child: ColoredBox(color: hairline),
+                    ),
                   ),
-                ),
+                ] else
+                  const Spacer(),
               ],
             ),
           ),

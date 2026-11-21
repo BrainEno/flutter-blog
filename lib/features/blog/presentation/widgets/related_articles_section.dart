@@ -46,11 +46,11 @@ class RelatedArticlesSection extends StatelessWidget {
                 BlogCard(
                   blog: state.blogs[index],
                   index: index + 1,
+                  quiet: true,
                   onTagTap: (tag) => openTagArticles(context, tag),
                   onTap: () => onOpenArticle(state.blogs[index]),
                 ),
-              // The comments that follow open with their own rule; this
-              // keeps the last row from running into it.
+              // Space, not a rule, ends the list before the comments.
               const SizedBox(height: NoWaveSpacing.section),
             ],
           );

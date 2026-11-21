@@ -11,7 +11,16 @@ import 'package:flutter/material.dart';
 /// the read-only label. Without it the label is inert, which is what list rows
 /// that are already one big link use it for.
 class ArticleTagLabel extends StatelessWidget {
-  const ArticleTagLabel({super.key, required this.tag, this.onTap});
+  const ArticleTagLabel({
+    super.key,
+    required this.tag,
+    this.onTap,
+    this.quiet = false,
+  });
+
+  /// Set as a word in the article's kicker instead of a boxed chip: the
+  /// reading page opens on type, not on a row of outlines.
+  final bool quiet;
 
   /// The stored tag value (what the article carries), not a localized label.
   final String tag;
@@ -24,19 +33,27 @@ class ArticleTagLabel extends StatelessWidget {
     final l10n = context.l10n;
     final display = localizedTag(l10n, tag);
     final foreground = Theme.of(context).colorScheme.onSurface;
-    final chip = Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: NoWaveSpacing.small,
-        vertical: 2, // design-token-ok: badge padding, optical not a step
-      ),
-      decoration: BoxDecoration(border: Border.all(color: foreground)),
-      child: Text(
-        display,
-        style: NoWaveTypography.meta(
-          context,
-        ).copyWith(color: foreground, fontWeight: FontWeight.w500),
-      ),
-    );
+    final chip = quiet
+        ? Text(
+            display,
+            style: NoWaveTypography.metaLabel(
+              context,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ).copyWith(fontWeight: FontWeight.w500),
+          )
+        : Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: NoWaveSpacing.small,
+              vertical: 2, // design-token-ok: badge padding, optical not a step
+            ),
+            decoration: BoxDecoration(border: Border.all(color: foreground)),
+            child: Text(
+              display,
+              style: NoWaveTypography.meta(
+                context,
+              ).copyWith(color: foreground, fontWeight: FontWeight.w500),
+            ),
+          );
 
     final handler = onTap;
     if (handler == null) return chip;

@@ -82,6 +82,7 @@
 | `NoWaveSizes.emptyStateOffset` | 48 | 空态/加载态在列表里从多高开始 |
 | `NoWaveSizes.listThumbnail` | 56 | 列表行前导缩略图（骨架屏的列表行） |
 | `NoWaveSizes.listThumbnailSmall` | 48 | 行内还要放操作时的小缩略图（回收站、评论头像框） |
+| `NoWaveSizes.bylineAvatar` | 40 | 阅读页署名行的方形头像：配两行字，不是独立的缩略图 |
 | `NoWaveSizes.splashColumns` | 6 | 冷启动幕布切成的竖列数 |
 | `NoWaveSizes.splashCounterMax` | 220 | 幕布计数器字号上限；实际取 `30vw` 与它的较小值（`splashCounterViewport`） |
 | `NoWaveSizes.splashWordmark` | 40 | 幕布与启动失败页的字标 |
@@ -125,7 +126,8 @@
 | `hint` | 17 | 封面上传框里的提示 |
 | `runningHead` | 17 | 阅读页书眉：标题滚走后，应用栏里重复的那行小标题 |
 | `sectionTitle` | 18 | 文章下方的分节标题（评论、相关阅读） |
-| `dialogTitle` | 24 | 对话框标题（衬线）：问读者的一句话是编辑文字，不是系统警告 |
+| `dialogTitle` | 24 | 对话框标题（衬线）：问读者的一句话是编辑文字，不是系统警告；文末分节头（相关阅读、评论）也用这一档 |
+| `articleTitle` | 40 | 阅读页的文章标题（衬线）：读者在一篇文章里遇到的最大的字 |
 | `authTitle` | 32 | 登录 / 注册页标题 |
 | `heading` | 36 | 页面大标题（`NoWaveSectionHeading`）：列表页上最大的字 |
 | `figure` | 40 | 摘要里数出来的数字（阅读历史的三个总数）；展示字体、等宽数字 |
@@ -244,7 +246,7 @@
 | `NoWaveColumn` | `design/components/no_wave_column.dart` | 页面的文字栏：手机上满宽，宽屏上居中一栏；子组件总是**撑满**这一栏（原来 7 份手写的 `Align` + `ConstrainedBox` 会让标题缩到字宽再居中）；`inset` 给栏外要对齐的东西（应用栏字标、页内切换） |
 | `NoWaveReturnToTop` | `design/components/no_wave_return_to_top.dart` | 再点当前底栏标签：屏幕上的列表回到顶部，栈不动；远处先跳近再走一屏；少动时直接跳 |
 | `NoWaveRunningHead` | `design/components/no_wave_running_head.dart` | 阅读页书眉：正文标题滚到应用栏下面后，栏里升起一行小标题并出现一道发丝线；点它回到开头 |
-| `NoWaveEndMark` | `design/components/no_wave_end_mark.dart` | 文末终止符：两段发丝线中间一枚墨色小方块，下面一行「全文完」（作者已在文章顶部介绍，不再重复）；阅读页正文之后、相关阅读之前 |
+| `NoWaveEndMark` | `design/components/no_wave_end_mark.dart` | 终止符：一枚墨色小方块，下面一行字。列表到底（「没有更多了」）两侧带发丝线；阅读页正文之后用 `ruled: false`，只留方块和「全文完」（作者已在文章顶部介绍，不再重复），断开交给下面换纸 |
 | `NoWaveSnackBarContent` | `core/utils/show_snackbar.dart` | 所有提示条的内容：只有那句话（反色纸条本身就是信号）；由 `showSnackBar` 统一使用 |
 | `NoWaveBusyMark` | `design/components/no_wave_busy_mark.dart` | 控件槽位里的忙碌态（按钮加载、行内恢复、发送图标）：图标大小的细线上走过一小段，颜色随控件；少动时停在中间 |
 | `NoWaveRefresh` | `design/components/no_wave_refresh.dart` | 下拉刷新：沿用系统手势，不画转圈；顶边一道线随手指从中间长出，过了松手点变橙，刷新时一段橙线沿顶边走过 |
@@ -253,11 +255,11 @@
 | `NoWavePressable` / `NoWavePressArrow` | `design/components/no_wave_pressable.dart` | 文章卡片与网格项的可点表面：保留 InkWell 的水波、焦点与语义，按下时下沉，行尾箭头向前迈一步 |
 | `NoWaveEntranceScope` / `NoWaveEntrance` | `design/components/no_wave_entrance.dart` | 新列表前一屏逐个上浮进场；同一位置只进场一次，换列表（`generation`）才重来 |
 | `NoWaveStampSwitcher` | `design/components/no_wave_stamp_switcher.dart` | 切换态图标的「盖章」：新状态放大落下再归位（阅读页收藏） |
-| `NoWaveSectionHead` | `design/components/no_wave_section_head.dart` | 文章下方的分节头：墨线、标题上下等距、可选右对齐数字（相关阅读、评论） |
+| `NoWaveSectionHead` | `design/components/no_wave_section_head.dart` | 文末分节头（相关阅读、评论）：不画线，24 号衬线标题靠字号和下方 16 的留白与行区分；可选右对齐数字压在同一基线 |
 | `NoWaveCoverPlate` | `design/cover/no_wave_cover_plate.dart` | 四张编辑式默认封面，按文章身份稳定选一张 |
 | `ArticleCover` | `features/blog/presentation/widgets/article_cover.dart` | 真封面 / 加载 / 失败三种状态共用同一张版 |
-| `ArticleCategoryLabel` | `features/blog/presentation/widgets/article_category_label.dart` | 文章所属的分类（填充色块，与服务端给的名称；可点进分类列表） |
-| `ArticleTagLabel` | `features/blog/presentation/widgets/article_tag_label.dart` | 作者写的标签（描边，不填充；可点进标签列表） |
+| `ArticleCategoryLabel` | `features/blog/presentation/widgets/article_category_label.dart` | 文章所属的分类（服务端给的名称；可点进分类列表）。默认是填充色块；阅读页的 kicker 里用 `quiet: true`，只是一个粗墨色的词 |
+| `ArticleTagLabel` | `features/blog/presentation/widgets/article_tag_label.dart` | 作者写的标签（可点进标签列表）。默认描边；`quiet: true` 时是一个浅色的词（阅读页 kicker、相关阅读行） |
 
 ### 加载态：一句文案或一个形状
 
@@ -275,7 +277,10 @@
   分页续载仍使用紧凑文案，不改变请求或分页。
 - 网格页（我的文章、收藏）借 `BlogGridSkeleton`：列数与 tile 高度直接来自
   `blogGridDelegate`，封面沿用 `NoWaveSizes.coverAspect`（4/3），padding 与真实网格一致
-  （我的文章在 `SliverPadding` 里，收藏直接是 `GridView` 的默认值）。
+  （两页都在左右 `page` 槽宽的 `SliverPadding` 里；`blogGridDelegate(context, gutter:)`
+  量列宽时先减掉两侧槽宽，骨架与真实网格同一算法）。收藏页与搜索页同构：应用栏刊头
+  `titleSpacing` 用 `NoWaveColumn.inset`，下面一个 `NoWaveSectionHeading`，刊头、标题和
+  网格共用同一条左边。
 - 首页 feed 的首帧还多一条规矩：标题（`feedHeading` 等）是静态的，所以**加载时就画
   出来**，占位骨架接在它下面；数据回来时列表往已经占好的位置里长，而不是把页面往下推。
 
@@ -427,6 +432,30 @@
 
 用在：首页 feed（`feedEyebrow`）、搜索（`searchEyebrow`）、离线书库
 （`offlineLibraryEyebrow`）、作者页文章区（`authorArticlesEyebrow`）。
+
+### 阅读页：少画线，用字号、留白和纸色分层
+
+阅读页曾经从上到下有十来道线：带框的分类与标签、标题下的分隔线、朗读区上下的发丝线、
+终止符两侧的线、相关阅读与评论的 2pt 墨线、每一行相关阅读和每一条评论上方的发丝线、
+输入框下划线。线一多，每一道都不再说明什么，层级反而平了。现在全页只保留输入框的
+下划线（它是控件，不是装饰），其余层级交给四样东西：
+
+- **封面开篇、出血到屏幕两边**：封面紧贴应用栏，向左右各伸出 `page` 槽宽（`_Bleed`
+  只在绘制上伸出，布局仍占文字栏宽），像杂志专题的开篇图。结构化正文自带图片时不另造
+  封面，标题前留 `medium`。
+- **kicker → 标题 → 署名**：封面下一行 kicker，分类是粗墨色的词、标签是浅色的词
+  （`quiet: true`，不加框，仍各自是 48pt 的可点目标）；标题 40 号衬线
+  （`NoWaveTypeScale.articleTitle`），是读者在文章里遇到的最大的字；署名行是 40pt 方形头像
+  （`NoWaveSizes.bylineAvatar`）+ 粗体作者名 + 一行浅色「日期 · 阅读时长」，整行可点开作者页。
+- **朗读是一张纸片**：`ReadAloudControls` 不再夹在两道线之间，而是一块
+  `surfaceContainer`（浅色 #E9E3D8 / 深色 #211E1B）的平面，播放键是一枚墨色方块里反白的
+  图标——纸片上唯一实心的东西，视线先落在「播放」上；「跟随朗读」的勾选框也是墨色。
+- **文末换纸**：正文之后只有一枚墨色方块和「全文完」（不带线）；相关阅读与评论放在一整块
+  通栏的 `surfaceContainer` 上（`article-end-matter`），内容不足一屏时用
+  `SliverFillRemaining` 把这块纸铺到底。一次换色比任何一道线都更明确地说「文章结束了」，
+  所以里面的分节头、相关阅读行（`BlogCard(quiet: true)`）和评论串都不再画线：评论串之间
+  靠 `large` 留白分组，回复挂在父评论的文字栏下。登录提示是一张页面本色的卡片，放在这块
+  深一档的纸上。
 
 ### 书眉：标题滚走以后
 
