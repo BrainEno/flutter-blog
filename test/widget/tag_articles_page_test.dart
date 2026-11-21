@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_end_mark.dart';
 import 'package:belog/core/design/components/no_wave_entrance.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -170,6 +171,15 @@ void main() {
     // The first screen sets in like the home feed, one card after another.
     expect(find.byType(NoWaveEntranceScope), findsOneWidget);
     expect(find.byType(NoWaveEntrance), findsNWidgets(2));
+    // A short list is a complete one: it ends on the printed end mark, not on
+    // a footer that looks like it is still loading.
+    expect(
+      find.descendant(
+        of: find.byType(NoWaveEndMark, skipOffstage: false),
+        matching: find.text('没有更多了', skipOffstage: false),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('an existing tag with nothing filed under it says so', (

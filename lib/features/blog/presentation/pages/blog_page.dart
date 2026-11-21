@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_list_note.dart';
 import 'package:belog/core/design/components/no_wave_end_mark.dart';
 import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
@@ -322,8 +323,8 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
         state is BlogLoaded && state.isLoadingMore && !state.hasReachedMax;
     final reachedMax = state is BlogLoaded && state.hasReachedMax;
     final depthLimited = state is BlogLoaded && state.depthLimited;
-    final failed = state is BlogListFailure;
-    final hasFooter = loadingMore || reachedMax || failed;
+    final failure = state is BlogListFailure ? state.failure : null;
+    final hasFooter = loadingMore || reachedMax || failure != null;
     // A different feed is a new entrance; a refresh or next page is not.
     return NoWaveEntranceScope(
       generation: state.kind,
@@ -363,11 +364,14 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
           }
           final articleIndex = index - 1;
           if (articleIndex == blogs.length) {
-            if (failed) {
-              return Center(
-                child: TextButton(
-                  onPressed: _fetchFirstPage,
-                  child: Text(l10n.actionRetry),
+            if (failure != null) {
+              // The snackbar already announced it; the note stays quiet and
+              // keeps the reason next to the retry once the snackbar is gone.
+              return _contentWidth(
+                NoWaveListNote(
+                  message: localizedFailure(l10n, failure),
+                  actionLabel: l10n.actionRetry,
+                  onAction: _fetchFirstPage,
                 ),
               );
             }
@@ -386,23 +390,10 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
               // The order ended, not the library: say where reading can continue
               // instead of claiming there is nothing more.
               return _contentWidth(
-                Padding(
-                  padding: const EdgeInsets.all(NoWaveSpacing.medium),
-                  child: Column(
-                    children: [
-                      Text(
-                        l10n.feedPopularDepthLimit,
-                        textAlign: TextAlign.center,
-                        style: NoWaveTypography.meta(context),
-                      ),
-                      const SizedBox(height: NoWaveSpacing.small),
-                      TextButton(
-                        onPressed: () =>
-                            _selectFeed(BlogFeedKind.latest, state),
-                        child: Text(l10n.feedPopularDepthAction),
-                      ),
-                    ],
-                  ),
+                NoWaveListNote(
+                  message: l10n.feedPopularDepthLimit,
+                  actionLabel: l10n.feedPopularDepthAction,
+                  onAction: () => _selectFeed(BlogFeedKind.latest, state),
                 ),
               );
             }

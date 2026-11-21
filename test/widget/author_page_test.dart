@@ -732,6 +732,10 @@ void main() {
     expect(failed.loadMoreFailure, isNull);
     expect(find.text('去「最新」继续'), findsOneWidget);
 
+    // The footer's button is a full 48pt target, so it may sit just below
+    // the fold; bring it up before tapping.
+    await tester.ensureVisible(find.text('去「最新」继续'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('去「最新」继续'));
     await tester.pumpAndSettle();
     expect(
