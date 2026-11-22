@@ -51,6 +51,23 @@ abstract final class AppLimits {
   /// no-wave limit of 512 KiB. A longer value is refused, never truncated.
   static const int notionImportPlanMaxTokenBytes = 512 * 1024;
 
+  /// The most entries a Notion export ZIP may list, files and folders
+  /// together, before the app refuses to read it. Mirrors the no-wave desk's
+  /// own reader, so a ZIP the web refuses is refused here too.
+  static const int notionZipMaxEntries = 2000;
+
+  /// How deep a ZIP inside a ZIP is opened: Notion splits a large workspace
+  /// export into part archives inside one outer archive.
+  static const int notionZipMaxDepth = 1;
+
+  /// The longest Markdown file name accepted as an article's identity when
+  /// it carries no Notion page ID (the desk's limit).
+  static const int notionMarkdownMaxFileName = 120;
+
+  /// The longest code block the site keeps; longer ones are cut by the
+  /// server, and the conversion says so first.
+  static const int notionMarkdownMaxCodeChars = 50000;
+
   // --- Display ------------------------------------------------------------
 
   /// UTF-16 code units per page when a long structured value is shown in the
