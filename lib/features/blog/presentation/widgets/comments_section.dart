@@ -207,17 +207,18 @@ class _CommentsSectionState extends State<CommentsSection> {
         );
       case CommentListStatus.loaded:
         if (state.comments.isEmpty) {
+          // On the column edge, like the composer above it and the
+          // comments that will replace it.
           return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(
-                  vertical: NoWaveSpacing.large,
+                  vertical: NoWaveSpacing.medium,
                 ),
-                child: Center(
-                  child: Text(
-                    context.l10n.commentsEmpty,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                child: Text(
+                  context.l10n.commentsEmpty,
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
               _buildPaginationFooter(state),
@@ -225,6 +226,7 @@ class _CommentsSectionState extends State<CommentsSection> {
           );
         }
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ...state.comments.map(
               (comment) => CommentTile(
@@ -271,17 +273,27 @@ class _CommentsSectionState extends State<CommentsSection> {
         child: Text(
           l10n.commentsPaginationUnavailable,
           style: Theme.of(context).textTheme.bodySmall,
-          textAlign: TextAlign.center,
         ),
       );
     }
     if (!state.hasMore) return const SizedBox.shrink();
+    // The way on keeps to the text column the comments start on, set like
+    // their actions but in ink: it continues the list, it does not end it.
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.small),
+      padding: const EdgeInsetsDirectional.only(
+        start: CommentTile.rootTextColumn,
+      ),
       child: TextButton.icon(
         onPressed: () =>
             context.read<CommentBloc>().add(const MoreCommentsRequested()),
-        icon: const Icon(Icons.expand_more),
+        style: TextButton.styleFrom(
+          foregroundColor: scheme.onSurface,
+          padding: const EdgeInsetsDirectional.only(end: NoWaveSpacing.small),
+          minimumSize: const Size(NoWaveSizes.tapTarget, NoWaveSizes.tapTarget),
+          alignment: AlignmentDirectional.centerStart,
+        ),
+        icon: const Icon(Icons.expand_more, size: 18),
         label: Text(l10n.commentsLoadMore),
       ),
     );

@@ -232,9 +232,10 @@ class _BlogPageState extends State<BlogPage> with WidgetsBindingObserver {
           companion: kind == BlogFeedKind.latest
               ? l10n.feedHeadingCompanion
               : null,
-          eyebrow: l10n.feedEyebrow,
-          // Today's date at the end of the eyebrow line, like the dateline of
-          // a paper: the feed is an edition, not an endless stream.
+          // Today's date over the heading, like the dateline of a paper:
+          // the feed is an edition, not an endless stream. It is the only
+          // line there - a strapline saying what the app is repeated the
+          // masthead.
           aside: formatDateline(Localizations.localeOf(context), _clock()),
         ),
         if (kind == BlogFeedKind.popular) ...[

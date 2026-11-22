@@ -21,7 +21,6 @@ class AuthFrame extends StatelessWidget {
     required this.title,
     required this.child,
     this.companion,
-    this.eyebrow,
     this.lead,
     this.languageMenu = false,
   });
@@ -31,9 +30,6 @@ class AuthFrame extends StatelessWidget {
 
   /// The italic word after the title, when the page has one.
   final String? companion;
-
-  /// The small line over the title: what this page is for.
-  final String? eyebrow;
 
   /// A sentence under the heading, for a page that has to explain itself
   /// before it asks for anything (recovery).
@@ -76,11 +72,10 @@ class AuthFrame extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              NoWaveSectionHeading(
-                title: title,
-                companion: companion,
-                eyebrow: eyebrow,
-              ),
+              // No strapline over the title: the title already says what the
+              // page is for, and a sentence of marketing above it only delays
+              // the fields.
+              NoWaveSectionHeading(title: title, companion: companion),
               if (lead != null) ...[
                 const SizedBox(height: NoWaveSpacing.medium),
                 Text(
@@ -107,15 +102,15 @@ class AuthFrame extends StatelessWidget {
 }
 
 /// A line that leads somewhere else in the flow: a quiet question and the
-/// answer as the one bold word ("No account yet? **Sign up**"), set flush on
-/// the column's edge with a full-height target.
+/// answer as the one bold word ("No account yet? **Sign up**"), with a
+/// full-height target.
 class AuthLink extends StatelessWidget {
   const AuthLink({
     super.key,
     required this.label,
     required this.onPressed,
     this.prompt,
-    this.alignment = AlignmentDirectional.centerStart,
+    this.alignment = AlignmentDirectional.center,
     this.quiet = false,
   });
 
@@ -124,7 +119,10 @@ class AuthLink extends StatelessWidget {
   /// stay the loudest words on the page.
   final bool quiet;
 
-  /// Which edge of the column the line keeps to.
+  /// Where on the column the line sits. Centred by default: the lines
+  /// under a full-width button hang from its middle, as one group with it.
+  /// A link that belongs to a field ("forgot password" under the password)
+  /// keeps to that field's end instead.
   final AlignmentDirectional alignment;
 
   /// The muted part before the link, already spaced; omitted for a bare
@@ -151,7 +149,7 @@ class AuthLink extends StatelessWidget {
           foregroundColor: scheme.onSurface,
           padding: EdgeInsets.zero,
           minimumSize: const Size(NoWaveSizes.tapTarget, NoWaveSizes.tapTarget),
-          alignment: AlignmentDirectional.centerStart,
+          alignment: alignment,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: const RoundedRectangleBorder(),
         ),
@@ -172,6 +170,13 @@ class AuthLink extends StatelessWidget {
               ),
             ],
           ),
+          // A line that wraps (a long prompt at a large text size) keeps
+          // the same edge as the one-line version.
+          textAlign: switch (alignment.start) {
+            < 0 => TextAlign.start,
+            > 0 => TextAlign.end,
+            _ => TextAlign.center,
+          },
         ),
       ),
     );

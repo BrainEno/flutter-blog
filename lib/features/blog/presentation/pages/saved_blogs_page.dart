@@ -192,7 +192,6 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
                     child: NoWaveSectionHeading(
                       title: l10n.tabSaved,
                       companion: l10n.savedHeadingCompanion,
-                      eyebrow: l10n.savedEyebrow,
                     ),
                   ),
                 ),

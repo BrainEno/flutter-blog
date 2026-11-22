@@ -14,10 +14,7 @@ class CommentLoginPrompt extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: NoWaveSpacing.medium,
-        vertical: NoWaveSpacing.large,
-      ),
+      padding: const EdgeInsets.all(NoWaveSpacing.medium),
       decoration: BoxDecoration(
         // The comments sit on the article's darker end-matter sheet; the
         // prompt is a card of the page's own paper laid on it. A theme role
@@ -25,13 +22,16 @@ class CommentLoginPrompt extends StatelessWidget {
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(NoWaveRadius.surface),
       ),
+      // Set on the section's one left edge, like the comments under it: a
+      // centred block here was the only thing in the thread on its own axis.
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             context.l10n.loginToComment,
-            style: Theme.of(context).textTheme.bodySmall,
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const SizedBox(height: NoWaveSpacing.medium),
+          const SizedBox(height: NoWaveSpacing.small),
           NoWaveButton(
             label: context.l10n.goSignIn,
             variant: NoWaveButtonVariant.secondary,
