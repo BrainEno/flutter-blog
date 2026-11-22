@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
@@ -5,10 +7,14 @@ import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
 import 'package:belog/features/blog/domain/notion_export/notion_export.dart';
+import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/presentation/editor/notion_export_sheet.dart';
 import 'package:belog/features/blog/presentation/editor/notion_import_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:belog/router/route_paths.dart';
+import 'package:belog/router/shell_branch_location.dart';
 import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
 
 /// Owns the one active Notion sheet and its exact route. The host provides a
 /// session-current predicate; an invalidated editor must dismiss the route and
@@ -22,9 +28,13 @@ class EditorNotionCoordinator {
     required bool Function() isCurrent,
     required NotionImportRepository? Function() importRepository,
     required NotionExportRepository? Function() exportRepository,
+    Future<Map<String, bool>?> Function()? publishedWorks,
+    void Function(BuildContext context, String slug)? openArticle,
   }) : _isCurrent = isCurrent,
        _importRepository = importRepository,
-       _exportRepository = exportRepository;
+       _exportRepository = exportRepository,
+       _publishedWorks = publishedWorks,
+       _openArticle = openArticle ?? _openInReader;
 
   final NowaveSessionIdentity identity;
   final AppUserCubit userCubit;
@@ -33,6 +43,8 @@ class EditorNotionCoordinator {
   final bool Function() _isCurrent;
   final NotionImportRepository? Function() _importRepository;
   final NotionExportRepository? Function() _exportRepository;
+  final Future<Map<String, bool>?> Function()? _publishedWorks;
+  final void Function(BuildContext context, String slug) _openArticle;
   NavigatorState? _navigator;
   Route<dynamic>? _route;
   bool _open = false;
@@ -54,6 +66,7 @@ class EditorNotionCoordinator {
     }
     _navigator = Navigator.of(context, rootNavigator: true);
     _open = true;
+    String? article;
     try {
       await showModalBottomSheet<void>(
         context: context,
@@ -69,6 +82,11 @@ class EditorNotionCoordinator {
             userCubit: userCubit,
             onApplyStarted: () => _applyStarted = true,
             fence: NowaveSessionFence(userId: userId!, generation: generation),
+            publishedWorks: _publishedWorks ?? _ownPublishedWorks,
+            onOpenArticle: (slug) {
+              article = slug;
+              Navigator.of(sheetContext).pop();
+            },
           );
         },
       );
@@ -77,6 +95,43 @@ class EditorNotionCoordinator {
       _navigator = null;
       _route = null;
     }
+    // The reader opens above the editor, whose draft stays as it was; back
+    // returns to it.
+    final slug = article;
+    if (slug != null && context.mounted && _isCurrent()) {
+      _openArticle(context, slug);
+    }
+  }
+
+  /// The account's own works and whether each is published, read across
+  /// languages - one status per work. Null when it cannot be read.
+  Future<Map<String, bool>?> _ownPublishedWorks() async {
+    final owner = userId;
+    if (owner == null || !GetIt.instance.isRegistered<BlogRepository>()) {
+      return null;
+    }
+    final result = await GetIt.instance<BlogRepository>().getMyArticleEditions(
+      userId: owner,
+    );
+    return result.fold((_) => null, (editions) {
+      final works = <String, bool>{};
+      for (final blog in editions.blogs) {
+        final work = blog.authoringArticleId;
+        if (work != null) works[work] = !blog.isDraft;
+      }
+      return works;
+    });
+  }
+
+  static void _openInReader(BuildContext context, String slug) {
+    unawaited(
+      context.push(
+        shellBranchLocation(
+          GoRouterState.of(context).uri,
+          RoutePaths.view(slug),
+        ),
+      ),
+    );
   }
 
   Future<void> openExport(BuildContext context, String? slug) async {

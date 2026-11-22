@@ -45,6 +45,9 @@ class _Repo implements NotionImportRepository {
   Failure? failure;
   List<NotionImportIssue> issues = const [];
   NotionImportAction action = NotionImportAction.create;
+
+  /// The report's pages; one 'My page' when null.
+  List<NotionImportPage>? pages;
   final uploads = <_Upload>[];
 
   /// Answers for successive uploads; a URL when exhausted.
@@ -79,15 +82,17 @@ class _Repo implements NotionImportRepository {
       NotionImportReport(
         applied: apply,
         plan: apply ? null : _planFor(bundle, sessionFence),
-        pages: [
-          NotionImportPage(
-            title: 'My page',
-            locale: 'en',
-            action: action,
-            detail: 'detail',
-            issues: issues,
-          ),
-        ],
+        pages:
+            pages ??
+            [
+              NotionImportPage(
+                title: 'My page',
+                locale: 'en',
+                action: action,
+                detail: 'detail',
+                issues: issues,
+              ),
+            ],
       ),
     );
   }
@@ -151,6 +156,8 @@ void main() {
     WidgetTester tester, {
     Locale locale = const Locale('en'),
     NotionImportFilePicker? pickFiles,
+    Future<Map<String, bool>?> Function()? publishedWorks,
+    ValueChanged<String>? onOpenArticle,
   }) async {
     tester.view.physicalSize = const Size(1000, 2000);
     tester.view.devicePixelRatio = 1;
@@ -168,6 +175,8 @@ void main() {
             userCubit: userCubit,
             fence: _fence,
             pickFiles: pickFiles,
+            publishedWorks: publishedWorks,
+            onOpenArticle: onOpenArticle,
           ),
         ),
       ),
@@ -352,13 +361,27 @@ void main() {
       expect(find.text(l10n.notionImportUntitledPage(3)), findsOneWidget);
       // Every page starts selected; the author unticks what stays behind.
       expect(find.text(l10n.notionImportSelectionCount(3, 3)), findsOneWidget);
+      // A work and its English edition go together, either way round.
+      expect(
+        find.text(l10n.notionImportPagePaired(1, 'Second')),
+        findsOneWidget,
+      );
+      expect(
+        find.text(l10n.notionImportPagePaired(2, 'First')),
+        findsOneWidget,
+      );
+      expect(find.text(l10n.notionImportPageNumber(3)), findsOneWidget);
       await tap(tester, 'Second');
+      expect(find.text(l10n.notionImportSelectionCount(1, 3)), findsOneWidget);
+      await tap(tester, 'First');
+      expect(find.text(l10n.notionImportSelectionCount(3, 3)), findsOneWidget);
+      await tap(tester, l10n.notionImportUntitledPage(3));
       await tap(tester, l10n.notionImportPreviewSelected);
       final pages = repo.bundles.single.json['pages'] as List;
-      expect(pages.map((page) => page['id']).toList(), ['a', 'c']);
+      expect(pages.map((page) => page['id']).toList(), ['a', 'b']);
       expect(pages.first['properties']['English']['relation'][0]['id'], 'b');
       await tap(tester, l10n.notionImportReviewConfirm);
-      await tap(tester, 'Second');
+      await tap(tester, l10n.notionImportUntitledPage(3));
       expect(find.text(l10n.notionImportConfirm), findsNothing);
       expect(find.text(l10n.notionImportPlan), findsNothing);
       await tap(tester, l10n.notionImportPreviewSelected);
@@ -876,5 +899,83 @@ void main() {
     await tester.pump();
     expect(repo.calls, isEmpty);
     expect(find.text('Wall'), findsNothing);
+  });
+
+  testWidgets('after an import, a published article opens and a draft says '
+      'where it is', (tester) async {
+    NotionImportPage page(
+      String title,
+      NotionImportAction action, {
+      String slug = '',
+      String? work,
+    }) => NotionImportPage(
+      title: title,
+      locale: 'zh-CN',
+      action: action,
+      detail: '',
+      issues: const [],
+      slug: slug,
+      articleId: work,
+    );
+    repo.pages = [
+      page('Wall', NotionImportAction.create, slug: 'qiangbi', work: 'w1'),
+      page('Notes', NotionImportAction.update, slug: 'notes', work: 'w2'),
+      page('Old', NotionImportAction.skip, slug: 'old', work: 'w3'),
+      page('Broken', NotionImportAction.failed, slug: 'broken', work: 'w4'),
+    ];
+    var asked = 0;
+    final opened = <String>[];
+    await pumpSheet(
+      tester,
+      publishedWorks: () async {
+        asked++;
+        // w3 is older than the list the server returned.
+        return {'w1': true, 'w2': false, 'w4': true};
+      },
+      onOpenArticle: opened.add,
+    );
+    await tester.enterText(find.byType(TextField), _input);
+    await tap(tester, l10n.notionImportReadBundle);
+    await tap(tester, l10n.notionImportPreviewSelected);
+    // A preview is not an import: nothing is looked up yet.
+    expect(asked, 0);
+    expect(find.text(l10n.notionImportOpenArticle), findsNothing);
+    await tap(tester, l10n.notionImportReviewConfirm);
+    await tap(tester, l10n.notionImportConfirm);
+
+    expect(asked, 1);
+    expect(find.text(l10n.notionImportOpenArticle), findsOneWidget);
+    expect(find.text(l10n.notionImportLandedDraft), findsOneWidget);
+    await tap(tester, l10n.notionImportOpenArticle);
+    expect(opened, ['qiangbi']);
+  });
+
+  testWidgets('an unreadable article list leaves the result as it was', (
+    tester,
+  ) async {
+    repo.pages = const [
+      NotionImportPage(
+        title: 'Wall',
+        locale: 'zh-CN',
+        action: NotionImportAction.create,
+        detail: '',
+        issues: [],
+        slug: 'qiangbi',
+        articleId: 'w1',
+      ),
+    ];
+    await pumpSheet(
+      tester,
+      publishedWorks: () async => throw StateError('offline'),
+      onOpenArticle: (_) {},
+    );
+    await tester.enterText(find.byType(TextField), _input);
+    await tap(tester, l10n.notionImportReadBundle);
+    await tap(tester, l10n.notionImportPreviewSelected);
+    await tap(tester, l10n.notionImportReviewConfirm);
+    await tap(tester, l10n.notionImportConfirm);
+    expect(find.text(l10n.notionImportResult), findsOneWidget);
+    expect(find.text(l10n.notionImportOpenArticle), findsNothing);
+    expect(find.text(l10n.notionImportLandedDraft), findsNothing);
   });
 }

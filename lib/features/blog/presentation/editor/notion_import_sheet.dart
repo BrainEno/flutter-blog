@@ -36,6 +36,8 @@ class NotionImportSheet extends StatefulWidget {
     required this.userCubit,
     this.onApplyStarted,
     this.pickFiles,
+    this.publishedWorks,
+    this.onOpenArticle,
   });
   final NotionImportRepository repository;
   final NowaveSessionIdentity identity;
@@ -45,6 +47,15 @@ class NotionImportSheet extends StatefulWidget {
 
   /// The file picker; the system document picker when null.
   final NotionImportFilePicker? pickFiles;
+
+  /// Whether each of the account's works it can see is published, by work
+  /// ID, or null when they cannot be read. Asked once after an import so the
+  /// result can say which articles can be read now and which were saved as
+  /// drafts; a work it does not list is left unsaid.
+  final Future<Map<String, bool>?> Function()? publishedWorks;
+
+  /// Opens the published article [slug]; the host closes the sheet first.
+  final ValueChanged<String>? onOpenArticle;
 
   @override
   State<NotionImportSheet> createState() => _NotionImportSheetState();
@@ -67,6 +78,14 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
   /// The export's images the pages use, and which ones each page uses.
   Map<String, NotionLocalImage> _images = const {};
   List<Set<String>> _pageImages = const [];
+
+  /// For each page, the pages its `English` relation pairs it with. A work
+  /// and its translation are imported together - the server refuses one
+  /// without the other - so they are selected and unselected together.
+  List<Set<int>> _partners = const [];
+
+  /// Which works of [_published]'s report are published, once known.
+  (NotionImportReport, Map<String, bool>)? _published;
 
   /// Uploaded images by content, for this sheet's account: a second preview
   /// - after a selection change, an expired plan or a failed upload - does
@@ -244,12 +263,35 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
               if (notionLocalImageKey(block) case final key?) key,
           },
       ];
+      _partners = _englishPartners(bundle);
       _skippedImages = const [];
       _snapshot = null;
       _report = null;
       _error = null;
       _confirming = false;
     });
+  }
+
+  static List<Set<int>> _englishPartners(NotionBundle bundle) {
+    String normal(Object? id) => '$id'.toLowerCase().replaceAll('-', '');
+    final pages = bundle.json['pages'] as List;
+    final byId = <String, int>{
+      for (var i = 0; i < pages.length; i++) normal((pages[i] as Map)['id']): i,
+    };
+    final partners = [for (var i = 0; i < pages.length; i++) <int>{}];
+    for (var i = 0; i < pages.length; i++) {
+      final properties = (pages[i] as Map)['properties'];
+      final english = properties is Map ? properties['English'] : null;
+      final links = english is Map ? english['relation'] : null;
+      if (links is! List) continue;
+      for (final link in links) {
+        final j = link is Map ? byId[normal(link['id'])] : null;
+        if (j == null || j == i) continue;
+        partners[i].add(j);
+        partners[j].add(i);
+      }
+    }
+    return partners;
   }
 
   void _fail(String message) {
@@ -473,11 +515,44 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
             _report = report;
             _snapshot = apply ? null : bundle;
             if (!apply) _watchPlan(report.plan!);
+            if (apply) unawaited(_loadPublished(report));
           }
         },
       );
     });
   }
+
+  String _pageName(NotionBundle source, int index) =>
+      source.pageTitle(index).isEmpty
+      ? context.l10n.notionImportUntitledPage(index + 1)
+      : source.pageTitle(index);
+
+  /// After an import, which of its works can be read now.
+  Future<void> _loadPublished(NotionImportReport report) async {
+    final load = widget.publishedWorks;
+    if (load == null || !report.pages.any((page) => _openable(page) != null)) {
+      return;
+    }
+    final Map<String, bool>? works;
+    try {
+      works = await load();
+    } catch (_) {
+      return;
+    }
+    if (works == null || !mounted || !_current || !identical(_report, report)) {
+      return;
+    }
+    final known = works;
+    setState(() => _published = (report, known));
+  }
+
+  /// The work an applied page landed in, when there is one to open.
+  static String? _openable(NotionImportPage page) => switch (page.action) {
+    NotionImportAction.create ||
+    NotionImportAction.update ||
+    NotionImportAction.skip when page.slug.isNotEmpty => page.articleId,
+    _ => null,
+  };
 
   String _action(NotionImportAction action) => switch (action) {
     NotionImportAction.create => context.l10n.notionImportCreate,
@@ -486,6 +561,42 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
     NotionImportAction.refused => context.l10n.notionImportRefused,
     NotionImportAction.failed => context.l10n.notionImportFailed,
   };
+
+  /// Where an imported page can be found: open it when it is published,
+  /// otherwise say it waits in My articles as a draft.
+  List<Widget> _landed(
+    AppLocalizations l10n,
+    NotionImportReport report,
+    NotionImportPage page,
+  ) {
+    final work = _openable(page);
+    final published = _published;
+    if (work == null || published == null || !identical(published.$1, report)) {
+      return const [];
+    }
+    final isPublished = published.$2[work];
+    if (isPublished == null) return const [];
+    final open = widget.onOpenArticle;
+    if (!isPublished) {
+      return [
+        Text(
+          l10n.notionImportLandedDraft,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ];
+    }
+    if (open == null) return const [];
+    return [
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: TextButton.icon(
+          onPressed: _busy ? null : () => open(page.slug),
+          icon: const Icon(Icons.open_in_new, size: NoWaveIconSize.inline),
+          label: Text(l10n.notionImportOpenArticle),
+        ),
+      ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -631,25 +742,38 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
                                     onChanged: _busy
                                         ? null
                                         : (value) {
+                                            final group = {
+                                              index,
+                                              if (index < _partners.length)
+                                                ..._partners[index],
+                                            };
                                             final next = Set<int>.of(_selected);
                                             if (value == true) {
-                                              next.add(index);
+                                              next.addAll(group);
                                             } else {
-                                              next.remove(index);
+                                              next.removeAll(group);
                                             }
                                             _setSelection(next);
                                           },
                                     title: Text(
-                                      source.pageTitle(index).isEmpty
-                                          ? l10n.notionImportUntitledPage(
-                                              index + 1,
-                                            )
-                                          : source.pageTitle(index),
+                                      _pageName(source, index),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     subtitle: Text(
-                                      l10n.notionImportPageNumber(index + 1),
+                                      index < _partners.length &&
+                                              _partners[index].isNotEmpty
+                                          ? l10n.notionImportPagePaired(
+                                              index + 1,
+                                              _partners[index]
+                                                  .map(
+                                                    (j) => _pageName(source, j),
+                                                  )
+                                                  .join(', '),
+                                            )
+                                          : l10n.notionImportPageNumber(
+                                              index + 1,
+                                            ),
                                     ),
                                     controlAffinity:
                                         ListTileControlAffinity.leading,
@@ -742,10 +866,8 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
                                   Text(
                                     '${l10n.notionImportSlug}: ${page.slug}',
                                   ),
-                                if (page.articleId != null)
-                                  Text(
-                                    '${l10n.notionImportArticleId}: ${page.articleId}',
-                                  ),
+                                if (report.applied)
+                                  ..._landed(l10n, report, page),
                                 _ReportIssues(issues: page.issues),
                               ],
                               if (report.canApply &&
