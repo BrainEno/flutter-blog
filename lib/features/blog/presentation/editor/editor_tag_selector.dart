@@ -27,6 +27,9 @@ class EditorTagSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    // Selected reads as the theme's primary fill, the same pair as the
+    // primary button and the selected segment.
+    final scheme = Theme.of(context).colorScheme;
     final borderColor = isDarkMode
         ? AppPalette.mutedOnInk.withAlpha((0.7 * 255).toInt())
         : AppPalette.mutedOnPaper.withAlpha((0.7 * 255).toInt());
@@ -46,7 +49,7 @@ class EditorTagSelector extends StatelessWidget {
                 fontSize: NoWaveTypeScale.label,
                 fontWeight: FontWeight.w500,
                 color: selectedTags.contains(tag)
-                    ? AppPalette.ink
+                    ? scheme.onPrimary
                     : unselectedLabel,
               ),
             ),
@@ -62,10 +65,10 @@ class EditorTagSelector extends StatelessWidget {
               side: BorderSide(color: borderColor),
             ),
             backgroundColor: backgroundColor,
-            selectedColor: AppPalette.orange,
+            selectedColor: scheme.primary,
             labelStyle: TextStyle(
               fontWeight: FontWeight.w500,
-              color: selectedTags.contains(tag) ? AppPalette.ink : null,
+              color: selectedTags.contains(tag) ? scheme.onPrimary : null,
             ),
             onSelected: (selected) => onChanged(_toggled(tag, selected)),
           ),

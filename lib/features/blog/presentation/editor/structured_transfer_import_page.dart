@@ -314,7 +314,7 @@ class _StructuredTransferImportPageState
                 icon: const Icon(Icons.checklist),
                 label: Text(l10n.structuredTransferSelectedTitle),
               ),
-              FilledButton.tonalIcon(
+              FilledButton.icon(
                 onPressed: _busy || !preview.comparison.hasChanges
                     ? null
                     : _apply,

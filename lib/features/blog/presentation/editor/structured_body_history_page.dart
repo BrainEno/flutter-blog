@@ -340,7 +340,7 @@ class _StructuredBodyHistoryPageState extends State<StructuredBodyHistoryPage> {
               icon: const Icon(Icons.playlist_add_check),
               label: Text(l10n.structuredHistoryPatchTitle),
             ),
-            FilledButton.tonalIcon(
+            FilledButton.icon(
               onPressed: _confirming || _selectedId == view.current.id
                   ? null
                   : _restore,

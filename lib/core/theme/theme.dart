@@ -27,13 +27,38 @@ abstract final class AppTheme {
     final muted = dark ? AppPalette.mutedOnInk : AppPalette.mutedOnPaper;
     final surface = dark ? AppPalette.surfaceOnInk : AppPalette.surfaceOnPaper;
     final error = dark ? AppPalette.errorOnInk : AppPalette.oxblood;
+    final tint = dark ? AppPalette.tintOnInk : AppPalette.tintOnPaper;
+    final errorTint = dark
+        ? AppPalette.errorTintOnInk
+        : AppPalette.errorTintOnPaper;
+    // The one primary fill of each theme: oxblood with paper on paper, orange
+    // with ink on ink. Every filled button - NoWaveButton.primary, the
+    // Material fallbacks and the floating action - uses this pair, so a page
+    // never shows two different "main" colours.
+    final primary = dark ? AppPalette.orange : AppPalette.oxblood;
+    final onPrimary = dark ? AppPalette.ink : AppPalette.paper;
+    // Every role is named. `copyWith` on the legacy light/dark schemes keeps
+    // the roles it is not given at the old Material 2 defaults - purple
+    // containers, teal tonal buttons - so anything left out here leaks a
+    // colour that is not in the palette.
     final colorScheme =
         (dark ? const ColorScheme.dark() : const ColorScheme.light()).copyWith(
-          primary: dark ? AppPalette.orange : AppPalette.oxblood,
-          onPrimary: dark ? AppPalette.ink : AppPalette.paper,
+          primary: primary,
+          onPrimary: onPrimary,
+          primaryContainer: tint,
+          onPrimaryContainer: foreground,
+          inversePrimary: dark ? AppPalette.oxblood : AppPalette.orange,
           secondary: AppPalette.orange,
           onSecondary: AppPalette.ink,
+          secondaryContainer: tint,
+          onSecondaryContainer: foreground,
+          tertiary: AppPalette.orange,
+          onTertiary: AppPalette.ink,
+          tertiaryContainer: tint,
+          onTertiaryContainer: foreground,
           surface: background,
+          surfaceDim: background,
+          surfaceBright: background,
           onSurface: foreground,
           onSurfaceVariant: muted,
           surfaceTint: Colors.transparent,
@@ -43,8 +68,13 @@ abstract final class AppTheme {
           surfaceContainerHigh: surface,
           surfaceContainerHighest: surface,
           outline: muted,
+          outlineVariant: foreground.withAlpha(NoWaveOpacity.dividerAlpha),
+          inverseSurface: foreground,
+          onInverseSurface: background,
           error: error,
           onError: dark ? AppPalette.ink : AppPalette.paper,
+          errorContainer: errorTint,
+          onErrorContainer: error,
         );
     final base = ThemeData(
       useMaterial3: true,
@@ -165,8 +195,8 @@ abstract final class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppPalette.orange,
-          foregroundColor: AppPalette.ink,
+          backgroundColor: primary,
+          foregroundColor: onPrimary,
           elevation: 0,
           minimumSize: const Size(
             NoWaveSizes.tapTarget,
@@ -185,6 +215,8 @@ abstract final class AppTheme {
       // directly instead of NoWaveButton.
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          backgroundColor: primary,
+          foregroundColor: onPrimary,
           minimumSize: const Size(
             NoWaveSizes.tapTarget,
             NoWaveSizes.primaryAction,
@@ -219,11 +251,11 @@ abstract final class AppTheme {
           minimumSize: const Size(NoWaveSizes.tapTarget, NoWaveSizes.tapTarget),
         ),
       ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppPalette.orange,
-        foregroundColor: AppPalette.ink,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: primary,
+        foregroundColor: onPrimary,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: background,

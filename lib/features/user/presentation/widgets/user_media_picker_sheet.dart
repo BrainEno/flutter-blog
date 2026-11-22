@@ -292,7 +292,7 @@ class _UserMediaPickerSheetState extends State<UserMediaPickerSheet> {
           children: [
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: NoWaveSpacing.medium),
-            FilledButton.tonal(
+            OutlinedButton(
               onPressed: onRetry,
               child: Text(context.l10n.userMediaPickerRetry),
             ),

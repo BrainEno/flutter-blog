@@ -56,6 +56,9 @@ class EditorCategorySelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    // Selected reads as the theme's primary fill, the same pair as the
+    // primary button and the selected segment.
+    final scheme = Theme.of(context).colorScheme;
     final muted = isDarkMode ? AppPalette.mutedOnInk : AppPalette.mutedOnPaper;
     final borderColor = muted.withAlpha((0.7 * 255).toInt());
     final backgroundColor = isDarkMode
@@ -126,7 +129,7 @@ class EditorCategorySelector extends StatelessWidget {
                       fontSize: NoWaveTypeScale.label,
                       fontWeight: FontWeight.w500,
                       color: selectedIds.contains(category.id)
-                          ? AppPalette.ink
+                          ? scheme.onPrimary
                           : unselectedLabel,
                     ),
                   ),
@@ -142,7 +145,7 @@ class EditorCategorySelector extends StatelessWidget {
                     side: BorderSide(color: borderColor),
                   ),
                   backgroundColor: backgroundColor,
-                  selectedColor: AppPalette.orange,
+                  selectedColor: scheme.primary,
                   onSelected: (_) => onChanged(_toggle(category.id)),
                 ),
             ],

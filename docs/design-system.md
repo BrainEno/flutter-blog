@@ -1,6 +1,6 @@
 # 界面设计系统（tokens 与组件）
 
-> 状态：active ｜ 最后核对：2026-11-19 @ b61c0c5
+> 状态：active ｜ 最后核对：2026-11-19 @ 1c5be59
 
 本页是客户端「长什么样」的唯一入口：色板、间距、圆角、线宽、动效、断点，以及
 共用组件的 API 和使用规则。目标是让新增页面**不需要**重新决定这些数字——需要时
@@ -18,6 +18,12 @@
    主按钮。装饰性的橙色短线（小标题前、提示条前、底栏上沿）已全部去掉：标在文字前面的
    线只会拖慢读到字的那一刻。小字号强调文字用牛血红（`AppPalette.oxblood`），因为橙红
    在纸色上不到 4.5:1。
+   **主色按主题分开、主题内统一**：浅色主题的主按钮是牛血红底 + 纸色字，深色主题是
+   橙红底 + 墨色字。两种主题不强求同色，但同一主题里 `NoWaveButton.primary`、
+   Material 的 `FilledButton` / `ElevatedButton` 兜底、浮动新建按钮、选中的分段与
+   标签芯片都用同一对 `colorScheme.primary` / `onPrimary`，不会在一页里出现两种
+   「主色」。各种 `*Container` 角色是安静的底色（`AppPalette.tintOnPaper` /
+   `tintOnInk`，错误用 `errorTintOnPaper` / `errorTintOnInk`），不是第二种强调色。
 2. **方角。** 圆角只有一个例外（封面上的角标 2pt）。Material 的填充/描边按钮默认
    是胶囊形，主题层统一压平方，组件层不许另开圆角。
 3. **留白与细线。** 分组靠留白，分隔靠 1pt 半透明细线，不用卡片阴影与抬升。
@@ -220,8 +226,8 @@
   （`ui_consistency_guard_test` 守着）；
 - 底部面板：底色同页面、0 阴影、方角，只在上沿有同样的发丝线（它从底边升起，
   另外三边贴着屏幕）；SnackBar：浅色下墨底纸字、深色下纸底墨字，
-  方角 0 阴影，行动文字用强调色（深色用橙、浅色用牛血红）；
-- 开关/复选框/分段按钮：选中态为强调色填充 + `onPrimary` 前景，未选中为 1pt
+  方角 0 阴影，行动文字用 `inversePrimary`（浅色主题墨底上用橙、深色主题纸底上用牛血红）；
+- 开关/复选框/分段按钮/编辑器的分类与标签芯片：选中态为 `primary` 填充 + `onPrimary` 前景，未选中为 1pt
   `muted` 描边，方角，≥48pt。
 
 ## 三、组件
@@ -328,7 +334,7 @@
 
 | 变体 | 外观 | 何时用 |
 | --- | --- | --- |
-| `primary` | 强调色填充 + 墨色字，52pt | 一页/一对话框唯一的主行动 |
+| `primary` | 主色填充（浅色：牛血红 + 纸色字；深色：橙红 + 墨色字），52pt | 一页/一对话框唯一的主行动 |
 | `secondary` | 透明 + 1pt 描边 | 真实的次要行动 |
 | `quiet` | 纯文字，仍 48pt | 导航、行内行动、对话框取消 |
 | `destructive` | 错误色描边 + 错误色字 | 删除、结束会话、清空历史 |
@@ -341,7 +347,10 @@
   在页面上再弹一个「处理中」。
 - `onPressed: null` 是禁用态，高度不变，避免整行按钮跳动。
 - 标签在上下文里有歧义时（列表里一排「删除」）传 `semanticLabel`。
-- 不使用 `ElevatedButton`/`FilledButton` 直接写业务按钮；它们只作为主题兜底。
+- 新代码不使用 `ElevatedButton`/`FilledButton` 直接写业务按钮；它们只作为主题兜底，
+  且主题把它们钉成与 `primary` 同一对颜色（`OutlinedButton` 与 `secondary` 同为
+  1pt 墨色描边）。不用 `FilledButton.tonal`：它没有对应的 `NoWaveButton` 变体，主行动
+  用填充、次要行动用描边。
 
 ### NoWaveNotice
 
@@ -761,11 +770,14 @@ favicon 是同一个记号：
 - **暗色模式没有独立插画或位图**，只有色板翻转。
 - **没有 golden 测试。** 一致性的回归靠 `design_tokens_test.dart` 的约束断言与页面
   级 widget 测试，而不是像素比对。
-- **`lib/` 里已没有 `FilledButton` / `OutlinedButton` / `ElevatedButton`**：所有
-  主行动、次要行动、破坏性行动与重试/空态行动都走 `NoWaveButton`；主题仍钉着这三类
-  Material 按钮，避免以后有人顺手写回来时又变成胶囊形。剩下直接使用 Material 的是
-  纯文字动作（`TextButton`）与图标动作（`IconButton`），它们由主题保证 48pt 触控
-  目标与方角。
+- **编辑器的结构化页面与私信成员面板仍直接用 `FilledButton` / `OutlinedButton`**
+  （约 45 处，另有 `editor_body_field.dart` 的 `SegmentedButton`）。它们的 widget
+  测试按 Material 类型查找按钮，所以没有一次性换成 `NoWaveButton`；主题把这几类按钮
+  钉成与 `NoWaveButton` 相同的方角、48pt 触控目标和同一对主色/描边色，
+  `design_tokens_test.dart` 逐主题断言填充按钮、浮动按钮与 `primary` 同色，
+  各 `*Container` 不等于强调色且正文对比度 ≥ 4.5:1。其余页面的主行动、次要行动、
+  破坏性行动与重试/空态行动都走 `NoWaveButton`；纯文字动作（`TextButton`）与图标
+  动作（`IconButton`）由主题保证 48pt 触控目标与方角。
 - **间距预算已归零**：`no_magic_numbers_test.dart` 的 `ceiling` 358 → 215 → 142 → 75
   → **0**，`budget` 表现在是空的。路径是：先改与 token 同值但没写 token 的（画面不
   变），再把 12 逐处判成 8 或 16（唯一会动像素的一步），最后把「尺寸」那批要么变成

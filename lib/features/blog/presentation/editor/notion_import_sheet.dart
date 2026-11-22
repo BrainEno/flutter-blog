@@ -551,7 +551,7 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
       style: Theme.of(context).textTheme.bodySmall,
     ),
     const SizedBox(height: NoWaveSpacing.medium),
-    FilledButton.tonalIcon(
+    OutlinedButton.icon(
       key: const ValueKey('notion-import-choose'),
       onPressed: _busy ? null : _chooseFiles,
       icon: const Icon(Icons.upload_file_outlined),

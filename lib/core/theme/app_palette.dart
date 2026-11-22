@@ -26,4 +26,18 @@ abstract final class AppPalette {
   /// itself.
   static const curtainHairline = Color(0xFF2A2724);
   static const errorOnInk = Color(0xFFFFB4A5);
+
+  /// A quiet filled area one step deeper than [surfaceOnPaper]: your own
+  /// message, the draft being compared, an emphasised badge. Ink and the
+  /// muted text both stay above 4.5:1 on it.
+  static const tintOnPaper = Color(0xFFDDD5C7);
+
+  /// The same step above [surfaceOnInk] on the dark page.
+  static const tintOnInk = Color(0xFF2E2A26);
+
+  /// Behind an error message: oxblood text stays above 4.5:1 on it.
+  static const errorTintOnPaper = Color(0xFFF1D9D3);
+
+  /// Behind an error message on ink, for [errorOnInk] text.
+  static const errorTintOnInk = Color(0xFF3A1E19);
 }
