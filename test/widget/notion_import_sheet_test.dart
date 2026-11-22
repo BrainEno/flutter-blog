@@ -487,7 +487,7 @@ void main() {
     await pumpSheet(
       tester,
       pickFiles: () async {
-        if (refusal != null) throw refusal!;
+        if (refusal != null) throw refusal;
         if (crash) throw StateError('picker');
         return answer;
       },
