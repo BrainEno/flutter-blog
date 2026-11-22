@@ -1,0 +1,34 @@
+name: Temporary lockfile refresh
+
+# Temporary: resolves pubspec.lock for a new dependency with the pinned SDK
+# and commits it to this branch. Removed again before the branch merges.
+on:
+  push:
+    branches: [arena/11bcb146-flutter-blog]
+    paths: [pubspec.yaml]
+
+permissions:
+  contents: write
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: "3.47.8"
+      - run: flutter pub get
+      - name: Commit the resolved lockfile
+        run: |
+          if git diff --quiet -- pubspec.lock; then
+            echo "pubspec.lock already up to date"
+            exit 0
+          fi
+          git diff --stat -- pubspec.lock
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pubspec.lock
+          git commit -m "chore: resolve pubspec.lock for file_selector"
+          git push
