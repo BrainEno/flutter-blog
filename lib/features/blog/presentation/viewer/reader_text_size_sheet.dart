@@ -167,13 +167,10 @@ class _SizeStep extends StatelessWidget {
               child: SizedBox(
                 height: NoWaveSizes.row,
                 child: Center(
-                  // The letter at the size this step sets the body, but not
-                  // scaled again by the system setting: five steps that
-                  // overflow their squares at large system text would say
-                  // nothing about the difference between them.
+                  // The letter at the size this step sets the body, through
+                  // the system text size like the body itself.
                   child: Text(
                     'A',
-                    textScaler: TextScaler.noScaling,
                     style: NoWaveTypography.title(
                       context,
                       size: readerBodySize(size),

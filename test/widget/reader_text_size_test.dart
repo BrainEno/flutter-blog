@@ -153,7 +153,7 @@ void main() {
       tester.getSemantics(
         find.byKey(const ValueKey('reader-text-size-largest')),
       ),
-      containsSemantics(isButton: true, isSelected: true),
+      isSemantics(isButton: true, isSelected: true),
     );
     semantics.dispose();
   });
