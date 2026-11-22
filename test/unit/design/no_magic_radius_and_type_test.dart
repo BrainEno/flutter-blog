@@ -102,12 +102,10 @@ void main() {
         NoWaveTypeScale.codeBlock,
         NoWaveTypeScale.codeInline,
         NoWaveTypeScale.label,
-        NoWaveTypeScale.emptyState,
         NoWaveTypeScale.hint,
         NoWaveTypeScale.sectionTitle,
-        NoWaveTypeScale.authTitle,
       ];
-      expect(sizes, [13, 14, 15, 16, 17, 18, 32]);
+      expect(sizes, [13, 14, 15, 17, 18]);
     });
   });
 }

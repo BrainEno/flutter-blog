@@ -237,9 +237,7 @@ class OfflineLibraryState {
 
   bool get hasQuery => queryText.trim().isNotEmpty;
   bool get hasValidQuery => query != null;
-  bool get hasSnapshot => snapshot != null;
   bool get hasLoadFailure => loadFailure != null;
-  bool get hasClearFailure => clearFailure != null;
 
   /// The articles that an unfiltered catalog renders. Search result rows are
   /// held separately because they need the matched-field/excerpt metadata.

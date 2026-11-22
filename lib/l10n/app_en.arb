@@ -359,7 +359,6 @@
   "notionImportTitle": "Import from Notion",
   "notionImportDescription": "Choose files exported from Notion, or paste a page's Markdown or a no-wave JSON bundle. Files are converted on this device. A preview writes no article, but first uploads the images the chosen pages use.",
   "notionImportInput": "Or paste Markdown or a JSON bundle",
-  "notionImportPreview": "Preview import",
   "notionImportInvalid": "This cannot be read: paste a no-wave JSON bundle, or Markdown whose first line is \"# Title\" (at most 200 pages and 8 MiB).",
   "notionImportInvalidReport": "The server returned an invalid import report.",
   "notionImportUnavailable": "Notion import is unavailable.",
@@ -877,7 +876,6 @@
   "publishQueueRemove": "Remove",
   "publishQueueRemoved": "Removed from the queue",
   "publishQueueRetryQueued": "Queued again",
-  "publishQueueLoadFailed": "Could not read the queue",
   "publishQueueAttempts": "{count, plural, one{Tried once} other{Tried {count} times}}",
   "@publishQueueAttempts": {
     "placeholders": {
@@ -1027,7 +1025,6 @@
       }
     }
   },
-  "messagesSendEmpty": "Write something before sending.",
   "messagesInvalid": "The request was rejected: a message must be non-empty text of at most 20000 characters.",
   "messagesForbidden": "You are not allowed to read this conversation.",
   "messagesUnavailable": "This server does not offer messages yet. Try again later or check the server version.",
@@ -1176,7 +1173,6 @@
   "structuredTextKept": "Text buffer saved on this device; the local body is unchanged.",
   "structuredTextActionFailed": "The action could not be confirmed. Your text remains here; retry or leave only after acknowledging possible loss.",
   "structuredTextReturn": "After applying or leaving, reopen the local recovery to continue editing the body.",
-  "structuredTextPreparing": "Preparing local text…",
   "structuredCatalogTitle": "Local recoveries",
   "structuredCatalogIntro": "Stored only on this device for this account and server. Open a record to choose whether to resume it. The server is not checked here; nothing is published.",
   "structuredCatalogLoading": "Loading local recoveries…",
@@ -1489,7 +1485,6 @@
   "structuredHistoryTitle": "Session body history",
   "structuredHistoryUndo": "Undo body edit",
   "structuredHistoryRedo": "Redo body edit",
-  "structuredHistoryShortNote": "Undo and redo are local to this body session. Saving can still fail or conflict.",
   "structuredHistoryIntro": "Preview changes from the current body to an earlier or later session snapshot. Restoring only changes the local body, not metadata or the server.",
   "structuredHistoryLimits": "History is temporary, bounded and lost on exit, restart or text-input handoff. It is not a backup; pending saves may be lost.",
   "structuredHistoryTruncated": "Older snapshots were removed to respect the history limit.",

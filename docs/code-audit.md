@@ -1,6 +1,6 @@
 # 代码健壮性与分层审查（2026-10）
 
-> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+> 状态：active ｜ 最后核对：2026-11-19 @ 1f50dc4
 
 ## 范围与结论
 
@@ -76,6 +76,19 @@
 > `flutter pub outdated` 后按提示改 `pubspec.yaml`，再用
 > `python3 -m unittest discover -s scripts/tests` 与 CI 一并验证。
 
+> 2026-11-19 更新（死代码清理）：按 `lib/main.dart` 的导入可达性与标识符引用扫描了
+> `lib/`。所有文件都被导入；唯一从入口不可达的是
+> `structured_inline_replacement.dart`，它是有意隔离、带完整测试的替换原语（见
+> [结构化会话恢复](structured-session-recovery.md)），保留。删除了无调用方的
+> `OfflineLibraryState.hasSnapshot` / `hasClearFailure`、`NoWaveTypeScale.emptyState` /
+> `authTitle`、只给测试用的 `buildConnectionChecker` 包装（生产与测试都直接构造
+> `ApiConnectionChecker`），以及 5 条无引用文案（`notionImportPreview`、
+> `publishQueueLoadFailed`、`messagesSendEmpty`、`structuredTextPreparing`、
+> `structuredHistoryShortNote`）。原本闲置的两条邮箱验证文案接上了实际路径：
+> 空输入提示「请粘贴链接」而不是「链接无效」；发送被限流时说明稍后再请求。
+> 私信页的「是否本人」判断改用实体上已有的 `ConversationMessage.sentBy`。
+> 依赖全部有用，`lib/` 中没有 TODO/FIXME。
+
 ## 本轮修复
 
 - 文章编辑页通过 domain 的 `BlogDraftStore` 接口访问草稿，个人中心通过
@@ -120,7 +133,7 @@
 | 已缓解 | ~~安全存储迁移失败会回退 SQLite；清除失败只记录日志，重启可能重新读到旧会话~~ —— #102 已收敛：`ResilientNowaveSessionStore` 用 SQLite `metadata` 里**不含令牌的标记**（`nowave_session_authority_v1`）记录哪一份副本有效。安全存储启动探针（写/读/删，独立 key）失败即写 SQLite；迁移先写入再读回校验，校验不过就保留 SQLite 副本；退出**先写「无会话」标记**再清两处副本，因此删除失败也不会在重启后复活账号，并把 `cleared / disowned / failed` 作为退出结果向上传播（`AuthLogoutFailure` + `auth.localSignOutIncomplete`）。 | 仍未验证真实平台的 Keychain/Keystore 故障注入、系统备份恢复与越狱/root 场景；标记本身写在 SQLite，若 SQLite 整体不可用，退出会明确报 `failed`，此时不能承诺重启后不复活。字段置空不等于物理擦除。 |
 | 中 | 阅读历史只按用户 ID 而非后端隔离；退出清理与在途写入或同账号重新登录尚未完全串行。 | 后续设计后端归属、迁移和写入/清理协调，不能承诺所有旧记录或副本都已擦除。 |
 | 高 | 文章/媒体写入超时后的结果可能未知。线上服务的文章幂等能力、媒体去重/孤儿清理尚未验证；当前分支没有持久 outbox。 | #23 虽已关闭，#66 尚未合并且验收有缺口；需要服务端部署能力证据、持久账号隔离、状态/退避及媒体补偿，不能盲重试或凭客户端代码宣称端到端幂等。 |
-| 已缓解（部分） | ~~`lib/core/storage/app_database.dart` 和 `sqlite_blog_cache.dart` 仍依赖 feature data 模型，`core/storage` 中也有带 Flutter 类型/具体存储的实现~~ —— #107 第一步已收敛：`lib/core` 不再导入 `lib/features`（`SqliteBlogCache`、`SqliteBlogDraftStore`、阅读历史实现移入 `features/blog`），`AppDatabase` 只接受原始类型（`setTheme(String)`、`upsertBlogRow(...)`），主题偏好实现移到 `core/theme`；`tool/ci/check_core_dependencies.py` 加上 `flutter test` 之外的 unittest 守护这两条规则。仍开放：domain 的附件接口使用 `dart:io File`；`markdown_body.dart`（580 行）、`comments_section.dart`（480 行）、`blog_repository_impl.dart`（534 行）等文件仍偏大。`blog_remote_data_source.dart` 已收敛为兼容 façade，公开/账号读路由和认证写路由分别移至 `blog_remote_article_reads.dart`、`blog_remote_article_writes.dart`；编辑器发布快照也移至 `editor_publish_intent.dart`，具体的结构化编辑收敛边界见 [编辑器路线图](editor-architecture-roadmap.md)（`nowave_session.dart`、`nowave_api_client.dart`、`blog_viewer_page.dart` 亦已在早期步骤拆分）。 | 后续继续保持规则零违规，并按「认证拆分 session 状态机 / refresh 单飞 / 账号 fence」逐步拆单元；保留现有 SQLite 表与数据/迁移测试，不宜为分层一次性迁移数据库；Isar 依赖已按「不维护即移除」原则在 #107 第二步彻底删除（见 docs/sqlite-storage.md）。 |
+| 已缓解（部分） | ~~`lib/core/storage/app_database.dart` 和 `sqlite_blog_cache.dart` 仍依赖 feature data 模型，`core/storage` 中也有带 Flutter 类型/具体存储的实现~~ —— #107 第一步已收敛：`lib/core` 不再导入 `lib/features`（`SqliteBlogCache`、`SqliteBlogDraftStore`、阅读历史实现移入 `features/blog`），`AppDatabase` 只接受原始类型（`setTheme(String)`、`upsertBlogRow(...)`），主题偏好实现移到 `core/theme`；`tool/ci/check_core_dependencies.py` 加上 `flutter test` 之外的 unittest 守护这两条规则。domain 的图片入参已改为平台无关的 `ImageUpload`（domain 层只剩 `notion_zip.dart` 用 `dart:io` 的 `ZLibDecoder` 解压，不涉及文件）；`markdown_body.dart`（117 行）、`comments_section.dart`（301 行）已拆小。仍偏大：`notion_import_sheet.dart`（约 1160 行）、`local_structured_session.dart`（约 980 行）、`editor_session_coordinator.dart`（约 940 行）、`blog_repository_impl.dart`（约 620 行）。`blog_remote_data_source.dart` 已收敛为兼容 façade，公开/账号读路由和认证写路由分别移至 `blog_remote_article_reads.dart`、`blog_remote_article_writes.dart`；编辑器发布快照也移至 `editor_publish_intent.dart`，具体的结构化编辑收敛边界见 [编辑器路线图](editor-architecture-roadmap.md)（`nowave_session.dart`、`nowave_api_client.dart`、`blog_viewer_page.dart` 亦已在早期步骤拆分）。 | 后续继续保持规则零违规，并按「认证拆分 session 状态机 / refresh 单飞 / 账号 fence」逐步拆单元；保留现有 SQLite 表与数据/迁移测试，不宜为分层一次性迁移数据库；Isar 依赖已按「不维护即移除」原则在 #107 第二步彻底删除（见 docs/sqlite-storage.md）。 |
 | 中 | 部分 repository 将未分类异常转为 feature-specific 的通用失败，可能丢失网络/超时分类。 | 按操作逐项梳理可重试性、结果未知、日志脱敏和本地化，而不是对所有异常一律重试或返回成功。 |
 
 本次新增自动化测试覆盖上述**已修复**路径；mock 测试不能代替真实 Android/iOS

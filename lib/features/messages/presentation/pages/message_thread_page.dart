@@ -297,7 +297,7 @@ class _ThreadBody extends StatelessWidget {
                           state.messages[index - (state.hasMore ? 1 : 0)];
                       return _MessageBubble(
                         message: message,
-                        mine: message.senderId == state.viewerId,
+                        mine: message.sentBy(state.viewerId),
                       );
                     },
                   ),

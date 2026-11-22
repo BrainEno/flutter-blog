@@ -111,9 +111,6 @@ abstract final class NoWaveTypeScale {
   /// 15: chip labels (tags, categories) and the words of the sliding tabs.
   static const label = 15.0;
 
-  /// 16: the sentence of an empty state.
-  static const emptyState = 16.0;
-
   /// 16: the words of an action row (the profile menu) - a sans label, so
   /// a list of a dozen destinations reads as a menu rather than a column of
   /// headlines competing with the account name above it.
@@ -141,9 +138,6 @@ abstract final class NoWaveTypeScale {
   /// 40: an article's own title on the reading page - the largest type a
   /// reader meets inside a piece, set under its cover.
   static const articleTitle = 40.0;
-
-  /// 32: the sign-in and sign-up page titles.
-  static const authTitle = 32.0;
 
   /// 36: a page's section heading (`NoWaveSectionHeading`) - the largest
   /// type on a list page.
