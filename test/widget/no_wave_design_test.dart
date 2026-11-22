@@ -107,7 +107,7 @@ void main() {
       final ordinal = tester.getRect(find.text('02'));
       final tag = tester.getRect(find.text('Poetry'));
       final title = tester.getRect(find.text(blog.title));
-      final author = tester.getRect(find.text(blog.posterName));
+      final author = tester.getRect(find.text('A writer with a long name'));
       final arrow = tester.getRect(find.byIcon(Icons.arrow_forward));
       // The number opens the kicker line, centred with the tags (which sit
       // in 48pt targets) instead of pinned above them in its own column.

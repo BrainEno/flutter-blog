@@ -232,8 +232,9 @@ class _ReadAloudControlsState extends State<ReadAloudControls> {
                                       controller.previewSeek(value);
                                       // Keyboard/assistive adjustments may not have a
                                       // pointer drag; commit those immediately.
-                                      if (!_dragging)
+                                      if (!_dragging) {
                                         controller.commitSeek(value);
+                                      }
                                     }
                                   : null,
                               onChangeEnd: active
