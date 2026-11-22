@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
@@ -67,10 +69,87 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
   final Set<String> _viewRecorded = {};
   final Set<String> _viewScheduled = {};
 
+  /// Where the reader left this article last time, read once when the page
+  /// opens; null until known, or when there is nothing to pick up.
+  double? _resumeAt;
+
+  /// The position last written, so a scroll that ends where it began does
+  /// not write again.
+  double? _savedProgress;
+
   @override
   void initState() {
     super.initState();
     _checkIfIsLiked();
+    unawaited(_loadResumePoint());
+    // Opened from a card, the article is already here: the cubit starts
+    // loaded and the listener below never hears a change, so the history
+    // entry was only ever written for deep links. Record it now.
+    final state = context.read<BlogViewerCubit>().state;
+    final userId = _signedInUserId;
+    if (state is BlogViewerLoaded && userId != null) {
+      unawaited(_recordReadingHistory(userId, state.blog));
+    }
+  }
+
+  ReadingHistoryStore? get _store {
+    if (widget.historyStore case final store?) return store;
+    final locator = GetIt.instance;
+    return locator.isRegistered<ReadingHistoryStore>()
+        ? locator<ReadingHistoryStore>()
+        : null;
+  }
+
+  String? get _signedInUserId {
+    final state = context.read<AppUserCubit>().state;
+    return state is AppUserLoggedIn && state.user.id.isNotEmpty
+        ? state.user.id
+        : null;
+  }
+
+  /// Positions are kept with the reading history, so - like it - only for a
+  /// signed-in reader, and a failed read only means opening at the top.
+  Future<void> _loadResumePoint() async {
+    final userId = _signedInUserId;
+    final store = _store;
+    if (userId == null || store == null) return;
+    try {
+      final progress = await store.progressOf(
+        userId: userId,
+        blogId: widget.blogId,
+      );
+      if (!mounted || progress == null) return;
+      _savedProgress = progress;
+      setState(() => _resumeAt = progress);
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'reading the resume point failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<void> _saveProgress(double progress) async {
+    final userId = _signedInUserId;
+    final store = _store;
+    if (userId == null || store == null) return;
+    final saved = _savedProgress;
+    if (saved != null && (saved - progress).abs() < 0.01) return;
+    _savedProgress = progress;
+    try {
+      await store.saveProgress(
+        userId: userId,
+        blogId: widget.blogId,
+        progress: progress,
+      );
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'saving the reading position failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   void _checkIfIsLiked() {
@@ -89,9 +168,9 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
   Future<void> _recordReadingHistory(String userId, Blog blog) async {
     if (_historyRecordedFor == '${userId}_${blog.id}') return;
     _historyRecordedFor = '${userId}_${blog.id}';
+    final store = _store;
+    if (store == null) return;
     try {
-      final store =
-          widget.historyStore ?? GetIt.instance<ReadingHistoryStore>();
       await store.record(userId: userId, blog: blog);
     } catch (e, stackTrace) {
       AppLogger.error(
@@ -207,6 +286,8 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
                     ? GetIt.instance<ReadAloudPreferences>()
                     : null),
             readAloudRouteObserver: widget.readAloudRouteObserver,
+            resumeAt: _resumeAt,
+            onProgress: _saveProgress,
           );
         }
         if (state is BlogViewerFailure) {

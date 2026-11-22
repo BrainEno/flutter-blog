@@ -39,7 +39,7 @@ class SqliteReadingHistoryStore
   }) async {
     final rows = await database
         .customSelect(
-          'SELECT blog_id, title, poster_name, image_url, read_at '
+          'SELECT blog_id, title, poster_name, image_url, read_at, progress '
           'FROM reading_history WHERE backend = ? AND user_id = ? '
           'ORDER BY read_at DESC, blog_id ASC LIMIT ?',
           variables: [
@@ -59,9 +59,40 @@ class SqliteReadingHistoryStore
             readAt: DateTime.fromMicrosecondsSinceEpoch(
               row.read<int>('read_at'),
             ),
+            progress: row.read<double?>('progress'),
           ),
         )
         .toList();
+  }
+
+  @override
+  Future<void> saveProgress({
+    required String userId,
+    required String blogId,
+    required double progress,
+  }) => database.customStatement(
+    'UPDATE reading_history SET progress = ? '
+    'WHERE backend = ? AND user_id = ? AND blog_id = ?',
+    [progress.clamp(0.0, 1.0), _backend, userId, blogId],
+  );
+
+  @override
+  Future<double?> progressOf({
+    required String userId,
+    required String blogId,
+  }) async {
+    final row = await database
+        .customSelect(
+          'SELECT progress FROM reading_history '
+          'WHERE backend = ? AND user_id = ? AND blog_id = ?',
+          variables: [
+            Variable<String>(_backend),
+            Variable<String>(userId),
+            Variable<String>(blogId),
+          ],
+        )
+        .getSingleOrNull();
+    return row?.read<double?>('progress');
   }
 
   @override

@@ -58,6 +58,7 @@ class _History implements ReadingHistoryStore {
         posterName: ['林间', '周默', 'Ada Lin', '许多'][i % 4],
         imageUrl: '',
         readAt: DateTime.now().subtract(Duration(hours: 5 * i + 1)),
+        progress: [0.42, 1.0, null, 0.18, 0.7][i],
       ),
   ];
 
@@ -66,6 +67,19 @@ class _History implements ReadingHistoryStore {
 
   @override
   Future<void> clear({required String userId}) async {}
+
+  @override
+  Future<void> saveProgress({
+    required String userId,
+    required String blogId,
+    required double progress,
+  }) async {}
+
+  @override
+  Future<double?> progressOf({
+    required String userId,
+    required String blogId,
+  }) async => blogId == 'a0' ? 0.42 : null;
 }
 
 class _Notifications implements NotificationRepository {
@@ -292,8 +306,13 @@ void main() {
         );
       });
     when(
+      () => harness.remote.isBlogLikedByUser(any(), any()),
+    ).thenAnswer((_) async => false);
+    when(
       () => harness.remote.getMyArticles(userId: any(named: 'userId')),
-    ).thenAnswer((_) async => [for (final (i, t) in _titles.indexed) _blog(i, t)]);
+    ).thenAnswer(
+      (_) async => [for (final (i, t) in _titles.indexed) _blog(i, t)],
+    );
     when(
       () => harness.remote.getAuthorArticles(
         any(),
@@ -321,7 +340,9 @@ void main() {
 
   testWidgets('history', (tester) async {
     await boot(tester, '/profile/history', before: signIn);
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    );
     await _shot(tester, '22-history');
   });
 
@@ -365,6 +386,16 @@ void main() {
   testWidgets('search empty', (tester) async {
     await boot(tester, '/search', before: signIn);
     await _shot(tester, '28-search');
+  });
+
+  testWidgets('article resume', (tester) async {
+    await boot(tester, '/view/a0', before: signIn);
+    await _shot(tester, '31-article-resume');
+  });
+
+  testWidgets('article resume dark', (tester) async {
+    await boot(tester, '/view/a0', dark: true, before: signIn);
+    await _shot(tester, '32-article-resume-dark');
   });
 
   testWidgets('about', (tester) async {

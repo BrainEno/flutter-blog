@@ -282,6 +282,8 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                           child: BlogCard(
                             blog: blog,
                             index: index + 1,
+                            // The field's underline is the first rule.
+                            ruled: index > 0,
                             labelAuthor: true,
                             onTagTap: (tag) => openTagArticles(context, tag),
                             onTap: () => context.push(

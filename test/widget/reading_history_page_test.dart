@@ -36,6 +36,19 @@ class _FakeStore implements ReadingHistoryStore {
   }
 
   @override
+  Future<void> saveProgress({
+    required String userId,
+    required String blogId,
+    required double progress,
+  }) async {}
+
+  @override
+  Future<double?> progressOf({
+    required String userId,
+    required String blogId,
+  }) async => null;
+
+  @override
   Future<void> clear({required String userId}) async {
     cleared.add(userId);
   }
@@ -155,6 +168,36 @@ void main() {
       expect(store.legacyClears, 0);
     },
   );
+
+  testWidgets('a row says how far the reader got', (tester) async {
+    ReadingHistoryEntry at(String id, double? progress) => ReadingHistoryEntry(
+      blogId: id,
+      title: '标题 $id',
+      posterName: '',
+      imageUrl: '',
+      readAt: DateTime(2026, 10, 1, 12),
+      progress: progress,
+    );
+    // Tall enough for every row under the stats card to be built.
+    tester.view
+      ..physicalSize = const Size(800, 2400)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await pumpPage(
+      tester,
+      _FakeStore([
+        at('half', 0.42),
+        at('done', 0.97),
+        at('glance', 0.02),
+        at('old', null),
+      ]),
+    );
+
+    expect(find.text('2026年10月1日 · 读到 42%'), findsOneWidget);
+    expect(find.text('2026年10月1日 · 已读完'), findsOneWidget);
+    // Barely opened, or never measured: just the date.
+    expect(find.text('2026年10月1日'), findsNWidgets(2));
+  });
 
   testWidgets('renders the recorded reads newest-first', (tester) async {
     final store = _FakeStore([

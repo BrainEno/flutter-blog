@@ -153,4 +153,70 @@ void main() {
       isNotEmpty,
     );
   });
+
+  test('remembers where the reader left an article, per account', () async {
+    await store.record(userId: 'u1', blog: blog('a'));
+    await store.record(userId: 'u2', blog: blog('a'));
+    expect(await store.progressOf(userId: 'u1', blogId: 'a'), isNull);
+
+    await store.saveProgress(userId: 'u1', blogId: 'a', progress: 0.42);
+
+    expect(await store.progressOf(userId: 'u1', blogId: 'a'), 0.42);
+    expect(await store.progressOf(userId: 'u2', blogId: 'a'), isNull);
+    expect((await store.list(userId: 'u1')).single.progress, 0.42);
+
+    // Reading it again moves the entry to the top, not the place.
+    await store.record(userId: 'u1', blog: blog('a'));
+    expect(await store.progressOf(userId: 'u1', blogId: 'a'), 0.42);
+  });
+
+  test('a position for an article not in the history is not kept', () async {
+    await store.saveProgress(userId: 'u1', blogId: 'gone', progress: 0.3);
+
+    expect(await store.progressOf(userId: 'u1', blogId: 'gone'), isNull);
+    expect(await store.list(userId: 'u1'), isEmpty);
+  });
+
+  test('a position is clamped to the article', () async {
+    await store.record(userId: 'u1', blog: blog('a'));
+    await store.saveProgress(userId: 'u1', blogId: 'a', progress: 1.4);
+
+    expect(await store.progressOf(userId: 'u1', blogId: 'a'), 1.0);
+  });
+
+  test('a v18 history gains the position column and keeps its rows', () async {
+    final dir = await Directory.systemTemp.createTemp('belog-history-v18-');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/v18.sqlite');
+    final old = raw.sqlite3.open(file.path);
+    old.execute(
+      "CREATE TABLE reading_history (backend TEXT NOT NULL DEFAULT '', "
+      'user_id TEXT NOT NULL, blog_id TEXT NOT NULL, title TEXT NOT NULL, '
+      "poster_name TEXT NOT NULL DEFAULT '', image_url TEXT NOT NULL DEFAULT '', "
+      'read_at INTEGER NOT NULL, PRIMARY KEY(backend, user_id, blog_id))',
+    );
+    old.execute(
+      'INSERT INTO reading_history VALUES '
+      "('https://api.example.invalid', 'u1', 'kept', '留下的', '', '', 1)",
+    );
+    old.execute('PRAGMA user_version = 18');
+    old.close();
+
+    final upgraded = AppDatabase(NativeDatabase(file));
+    addTearDown(upgraded.close);
+    final upgradedStore = SqliteReadingHistoryStore(
+      upgraded,
+      apiBaseUrl: Uri.parse('https://api.example.invalid'),
+    );
+
+    final kept = (await upgradedStore.list(userId: 'u1')).single;
+    expect(kept.blogId, 'kept');
+    expect(kept.progress, isNull);
+    await upgradedStore.saveProgress(
+      userId: 'u1',
+      blogId: 'kept',
+      progress: 0.6,
+    );
+    expect(await upgradedStore.progressOf(userId: 'u1', blogId: 'kept'), 0.6);
+  });
 }

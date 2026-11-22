@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_link_button.dart';
 import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/components/no_wave_skeleton.dart';
@@ -197,7 +198,11 @@ class _NotificationInboxView extends StatelessWidget {
                       vertical: NoWaveSpacing.small,
                     ),
                     itemCount: loaded.items.length + extra,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    separatorBuilder: (_, _) => const Divider(
+                      height: 1,
+                      indent: NoWaveSpacing.page,
+                      endIndent: NoWaveSpacing.page,
+                    ),
                     itemBuilder: (context, index) {
                       final row = index - (showSummary ? 1 : 0);
                       if (row < 0) {
@@ -223,7 +228,12 @@ class _NotificationInboxView extends StatelessWidget {
                         );
                       }
                       if (row >= loaded.items.length) {
-                        return _NotificationPaginationFooter(state: loaded);
+                        return _NotificationPaginationFooter(
+                          state: loaded,
+                          addressNote: loaded.items.any(
+                            (item) => item.articleTarget != null,
+                          ),
+                        );
                       }
                       final item = loaded.items[row];
                       final conversationId = item.conversationTarget;
@@ -292,23 +302,29 @@ class _UnreadSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // One line: the count, and the action that clears it at the far end.
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        NoWaveSpacing.medium,
+        NoWaveSpacing.page,
         NoWaveSpacing.small,
-        NoWaveSpacing.medium,
+        NoWaveSpacing.page,
         NoWaveSpacing.small,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: NoWaveSpacing.medium,
         children: [
           Text(
             context.l10n.notificationsLoadedUnreadCount(count),
-            style: Theme.of(context).textTheme.bodySmall,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
-          TextButton(
+          NoWaveLinkButton(
+            icon: Icons.done_all,
+            label: context.l10n.notificationsMarkAllRead,
             onPressed: onMarkAll,
-            child: Text(context.l10n.notificationsMarkAllRead),
           ),
         ],
       ),
@@ -317,9 +333,16 @@ class _UnreadSummary extends StatelessWidget {
 }
 
 class _NotificationPaginationFooter extends StatelessWidget {
-  const _NotificationPaginationFooter({required this.state});
+  const _NotificationPaginationFooter({
+    required this.state,
+    this.addressNote = false,
+  });
 
   final NotificationInboxLoaded state;
+
+  /// Whether to say, once, that an article a notification points at may
+  /// have gone. Said under every linked row it was a third of the list.
+  final bool addressNote;
 
   @override
   Widget build(BuildContext context) {
@@ -374,7 +397,24 @@ class _NotificationPaginationFooter extends StatelessWidget {
         NoWaveSpacing.medium,
         NoWaveSpacing.medium,
       ),
-      child: Center(child: content),
+      child: Center(
+        child: addressNote
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  content,
+                  const SizedBox(height: NoWaveSpacing.small),
+                  Text(
+                    l10n.notificationsAddressMayChange,
+                    textAlign: TextAlign.center,
+                    style: textStyle?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              )
+            : content,
+      ),
     );
   }
 }
@@ -429,42 +469,73 @@ class _NotificationRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context);
-    return Container(
-      color: item.isRead
-          ? null
-          : Theme.of(context).colorScheme.surfaceContainerHighest,
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final note = theme.textTheme.bodySmall?.copyWith(
+      color: scheme.onSurfaceVariant,
+    );
+    final icon = Icon(
+      _icon,
+      size: NoWaveIconSize.action,
+      color: item.isRead ? scheme.onSurfaceVariant : scheme.onSurface,
+    );
+    // Unread is said in type and one mark, not a tinted band: the sentence
+    // is set heavier, and an 8pt ink square - the same square that ends an
+    // article - stands at the row's end until it is read. The band ran past
+    // the gutter and all but vanished on the dark paper.
+    return Padding(
       padding: const EdgeInsets.fromLTRB(
+        NoWaveSpacing.page,
         NoWaveSpacing.medium,
-        NoWaveSpacing.small,
-        NoWaveSpacing.small,
+        NoWaveSpacing.page,
         NoWaveSpacing.small,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (item.isRead)
-            Icon(_icon, size: 20)
+            icon
           else
             Semantics(
               label: context.l10n.notificationsUnreadBadge,
-              child: Icon(_icon, size: 20),
+              child: icon,
             ),
-          const SizedBox(width: NoWaveSpacing.small),
+          const SizedBox(width: NoWaveSpacing.medium),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_describe(context)),
-                const SizedBox(height: NoWaveSpacing.xs),
-                Text(
-                  formatDate(locale, item.createdAt),
-                  style: Theme.of(context).textTheme.bodySmall,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _describe(context),
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: item.isRead
+                              ? FontWeight.w400
+                              : FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (!item.isRead) ...[
+                      const SizedBox(width: NoWaveSpacing.small),
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: NoWaveSpacing.small,
+                        ),
+                        child: ExcludeSemantics(
+                          child: SizedBox.square(
+                            dimension: NoWaveSizes.endMark,
+                            child: ColoredBox(color: scheme.onSurface),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                if (onOpenTarget != null && item.articleTarget != null)
-                  Text(
-                    context.l10n.notificationsAddressMayChange,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                const SizedBox(height: NoWaveSpacing.xs),
+                Text(formatRecent(locale, item.createdAt), style: note),
                 if (onOpenTarget != null && item.articleSourceLocale != null)
                   Text(switch (item.articleSourceLocale!) {
                     NotificationArticleLocale.english =>
@@ -473,41 +544,41 @@ class _NotificationRow extends StatelessWidget {
                       context.l10n.notificationsSourceSimplifiedChinese,
                     NotificationArticleLocale.traditionalChinese =>
                       context.l10n.notificationsSourceTraditionalChinese,
-                  }, style: Theme.of(context).textTheme.bodySmall),
+                  }, style: note),
                 if (onOpenConversation != null &&
                     item.conversationTarget == null)
                   Text(
                     context.l10n.notificationsConversationUnavailable,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: note,
                   ),
                 if (onOpenTarget != null ||
                     onOpenConversation != null ||
                     !item.isRead)
+                  // On the sentence's edge, a step apart: a text button's
+                  // own inset used to start them inside the column.
                   Wrap(
-                    spacing: NoWaveSpacing.small,
+                    spacing: NoWaveSpacing.large,
                     children: [
                       if (onOpenTarget != null)
-                        TextButton(
+                        NoWaveLinkButton(
+                          forward: true,
                           onPressed: onOpenTarget,
-                          child: Text(
-                            item.articleTarget != null
-                                ? context.l10n.notificationsOpenArticleAddress
-                                : context.l10n.notificationsOpenFollower,
-                          ),
+                          label: item.articleTarget != null
+                              ? context.l10n.notificationsOpenArticleAddress
+                              : context.l10n.notificationsOpenFollower,
                         ),
                       if (onOpenConversation != null)
-                        TextButton(
+                        NoWaveLinkButton(
+                          forward: true,
                           onPressed: onOpenConversation,
-                          child: Text(
-                            item.conversationTarget == null
-                                ? context.l10n.notificationsOpenMessages
-                                : context.l10n.notificationsOpenConversation,
-                          ),
+                          label: item.conversationTarget == null
+                              ? context.l10n.notificationsOpenMessages
+                              : context.l10n.notificationsOpenConversation,
                         ),
                       if (!item.isRead)
-                        TextButton(
+                        NoWaveLinkButton(
                           onPressed: marking ? null : onMarkRead,
-                          child: Text(context.l10n.notificationsMarkRead),
+                          label: context.l10n.notificationsMarkRead,
                         ),
                     ],
                   ),

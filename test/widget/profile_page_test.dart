@@ -262,18 +262,18 @@ void main() {
             findsOneWidget,
           );
           for (final label in [
-            l10n.menuEditProfile,
-            l10n.menuChangePassword,
-            l10n.accountEmailTitle,
-            l10n.emailVerifyTitle,
-            l10n.menuMyArticles,
-            l10n.menuReadingHistory,
             l10n.notificationsTitle,
             l10n.messagesTitle,
+            l10n.menuMyArticles,
             l10n.publishQueueTitle,
+            l10n.menuReadingHistory,
+            l10n.menuEditProfile,
+            l10n.accountEmailTitle,
+            l10n.emailVerifyTitle,
+            l10n.menuChangePassword,
             l10n.accountSessionsTitle,
-            l10n.menuAbout,
             l10n.exportMyData,
+            l10n.menuAbout,
             l10n.logout,
           ]) {
             await tester.scrollUntilVisible(find.text(label), 140);

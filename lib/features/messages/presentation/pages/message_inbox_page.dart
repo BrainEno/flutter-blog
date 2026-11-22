@@ -221,7 +221,12 @@ class _MessageInboxViewState extends State<_MessageInboxView> {
                         loaded.conversations.length +
                         (showStartCard ? 1 : 0) +
                         (loaded.isCapped ? 1 : 0),
-                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    // Rules start under the names, not under the avatars: the
+                    // pictures make their own column.
+                    separatorBuilder: (_, _) => const Divider(
+                      height: 1,
+                      indent: _ConversationRow.textInset,
+                    ),
                     itemBuilder: (context, index) {
                       if (showStartCard && index == 0) {
                         return _StartConversationCard(
@@ -235,9 +240,9 @@ class _MessageInboxViewState extends State<_MessageInboxView> {
                       if (row >= loaded.conversations.length) {
                         return Padding(
                           padding: const EdgeInsets.fromLTRB(
+                            NoWaveSpacing.page,
                             NoWaveSpacing.medium,
-                            NoWaveSpacing.small,
-                            NoWaveSpacing.medium,
+                            NoWaveSpacing.page,
                             NoWaveSpacing.medium,
                           ),
                           child: Text(
@@ -294,10 +299,10 @@ class _StartConversationCard extends StatelessWidget {
         : l10n.messagesUnknownParticipant;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
+        NoWaveSpacing.page,
         NoWaveSpacing.medium,
-        NoWaveSpacing.small,
+        NoWaveSpacing.page,
         NoWaveSpacing.medium,
-        NoWaveSpacing.small,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,6 +331,12 @@ class _ConversationRow extends StatelessWidget {
     required this.onTap,
     required this.onDelete,
   });
+
+  static const double _avatarSize = 44;
+
+  /// Where the names start: the gutter, the avatar and the gap after it.
+  static const double textInset =
+      NoWaveSpacing.page + _avatarSize + NoWaveSpacing.medium;
 
   final Conversation conversation;
   final String viewerId;
@@ -367,14 +378,18 @@ class _ConversationRow extends StatelessWidget {
     final participant = _firstParticipant;
     final lastEventAt = conversation.lastEventAt;
     final preview = conversation.lastMessage?.body;
+    final scheme = Theme.of(context).colorScheme;
+    final unread = conversation.unreadCount > 0;
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
+        // The app's gutter on the leading edge; the trailing edge is the
+        // overflow button's own target when there is one.
+        padding: const EdgeInsetsDirectional.fromSTEB(
+          NoWaveSpacing.page,
           NoWaveSpacing.medium,
-          NoWaveSpacing.small,
           NoWaveSpacing.medium,
-          NoWaveSpacing.small,
+          NoWaveSpacing.medium,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -382,9 +397,9 @@ class _ConversationRow extends StatelessWidget {
             NoWaveAvatar(
               name: name,
               imageUrl: participant?.avatarUrl ?? '',
-              size: 44,
+              size: _avatarSize,
             ),
-            const SizedBox(width: NoWaveSpacing.small),
+            const SizedBox(width: NoWaveSpacing.medium),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -394,7 +409,12 @@ class _ConversationRow extends StatelessWidget {
                       Expanded(
                         child: Text(
                           name,
-                          style: Theme.of(context).textTheme.titleSmall,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                fontWeight: unread
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -406,7 +426,7 @@ class _ConversationRow extends StatelessWidget {
                         // than a 320px screen allows.
                         Flexible(
                           child: Text(
-                            formatDate(
+                            formatRecent(
                               Localizations.localeOf(context),
                               lastEventAt,
                             ),
@@ -421,21 +441,36 @@ class _ConversationRow extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: NoWaveSpacing.xs),
-                  Text(
-                    preview == null || preview.trim().isEmpty
-                        ? l10n.messagesThreadEmpty
-                        : preview,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium,
+                  // The count sits at the end of the preview it is about,
+                  // not beside the date, where it squeezed the date into an
+                  // ellipsis.
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          preview == null || preview.trim().isEmpty
+                              ? l10n.messagesThreadEmpty
+                              : preview,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: unread
+                                    ? scheme.onSurface
+                                    : scheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ),
+                      if (unread) ...[
+                        const SizedBox(width: NoWaveSpacing.small),
+                        _UnreadPill(count: conversation.unreadCount),
+                      ],
+                    ],
                   ),
                 ],
               ),
             ),
-            if (conversation.unreadCount > 0) ...[
-              const SizedBox(width: NoWaveSpacing.small),
-              _UnreadPill(count: conversation.unreadCount),
-            ],
             if (conversation.createdBy == viewerId)
               PopupMenuButton<String>(
                 tooltip: deleting

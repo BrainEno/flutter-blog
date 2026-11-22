@@ -32,6 +32,33 @@ String formatWeekdayShort(Locale locale, DateTime date) =>
 String formatDateline(Locale locale, DateTime date) =>
     DateFormat.MMMEd(locale.toString()).format(date.toLocal());
 
+/// A short date for an inbox row, relative to [now] in local time: the
+/// time of day for today ("14:30"), the weekday within the past week
+/// ("周一", "Mon"), the month and day this year ("11月20日", "Nov 20"), and
+/// the full date before that.
+///
+/// A message from twenty minutes ago printed as "2026年11月22日" said nothing
+/// the reader did not know, and was long enough to be cut off beside an
+/// unread count. Words such as "yesterday" are left out on purpose: they
+/// need translations, and a weekday is just as quick to read.
+String formatRecent(Locale locale, DateTime date, {DateTime? now}) {
+  final tag = locale.toString();
+  final local = date.toLocal();
+  final today = (now ?? DateTime.now()).toLocal();
+  final day = DateTime(local.year, local.month, local.day);
+  final todayStart = DateTime(today.year, today.month, today.day);
+  final daysAgo = todayStart.difference(day).inDays;
+  if (daysAgo <= 0) return DateFormat.Hm(tag).format(local);
+  if (daysAgo < 7) return DateFormat.E(tag).format(local);
+  if (local.year == today.year) return DateFormat.MMMd(tag).format(local);
+  return DateFormat.yMMMd(tag).format(local);
+}
+
 /// Formats a count according to the resolved locale, including grouping.
 String formatNumber(Locale locale, int number) =>
     NumberFormat.decimalPattern(locale.toString()).format(number);
+
+/// Formats a share from 0 to 1 as a whole percentage in the resolved
+/// locale ("42%").
+String formatPercent(Locale locale, double share) =>
+    NumberFormat.percentPattern(locale.toString()).format(share);

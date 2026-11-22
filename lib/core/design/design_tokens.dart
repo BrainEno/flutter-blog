@@ -114,6 +114,11 @@ abstract final class NoWaveTypeScale {
   /// 16: the sentence of an empty state.
   static const emptyState = 16.0;
 
+  /// 16: the words of an action row (the profile menu) - a sans label, so
+  /// a list of a dozen destinations reads as a menu rather than a column of
+  /// headlines competing with the account name above it.
+  static const actionRow = 16.0;
+
   /// 16: what a comment says - a size under the article body, because a
   /// reply is not the piece it answers. A reply to a reply is set at [label].
   static const comment = 16.0;
@@ -358,6 +363,10 @@ abstract final class NoWaveMotion {
 
   /// A route transition.
   static const page = Duration(milliseconds: 900);
+
+  /// Carrying the reader down the page to where they left off: long enough
+  /// to be seen as travel through the same article, short of a route change.
+  static const resume = Duration(milliseconds: 700);
 
   /// One curtain column lifting in the cold-start sequence.
   static const curtain = Duration(milliseconds: 900);

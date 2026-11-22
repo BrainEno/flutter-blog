@@ -716,7 +716,7 @@ void main() {
           (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
             'user_version',
           ),
-          18,
+          19,
         );
         final next = (await target.replaceSession(
           expected: restored,

@@ -13,13 +13,29 @@ class ReadingHistoryEntry {
   final String imageUrl;
   final DateTime readAt;
 
+  /// How far into the article the reader last was, from 0 to 1; null when
+  /// it was never measured (see [ReadingHistoryStore.saveProgress]).
+  final double? progress;
+
   const ReadingHistoryEntry({
     required this.blogId,
     required this.title,
     required this.posterName,
     required this.imageUrl,
     required this.readAt,
+    this.progress,
   });
+}
+
+/// Where a saved reading position starts to mean something.
+abstract final class ReadingProgress {
+  /// Below this the reader had barely begun: no offer to go back, and no
+  /// percentage in the history.
+  static const started = 0.05;
+
+  /// From here the text is behind the reader - the end mark is in sight -
+  /// and the article counts as read.
+  static const finished = 0.95;
 }
 
 /// Device-local reading history, scoped per signed-in account.
@@ -37,6 +53,19 @@ abstract class ReadingHistoryStore {
     required String userId,
     int limit = AppLimits.readingHistoryPageSize,
   });
+
+  /// Remembers where [userId] left [blogId], as a share of the article's
+  /// text from 0 to 1, so the reader can pick up there next time. Only an
+  /// article already in the history is updated: the position belongs to its
+  /// entry and goes when the entry does.
+  Future<void> saveProgress({
+    required String userId,
+    required String blogId,
+    required double progress,
+  });
+
+  /// Where [userId] last left [blogId], or null when unknown.
+  Future<double?> progressOf({required String userId, required String blogId});
 
   /// Deletes one entry.
   Future<void> remove({required String userId, required String blogId});

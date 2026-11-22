@@ -43,6 +43,19 @@ class _Store implements ReadingHistoryStore {
 
   @override
   Future<void> clear({required String userId}) async {}
+
+  @override
+  Future<void> saveProgress({
+    required String userId,
+    required String blogId,
+    required double progress,
+  }) async {}
+
+  @override
+  Future<double?> progressOf({
+    required String userId,
+    required String blogId,
+  }) async => null;
 }
 
 Future<void> _pumpCard(

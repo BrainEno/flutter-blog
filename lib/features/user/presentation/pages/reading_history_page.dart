@@ -361,7 +361,16 @@ class _HistoryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
-    final readAt = formatDate(Localizations.localeOf(context), entry.readAt);
+    final locale = Localizations.localeOf(context);
+    final readAt = formatDate(locale, entry.readAt);
+    // How far the reader got, after the date: a log of what was read says
+    // also what was left unfinished.
+    final progress = entry.progress;
+    final reached = progress == null || progress < ReadingProgress.started
+        ? null
+        : progress >= ReadingProgress.finished
+        ? l10n.historyFinished
+        : l10n.historyProgress(formatPercent(locale, progress));
     return NoWavePressable(
       onTap: onOpen,
       child: Padding(
@@ -386,7 +395,10 @@ class _HistoryRow extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(readAt, style: NoWaveTypography.meta(context)),
+                      Text(
+                        reached == null ? readAt : '$readAt · $reached',
+                        style: NoWaveTypography.meta(context),
+                      ),
                       const SizedBox(height: NoWaveSpacing.xs),
                       Text(
                         entry.title,
