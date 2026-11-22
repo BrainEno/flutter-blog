@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/material.dart';
 
 /// Editorial type roles. Latin display faces are bundled; CJK falls back to
@@ -97,6 +98,17 @@ abstract final class NoWaveTypography {
           letterSpacing: size * 0.02,
           color: color,
         );
+  }
+
+  /// The excerpt under a title in a list: the body's serif voice, smaller
+  /// and in the muted colour, so it reads as a taste of the text - quieter
+  /// than the title above it, louder than the byline below.
+  static TextStyle excerpt(BuildContext context) {
+    return title(context, size: NoWaveTypeScale.label).copyWith(
+      fontWeight: FontWeight.w400,
+      height: 1.65,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
   }
 
   static TextStyle meta(BuildContext context) {

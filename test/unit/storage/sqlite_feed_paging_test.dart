@@ -229,7 +229,7 @@ void main() {
         'user_version',
       ),
       // The upgrade runs every later step too, so this is the current schema.
-      19,
+      20,
     );
 
     await db.close();

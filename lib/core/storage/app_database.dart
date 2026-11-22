@@ -23,7 +23,7 @@ class AppDatabase extends GeneratedDatabase {
   );
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -284,6 +284,19 @@ class AppDatabase extends GeneratedDatabase {
           );
         }
       }
+      if (from < 20) {
+        // The summary the server sent, so an offline feed shows the same
+        // excerpt under each title as the live one. NULL is a row cached
+        // before this column: the list then cuts one from the body.
+        if (!await _tableExists('blog_cache')) {
+          await _createScopedBlogCache();
+          await _createScopedBlogCacheIndexes();
+        } else if (!await _columnExists('blog_cache', 'summary')) {
+          await customStatement(
+            'ALTER TABLE blog_cache ADD COLUMN summary TEXT',
+          );
+        }
+      }
     },
   );
 
@@ -440,7 +453,7 @@ class AppDatabase extends GeneratedDatabase {
     "poster_id TEXT NOT NULL, image_url TEXT NOT NULL, tags TEXT NOT NULL, "
     "updated_at INTEGER NOT NULL, poster_name TEXT, poster_avatar TEXT, "
     "document_json TEXT, categories_json TEXT, article_revision TEXT, "
-    "accessed_at INTEGER NOT NULL DEFAULT 0, "
+    "summary TEXT, accessed_at INTEGER NOT NULL DEFAULT 0, "
     "PRIMARY KEY (backend, id, content_locale))",
   );
 
@@ -541,15 +554,17 @@ class AppDatabase extends GeneratedDatabase {
     String? documentJson,
     String? categoriesJson,
     String? articleRevision,
+    String? summary,
   }) => customStatement(
     '''
-    INSERT INTO blog_cache(backend, accessed_at, id, content_locale, article_id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar, document_json, categories_json, article_revision)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO blog_cache(backend, accessed_at, id, content_locale, article_id, title, content, poster_id, image_url, tags, updated_at, poster_name, poster_avatar, document_json, categories_json, article_revision, summary)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(backend, id, content_locale) DO UPDATE SET article_id = excluded.article_id, title = excluded.title, content = excluded.content,
       poster_id = excluded.poster_id, image_url = excluded.image_url, tags = excluded.tags,
       updated_at = excluded.updated_at, poster_name = excluded.poster_name, poster_avatar = excluded.poster_avatar,
       document_json = excluded.document_json, categories_json = excluded.categories_json,
-      article_revision = excluded.article_revision, accessed_at = excluded.accessed_at
+      article_revision = excluded.article_revision, summary = excluded.summary,
+      accessed_at = excluded.accessed_at
     ''',
     [
       backend,
@@ -568,6 +583,7 @@ class AppDatabase extends GeneratedDatabase {
       documentJson,
       categoriesJson,
       articleRevision,
+      summary,
     ],
   );
 }

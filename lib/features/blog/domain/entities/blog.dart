@@ -29,6 +29,15 @@ class Blog {
   final String title;
   final String content;
 
+  /// The summary the server returned with this row, for display only; empty
+  /// when the source had none.
+  ///
+  /// It is either the excerpt the author wrote (a Notion `Excerpt`, a summary
+  /// typed on the web) or one the server cut from the opening because the
+  /// author left it blank - `articleExcerpt` tells the two apart. Writes never
+  /// read it: an edit uses the data layer's fresh `serverSummary`.
+  final String summary;
+
   /// Structured server body for read-only rendering, or null for the
   /// app's legacy Markdown format. An unsupported document is explicit.
   final ArticleDocument? document;
@@ -88,6 +97,7 @@ class Blog {
     required this.id,
     required this.title,
     required this.content,
+    this.summary = '',
     required this.posterId,
     required this.imageUrl,
     required this.tags,

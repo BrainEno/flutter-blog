@@ -123,6 +123,46 @@ void main() {
     },
   );
 
+  testWidgets('a row quotes the opening between its title and its author', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(390, 900));
+    final blog = article();
+    await tester.pumpWidget(
+      testApp(
+        Scaffold(
+          body: Column(
+            children: [
+              BlogCard(blog: blog, index: 2, onTap: () {}),
+              BlogCard(blog: blog, quiet: true, onTap: () {}),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final excerpt = find.text(
+      'An article excerpt that can wrap over several lines.',
+    );
+    // Only the plain row: a quiet row is a pointer, not a preview.
+    expect(excerpt, findsOneWidget);
+    final row = find.byType(BlogCard).first;
+    final title = tester.getRect(
+      find.descendant(of: row, matching: find.text(blog.title)),
+    );
+    final author = tester.getRect(
+      find.descendant(
+        of: row,
+        matching: find.text('A writer with a long name'),
+      ),
+    );
+    final quote = tester.getRect(excerpt);
+    expect(quote.top, greaterThan(title.bottom));
+    expect(quote.bottom, lessThan(author.top));
+    expect(quote.left, title.left);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'article row delegates pointer and keyboard activation without a router',
     (tester) async {

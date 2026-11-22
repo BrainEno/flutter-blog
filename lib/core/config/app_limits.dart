@@ -84,4 +84,8 @@ abstract final class AppLimits {
   /// UTF-16 code units per page when a long structured value is shown in the
   /// conflict comparison view.
   static const int structuredComparisonPageSize = 1000;
+
+  /// Characters (code points) of body text a list row shows under a title
+  /// when the article has no excerpt of its own.
+  static const int articleExcerptCharacters = 150;
 }

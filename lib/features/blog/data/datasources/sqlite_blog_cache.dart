@@ -58,6 +58,7 @@ class SqliteBlogCache implements BlogLocalDataSource {
           documentJson: blog.documentJson,
           categoriesJson: _encodeCategories(blog.categories),
           articleRevision: blog.articleRevision?.value,
+          summary: blog.summary,
         );
       }
       await database.customStatement(
@@ -253,6 +254,7 @@ class SqliteBlogCache implements BlogLocalDataSource {
       document: decodeCachedArticleDocument(data['document_json'] as String?),
       title: data['title']! as String,
       content: data['content']! as String,
+      summary: data['summary'] as String? ?? '',
       posterId: data['poster_id']! as String,
       imageUrl: data['image_url']! as String,
       tags: (jsonDecode(data['tags']! as String) as List).cast<String>(),

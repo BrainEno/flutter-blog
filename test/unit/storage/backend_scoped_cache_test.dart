@@ -27,6 +27,30 @@ BlogModel _blog(String id, {String title = 'title'}) => BlogModel(
 );
 
 void main() {
+  test('the server summary survives the cache for the offline feed', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final cache = SqliteBlogCache(db, apiBaseUrl: _one);
+    final blog = BlogModel(
+      id: 'with-summary',
+      title: 'title',
+      content: 'body',
+      summary: '一封迟到了二十年的信。',
+      serverSummary: '一封迟到了二十年的信。',
+      posterId: 'author',
+      imageUrl: '',
+      tags: const [],
+      updatedAt: DateTime.utc(2026),
+    );
+    await cache.uploadLocalBlogs(blogs: [blog, _blog('without')]);
+    final cached = (await cache.loadBlogById('with-summary'))!;
+    expect(cached.summary, '一封迟到了二十年的信。');
+    // Display only: a cached row still cannot vouch for the summary an edit
+    // would send back.
+    expect(cached.serverSummary, isNull);
+    expect((await cache.loadBlogById('without'))!.summary, '');
+  });
+
   test(
     'cache and history isolate reads, writes, search and deletes per backend',
     () async {
