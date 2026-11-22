@@ -282,7 +282,6 @@
   "notionImportTitle": "从 Notion 导入",
   "notionImportDescription": "选择从 Notion 导出的文件，或粘贴页面的 Markdown / no-wave JSON 数据包。文件在本机转换；预览不会写入文章，但会先上传所选页面用到的图片。",
   "notionImportInput": "或粘贴 Markdown / JSON 数据包",
-  "notionImportPreview": "预览导入",
   "notionImportInvalid": "无法读取：请粘贴 no-wave JSON 数据包，或首行为「# 标题」的 Markdown（最多 200 页、8 MiB）。",
   "notionImportInvalidReport": "服务器返回的导入报告无效。",
   "notionImportUnavailable": "暂时无法使用 Notion 导入。",
@@ -637,7 +636,6 @@
   "publishQueueRemove": "移除",
   "publishQueueRemoved": "已从队列移除",
   "publishQueueRetryQueued": "已重新排队",
-  "publishQueueLoadFailed": "队列读取失败",
   "publishQueueAttempts": "{count, plural, other{已尝试 {count} 次}}",
   "@publishQueueAttempts": {
     "placeholders": {
@@ -787,7 +785,6 @@
       }
     }
   },
-  "messagesSendEmpty": "先写点什么再发送。",
   "messagesInvalid": "会话内容不符合要求：消息不能为空，最多 20000 字。",
   "messagesForbidden": "你没有权限查看这个会话。",
   "messagesUnavailable": "此服务器暂不提供私信。请稍后重试或检查服务器版本。",
@@ -925,7 +922,6 @@
   "structuredTextKept": "文字缓冲已保存在此设备，本地正文尚未更改。",
   "structuredTextActionFailed": "无法确认操作结果。文字仍在此页面，请重试；离开前需确认可能丢失。",
   "structuredTextReturn": "应用或离开后，请重新打开本地恢复记录以继续编辑正文。",
-  "structuredTextPreparing": "正在准备本地文字…",
   "structuredCatalogTitle": "本地恢复记录",
   "structuredCatalogIntro": "仅显示此设备上当前账号和服务器的恢复记录。打开后可选择是否继续；此处不会检查服务器，也不会发布。",
   "structuredCatalogLoading": "正在读取本地恢复记录…",
@@ -1238,7 +1234,6 @@
   "structuredHistoryTitle": "本次会话的正文历史",
   "structuredHistoryUndo": "撤销正文编辑",
   "structuredHistoryRedo": "重做正文编辑",
-  "structuredHistoryShortNote": "撤销与重做仅用于本次本地正文会话；保存仍可能失败或发生冲突。",
   "structuredHistoryIntro": "预览从当前正文到本次会话中较早或较晚快照的变化。恢复只改变本地正文，不改变元数据或服务器。",
   "structuredHistoryLimits": "历史只在内存中暂存且数量有限，退出、重启或进入文本输入后会清除。它不是备份，尚未保存的修改可能丢失。",
   "structuredHistoryTruncated": "为遵守历史容量限制，较早的快照已移除。",

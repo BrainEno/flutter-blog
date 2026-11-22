@@ -181,7 +181,9 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     final token = extractVerificationToken(_token.text);
     if (token == null) {
       setState(() {
-        _tokenProblem = context.l10n.emailVerifyTokenMalformed;
+        _tokenProblem = _token.text.trim().isEmpty
+            ? context.l10n.emailVerifyTokenEmpty
+            : context.l10n.emailVerifyTokenMalformed;
         _confirmFailure = null;
       });
       return;
@@ -275,7 +277,11 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                         if (_sendFailure != null) ...[
                           const SizedBox(height: NoWaveSpacing.small),
                           _Notice(
-                            text: localizedFailure(l10n, _sendFailure!),
+                            // A refused request sent nothing: say when to
+                            // ask again rather than a generic error.
+                            text: _sendFailure!.code == 'auth.rateLimited'
+                                ? l10n.emailVerifyRateLimited
+                                : localizedFailure(l10n, _sendFailure!),
                             isError: true,
                           ),
                         ],

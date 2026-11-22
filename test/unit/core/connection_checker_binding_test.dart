@@ -12,7 +12,7 @@ void main() {
       'http://10.0.2.2:4000',
     ]) {
       final requests = <http.Request>[];
-      final checker = buildConnectionChecker(
+      final checker = ApiConnectionChecker(
         Uri.parse(origin),
         clientFactory: () => MockClient((request) async {
           requests.add(request);
@@ -35,7 +35,7 @@ void main() {
     // blocked public internet turned a reachable backend into a pre-flight
     // "no network" without sending the request (issue #105).
     final requests = <http.Request>[];
-    final checker = buildConnectionChecker(
+    final checker = ApiConnectionChecker(
       Uri.parse('https://blog.example.invalid'),
       clientFactory: () => MockClient((request) async {
         requests.add(request);
@@ -52,7 +52,7 @@ void main() {
   test('an unreachable API still reports offline', () async {
     // Definite transport failures must keep the cached/offline fallbacks and
     // the "no network" failures of the real repositories working.
-    final checker = buildConnectionChecker(
+    final checker = ApiConnectionChecker(
       Uri.parse('https://blog.example.invalid'),
       clientFactory: () =>
           MockClient((_) async => throw const SocketException('lost')),

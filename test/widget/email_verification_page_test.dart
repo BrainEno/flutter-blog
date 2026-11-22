@@ -329,6 +329,55 @@ void main() {
     expect(find.text(l10n.emailVerifyTokenMalformed), findsOneWidget);
   });
 
+  testWidgets('an empty field asks for the link instead of calling it wrong', (
+    tester,
+  ) async {
+    final user = AppUserCubit()..updateUser(_user());
+    addTearDown(user.close);
+    final repository = _Repository();
+    final l10n = lookupAppLocalizations(const Locale('en'));
+
+    await _pump(
+      tester,
+      repository: repository,
+      session: _Session(),
+      user: user,
+    );
+    await tester.enterText(find.byType(TextFormField), '  ');
+    await _tap(tester, find.text(l10n.emailVerifyTokenConfirm));
+
+    expect(repository.tokenCalls, isEmpty);
+    expect(find.text(l10n.emailVerifyTokenEmpty), findsOneWidget);
+    expect(find.text(l10n.emailVerifyTokenMalformed), findsNothing);
+  });
+
+  testWidgets('a rate-limited request says to wait before asking again', (
+    tester,
+  ) async {
+    final user = AppUserCubit()..updateUser(_user());
+    addTearDown(user.close);
+    final repository = _Repository()
+      ..send = left(
+        const Failure(
+          'fixture',
+          kind: FailureKind.server,
+          code: 'auth.rateLimited',
+        ),
+      );
+    final l10n = lookupAppLocalizations(const Locale('en'));
+
+    await _pump(
+      tester,
+      repository: repository,
+      session: _Session(),
+      user: user,
+    );
+    await _tap(tester, find.text(l10n.emailVerifySend));
+
+    expect(find.text(l10n.emailVerifyRateLimited), findsOneWidget);
+    expect(find.text(l10n.errorAuthRateLimited), findsNothing);
+  });
+
   testWidgets('a spent code is reported as such, not as a retry', (
     tester,
   ) async {

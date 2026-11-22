@@ -158,12 +158,6 @@ class ApiConnectionChecker implements ConnectionChecker, ConnectivityEvidence {
   }
 }
 
-/// Production callers share this backend-scoped checker in the composition root.
-ConnectionChecker buildConnectionChecker(
-  Uri apiBaseUrl, {
-  http.Client Function()? clientFactory,
-}) => ApiConnectionChecker(apiBaseUrl, clientFactory: clientFactory);
-
 Duration Function() _monotonicClock() {
   final watch = Stopwatch()..start();
   return () => watch.elapsed;
