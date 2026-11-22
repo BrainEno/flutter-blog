@@ -50,12 +50,28 @@ class BlogCard extends StatelessWidget {
     );
   }
 
-  Widget _metadata(BuildContext context) {
+  Widget _metadata(BuildContext context, {int? ordinal}) {
     return Wrap(
       spacing: NoWaveSpacing.small,
       runSpacing: NoWaveSpacing.small,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
+        // The running number opens the kicker line instead of standing in a
+        // column of its own: centred on the same line as the tags (which
+        // carry 48pt targets) rather than pinned above them, and the title
+        // keeps the gutter the lead story's title starts on.
+        if (ordinal != null)
+          Text(
+            formatNumber(
+              Localizations.localeOf(context),
+              ordinal,
+            ).padLeft(2, '0'),
+            style: NoWaveTypography.meta(context).copyWith(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
         // A quiet row is a pointer to the next piece: its date, title and
         // author say enough, and a row of tags would only be noise.
         if (!quiet)
@@ -96,18 +112,21 @@ class BlogCard extends StatelessWidget {
             style: NoWaveTypography.title(context, size: 30),
           ),
           const SizedBox(height: NoWaveSpacing.small),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(author, style: NoWaveTypography.meta(context)),
-              ),
-              const SizedBox(width: NoWaveSpacing.small),
-              const NoWavePressArrow(),
-            ],
-          ),
+          _byline(context, author),
         ],
       ),
+    );
+  }
+
+  /// The author, with the arrow at the end of the same line: the lead story
+  /// and every row after it finish the same way.
+  Widget _byline(BuildContext context, String author) {
+    return Row(
+      children: [
+        Expanded(child: Text(author, style: NoWaveTypography.meta(context))),
+        const SizedBox(width: NoWaveSpacing.small),
+        const NoWavePressArrow(),
+      ],
     );
   }
 
@@ -120,41 +139,19 @@ class BlogCard extends StatelessWidget {
               border: Border(top: BorderSide(color: foreground.withAlpha(130))),
             ),
       padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.medium),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (index != null) ...[
-            SizedBox(
-              width: 36, // design-token-ok: index column, two digits wide
-              child: Text(
-                formatNumber(
-                  Localizations.localeOf(context),
-                  index!,
-                ).padLeft(2, '0'),
-                style: NoWaveTypography.meta(context),
-              ),
-            ),
-            const SizedBox(width: NoWaveSpacing.small),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _metadata(context),
-                const SizedBox(height: NoWaveSpacing.small),
-                Text(
-                  blog.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: NoWaveTypography.title(context, size: 24),
-                ),
-                const SizedBox(height: NoWaveSpacing.xs),
-                Text(author, style: NoWaveTypography.meta(context)),
-              ],
-            ),
+          _metadata(context, ordinal: index),
+          const SizedBox(height: NoWaveSpacing.small),
+          Text(
+            blog.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: NoWaveTypography.title(context, size: 24),
           ),
-          const SizedBox(width: NoWaveSpacing.small),
-          const NoWavePressArrow(),
+          const SizedBox(height: NoWaveSpacing.xs),
+          _byline(context, author),
         ],
       ),
     );

@@ -87,8 +87,14 @@ void main() {
           await tester.pumpAndSettle();
           final l10n = lookupAppLocalizations(locale);
           expect(find.text(l10n.readAloudListen), findsOneWidget);
-          expect(find.text(l10n.readAloudFollow), findsOneWidget);
-          expect(find.bySemanticsLabel(l10n.readAloudSeek), findsWidgets);
+          // Before the first press the sheet is one line: the deck of
+          // settings is folded away, out of reach and out of the tree a
+          // screen reader walks.
+          expect(
+            find.byKey(const ValueKey('read-aloud-follow')).hitTestable(),
+            findsNothing,
+          );
+          expect(find.bySemanticsLabel(l10n.readAloudSeek), findsNothing);
           final slider = tester.widget<Slider>(
             find.byKey(const ValueKey('read-aloud-seek')),
           );
@@ -96,6 +102,12 @@ void main() {
           await tester.tap(find.byKey(const ValueKey('read-aloud-play')));
           await tester.pumpAndSettle();
           expect(find.text(l10n.readAloudPause), findsOneWidget);
+          expect(find.text(l10n.readAloudFollow), findsOneWidget);
+          expect(find.bySemanticsLabel(l10n.readAloudSeek), findsWidgets);
+          expect(
+            find.byKey(const ValueKey('read-aloud-follow')).hitTestable(),
+            findsOneWidget,
+          );
           expect(find.byTooltip(l10n.readAloudStop), findsOneWidget);
           expect(engine.calls.single.text, 'Title');
           await tester.tap(find.byKey(const ValueKey('read-aloud-play')));
@@ -287,6 +299,9 @@ void main() {
       await engine.close();
     });
     await tester.pumpWidget(app(ReadAloudControls(controller: reader)));
+    // The deck unfolds once the voice starts.
+    await tester.tap(find.byKey(const ValueKey('read-aloud-play')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('read-aloud-voice')));
     await tester.pumpAndSettle();
     expect(find.text('Choose a voice'), findsOneWidget);
