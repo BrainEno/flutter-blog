@@ -72,9 +72,9 @@ class AuthFrame extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // No strapline over the title: "登录 Sign in" already says what
-              // the page is for, and a sentence of marketing above it only
-              // delays the fields.
+              // No strapline over the title: the title already says what the
+              // page is for, and a sentence of marketing above it only delays
+              // the fields.
               NoWaveSectionHeading(title: title, companion: companion),
               if (lead != null) ...[
                 const SizedBox(height: NoWaveSpacing.medium),
