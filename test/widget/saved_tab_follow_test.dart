@@ -73,4 +73,39 @@ void main() {
     expect(find.text('你还没有收藏文章'), findsNothing);
     expect(find.byType(BlogGridItem), findsOneWidget);
   });
+
+  testWidgets('an article saved on the web shows up when the saved tab is '
+      'opened again', (tester) async {
+    final harness = Harness()..buildRouter();
+    addTearDown(harness.dispose);
+    final article = sampleBlog('1', '第一篇文章');
+    var saved = <BlogModel>[];
+    when(
+      () => harness.remote.getAllBlogs(page: 1),
+    ).thenAnswer((_) async => [article]);
+    when(
+      () => harness.remote.getUserLikedBlogs(any()),
+    ).thenAnswer((_) async => saved);
+    harness.appUserCubit.updateUser(sampleUser());
+    await harness.pump(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('收藏'));
+    await tester.pumpAndSettle();
+    expect(find.text('你还没有收藏文章'), findsOneWidget);
+
+    // Away from the tab, the same account saves an article on the web: the
+    // app hears nothing about it.
+    await tester.tap(find.text('首页'));
+    await tester.pumpAndSettle();
+    saved = [article];
+    clearInteractions(harness.remote);
+
+    // Opening the tab again reads the list once and shows the article.
+    await tester.tap(find.text('收藏').last);
+    await tester.pumpAndSettle();
+    verify(() => harness.remote.getUserLikedBlogs(any())).called(1);
+    expect(find.text('你还没有收藏文章'), findsNothing);
+    expect(find.byType(BlogGridItem), findsOneWidget);
+  });
 }

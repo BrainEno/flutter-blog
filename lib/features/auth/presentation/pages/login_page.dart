@@ -134,12 +134,11 @@ class _LoginPageState extends State<LoginPage> {
                     isObscureText: true,
                     enabled: !busy,
                   ),
-                  // Belongs to the password above it, so it sits right under
-                  // the line, at its end.
+                  // Right under the password line, centred like every other
+                  // small link on the page so the form has one axis.
                   AuthLink(
                     label: l10n.passwordRecoveryTitle,
                     onPressed: _openPasswordRecovery,
-                    alignment: AlignmentDirectional.centerEnd,
                   ),
                   const SizedBox(height: NoWaveSpacing.large),
                   AuthPrimaryButton(

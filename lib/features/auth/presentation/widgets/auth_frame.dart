@@ -119,10 +119,10 @@ class AuthLink extends StatelessWidget {
   /// stay the loudest words on the page.
   final bool quiet;
 
-  /// Where on the column the line sits. Centred by default: the lines
-  /// under a full-width button hang from its middle, as one group with it.
-  /// A link that belongs to a field ("forgot password" under the password)
-  /// keeps to that field's end instead.
+  /// Where on the column the line sits. Centred by default: the full-width
+  /// fields and button share one middle, and every small link on an
+  /// account page - "forgot password" under the password included - hangs
+  /// from it, so the form reads on one axis.
   final AlignmentDirectional alignment;
 
   /// The muted part before the link, already spaced; omitted for a bare
