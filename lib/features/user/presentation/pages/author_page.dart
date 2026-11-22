@@ -1,3 +1,4 @@
+import 'package:belog/core/design/components/no_wave_link_button.dart';
 import 'package:belog/core/design/components/no_wave_badge.dart';
 import 'package:belog/core/design/components/no_wave_list_note.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
@@ -217,7 +218,14 @@ class _AuthorPageState extends State<AuthorPage> {
           final isSelf = viewerId != null && viewerId == profile.userId;
 
           return ListView(
-            padding: const EdgeInsets.all(NoWaveSpacing.medium),
+            // The app's gutter, not a tighter one: the author's name and
+            // their article list sit on the same edge as every other page.
+            padding: const EdgeInsets.fromLTRB(
+              NoWaveSpacing.page,
+              NoWaveSpacing.large,
+              NoWaveSpacing.page,
+              NoWaveSpacing.section,
+            ),
             children: [
               Center(
                 child: ConstrainedBox(
@@ -348,6 +356,8 @@ class _AuthorPageState extends State<AuthorPage> {
                                 BlogCard(
                                   blog: blogs[index],
                                   index: index + 1,
+                                  // The tabs' hairline is the first rule.
+                                  ruled: index > 0,
                                   onTagTap: (tag) =>
                                       openTagArticles(context, tag),
                                   onTap: () => context.push(
@@ -399,7 +409,7 @@ class _ProfileHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             NoWaveAvatar(name: name, imageUrl: profile.avatarUrl),
-            const SizedBox(width: NoWaveSpacing.medium),
+            const SizedBox(width: NoWaveSpacing.large),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,16 +442,18 @@ class _ProfileHeader extends StatelessWidget {
           ],
         ),
         const SizedBox(height: NoWaveSpacing.xs),
+        // On the column edge under the name, a step apart: a text button's
+        // own inset used to start the first link inside the column.
         Wrap(
-          spacing: NoWaveSpacing.small,
+          spacing: NoWaveSpacing.large,
           children: [
-            TextButton(
+            NoWaveLinkButton(
+              label: l10n.viewFollowers,
               onPressed: onOpenFollowers,
-              child: Text(l10n.viewFollowers),
             ),
-            TextButton(
+            NoWaveLinkButton(
+              label: l10n.viewFollowing,
               onPressed: onOpenFollowing,
-              child: Text(l10n.viewFollowing),
             ),
           ],
         ),
@@ -451,9 +463,10 @@ class _ProfileHeader extends StatelessWidget {
         ],
         if (profile.websiteUrl.trim().isNotEmpty) ...[
           const SizedBox(height: NoWaveSpacing.small),
-          TextButton(
+          NoWaveLinkButton(
+            icon: Icons.link,
+            label: profile.websiteUrl,
             onPressed: () => onOpenWebsite(profile.websiteUrl),
-            child: Text(profile.websiteUrl),
           ),
         ],
       ],

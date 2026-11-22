@@ -262,18 +262,18 @@ void main() {
             findsOneWidget,
           );
           for (final label in [
-            l10n.menuEditProfile,
-            l10n.menuChangePassword,
-            l10n.accountEmailTitle,
-            l10n.emailVerifyTitle,
-            l10n.menuMyArticles,
-            l10n.menuReadingHistory,
             l10n.notificationsTitle,
             l10n.messagesTitle,
+            l10n.menuMyArticles,
             l10n.publishQueueTitle,
+            l10n.menuReadingHistory,
+            l10n.menuEditProfile,
+            l10n.accountEmailTitle,
+            l10n.emailVerifyTitle,
+            l10n.menuChangePassword,
             l10n.accountSessionsTitle,
-            l10n.menuAbout,
             l10n.exportMyData,
+            l10n.menuAbout,
             l10n.logout,
           ]) {
             await tester.scrollUntilVisible(find.text(label), 140);
@@ -311,17 +311,20 @@ void main() {
     addTearDown(harness.dispose);
     await harness.pump(tester);
     for (final entry in <String, String>{
-      'Edit profile': 'edit',
-      'Change password': 'change-password',
-      'Change e-mail': 'change-email',
-      'Verify e-mail': 'email-verification',
+      'Messages': 'messages',
       'My articles': 'my-articles',
       'Reading history': 'history',
-      'Messages': 'messages',
+      'Edit profile': 'edit',
+      'Change e-mail': 'change-email',
+      'Verify e-mail': 'email-verification',
+      'Change password': 'change-password',
       'Sign-in sessions': 'sessions',
       'About': 'about',
     }.entries) {
-      await tester.scrollUntilVisible(find.text(entry.key), 100);
+      // The whole menu is one child of the list, so every row is built
+      // already; bring the row on screen before tapping it.
+      await tester.ensureVisible(find.text(entry.key));
+      await tester.pumpAndSettle();
       await tester.tap(find.text(entry.key));
       await tester.pumpAndSettle();
       expect(find.text('destination: ${entry.value}'), findsOneWidget);

@@ -23,7 +23,7 @@ class AppDatabase extends GeneratedDatabase {
   );
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -272,6 +272,18 @@ class AppDatabase extends GeneratedDatabase {
           );
         }
       }
+      if (from < 19) {
+        // Where the reader left each article, as a share of its text. NULL
+        // is "never measured" - an old row, or an article too short to
+        // scroll - and the reader then simply opens at the top.
+        if (!await _tableExists('reading_history')) {
+          await _createScopedReadingHistory();
+        } else if (!await _columnExists('reading_history', 'progress')) {
+          await customStatement(
+            'ALTER TABLE reading_history ADD COLUMN progress REAL',
+          );
+        }
+      }
     },
   );
 
@@ -446,7 +458,8 @@ class AppDatabase extends GeneratedDatabase {
       "CREATE TABLE reading_history (backend TEXT NOT NULL DEFAULT '', "
       "user_id TEXT NOT NULL, blog_id TEXT NOT NULL, title TEXT NOT NULL, "
       "poster_name TEXT NOT NULL DEFAULT '', image_url TEXT NOT NULL DEFAULT '', "
-      "read_at INTEGER NOT NULL, PRIMARY KEY(backend, user_id, blog_id))",
+      "read_at INTEGER NOT NULL, progress REAL, "
+      "PRIMARY KEY(backend, user_id, blog_id))",
     );
     await customStatement(
       'CREATE INDEX reading_history_by_user ON reading_history(backend, user_id, read_at DESC, blog_id ASC)',

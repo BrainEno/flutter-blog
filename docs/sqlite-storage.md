@@ -17,13 +17,17 @@ session copy, profile cache and app metadata all live in `belog.sqlite`.
 
 ## Schema versions
 
-`schemaVersion` is 18. The v17 migration rebuilds cache and history tables to
+`schemaVersion` is 19. The v17 migration rebuilds cache and history tables to
 add backend keys while retaining all old row values in an unattributed
 namespace. It does not assign these rows to the currently configured server.
 The v18 migration adds nullable TEXT `article_revision` / `expected_revision`
 columns to public cache, account drafts and queued edits. Values are opaque
 no-wave decimal int64 strings; NULL means an old or unsupported source and
 authoring fails closed rather than issuing an unconditional update.
+The v19 migration adds a nullable REAL `reading_history.progress`: where the
+reader last left the article, as a share of its text (0–1). It is only ever
+written for an article already in that account's history, is removed with
+the entry, and NULL simply means "open at the top".
 
 | Version | Change |
 | --- | --- |
@@ -45,6 +49,7 @@ authoring fails closed rather than issuing an unconditional update.
 | 16 | Exclusive structured intermediate text buffer |
 | 17 | Backend-scoped article cache and reading history, and cache access index |
 | 18 | Opaque no-wave article revision strings in cache, account drafts and queued edits; safe conditional update recovery |
+| 19 | `reading_history.progress`: where the reader left each article, for 「从上次停下的地方继续」 |
 
 The production file connection sets SQLite WAL and a 5000 ms busy timeout before
 migrations. New cache writes prune least-recently-accessed entries to 250 per
@@ -99,7 +104,7 @@ not deleted by sign-out. When such history exists, the history page offers an
 explicit device-wide deletion with a warning that it may include other accounts.
 No automatic owner assignment or cleanup is attempted.
 Back up the app data directory before migration. Downgrade and WAL operation on
-real devices have not been verified; older clients may not understand v18 and
+real devices have not been verified; older clients may not understand v19 and
 must not be assumed safe to open the upgraded file.
 
 ## Isar is gone (#107)

@@ -4,8 +4,10 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/common/widgets/no_wave_action_row.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
+import 'package:belog/core/common/widgets/no_wave_menu_group.dart';
 import 'package:belog/core/common/widgets/theme_toggle_button.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/design/components/no_wave_link_button.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/error/failures.dart';
@@ -125,10 +127,16 @@ class _ProfileView extends StatelessWidget {
             }
             final user = state.user;
             final name = authorDisplayName(l10n, user.name);
+            final scheme = Theme.of(context).colorScheme;
             // A single scrollable keeps the header and every action available
             // at large system text sizes.
             return ListView(
-              padding: const EdgeInsets.all(NoWaveSpacing.page),
+              padding: const EdgeInsets.fromLTRB(
+                NoWaveSpacing.page,
+                NoWaveSpacing.large,
+                NoWaveSpacing.page,
+                NoWaveSpacing.section,
+              ),
               children: [
                 Center(
                   child: ConstrainedBox(
@@ -139,10 +147,9 @@ class _ProfileView extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             NoWaveAvatar(name: name, imageUrl: user.avatarUrl),
-                            const SizedBox(width: NoWaveSpacing.medium),
+                            const SizedBox(width: NoWaveSpacing.large),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,112 +165,152 @@ class _ProfileView extends StatelessWidget {
                                     ),
                                   ),
                                   if (user.website.trim().isNotEmpty) ...[
-                                    const SizedBox(height: NoWaveSpacing.small),
-                                    Text(user.website.trim()),
-                                  ],
-                                  TextButton(
-                                    onPressed: () => context.push(
-                                      RoutePaths.profileAuthor(user.id),
+                                    const SizedBox(height: NoWaveSpacing.xs),
+                                    Text(
+                                      user.website.trim(),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: scheme.onSurfaceVariant,
+                                          ),
                                     ),
-                                    child: Text(l10n.viewMyAuthorProfile),
-                                  ),
+                                  ],
                                 ],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: NoWaveSpacing.section),
-                        NoWaveActionRow(
-                          icon: Icons.edit_outlined,
-                          label: l10n.menuEditProfile,
-                          onTap: () => context.push(RoutePaths.editProfile),
+                        const SizedBox(height: NoWaveSpacing.small),
+                        // On the column edge, like the name: a text button's
+                        // own inset would set the link a step in from
+                        // everything it belongs to.
+                        NoWaveLinkButton(
+                          label: l10n.viewMyAuthorProfile,
+                          forward: true,
+                          onPressed: () =>
+                              context.push(RoutePaths.profileAuthor(user.id)),
                         ),
-                        NoWaveActionRow(
-                          icon: Icons.lock_outline,
-                          label: l10n.menuChangePassword,
-                          onTap: () => context.push(RoutePaths.changePassword),
+                        // Thirteen destinations in four groups, the ones
+                        // with news first: a flat list made the reader scan
+                        // every row to find the inbox.
+                        NoWaveMenuGroup(
+                          title: l10n.profileGroupInbox,
+                          children: [
+                            BlocBuilder<NotificationBadgeCubit, int>(
+                              builder: (context, unread) => NoWaveActionRow(
+                                icon: Icons.notifications_none,
+                                label: l10n.notificationsTitle,
+                                description: l10n.notificationsMenuHint,
+                                onTap: () => _openInbox(context),
+                                trailing: unread > 0
+                                    ? _UnreadBadge(
+                                        count: unread,
+                                        semanticLabel: l10n
+                                            .notificationsUnreadCount(unread),
+                                      )
+                                    : null,
+                              ),
+                            ),
+                            BlocBuilder<MessageUnreadBadgeCubit, int>(
+                              builder: (context, unread) => NoWaveActionRow(
+                                icon: Icons.mail_outline,
+                                label: l10n.messagesTitle,
+                                description: l10n.messagesMenuHint,
+                                onTap: () => _openMessages(context),
+                                trailing: unread > 0
+                                    ? _UnreadBadge(
+                                        count: unread,
+                                        semanticLabel: l10n
+                                            .messagesUnreadRecentCount(unread),
+                                      )
+                                    : null,
+                              ),
+                            ),
+                          ],
                         ),
-                        NoWaveActionRow(
-                          icon: Icons.alternate_email,
-                          label: l10n.accountEmailTitle,
-                          description: user.email.isEmpty ? null : user.email,
-                          onTap: () => context.push(RoutePaths.changeEmail),
+                        NoWaveMenuGroup(
+                          title: l10n.profileGroupLibrary,
+                          children: [
+                            NoWaveActionRow(
+                              icon: Icons.article_outlined,
+                              label: l10n.menuMyArticles,
+                              onTap: () => context.push(RoutePaths.myArticles),
+                            ),
+                            NoWaveActionRow(
+                              icon: Icons.cloud_upload_outlined,
+                              label: l10n.publishQueueTitle,
+                              description: l10n.publishQueueMenuHint,
+                              onTap: () =>
+                                  context.push(RoutePaths.publishQueue),
+                            ),
+                            NoWaveActionRow(
+                              icon: Icons.history,
+                              label: l10n.menuReadingHistory,
+                              onTap: () => context.push(RoutePaths.history),
+                            ),
+                          ],
                         ),
-                        NoWaveActionRow(
-                          icon: Icons.mark_email_unread_outlined,
-                          label: l10n.emailVerifyTitle,
-                          onTap: () =>
-                              context.push(RoutePaths.emailVerification),
+                        NoWaveMenuGroup(
+                          title: l10n.profileGroupAccount,
+                          children: [
+                            NoWaveActionRow(
+                              icon: Icons.edit_outlined,
+                              label: l10n.menuEditProfile,
+                              onTap: () => context.push(RoutePaths.editProfile),
+                            ),
+                            NoWaveActionRow(
+                              icon: Icons.alternate_email,
+                              label: l10n.accountEmailTitle,
+                              description: user.email.isEmpty
+                                  ? null
+                                  : user.email,
+                              onTap: () => context.push(RoutePaths.changeEmail),
+                            ),
+                            NoWaveActionRow(
+                              icon: Icons.mark_email_unread_outlined,
+                              label: l10n.emailVerifyTitle,
+                              onTap: () =>
+                                  context.push(RoutePaths.emailVerification),
+                            ),
+                            NoWaveActionRow(
+                              icon: Icons.lock_outline,
+                              label: l10n.menuChangePassword,
+                              onTap: () =>
+                                  context.push(RoutePaths.changePassword),
+                            ),
+                            NoWaveActionRow(
+                              icon: Icons.devices_outlined,
+                              label: l10n.accountSessionsTitle,
+                              onTap: () => context.push(RoutePaths.sessions),
+                            ),
+                            NoWaveActionRow(
+                              icon: Icons.file_download_outlined,
+                              label: l10n.exportMyData,
+                              description: l10n.exportMyDataHint,
+                              onTap: () => _exportData(context, user),
+                            ),
+                          ],
                         ),
-                        NoWaveActionRow(
-                          icon: Icons.article_outlined,
-                          label: l10n.menuMyArticles,
-                          onTap: () => context.push(RoutePaths.myArticles),
+                        // The last group has no title: the app itself, and
+                        // the way out of it.
+                        NoWaveMenuGroup(
+                          children: [
+                            NoWaveActionRow(
+                              icon: Icons.info_outline,
+                              label: l10n.menuAbout,
+                              onTap: () =>
+                                  context.push(RoutePaths.profileAbout),
+                            ),
+                            NoWaveActionRow(
+                              icon: Icons.logout,
+                              label: l10n.logout,
+                              showArrow: false,
+                              onTap: () =>
+                                  context.read<AuthBloc>().add(AuthLogout()),
+                            ),
+                          ],
                         ),
-                        NoWaveActionRow(
-                          icon: Icons.history,
-                          label: l10n.menuReadingHistory,
-                          onTap: () => context.push(RoutePaths.history),
-                        ),
-                        BlocBuilder<NotificationBadgeCubit, int>(
-                          builder: (context, unread) => NoWaveActionRow(
-                            icon: Icons.notifications_none,
-                            label: l10n.notificationsTitle,
-                            description: l10n.notificationsMenuHint,
-                            onTap: () => _openInbox(context),
-                            trailing: unread > 0
-                                ? _UnreadBadge(
-                                    count: unread,
-                                    semanticLabel: l10n
-                                        .notificationsUnreadCount(unread),
-                                  )
-                                : null,
-                          ),
-                        ),
-                        BlocBuilder<MessageUnreadBadgeCubit, int>(
-                          builder: (context, unread) => NoWaveActionRow(
-                            icon: Icons.mail_outline,
-                            label: l10n.messagesTitle,
-                            description: l10n.messagesMenuHint,
-                            onTap: () => _openMessages(context),
-                            trailing: unread > 0
-                                ? _UnreadBadge(
-                                    count: unread,
-                                    semanticLabel: l10n
-                                        .messagesUnreadRecentCount(unread),
-                                  )
-                                : null,
-                          ),
-                        ),
-                        NoWaveActionRow(
-                          icon: Icons.cloud_upload_outlined,
-                          label: l10n.publishQueueTitle,
-                          description: l10n.publishQueueMenuHint,
-                          onTap: () => context.push(RoutePaths.publishQueue),
-                        ),
-                        NoWaveActionRow(
-                          icon: Icons.devices_outlined,
-                          label: l10n.accountSessionsTitle,
-                          onTap: () => context.push(RoutePaths.sessions),
-                        ),
-                        NoWaveActionRow(
-                          icon: Icons.info_outline,
-                          label: l10n.menuAbout,
-                          onTap: () => context.push(RoutePaths.profileAbout),
-                        ),
-                        NoWaveActionRow(
-                          icon: Icons.file_download_outlined,
-                          label: l10n.exportMyData,
-                          description: l10n.exportMyDataHint,
-                          onTap: () => _exportData(context, user),
-                        ),
-                        NoWaveActionRow(
-                          icon: Icons.logout,
-                          label: l10n.logout,
-                          onTap: () =>
-                              context.read<AuthBloc>().add(AuthLogout()),
-                        ),
-                        const Divider(height: 1),
                       ],
                     ),
                   ),

@@ -35,6 +35,7 @@ class ViewerArticleBody extends StatelessWidget {
     required this.onRequestLogin,
     this.titleKey,
     this.controlsKey,
+    this.endKey,
   });
 
   final Blog blog;
@@ -59,6 +60,10 @@ class ViewerArticleBody extends StatelessWidget {
   /// Marks the full read-aloud controls, so the page can dock a compact
   /// player once they have scrolled away.
   final GlobalKey? controlsKey;
+
+  /// Marks the end of the text, so the page can measure how far into the
+  /// article - not into the comments under it - the reader is.
+  final GlobalKey? endKey;
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +148,13 @@ class ViewerArticleBody extends StatelessWidget {
                     // the piece, and naming them again here read as a
                     // repeat. No rules either side - the change of paper
                     // below is the break.
-                    NoWaveEndMark(label: context.l10n.articleEnd, ruled: false),
+                    KeyedSubtree(
+                      key: endKey,
+                      child: NoWaveEndMark(
+                        label: context.l10n.articleEnd,
+                        ruled: false,
+                      ),
+                    ),
                   ],
                 ),
               ),

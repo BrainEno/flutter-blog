@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:belog/core/common/widgets/no_wave_action_row.dart';
+import 'package:belog/core/common/widgets/no_wave_menu_group.dart';
 import 'package:belog/core/config/app_durations.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/network/api_origin_report.dart';
 import 'package:belog/core/secrets/app_secrets.dart';
+import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/diagnostics_file_export.dart';
 import 'package:belog/core/utils/diagnostics_header.dart';
@@ -18,6 +21,10 @@ import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+/// The author's addresses, shown as written and opened as links.
+const _email = 'nodeman24@outlook.com';
+const _github = 'https://github.com/BrainEno';
 
 class AboutPage extends StatefulWidget {
   /// Injectable for tests; the default reads the real package manifest.
@@ -118,78 +125,101 @@ class _AboutPageState extends State<AboutPage> {
     final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.aboutTitle)),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: NoWaveSpacing.section,
-          vertical: NoWaveSpacing.large,
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          NoWaveSpacing.page,
+          NoWaveSpacing.large,
+          NoWaveSpacing.page,
+          NoWaveSpacing.section,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.aboutHeading,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: NoWaveSpacing.medium),
-            Text(l10n.aboutBody),
-            const SizedBox(height: NoWaveSpacing.large),
-            Text(
-              l10n.contactHeading,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: NoWaveSpacing.medium),
-            Text(l10n.emailLabel),
-            TextButton(
-              onPressed: () =>
-                  _openLink(context, Uri.parse('mailto:nodeman24@outlook.com')),
-              child: const Text('nodeman24@outlook.com'),
-            ),
-            const SizedBox(height: NoWaveSpacing.xs),
-            Text(l10n.githubLabel),
-            TextButton(
-              onPressed: () =>
-                  _openLink(context, Uri.parse('https://github.com/BrainEno')),
-              child: const Text('https://github.com/BrainEno'),
-            ),
-            const SizedBox(height: NoWaveSpacing.large),
-            Text(
-              l10n.versionHeading,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: NoWaveSpacing.medium),
-            // Long-press remains a shortcut; the report is still never sent
-            // automatically (issue #49).
-            InkWell(
-              onLongPress: () => _showDiagnostics(context),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: NoWaveSpacing.small,
-                ),
-                child: FutureBuilder<PackageInfo?>(
-                  future: _packageInfo,
-                  builder: (context, snapshot) {
-                    final info = snapshot.data;
-                    final version = info == null
-                        ? '…'
-                        : '${info.version}+${info.buildNumber}';
-                    return Text(l10n.appVersionLabel(version));
-                  },
-                ),
+        children: [
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: NoWaveSizes.contentColumn,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // The one heading on the page, in the serif like every
+                  // other page's title; the two blocks under it are labelled
+                  // like the profile's groups, and their entries are the same
+                  // rows - the about page is reached from that menu and now
+                  // reads as part of it.
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      l10n.aboutHeading,
+                      style: NoWaveTypography.title(context, size: 32),
+                    ),
+                  ),
+                  const SizedBox(height: NoWaveSpacing.medium),
+                  Text(
+                    l10n.aboutBody,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyLarge?.copyWith(height: 1.7),
+                  ),
+                  NoWaveMenuGroup(
+                    title: l10n.contactHeading,
+                    children: [
+                      NoWaveActionRow(
+                        icon: Icons.mail_outline,
+                        label: l10n.emailLabel,
+                        description: _email,
+                        onTap: () =>
+                            _openLink(context, Uri.parse('mailto:$_email')),
+                      ),
+                      NoWaveActionRow(
+                        icon: Icons.code,
+                        label: l10n.githubLabel,
+                        description: _github,
+                        onTap: () => _openLink(context, Uri.parse(_github)),
+                      ),
+                    ],
+                  ),
+                  NoWaveMenuGroup(
+                    title: l10n.versionHeading,
+                    children: [
+                      // Long-press remains a shortcut; the report is still
+                      // never sent automatically (issue #49).
+                      InkWell(
+                        onLongPress: () => _showDiagnostics(context),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: NoWaveSpacing.medium,
+                          ),
+                          child: FutureBuilder<PackageInfo?>(
+                            future: _packageInfo,
+                            builder: (context, snapshot) {
+                              final info = snapshot.data;
+                              final version = info == null
+                                  ? '…'
+                                  : '${info.version}+${info.buildNumber}';
+                              return Text(
+                                l10n.appVersionLabel(version),
+                                style: NoWaveTypography.meta(context),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      // A support feature nobody can discover is not a
+                      // support feature: the version row keeps the long-press
+                      // shortcut, and this entry makes the report reachable
+                      // without guessing (issue #49).
+                      NoWaveActionRow(
+                        icon: Icons.bug_report_outlined,
+                        label: l10n.diagnosticsEntry,
+                        onTap: () => _showDiagnostics(context),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            // A support feature nobody can discover is not a support feature:
-            // the version row keeps the long-press shortcut, and this entry
-            // makes the report reachable without guessing (issue #49).
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => _showDiagnostics(context),
-                icon: const Icon(Icons.bug_report_outlined, size: 18),
-                label: Text(l10n.diagnosticsEntry),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -96,4 +96,45 @@ void main() {
       expect(formatNumber(const Locale('en', 'IN'), 1234567), '12,34,567');
     });
   });
+
+  group('inbox dates and percentages', () {
+    // A Thursday evening.
+    final now = DateTime(2026, 11, 19, 18);
+
+    test('today prints the time of day', () {
+      final earlier = DateTime(2026, 11, 19, 14, 30);
+      expect(formatRecent(const Locale('zh'), earlier, now: now), '14:30');
+      expect(formatRecent(const Locale('en'), earlier, now: now), '14:30');
+    });
+
+    test('the past week prints the weekday', () {
+      final monday = DateTime(2026, 11, 16, 9);
+      expect(formatRecent(const Locale('zh'), monday, now: now), '周一');
+      expect(formatRecent(const Locale('en'), monday, now: now), 'Mon');
+    });
+
+    test('earlier this year prints the month and day', () {
+      final weekAgo = DateTime(2026, 11, 12, 23);
+      expect(formatRecent(const Locale('en'), weekAgo, now: now), 'Nov 12');
+      final october = DateTime(2026, 10, 30, 12);
+      expect(formatRecent(const Locale('zh'), october, now: now), '10月30日');
+    });
+
+    test('an earlier year prints the full date', () {
+      final old = DateTime(2025, 3, 2, 12);
+      expect(formatRecent(const Locale('zh'), old, now: now), '2025年3月2日');
+      expect(formatRecent(const Locale('en'), old, now: now), 'Mar 2, 2025');
+    });
+
+    test('a clock running ahead still reads as today', () {
+      final ahead = DateTime(2026, 11, 20, 1);
+      expect(formatRecent(const Locale('en'), ahead, now: now), '01:00');
+    });
+
+    test('a share prints as a whole percentage', () {
+      expect(formatPercent(const Locale('zh'), 0.42), '42%');
+      expect(formatPercent(const Locale('en'), 0.07), '7%');
+      expect(formatPercent(const Locale('en'), 1), '100%');
+    });
+  });
 }

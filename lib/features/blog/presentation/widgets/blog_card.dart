@@ -21,7 +21,13 @@ class BlogCard extends StatelessWidget {
     this.labelAuthor = false,
     this.onTagTap,
     this.quiet = false,
+    this.ruled = true,
   });
+
+  /// Whether a plain row draws its top rule. Off for the first row under a
+  /// line the page already draws (a tab bar's hairline, a search field's
+  /// underline), where a second rule a few points lower read as a double.
+  final bool ruled;
 
   /// A row without its rule or its tags: for a short list laid on a surface
   /// (related reading), where the space between rows is enough.
@@ -138,7 +144,7 @@ class BlogCard extends StatelessWidget {
   Widget _row(BuildContext context, String author) {
     final foreground = Theme.of(context).colorScheme.onSurface;
     return Container(
-      decoration: quiet
+      decoration: quiet || !ruled
           ? null
           : BoxDecoration(
               border: Border(top: BorderSide(color: foreground.withAlpha(130))),

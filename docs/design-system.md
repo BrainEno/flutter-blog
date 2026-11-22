@@ -124,6 +124,7 @@
 | `caption` | 12 | 评论名字下面那行日期与「已编辑」：一条评论里最小的一档 |
 | `label` | 15 | 标签/分类 chip、页内切换词 |
 | `emptyState` | 16 | 空态说明句 |
+| `actionRow` | 16 | 行动行（个人中心菜单）的文字：无衬线、w500——一列十来个入口读作菜单，而不是一排和账户名抢位置的标题 |
 | `comment` | 16 | 评论正文（回复用 `label` 15），比正文小一号 |
 | `hint` | 17 | 封面上传框里的提示 |
 | `runningHead` | 17 | 阅读页书眉：标题滚走后，应用栏里重复的那行小标题 |
@@ -155,6 +156,7 @@
 | `slow` | 320ms | 页面与面板切换 |
 | `enter` | 1000ms | 内容进入（揭示、遮罩打开） |
 | `page` | 900ms | 路由转场 |
+| `resume` | 700ms | 「从上次停下的地方继续」：沿同一篇文章滑到上次的位置——看得出是在同一页里走，又比转场短 |
 | `counter` / `counterFinish` | 1800ms / 350ms | 幕布计数爬到 `088` 与最后一跳 `088 → 100` |
 | `curtain` / `stagger` | 900ms / 80ms | 单列上撕与相邻列的错开 |
 | `minimumSplash` / `splashBail` | 1400ms / 4500ms | 最短幕布时长与兜底揭幕 |
@@ -235,6 +237,8 @@
 | `showNoWaveConfirmDialog` | `design/components/no_wave_confirm_dialog.dart` | 破坏性动作的二次确认 |
 | `NoWaveStatus` | `common/widgets/no_wave_status.dart` | 空态/错误态：一句衬线排的话（无事可做是浅色，有行动是墨色）、可选一行小号说明（`detail`）、至多一个描边按钮；没有装饰记号；出现时淡入上浮，按钮稍晚 |
 | `NoWaveSectionHeading` / `NoWaveEyebrow` | `common/widgets/no_wave_section_heading.dart` | 编辑式大标题（可换行）；可选的小标题 `NoWaveEyebrow`：只有一行小号、拉开字距的浅色字，拉丁字母全大写，前面不加线 |
+| `NoWaveLinkButton` | `design/components/no_wave_link_button.dart` | 从栏边起排的文字链接：只留尾部内边距和 48pt 点按高度，链接与它所属的名字、标题对齐，而不是缩进一格；`forward` 在字后加箭头 |
+| `NoWaveMenuGroup` | `common/widgets/no_wave_menu_group.dart` | 一组行动行：上面一行灰色小字名（不是眉题，只为长菜单能扫读），下面一道细线收尾；个人中心与「关于」共用 |
 | `NoWaveActionRow` | `common/widgets/no_wave_action_row.dart` | 个人中心式的可点行动行；与文章卡片同样的回应（水波、橙色焦点/悬停洗色、行尾箭头前移），但不下沉 |
 | `NoWaveMasthead` | `common/widgets/no_wave_masthead.dart` | 双字体字标 |
 | `NoWaveAvatar` | `common/widgets/no_wave_avatar.dart` | 方形头像，失败回退中性图 |
@@ -499,6 +503,42 @@
 `TickerMode.valuesOf(context).enabled`，由关变开就重读。几件事同时发生时（关掉文章既是
 出栈又是重新可见）只发一次请求；不在视野里的收藏页回到前台时不读，等被打开时再读。
 
+### 个人中心与收件箱：菜单是菜单，标题才是标题
+
+个人中心曾是十三行一样大的衬线字，叠在账户名下面——每一行都像一个标题，页面反而没有了
+顶。现在：
+
+- **行是菜单项**：`NoWaveActionRow` 用无衬线 `actionRow`（16，w500），图标居中对齐单行
+  文字；有说明时才顶对齐。「退出登录」不去任何一页，所以 `showArrow: false`。
+- **分组**：`NoWaveMenuGroup` 把十三行分成「消息 / 写作与阅读 / 账户与安全」和最后一组
+  无标题的「关于、退出登录」；有新消息的一组排最前。组名是一行灰色小字，不是眉题。
+- **名字是这页唯一的标题**（衬线 32）；「查看我的作者主页」是从栏边起排的
+  `NoWaveLinkButton`，和名字对齐。主题切换去掉了描边圆框，图标在切换时转一下、淡入。
+- **收件箱**（私信、通知）：两侧都用页边距 28；未读靠字重说（w600 对 w400），通知行尾
+  再加一个 8pt 墨色小方块，不再给整行铺底色。日期用 `formatRecent`：今天写时刻，一周内
+  写星期，今年写月日，更早才写完整日期——二十分钟前的消息印成「2026年11月22日」什么也没
+  说，还会在未读数旁边被截断。「文章地址可能已失效」只在列表底部说一次。
+- **作者页、搜索结果**：第一张卡片上面不画线，线只在两张卡片之间。
+- **我的文章**：删除不再是封面上的橙色实心圆，而是署名行尾一个安静的 `delete_outline`
+  图标按钮（仍有「删除文章」提示与确认对话框）；长按仍可删除。
+
+### 继续阅读：回到上次停下的地方
+
+读到一半离开的文章，再打开时页脚浮起一张墨色纸条：「↓ 从上次停下的地方继续　42%」。
+
+- **量的是正文**：位置是「已经滚过的正文」占「滚到文末『全文完』出现在屏幕底部」那段
+  距离的比例，相关阅读和评论不算——它们晚到，会让每个已存的位置漂移。一屏放得下的文章
+  不记。
+- **什么时候记**：每次滚动停下（`ScrollEndNotification`），变化不足 1% 不写；只为已登录
+  账号、跟阅读历史存在同一行（`reading_history.progress`，见
+  [SQLite 存储](sqlite-storage.md)），退出登录随历史一起清掉。
+- **什么时候提**：存下的位置在 `ReadingProgress.started`（5%）与 `finished`（95%）之间才
+  提；点一下沿同一页用 `NoWaveMotion.resume`（700ms）滑过去，减少动效时直接跳到；自己往下
+  读过了那里，纸条就收起；朗读进行中底部归朗读条，纸条让开。
+- **为什么是墨色**：这是回到正文的路，不是主操作；橙色留给位置与焦点。深色主题里它是一张
+  浅色纸条。
+- **阅读历史**的日期后面写「读到 42%」或「已读完」，同样以 5% / 95% 为界。
+
 ### 列表行：一条左边线，和头条同一种收尾
 
 首页、分类、标签、搜索和作者页的文章行曾经在左边单列一栏序号（36pt 宽），标签、标题、
@@ -647,7 +687,7 @@ favicon 是同一个记号：
   行尾的 `NoWavePressArrow` 沿阅读方向迈出 `arrowNudge`——「这一行通往某处」。悬停
   和键盘聚焦也会让箭头迈步，所以不用触屏的人得到同样的回答。仍然是 `InkWell`，焦点、
   悬停洗色（`focusAlpha` / `hoverAlpha`）与读屏语义都不变。
-  个人中心与设置里的 `NoWaveActionRow` 也用它，但传 `sink: false`：整宽、顶上压着一道
+  个人中心与「关于」里的 `NoWaveActionRow` 也用它，但传 `sink: false`：整宽、顶上压着一道
   线的行一缩放，线就会从两边缩进去；所以行只用箭头迈步和洗色回答。
 - **进场（`NoWaveEntrance`）**：首页 feed 第一次出现时，前 `entranceCount` 条依次
   淡入并上浮 `entranceRise`，间隔 `stagger`——像一页刚从印刷机上下来，而不是一帧里

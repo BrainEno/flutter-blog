@@ -6,6 +6,7 @@ import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/design/motion/no_wave_motion_policy.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/read_aloud/read_aloud_settings.dart';
+import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controller.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_dock.dart';
@@ -13,6 +14,7 @@ import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/features/blog/presentation/read_aloud/structured_article_nodes.dart';
 import 'package:belog/features/blog/presentation/viewer/reader_app_bar.dart';
+import 'package:belog/features/blog/presentation/viewer/resume_reading_slip.dart';
 import 'package:belog/features/blog/presentation/viewer/viewer_article_body.dart';
 import 'package:belog/router/read_aloud_route_observers.dart';
 import 'package:flutter/material.dart';
@@ -33,7 +35,17 @@ class ViewerScaffold extends StatefulWidget {
     required this.speechCoordinator,
     required this.readAloudPreferences,
     required this.readAloudRouteObserver,
+    this.resumeAt,
+    this.onProgress,
   });
+
+  /// Where the reader left this article last time, as a share of its text;
+  /// the page offers to go back there. Null when there is nothing to offer.
+  final double? resumeAt;
+
+  /// Told where the reader is, as a share of the text, whenever a scroll
+  /// comes to rest.
+  final ValueChanged<double>? onProgress;
 
   final Blog blog;
   final VoidCallback onRequestLogin;
@@ -62,6 +74,13 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
 
   /// Whether the full controls have scrolled above the top of the page.
   final ValueNotifier<bool> _controlsPassed = ValueNotifier(false);
+
+  /// The end mark, for measuring how much of the text is behind the reader.
+  final GlobalKey _endKey = GlobalKey();
+
+  /// Whether the offer to pick up where the reader left off is withdrawn:
+  /// taken, or overtaken by the reader scrolling on their own.
+  final ValueNotifier<bool> _resumeDone = ValueNotifier(false);
 
   /// Where the sentence being read is when the reader has taken the scroll
   /// away from the voice; null while the page follows it.
@@ -299,8 +318,66 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
     _scrollController.dispose();
     _runningHead.dispose();
     _controlsPassed.dispose();
+    _resumeDone.dispose();
     _voiceAway.dispose();
     super.dispose();
+  }
+
+  /// How far the page can scroll before the end mark is on screen: the
+  /// stretch the reader has to travel through the text. Null before layout,
+  /// or when the whole article fits on one screen and there is nothing to
+  /// pick up. The related reading and comments under the text are left out:
+  /// they load late and would move every saved position.
+  double? _textSpan() {
+    if (!_scrollController.hasClients) return null;
+    final box = _endKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.attached) return null;
+    final viewport = RenderAbstractViewport.maybeOf(box);
+    if (viewport == null) return null;
+    final position = _scrollController.position;
+    final span =
+        viewport.getOffsetToReveal(box, 0).offset - position.viewportDimension;
+    return span > position.viewportDimension / 2 ? span : null;
+  }
+
+  /// The share of the text behind the reader, from 0 to 1.
+  double? _progress() {
+    final span = _textSpan();
+    if (span == null) return null;
+    return (_scrollController.position.pixels / span).clamp(0.0, 1.0);
+  }
+
+  /// Whether [at] is worth an offer: far enough in to have been reading,
+  /// short of the end.
+  static bool _resumable(double? at) =>
+      at != null &&
+      at >= ReadingProgress.started &&
+      at < ReadingProgress.finished;
+
+  /// Goes back to where the reader left off. A glide rather than a cut, so
+  /// the reader sees they have been carried down the same page; a jump when
+  /// less motion is asked for.
+  void _resume() {
+    _resumeDone.value = true;
+    final span = _textSpan();
+    final at = widget.resumeAt;
+    if (span == null || at == null) return;
+    final position = _scrollController.position;
+    final target = (at * span).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if (NoWaveMotionPolicy.reducesMotion(context)) {
+      _scrollController.jumpTo(target);
+    } else {
+      unawaited(
+        _scrollController.animateTo(
+          target,
+          duration: NoWaveMotion.resume,
+          curve: NoWaveMotionPolicy.curve,
+        ),
+      );
+    }
   }
 
   /// Shows the running head once the title has passed under the app bar.
@@ -326,6 +403,15 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
         _letGo();
       case ScrollEndNotification():
         _dragging = false;
+        if (_progress() case final progress?) {
+          widget.onProgress?.call(progress);
+          // Read on past the place by hand, and the offer has nothing left
+          // to give.
+          if (!_resumeDone.value &&
+              progress >= (widget.resumeAt ?? 0) - ReadingProgress.started) {
+            _resumeDone.value = true;
+          }
+        }
       default:
         break;
     }
@@ -360,6 +446,48 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
     );
   }
 
+  /// The offer to pick up where the reader left off: an ink slip at the
+  /// foot of the page with the share already read. It rises in once, and
+  /// leaves when taken, when the reader scrolls past the place themselves,
+  /// or while the voice is on and the dock owns the bottom of the screen.
+  Widget _resumeOffer() {
+    final at = widget.resumeAt;
+    if (!_resumable(at)) return const SizedBox.shrink();
+    final reader = _reader;
+    return ListenableBuilder(
+      listenable: Listenable.merge([_resumeDone, if (reader != null) reader]),
+      builder: (context, _) {
+        final show =
+            !_resumeDone.value &&
+            (reader == null || reader.phase == ReadAloudPhase.idle);
+        return Center(
+          child: AnimatedSwitcher(
+            duration: NoWaveMotionPolicy.resolve(context, NoWaveMotion.slow),
+            switchInCurve: NoWaveMotionPolicy.curve,
+            switchOutCurve: NoWaveMotionPolicy.curve,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, NoWaveMotion.runningHeadRise),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            ),
+            child: show
+                ? ResumeReadingSlip(
+                    key: const ValueKey('resume-reading'),
+                    progress: at!,
+                    onTap: _resume,
+                  )
+                : const SizedBox.shrink(),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -373,21 +501,33 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
         },
       ),
       bottomNavigationBar: _dock(),
-      body: NoWaveReadingProgress(
-        child: NotificationListener<ScrollNotification>(
-          onNotification: _trackTitle,
-          child: ViewerArticleBody(
-            blog: blog,
-            document: _document,
-            reader: _reader,
-            blockKeys: _blockKeys,
-            scrollController: _scrollController,
-            getRelatedArticles: getRelatedArticles,
-            onRequestLogin: onRequestLogin,
-            titleKey: _titleKey,
-            controlsKey: _controlsKey,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          NoWaveReadingProgress(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _trackTitle,
+              child: ViewerArticleBody(
+                blog: blog,
+                document: _document,
+                reader: _reader,
+                blockKeys: _blockKeys,
+                scrollController: _scrollController,
+                getRelatedArticles: getRelatedArticles,
+                onRequestLogin: onRequestLogin,
+                titleKey: _titleKey,
+                controlsKey: _controlsKey,
+                endKey: _endKey,
+              ),
+            ),
           ),
-        ),
+          PositionedDirectional(
+            start: NoWaveSpacing.page,
+            end: NoWaveSpacing.page,
+            bottom: NoWaveSpacing.large,
+            child: _resumeOffer(),
+          ),
+        ],
       ),
     );
   }

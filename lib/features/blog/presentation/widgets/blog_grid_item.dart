@@ -95,16 +95,6 @@ class BlogGridItem extends StatelessWidget {
                     ],
                   ),
                 ),
-              if (onLongPress != null)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: IconButton.filled(
-                    tooltip: context.l10n.deleteArticleTitle,
-                    onPressed: onLongPress,
-                    icon: const Icon(Icons.delete_outline),
-                  ),
-                ),
             ],
           ),
           const SizedBox(height: NoWaveSpacing.small),
@@ -131,17 +121,45 @@ class BlogGridItem extends StatelessWidget {
             ),
           ],
           const SizedBox(height: NoWaveSpacing.xs),
-          Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: NoWaveTypography.meta(context),
-          ),
-          Text(
-            formatDate(Localizations.localeOf(context), blog.updatedAt),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: NoWaveTypography.meta(context),
+          // Delete waits at the end of the byline as a plain glyph. It used
+          // to be a filled red disc on every cover - the loudest thing on
+          // the page was the one action nobody comes here to take.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: NoWaveTypography.meta(context),
+                    ),
+                    Text(
+                      formatDate(
+                        Localizations.localeOf(context),
+                        blog.updatedAt,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: NoWaveTypography.meta(context),
+                    ),
+                  ],
+                ),
+              ),
+              if (onLongPress != null)
+                IconButton(
+                  tooltip: context.l10n.deleteArticleTitle,
+                  onPressed: onLongPress,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: NoWaveIconSize.row,
+                  ),
+                ),
+            ],
           ),
         ],
       ),
