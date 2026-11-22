@@ -198,6 +198,8 @@ void main() {
   testWidgets('a comment keeps one text column and four type steps', (
     tester,
   ) async {
+    // Signed in, so the first action reads as a plain reply.
+    appUserCubit.updateUser(_user());
     when(() => getComments('my-slug')).thenAnswer(
       (_) async => right<Failure, CommentPage>(
         _page([
