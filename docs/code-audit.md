@@ -1,6 +1,6 @@
 # 代码健壮性与分层审查（2026-10）
 
-> 状态：active ｜ 最后核对：2026-11-19 @ 1f50dc4
+> 状态：active ｜ 最后核对：2026-11-19 @ f4d9ccf
 
 ## 范围与结论
 
@@ -89,6 +89,20 @@
 > 私信页的「是否本人」判断改用实体上已有的 `ConversationMessage.sentBy`。
 > 依赖全部有用，`lib/` 中没有 TODO/FIXME。
 
+> 2026-11-19 更新（大文件拆分）：按职责拆开超过 700 行的文件，公开 API 不变。
+> Notion 导入面板 1160 → 约 680 行：页面配对与图片归属算成 domain 的
+> `NotionPageSelection`，逐张上传、按内容去重、不重试的规则收进
+> `NotionImageUploader`（结果是密封类：完成 / 中止 / 不再需要），两者都有单元
+> 测试；文案映射移到 `notion_import_messages.dart`，选择列表与报告移到
+> `notion_import_report_view.dart`；面板里多处手写的「清空来源/预览」合并为
+> `_resetSource` / `_resetPreview`。编辑器会话协调器 936 → 约 400 行，草稿、封面、
+> 发布各自成 part 文件中的私有 mixin（见 [编辑器路线图](editor-architecture-roadmap.md)）。
+> `LocalStructuredSession` 的纯文本与富文本交接原本各写一遍「保存 → 关闭 → 校验」，
+> 现在共用 `_flushAndCloseForHandoff`，状态类型移到 `local_structured_state.dart`
+> （原库重新导出）。`notion_markdown.dart` 拆出警告类型与属性值解析
+> （`notion_markdown_warning.dart`、`notion_values.dart`，同样重新导出）；
+> 结构化编辑器的块卡片、通知页与行内格式页的私有组件也各自移出。
+
 ## 本轮修复
 
 - 文章编辑页通过 domain 的 `BlogDraftStore` 接口访问草稿，个人中心通过
@@ -133,7 +147,7 @@
 | 已缓解 | ~~安全存储迁移失败会回退 SQLite；清除失败只记录日志，重启可能重新读到旧会话~~ —— #102 已收敛：`ResilientNowaveSessionStore` 用 SQLite `metadata` 里**不含令牌的标记**（`nowave_session_authority_v1`）记录哪一份副本有效。安全存储启动探针（写/读/删，独立 key）失败即写 SQLite；迁移先写入再读回校验，校验不过就保留 SQLite 副本；退出**先写「无会话」标记**再清两处副本，因此删除失败也不会在重启后复活账号，并把 `cleared / disowned / failed` 作为退出结果向上传播（`AuthLogoutFailure` + `auth.localSignOutIncomplete`）。 | 仍未验证真实平台的 Keychain/Keystore 故障注入、系统备份恢复与越狱/root 场景；标记本身写在 SQLite，若 SQLite 整体不可用，退出会明确报 `failed`，此时不能承诺重启后不复活。字段置空不等于物理擦除。 |
 | 中 | 阅读历史只按用户 ID 而非后端隔离；退出清理与在途写入或同账号重新登录尚未完全串行。 | 后续设计后端归属、迁移和写入/清理协调，不能承诺所有旧记录或副本都已擦除。 |
 | 高 | 文章/媒体写入超时后的结果可能未知。线上服务的文章幂等能力、媒体去重/孤儿清理尚未验证；当前分支没有持久 outbox。 | #23 虽已关闭，#66 尚未合并且验收有缺口；需要服务端部署能力证据、持久账号隔离、状态/退避及媒体补偿，不能盲重试或凭客户端代码宣称端到端幂等。 |
-| 已缓解（部分） | ~~`lib/core/storage/app_database.dart` 和 `sqlite_blog_cache.dart` 仍依赖 feature data 模型，`core/storage` 中也有带 Flutter 类型/具体存储的实现~~ —— #107 第一步已收敛：`lib/core` 不再导入 `lib/features`（`SqliteBlogCache`、`SqliteBlogDraftStore`、阅读历史实现移入 `features/blog`），`AppDatabase` 只接受原始类型（`setTheme(String)`、`upsertBlogRow(...)`），主题偏好实现移到 `core/theme`；`tool/ci/check_core_dependencies.py` 加上 `flutter test` 之外的 unittest 守护这两条规则。domain 的图片入参已改为平台无关的 `ImageUpload`（domain 层只剩 `notion_zip.dart` 用 `dart:io` 的 `ZLibDecoder` 解压，不涉及文件）；`markdown_body.dart`（117 行）、`comments_section.dart`（301 行）已拆小。仍偏大：`notion_import_sheet.dart`（约 1160 行）、`local_structured_session.dart`（约 980 行）、`editor_session_coordinator.dart`（约 940 行）、`blog_repository_impl.dart`（约 620 行）。`blog_remote_data_source.dart` 已收敛为兼容 façade，公开/账号读路由和认证写路由分别移至 `blog_remote_article_reads.dart`、`blog_remote_article_writes.dart`；编辑器发布快照也移至 `editor_publish_intent.dart`，具体的结构化编辑收敛边界见 [编辑器路线图](editor-architecture-roadmap.md)（`nowave_session.dart`、`nowave_api_client.dart`、`blog_viewer_page.dart` 亦已在早期步骤拆分）。 | 后续继续保持规则零违规，并按「认证拆分 session 状态机 / refresh 单飞 / 账号 fence」逐步拆单元；保留现有 SQLite 表与数据/迁移测试，不宜为分层一次性迁移数据库；Isar 依赖已按「不维护即移除」原则在 #107 第二步彻底删除（见 docs/sqlite-storage.md）。 |
+| 已缓解（部分） | ~~`lib/core/storage/app_database.dart` 和 `sqlite_blog_cache.dart` 仍依赖 feature data 模型，`core/storage` 中也有带 Flutter 类型/具体存储的实现~~ —— #107 第一步已收敛：`lib/core` 不再导入 `lib/features`（`SqliteBlogCache`、`SqliteBlogDraftStore`、阅读历史实现移入 `features/blog`），`AppDatabase` 只接受原始类型（`setTheme(String)`、`upsertBlogRow(...)`），主题偏好实现移到 `core/theme`；`tool/ci/check_core_dependencies.py` 加上 `flutter test` 之外的 unittest 守护这两条规则。domain 的图片入参已改为平台无关的 `ImageUpload`（domain 层只剩 `notion_zip.dart` 用 `dart:io` 的 `ZLibDecoder` 解压，不涉及文件）；`markdown_body.dart`（117 行）、`comments_section.dart`（301 行）已拆小。2026-11-19 大文件拆分见上方更新；目前最大的是 `local_structured_session.dart`（约 870 行，单一状态机，刻意不再拆）。`blog_remote_data_source.dart` 已收敛为兼容 façade，公开/账号读路由和认证写路由分别移至 `blog_remote_article_reads.dart`、`blog_remote_article_writes.dart`；编辑器发布快照也移至 `editor_publish_intent.dart`，具体的结构化编辑收敛边界见 [编辑器路线图](editor-architecture-roadmap.md)（`nowave_session.dart`、`nowave_api_client.dart`、`blog_viewer_page.dart` 亦已在早期步骤拆分）。 | 后续继续保持规则零违规，并按「认证拆分 session 状态机 / refresh 单飞 / 账号 fence」逐步拆单元；保留现有 SQLite 表与数据/迁移测试，不宜为分层一次性迁移数据库；Isar 依赖已按「不维护即移除」原则在 #107 第二步彻底删除（见 docs/sqlite-storage.md）。 |
 | 中 | 部分 repository 将未分类异常转为 feature-specific 的通用失败，可能丢失网络/超时分类。 | 按操作逐项梳理可重试性、结果未知、日志脱敏和本地化，而不是对所有异常一律重试或返回成功。 |
 
 本次新增自动化测试覆盖上述**已修复**路径；mock 测试不能代替真实 Android/iOS

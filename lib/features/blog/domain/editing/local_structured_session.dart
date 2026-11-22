@@ -7,6 +7,7 @@ import 'package:belog/features/blog/domain/editing/structured_article_draft.dart
 import 'package:belog/features/blog/domain/editing/structured_body_history.dart';
 import 'package:belog/features/blog/domain/editing/structured_history_patch.dart';
 import 'package:belog/features/blog/domain/editing/structured_comparison.dart';
+import 'package:belog/features/blog/domain/editing/local_structured_state.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_text_session.dart';
 import 'package:belog/features/blog/domain/editing/local_structured_rich_text_session.dart';
 import 'package:belog/features/blog/domain/editing/structured_rich_text_buffer.dart';
@@ -19,102 +20,7 @@ import 'package:belog/features/blog/domain/repositories/structured_body_recovery
 import 'package:belog/features/blog/domain/repositories/structured_text_session_store.dart';
 import 'package:belog/features/blog/domain/usecase/open_structured_editing_session.dart';
 
-/// Local-only state. Neither a successful read nor a saved local revision
-/// grants permission to publish or establishes an atomic server version.
-enum LocalStructuredPhase {
-  initial,
-  opening,
-  recoveryChoice,
-  editing,
-  unavailable,
-  localReadFailed,
-  saveFailed,
-  conflict,
-  cancelled,
-  invalidated,
-  closed,
-}
-
-/// A comparison is advisory and deliberately does not claim the server has
-/// not changed: server fields not represented in local metadata may differ.
-enum StructuredBaseComparison {
-  noLocalBase,
-  remoteUnavailable,
-  bodyDiffers,
-  metadataUnknown,
-  metadataDiffers,
-  representedFieldsMatch,
-}
-
-/// Immutable view of the session. Previously obtained values cannot be
-/// revoked by the session; consumers must discard their own references on an
-/// identity event. New states after invalidation never include private data.
-class LocalStructuredState {
-  const LocalStructuredState({
-    required this.phase,
-    this.body,
-    this.baseBody,
-    this.metadata,
-    this.remoteStatus,
-    this.baseComparison,
-    this.saving = false,
-    this.hasUnsavedChanges = false,
-    this.recoveryAvailable = false,
-  });
-
-  final LocalStructuredPhase phase;
-
-  /// The original snapshot for this local session, not a fresh server read.
-  /// It is cleared with all private state when the account fence invalidates.
-  final StructuredArticleDraft? body;
-  final StructuredArticleDraft? baseBody;
-  final StructuredSessionMetadata? metadata;
-  final StructuredEditionReadStatus? remoteStatus;
-  final StructuredBaseComparison? baseComparison;
-  final bool saving;
-  final bool hasUnsavedChanges;
-  final bool recoveryAvailable;
-}
-
-/// Outcome of restoring the exact content of one existing block from a
-/// captured history entry. No outcome implies a durable save or remote write.
-enum LocalHistoryBlockRestoreResult { accepted, unchanged, stale, invalid }
-
-enum LocalStructuredFlushResult {
-  saved,
-  failed,
-  conflict,
-  notReady,
-  obsolete,
-  closed,
-}
-
-enum LocalTextHandoffStatus {
-  ready,
-  unsupportedStore,
-  invalidTarget,
-  notReady,
-  failed,
-  conflict,
-  obsolete,
-}
-
-/// On [LocalTextHandoffStatus.ready] the body session is closed. A concurrent
-/// close or identity change may also close it while returning obsolete. The
-/// returned session requires explicit recovery and refuses any changed row.
-class LocalTextHandoffResult {
-  const LocalTextHandoffResult(this.status, [this.session]);
-  final LocalTextHandoffStatus status;
-  final LocalStructuredTextSession? session;
-}
-
-/// A rich handoff uses the same status vocabulary as the plain editor, but
-/// returns a coordinator for one explicitly captured formatted target.
-class LocalRichTextHandoffResult {
-  const LocalRichTextHandoffResult(this.status, [this.session]);
-  final LocalTextHandoffStatus status;
-  final LocalStructuredRichTextSession? session;
-}
+export 'package:belog/features/blog/domain/editing/local_structured_state.dart';
 
 class _Edit {
   const _Edit(this.body, this.metadata);
@@ -779,31 +685,10 @@ class LocalStructuredSession {
     // admit another edit or start a second handoff.
     _handoff = true;
     try {
-      // Even an untouched remote snapshot needs a durable parent row before a
-      // buffer can be persisted. Never create an empty or guessed baseline.
-      if (_recovery == null && _pending == null && _writer == null) {
-        _accept(_Edit(_state.body!, _state.metadata));
-      }
-      final result = await flush();
-      if (!_checkIdentity() || _closing) {
-        return const LocalTextHandoffResult(LocalTextHandoffStatus.obsolete);
-      }
-      if (result == LocalStructuredFlushResult.failed) {
-        return const LocalTextHandoffResult(LocalTextHandoffStatus.failed);
-      }
-      if (result == LocalStructuredFlushResult.conflict) {
-        return const LocalTextHandoffResult(LocalTextHandoffStatus.conflict);
-      }
-      if (result != LocalStructuredFlushResult.saved || _recovery == null) {
-        return const LocalTextHandoffResult(LocalTextHandoffStatus.notReady);
-      }
-      final expected = _recovery!;
-      final closed = await close();
-      if (!closed || !_matchesIdentity || _invalidated) {
-        return const LocalTextHandoffResult(LocalTextHandoffStatus.obsolete);
-      }
+      final (status, expected) = await _flushAndCloseForHandoff();
+      if (expected == null) return LocalTextHandoffResult(status);
       return LocalTextHandoffResult(
-        LocalTextHandoffStatus.ready,
+        status,
         LocalStructuredTextSession(
           key: key,
           selectedRowId: expected.rowId,
@@ -854,37 +739,10 @@ class LocalStructuredSession {
     }
     _handoff = true;
     try {
-      if (_recovery == null && _pending == null && _writer == null) {
-        _accept(_Edit(_state.body!, _state.metadata));
-      }
-      final result = await flush();
-      if (!_checkIdentity() || _closing) {
-        return const LocalRichTextHandoffResult(
-          LocalTextHandoffStatus.obsolete,
-        );
-      }
-      if (result == LocalStructuredFlushResult.failed) {
-        return const LocalRichTextHandoffResult(LocalTextHandoffStatus.failed);
-      }
-      if (result == LocalStructuredFlushResult.conflict) {
-        return const LocalRichTextHandoffResult(
-          LocalTextHandoffStatus.conflict,
-        );
-      }
-      if (result != LocalStructuredFlushResult.saved || _recovery == null) {
-        return const LocalRichTextHandoffResult(
-          LocalTextHandoffStatus.notReady,
-        );
-      }
-      final expected = _recovery!;
-      final closed = await close();
-      if (!closed || !_matchesIdentity || _invalidated) {
-        return const LocalRichTextHandoffResult(
-          LocalTextHandoffStatus.obsolete,
-        );
-      }
+      final (status, expected) = await _flushAndCloseForHandoff();
+      if (expected == null) return LocalRichTextHandoffResult(status);
       return LocalRichTextHandoffResult(
-        LocalTextHandoffStatus.ready,
+        status,
         LocalStructuredRichTextSession(
           key: key,
           selectedRowId: expected.rowId,
@@ -900,6 +758,38 @@ class LocalStructuredSession {
     } finally {
       _handoff = false;
     }
+  }
+
+  /// The shared second half of both handoffs; the caller has set [_handoff].
+  /// Saves the body - giving an untouched remote snapshot its durable parent
+  /// row first, never an empty or guessed baseline - then closes this
+  /// session. Returns `ready` with the saved row the buffer session must
+  /// expect, or the status that stopped the handoff and no row.
+  Future<(LocalTextHandoffStatus, StructuredBodyRecovery?)>
+  _flushAndCloseForHandoff() async {
+    if (_recovery == null && _pending == null && _writer == null) {
+      _accept(_Edit(_state.body!, _state.metadata));
+    }
+    final result = await flush();
+    if (!_checkIdentity() || _closing) {
+      return (LocalTextHandoffStatus.obsolete, null);
+    }
+    final expected = _recovery;
+    switch (result) {
+      case LocalStructuredFlushResult.failed:
+        return (LocalTextHandoffStatus.failed, null);
+      case LocalStructuredFlushResult.conflict:
+        return (LocalTextHandoffStatus.conflict, null);
+      case LocalStructuredFlushResult.saved when expected != null:
+        break;
+      default:
+        return (LocalTextHandoffStatus.notReady, null);
+    }
+    final closed = await close();
+    if (!closed || !_matchesIdentity || _invalidated) {
+      return (LocalTextHandoffStatus.obsolete, null);
+    }
+    return (LocalTextHandoffStatus.ready, expected);
   }
 
   /// No implicit discard. Refuse to close on an active failed/conflicting save
