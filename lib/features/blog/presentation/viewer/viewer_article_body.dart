@@ -9,6 +9,7 @@ import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controlle
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controls.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.dart';
 import 'package:belog/features/blog/presentation/tag_navigation.dart';
+import 'package:belog/features/blog/presentation/viewer/reader_text_size_sheet.dart';
 import 'package:belog/features/blog/presentation/widgets/article_reader_header.dart';
 import 'package:belog/features/blog/presentation/widgets/comments_section.dart';
 import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
@@ -36,6 +37,7 @@ class ViewerArticleBody extends StatelessWidget {
     this.titleKey,
     this.controlsKey,
     this.endKey,
+    this.textFactor = 1,
   });
 
   final Blog blog;
@@ -64,6 +66,9 @@ class ViewerArticleBody extends StatelessWidget {
   /// Marks the end of the text, so the page can measure how far into the
   /// article - not into the comments under it - the reader is.
   final GlobalKey? endKey;
+
+  /// How much larger than standard the reader has set the text.
+  final double textFactor;
 
   @override
   Widget build(BuildContext context) {
@@ -132,16 +137,21 @@ class ViewerArticleBody extends StatelessWidget {
                         key: controlsKey,
                         child: ReadAloudControls(controller: reader!),
                       ),
-                    MarkdownBody(
-                      markdown: blog.content,
-                      readAloudDocument: document,
-                      readAloudController: reader,
-                      readAloudBlockKeys: blockKeys,
-                      bodyStyle: NoWaveTypography.title(
-                        context,
-                        size: 18,
-                      ).copyWith(fontWeight: FontWeight.w400, height: 1.9),
-                      headingStyle: NoWaveTypography.title(context),
+                    // Only the text follows the reader's size: the title,
+                    // byline and controls above it keep the app's scale.
+                    ReaderTextScale(
+                      factor: textFactor,
+                      child: MarkdownBody(
+                        markdown: blog.content,
+                        readAloudDocument: document,
+                        readAloudController: reader,
+                        readAloudBlockKeys: blockKeys,
+                        bodyStyle: NoWaveTypography.title(
+                          context,
+                          size: NoWaveTypeScale.articleBody,
+                        ).copyWith(fontWeight: FontWeight.w400, height: 1.9),
+                        headingStyle: NoWaveTypography.title(context),
+                      ),
                     ),
                     const SizedBox(height: NoWaveSpacing.section),
                     // Just "The end": the author is introduced at the top of

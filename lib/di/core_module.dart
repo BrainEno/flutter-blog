@@ -11,14 +11,17 @@ import 'package:belog/di/dependency_context.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_reading_history_store.dart';
 import 'package:belog/features/blog/data/read_aloud/platform_speech_engine.dart';
 import 'package:belog/features/blog/data/read_aloud/sqlite_read_aloud_preferences.dart';
+import 'package:belog/features/blog/data/reader/sqlite_reader_text_size_store.dart';
 import 'package:belog/features/blog/domain/read_aloud/read_aloud_settings.dart';
+import 'package:belog/features/blog/domain/reader/reader_text_size.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
+import 'package:belog/features/blog/presentation/viewer/reader_text_size_controller.dart';
 import 'package:get_it/get_it.dart';
 
 /// App-wide state that every feature reads: the database, the authenticated
 /// client and its session, theme and language, device-local reading history,
-/// read-aloud, and the signed-in user.
+/// read-aloud, the article text size, and the signed-in user.
 void registerCoreModule(GetIt locator, DependencyContext context) {
   final database = context.database;
   locator
@@ -35,6 +38,12 @@ void registerCoreModule(GetIt locator, DependencyContext context) {
     ..registerLazySingleton<ReadAloudPreferences>(
       () => SqliteReadAloudPreferences(database),
     )
+    // The article text size: one device-wide choice every open article
+    // listens to.
+    ..registerLazySingleton<ReaderTextSizeStore>(
+      () => SqliteReaderTextSizeStore(database),
+    )
+    ..registerLazySingleton(() => ReaderTextSizeController(locator()))
     // One coordinator/channel for the whole app, shared by retained tab stacks.
     ..registerLazySingleton(() => SpeechCoordinator(PlatformSpeechEngine()))
     ..registerLazySingleton(() => ThemeBloc(locator()))

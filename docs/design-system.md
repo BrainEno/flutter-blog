@@ -134,6 +134,8 @@
 | `authTitle` | 32 | 登录 / 注册页标题 |
 | `heading` | 36 | 页面大标题（`NoWaveSectionHeading`）：列表页上最大的字 |
 | `figure` | 40 | 摘要里数出来的数字（阅读历史的三个总数）；展示字体、等宽数字 |
+| `articleBody` | 18 | 正文的「标准」字号（衬线，行高 1.9） |
+| `readerBodySizes` | 16 / 18 / 20 / 22 / 24 | 阅读字号的五档正文字号；正文里的小标题、代码、图注按同一比例（相对 `articleBody`）缩放，叠加在系统字号之上 |
 
 ### 线与遮罩的不透明度 `NoWaveOpacity`
 
