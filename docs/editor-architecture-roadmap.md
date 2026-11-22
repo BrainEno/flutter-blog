@@ -1,6 +1,6 @@
 # 编辑器收敛与退役路线图
 
-> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+> 状态：active ｜ 最后核对：2026-11-19 @ f4d9ccf
 
 > 本文描述 Flutter 客户端当前能安全写回 no-wave 的边界，以及把本地结构化原型
 > 收敛为可维护的单一作者流程所需的步骤。
@@ -31,9 +31,15 @@ range、rich-text 的本地操作，以及从损坏/不支持正文中恢复作�
 草稿状态，并将显示交给无持久化副作用的 `EditorScreen` / `EditorForm`。
 `EditorSessionFence` 单独定义当前账号及 generation 匹配规则，方便独立测试；
 `EditorNotionCoordinator` 管理单个 Notion 弹层及其精确路由，账号失效时移除该路由。
-此次主要迁移原有协调逻辑，不改变 Markdown、草稿或队列协议。协调器仍然较大，
-后续应分步抽出草稿、媒体和冲突协调服务并保留既有行为测试，不能仅将文件
-搬走就声称编排复杂度已经消失。以下不可变工作避免异步流程拼接不同请求：
+此次主要迁移原有协调逻辑，不改变 Markdown、草稿或队列协议。2026-11-19 起
+协调器按职责拆成同一个库里的几个 part 文件：`editor_session_coordinator.dart`
+保留状态字段（`_EditorSessionBase`）、初始化、账号失效、分类和构建；
+`editor_session_drafts.dart`（自动保存、恢复、显式保存）、
+`editor_session_cover.dart`（设备/媒体库/队列封面）和
+`editor_session_publish.dart`（发布意图、队列移交、版本冲突核对）各是一个私有
+mixin。它们仍共享同一份可变状态、同一组账号围栏检查，行为测试不变——这是
+可读性上的拆分，编排复杂度本身并没有消失；若要真正独立成服务，仍需先把
+共享状态收敛为显式的值对象。以下不可变工作避免异步流程拼接不同请求：
 
 - `EditorPublishIntent` 同时生成 `BlogUploadBloc` 事件和离线 queue 行；文本、
   标签、分类三态（未触碰 / 清空 / 选择）、封面、目标语言、session generation、
