@@ -1,6 +1,6 @@
 # SQLite storage
 
-> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+> 状态：active ｜ 最后核对：2026-11-19 @ 5d4fcfc
 
 Drift on SQLite is the **only** local store: theme preference, drafts, the
 bounded article cache, reading history, read-aloud preferences, the no-wave
@@ -17,7 +17,7 @@ session copy, profile cache and app metadata all live in `belog.sqlite`.
 
 ## Schema versions
 
-`schemaVersion` is 19. The v17 migration rebuilds cache and history tables to
+`schemaVersion` is 20. The v17 migration rebuilds cache and history tables to
 add backend keys while retaining all old row values in an unattributed
 namespace. It does not assign these rows to the currently configured server.
 The v18 migration adds nullable TEXT `article_revision` / `expected_revision`
@@ -28,6 +28,11 @@ The v19 migration adds a nullable REAL `reading_history.progress`: where the
 reader last left the article, as a share of its text (0–1). It is only ever
 written for an article already in that account's history, is removed with
 the entry, and NULL simply means "open at the top".
+The v20 migration adds a nullable TEXT `blog_cache.summary`: the summary the
+server sent with the row, so an offline feed shows the same excerpt as the
+live one. It is display-only and never feeds an edit (writes still require a
+fresh `serverSummary`); NULL is a row cached before v20, and the list then cuts
+an excerpt from the body.
 
 | Version | Change |
 | --- | --- |
@@ -50,6 +55,7 @@ the entry, and NULL simply means "open at the top".
 | 17 | Backend-scoped article cache and reading history, and cache access index |
 | 18 | Opaque no-wave article revision strings in cache, account drafts and queued edits; safe conditional update recovery |
 | 19 | `reading_history.progress`: where the reader left each article, for 「从上次停下的地方继续」 |
+| 20 | `blog_cache.summary`: the server summary, for the excerpt under each title in an offline feed |
 
 The production file connection sets SQLite WAL and a 5000 ms busy timeout before
 migrations. New cache writes prune least-recently-accessed entries to 250 per
@@ -104,7 +110,7 @@ not deleted by sign-out. When such history exists, the history page offers an
 explicit device-wide deletion with a warning that it may include other accounts.
 No automatic owner assignment or cleanup is attempted.
 Back up the app data directory before migration. Downgrade and WAL operation on
-real devices have not been verified; older clients may not understand v19 and
+real devices have not been verified; older clients may not understand v20 and
 must not be assumed safe to open the upgraded file.
 
 ## Isar is gone (#107)

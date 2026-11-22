@@ -4,9 +4,9 @@ import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
-import 'package:belog/core/utils/extract_description.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/reader/article_excerpt.dart';
 import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
 import 'package:flutter/material.dart';
 
@@ -61,7 +61,7 @@ class BlogGridItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = authorDisplayName(context.l10n, blog.posterName);
-    final description = extractDescription(blog.content);
+    final description = articleExcerpt(blog);
     return NoWavePressable(
       onTap: onTap,
       onLongPress: onLongPress,

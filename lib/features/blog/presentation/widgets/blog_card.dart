@@ -5,6 +5,7 @@ import 'package:belog/core/theme/app_palette.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
+import 'package:belog/features/blog/domain/reader/article_excerpt.dart';
 import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
 import 'package:belog/features/blog/presentation/widgets/article_tag_label.dart';
 import 'package:flutter/material.dart';
@@ -122,11 +123,28 @@ class BlogCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: NoWaveTypography.title(context, size: 30),
           ),
+          ..._excerpt(context),
           const SizedBox(height: NoWaveSpacing.small),
           _byline(context, author),
         ],
       ),
     );
+  }
+
+  /// A few lines of the piece between its title and its author, so a row
+  /// says what it is about and not only what it is called. Nothing at all
+  /// when the article has no prose to quote (a photo set, a code listing).
+  List<Widget> _excerpt(BuildContext context) {
+    final excerpt = articleExcerpt(blog);
+    if (excerpt.isEmpty) return const [];
+    return [
+      const SizedBox(height: NoWaveSpacing.small),
+      Text(
+        excerpt,
+        key: const ValueKey('blog-card-excerpt'),
+        style: NoWaveTypography.excerpt(context),
+      ),
+    ];
   }
 
   /// The author, with the arrow at the end of the same line: the lead story
@@ -161,7 +179,9 @@ class BlogCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: NoWaveTypography.title(context, size: 24),
           ),
-          const SizedBox(height: NoWaveSpacing.xs),
+          // A quiet row is a pointer, not a preview: no excerpt either.
+          if (!quiet) ..._excerpt(context),
+          SizedBox(height: quiet ? NoWaveSpacing.xs : NoWaveSpacing.small),
           _byline(context, author),
         ],
       ),

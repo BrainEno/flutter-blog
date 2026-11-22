@@ -13,6 +13,7 @@ class BlogModel extends Blog {
     required super.id,
     required super.title,
     required super.content,
+    super.summary,
     required super.posterId,
     required super.imageUrl,
     required super.tags,
@@ -92,6 +93,7 @@ class BlogModel extends Blog {
       serverSummary: serverSummary,
       plainEditorCompatible: plainEditorCompatible,
       content: content ?? this.content,
+      summary: summary,
       posterId: posterId ?? this.posterId,
       title: title ?? this.title,
       imageUrl: imageUrl ?? this.imageUrl,
@@ -166,6 +168,7 @@ class BlogModel extends Blog {
           rawBlocks.length == blocks.length &&
           supportsPlainEditor(version: version, blocks: blocks),
       serverSummary: map['summary'] is String ? map['summary'] as String : null,
+      summary: map['summary'] is String ? map['summary'] as String : '',
       // `status` is only present on the author's own rows; the public lists
       // serialize published work and never carry a draft.
       isDraft: map['status'] == 'draft',
