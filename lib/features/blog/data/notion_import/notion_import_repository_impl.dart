@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:belog/core/error/error_mapper.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_api_client.dart';
@@ -38,6 +40,26 @@ class NotionImportRepositoryImpl implements NotionImportRepository {
           code: 'notion.planInvalid',
         ),
       );
+    } catch (error) {
+      return left(mapErrorToFailure(error));
+    }
+  }
+
+  @override
+  Future<Either<Failure, String>> uploadImage({
+    required Uint8List bytes,
+    required String contentType,
+    required NowaveSessionFence sessionFence,
+  }) async {
+    try {
+      // Never retried here: a lost response does not prove the upload
+      // failed, and media has no idempotency key.
+      final asset = await client.uploadMedia(
+        bytes,
+        contentType,
+        sessionFence: sessionFence,
+      );
+      return right(client.mediaUri(asset.id).toString());
     } catch (error) {
       return left(mapErrorToFailure(error));
     }

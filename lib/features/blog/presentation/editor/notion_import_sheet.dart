@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/error/failures.dart';
@@ -12,6 +14,7 @@ import 'package:belog/core/nowave/transport/api_error.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import_plan.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import_source.dart';
+import 'package:belog/features/blog/domain/notion_import/notion_local_images.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_markdown.dart';
 import 'package:belog/features/blog/presentation/editor/notion_import_file_picker.dart';
 import 'package:belog/l10n/app_localizations.dart';
@@ -60,6 +63,21 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
   /// The chosen file names and how many pages they made, when the source is
   /// files rather than pasted text.
   String? _filesRead;
+
+  /// The export's images the pages use, and which ones each page uses.
+  Map<String, NotionLocalImage> _images = const {};
+  List<Set<String>> _pageImages = const [];
+
+  /// Uploaded images by content, for this sheet's account: a second preview
+  /// - after a selection change, an expired plan or a failed upload - does
+  /// not upload an image again.
+  final Map<String, String> _uploaded = {};
+
+  /// Upload progress while images are uploaded before a preview.
+  (int, int)? _uploading;
+
+  /// Images the media service refused, left out of the last preview.
+  List<String> _skippedImages = const [];
   NotionBundle? _snapshot;
   NotionImportReport? _report;
   NotionImportPlan? _plan;
@@ -114,12 +132,17 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
       _invalidated = true;
       _discardPlan();
       _input.clear();
+      // The uploaded addresses belong to the account that uploaded them.
+      _uploaded.clear();
       if (mounted) {
         setState(() {
           _source = null;
           _selected.clear();
           _warnings = const [];
           _filesRead = null;
+          _images = const {};
+          _pageImages = const [];
+          _skippedImages = const [];
           _snapshot = null;
           _report = null;
           _error = null;
@@ -144,6 +167,9 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
       _selected.clear();
       _warnings = const [];
       _filesRead = null;
+      _images = const {};
+      _pageImages = const [];
+      _skippedImages = const [];
       _snapshot = null;
       _report = null;
       _error = null;
@@ -198,15 +224,27 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
     }
   }
 
-  /// A single page is selected for the author: there is nothing to choose.
+  /// Every page starts selected, as on the web: importing an export is the
+  /// usual intent, and the author unticks what should stay behind.
   void _show(NotionImportSource source, {String? filesRead}) {
+    final bundle = source.bundle;
     setState(() {
-      _source = source.bundle;
+      _source = bundle;
       _selected
         ..clear()
-        ..addAll(source.bundle.pageCount == 1 ? const {0} : const <int>{});
+        ..addAll({for (var i = 0; i < bundle.pageCount; i++) i});
       _warnings = source.warnings;
       _filesRead = filesRead;
+      _images = source.images;
+      _pageImages = [
+        for (var i = 0; i < bundle.pageCount; i++)
+          {
+            for (final block
+                in ((bundle.json['pages'] as List)[i] as Map)['blocks'] as List)
+              if (notionLocalImageKey(block) case final key?) key,
+          },
+      ];
+      _skippedImages = const [];
       _snapshot = null;
       _report = null;
       _error = null;
@@ -220,6 +258,9 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
       _selected.clear();
       _warnings = const [];
       _filesRead = null;
+      _images = const {};
+      _pageImages = const [];
+      _skippedImages = const [];
       _error = message;
       _report = null;
       _snapshot = null;
@@ -234,6 +275,7 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
       _selected
         ..clear()
         ..addAll(selection);
+      _skippedImages = const [];
       _snapshot = null;
       _report = null;
       _error = null;
@@ -241,10 +283,117 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
     });
   }
 
+  /// The local images the selected pages use.
+  Set<String> get _selectedImages => {
+    for (final index in _selected)
+      if (index < _pageImages.length) ..._pageImages[index],
+  };
+
   Future<void> _preview() async {
     final source = _source;
     if (!_current || _busy || source == null || _selected.isEmpty) return;
-    await _submit(source.selectPages(_selected), apply: false);
+    var bundle = source.selectPages(_selected);
+    final keys = notionLocalImageKeys(bundle);
+    if (keys.isNotEmpty) {
+      final urls = await _uploadImages(keys);
+      if (urls == null || !mounted || !_current) return;
+      bundle = withNotionLocalImages(bundle, urls);
+    }
+    await _submit(bundle, apply: false);
+  }
+
+  /// Uploads the images [keys] name, one at a time, and returns their
+  /// addresses; an image the media service refuses is left out and named.
+  /// Null when the upload stops: a lost connection, a rate limit or a
+  /// session change. What was uploaded stays known, so trying again uploads
+  /// only the rest.
+  Future<Map<String, String>?> _uploadImages(List<String> keys) async {
+    final l10n = context.l10n;
+    if (keys.length > AppLimits.notionImportMaxImages) {
+      setState(() {
+        _error = l10n.notionImportTooManyImages(
+          keys.length,
+          AppLimits.notionImportMaxImages,
+        );
+      });
+      return null;
+    }
+    _discardPlan();
+    setState(() {
+      _busy = true;
+      _error = null;
+      _report = null;
+      _snapshot = null;
+      _confirming = false;
+      _skippedImages = const [];
+      _uploading = (0, keys.length);
+    });
+    final urls = <String, String>{};
+    final skipped = <String>[];
+    String? stopped;
+    for (final (index, key) in keys.indexed) {
+      final image = _images[key];
+      final name = key.split('/').last;
+      final bytes = _readImage(image);
+      final type = bytes == null ? null : notionUploadableImageType(bytes);
+      if (bytes == null || type == null) {
+        skipped.add(name);
+      } else {
+        final content = _contentKey(name, bytes);
+        var url = _uploaded[content];
+        if (url == null) {
+          final result = await widget.repository.uploadImage(
+            bytes: bytes,
+            contentType: type,
+            sessionFence: widget.fence,
+          );
+          if (!mounted || !_current) return null;
+          final failure = result.fold<Failure?>((f) => f, (_) => null);
+          if (failure?.code == 'server.BAD_USER_INPUT') {
+            // An animated or oversized image, say: the rest still go.
+            skipped.add(name);
+          } else if (failure != null) {
+            stopped = failure.code == 'server.RATE_LIMITED'
+                ? _rateLimited(l10n, failure)
+                : l10n.notionImportImageUploadFailed(
+                    localizedFailure(l10n, failure),
+                  );
+            break;
+          } else {
+            url = result.getOrElse((_) => '');
+            _uploaded[content] = url;
+          }
+        }
+        if (url != null) urls[key] = url;
+      }
+      setState(() => _uploading = (index + 1, keys.length));
+    }
+    setState(() {
+      _busy = false;
+      _uploading = null;
+      _error = stopped;
+      _skippedImages = stopped == null ? skipped : const [];
+    });
+    return stopped == null ? urls : null;
+  }
+
+  static Uint8List? _readImage(NotionLocalImage? image) {
+    if (image == null) return null;
+    try {
+      return image.read();
+    } on NotionImportSourceException {
+      return null;
+    }
+  }
+
+  /// Name, size and a 32-bit FNV-1a hash of the bytes: enough to know an
+  /// image already uploaded in this sheet, among at most a few dozen.
+  static String _contentKey(String name, Uint8List bytes) {
+    var hash = 0x811c9dc5;
+    for (final byte in bytes) {
+      hash = ((hash ^ byte) * 0x01000193) & 0xffffffff;
+    }
+    return '$name:${bytes.length}:$hash';
   }
 
   Future<void> _submit(NotionBundle bundle, {required bool apply}) async {
@@ -506,6 +655,21 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
                                         ListTileControlAffinity.leading,
                                   ),
                               ],
+                              if (_selectedImages.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: NoWaveSpacing.small,
+                                  ),
+                                  child: Text(
+                                    l10n.notionImportImagesNote(
+                                      _selectedImages.length,
+                                    ),
+                                    key: const ValueKey('notion-import-images'),
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
+                                  ),
+                                ),
                               FilledButton(
                                 onPressed: _busy || _selected.isEmpty
                                     ? null
@@ -516,8 +680,25 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
                             if (_busy) ...[
                               const SizedBox(height: NoWaveSpacing.small),
                               NoWaveLoadingLabel(
-                                label: l10n.notionImportLoading,
+                                label: switch (_uploading) {
+                                  (final done, final total) =>
+                                    l10n.notionImportUploadingImages(
+                                      done,
+                                      total,
+                                    ),
+                                  null => l10n.notionImportLoading,
+                                },
                                 compact: true,
+                              ),
+                            ],
+                            if (_skippedImages.isNotEmpty) ...[
+                              const SizedBox(height: NoWaveSpacing.small),
+                              Text(
+                                l10n.notionImportImagesSkipped(
+                                  _skippedImages.length,
+                                  _skippedImages.join(', '),
+                                ),
+                                key: const ValueKey('notion-import-skipped'),
                               ),
                             ],
                             if (_error != null) ...[
@@ -653,6 +834,7 @@ String _sourceError(AppLocalizations l10n, NotionImportSourceException error) {
       name,
     ),
     NotionImportSourceError.noPages => l10n.notionImportSourceNoPages,
+    NotionImportSourceError.csvOnly => l10n.notionImportSourceCsvOnly,
   };
 }
 
@@ -670,10 +852,11 @@ class _ConversionWarnings extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
-    final groups = <(NotionMarkdownWarningKind, String), List<String>>{};
+    final groups =
+        <(NotionMarkdownWarningKind, String, String), List<String>>{};
     for (final warning in warnings) {
       groups
-          .putIfAbsent((warning.kind, warning.detail), () => [])
+          .putIfAbsent((warning.kind, warning.detail, warning.table), () => [])
           .add(warning.source);
     }
     return Column(
@@ -684,14 +867,14 @@ class _ConversionWarnings extends StatelessWidget {
           l10n.notionImportWarningsTitle(warnings.length),
           style: theme.textTheme.titleSmall,
         ),
-        for (final MapEntry(key: (kind, detail), value: sources)
+        for (final MapEntry(key: (kind, detail, table), value: sources)
             in groups.entries) ...[
           const SizedBox(height: NoWaveSpacing.small),
           Text(
             sources.length > 1
-                ? '${_message(l10n, kind, detail)} '
+                ? '${_message(l10n, kind, detail, table)} '
                       '(${l10n.notionImportWarningCount(sources.length)})'
-                : _message(l10n, kind, detail),
+                : _message(l10n, kind, detail, table),
           ),
           Text(
             _sources(l10n, sources),
@@ -718,6 +901,7 @@ class _ConversionWarnings extends StatelessWidget {
     AppLocalizations l10n,
     NotionMarkdownWarningKind kind,
     String detail,
+    String table,
   ) => switch (kind) {
     NotionMarkdownWarningKind.missingTitle => l10n.notionImportWarnMissingTitle,
     NotionMarkdownWarningKind.invalidFileName =>
@@ -730,7 +914,13 @@ class _ConversionWarnings extends StatelessWidget {
       l10n.notionImportWarnPropertyIgnored(detail),
     NotionMarkdownWarningKind.publishedUnrecognized =>
       l10n.notionImportWarnPublished,
-    NotionMarkdownWarningKind.dateUnrecognized => l10n.notionImportWarnDate,
+    NotionMarkdownWarningKind.titleFromFileName =>
+      l10n.notionImportWarnTitleFromFileName(detail),
+    NotionMarkdownWarningKind.dateUnrecognized =>
+      detail.isEmpty
+          ? l10n.notionImportWarnDate
+          : l10n.notionImportWarnCsvDate(detail),
+    NotionMarkdownWarningKind.dateRange => l10n.notionImportWarnDateRange,
     NotionMarkdownWarningKind.relationUnrecognized =>
       l10n.notionImportWarnRelationUnrecognized(detail),
     NotionMarkdownWarningKind.relationMissing =>
@@ -741,13 +931,32 @@ class _ConversionWarnings extends StatelessWidget {
       l10n.notionImportWarnRelativeLink,
     NotionMarkdownWarningKind.headingLowered => l10n.notionImportWarnHeading,
     NotionMarkdownWarningKind.codeTooLong => l10n.notionImportWarnCode,
-    NotionMarkdownWarningKind.localImageDropped =>
-      l10n.notionImportWarnLocalImage,
+    NotionMarkdownWarningKind.localImageMissing =>
+      l10n.notionImportWarnImageMissing(detail),
+    NotionMarkdownWarningKind.localImageUnsupported =>
+      l10n.notionImportWarnImageUnsupported(detail),
+    NotionMarkdownWarningKind.localImageTooLarge =>
+      l10n.notionImportWarnImageTooLarge(detail),
     NotionMarkdownWarningKind.signedImageDropped =>
       l10n.notionImportWarnSignedImage,
     NotionMarkdownWarningKind.listSimplified => l10n.notionImportWarnList,
     NotionMarkdownWarningKind.tableFlattened => l10n.notionImportWarnTable,
     NotionMarkdownWarningKind.otherFlattened => l10n.notionImportWarnOther,
+    NotionMarkdownWarningKind.csvColumnsIgnored =>
+      l10n.notionImportWarnCsvColumns(table, detail),
+    NotionMarkdownWarningKind.csvPublishedNotCheckbox =>
+      l10n.notionImportWarnCsvPublished(table, detail),
+    NotionMarkdownWarningKind.csvNoRow => l10n.notionImportWarnCsvNoRow,
+    NotionMarkdownWarningKind.csvAmbiguousRow =>
+      l10n.notionImportWarnCsvAmbiguous(detail),
+    NotionMarkdownWarningKind.csvFilled => l10n.notionImportWarnCsvFilled(
+      table,
+      detail,
+    ),
+    NotionMarkdownWarningKind.csvNothingToFill =>
+      l10n.notionImportWarnCsvNothing(table),
+    NotionMarkdownWarningKind.csvLocalCover =>
+      l10n.notionImportWarnCsvLocalCover,
   };
 }
 

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
@@ -164,5 +165,13 @@ abstract interface class NotionImportRepository {
     required bool apply,
     required NowaveSessionFence sessionFence,
     NotionImportPlan? plan,
+  });
+
+  /// Uploads one image of a Notion export to the author's media library and
+  /// returns its stable address, for the page that uses it to link to.
+  Future<Either<Failure, String>> uploadImage({
+    required Uint8List bytes,
+    required String contentType,
+    required NowaveSessionFence sessionFence,
   });
 }

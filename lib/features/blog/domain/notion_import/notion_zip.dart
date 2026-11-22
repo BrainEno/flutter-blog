@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import_source.dart';
+import 'package:belog/features/blog/domain/notion_import/notion_local_images.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_markdown.dart';
 
 const _endOfDirectory = 0x06054b50;
@@ -20,28 +21,43 @@ const _encryptedFlag = 0x1;
 const _utf8NameFlag = 0x800;
 const _chunk = 64 * 1024;
 
-/// The Markdown pages inside a Notion export ZIP, read in memory.
+/// What a Notion export ZIP holds that an import can use.
+class NotionZipContents {
+  const NotionZipContents(this.entries, this.images);
+
+  /// Markdown pages and the database CSVs beside them, in archive order.
+  final List<NotionMarkdownEntry> entries;
+
+  /// Image files by their path inside the export, read only when uploaded.
+  final Map<String, NotionLocalImage> images;
+}
+
+/// The Markdown pages, database CSVs and images inside a Notion export ZIP,
+/// read in memory.
 ///
 /// Bounded the way the no-wave desk bounds it, so a hostile or broken file
 /// costs at most what a real export does: the archive must end in a complete
 /// directory (a cut-short download is refused, not read as fewer articles);
 /// ZIP64, split and encrypted archives are refused; it may list at most
 /// [AppLimits.notionZipMaxEntries] entries and 200 Markdown pages; and all
-/// Markdown inflated from it, nested part archives included, stops at the
-/// 8 MiB a request can carry - counted while inflating, so a small file that
-/// claims to be small but inflates without end is stopped at the limit.
-/// Nothing is written to disk and no path inside the archive is used for
-/// anything but the page's name. Folders, images and other files are skipped,
-/// as are macOS resource forks.
-List<NotionMarkdownEntry> readNotionZip(Uint8List bytes, {String name = ''}) {
+/// Markdown and CSV inflated from it, nested part archives included, stops at
+/// the 8 MiB a request can carry - counted while inflating, so a small file
+/// that claims to be small but inflates without end is stopped at the limit.
+/// Images are not inflated here: each is read, within the media upload
+/// limit, only if a chosen page uses it. Nothing is written to disk and no
+/// path inside the archive is used for anything but a name. Folders and other
+/// files are skipped, as are macOS resource forks.
+NotionZipContents readNotionZip(Uint8List bytes, {String name = ''}) {
   final budget = _Budget();
   final entries = <NotionMarkdownEntry>[];
-  _readZip(bytes, name, budget, entries, depth: 0);
-  return entries;
+  final images = <String, NotionLocalImage>{};
+  _readZip(bytes, name, budget, entries, images, depth: 0);
+  return NotionZipContents(entries, images);
 }
 
 class _Budget {
   int inflated = 0;
+  int pages = 0;
 }
 
 Never _invalid(String name) => throw NotionImportSourceException(
@@ -53,10 +69,11 @@ void _readZip(
   Uint8List bytes,
   String name,
   _Budget budget,
-  List<NotionMarkdownEntry> entries, {
+  List<NotionMarkdownEntry> entries,
+  Map<String, NotionLocalImage> images, {
   required int depth,
 }) {
-  if (bytes.length > NotionBundle.maxRequestBytes) {
+  if (bytes.length > AppLimits.notionImportMaxSourceBytes) {
     throw NotionImportSourceException(
       NotionImportSourceError.tooLarge,
       name: name,
@@ -120,9 +137,11 @@ void _readZip(
 
     final lower = entryName.toLowerCase();
     final isMarkdown = lower.endsWith('.md');
+    final isText = isMarkdown || lower.endsWith('.csv');
+    final isImage = isNotionImageFileName(lower);
     final isArchive =
         lower.endsWith('.zip') && depth < AppLimits.notionZipMaxDepth;
-    if ((!isMarkdown && !isArchive) ||
+    if ((!isText && !isArchive && !isImage) ||
         RegExp(r'(^|/)__MACOSX/').hasMatch(entryName)) {
       continue;
     }
@@ -131,7 +150,7 @@ void _readZip(
         size == 0xffffffff) {
       _invalid(name);
     }
-    if (isMarkdown && entries.length >= NotionBundle.maxPages) {
+    if (isMarkdown && ++budget.pages > NotionBundle.maxPages) {
       throw NotionImportSourceException(
         NotionImportSourceError.tooManyPages,
         name: name,
@@ -150,20 +169,44 @@ void _readZip(
     final dataEnd = dataStart + compressed;
     if (dataEnd > directoryStart) _invalid(name);
     final payload = Uint8List.sublistView(bytes, dataStart, dataEnd);
+    if (method != _stored && method != _deflated) _invalid(name);
+
+    if (isImage) {
+      // Read later, if at all; an image too large to upload is never read.
+      images.putIfAbsent(
+        entryName,
+        () => NotionLocalImage(
+          name: entryName,
+          size: size,
+          read: () {
+            if (size > AppLimits.mediaUploadMaxBytes) {
+              throw NotionImportSourceException(
+                NotionImportSourceError.tooLarge,
+                name: entryName,
+              );
+            }
+            final content = method == _stored
+                ? Uint8List.fromList(payload)
+                : _inflate(payload, AppLimits.mediaUploadMaxBytes, entryName);
+            if (content.length != size) _invalid(entryName);
+            return content;
+          },
+        ),
+      );
+      continue;
+    }
 
     // A nested part archive is read whole, then walked with the same
-    // inflation budget; only its Markdown counts toward the budget.
+    // inflation budget; only its Markdown and CSV count toward the budget.
     final limit = isArchive
-        ? NotionBundle.maxRequestBytes
+        ? AppLimits.notionImportMaxSourceBytes
         : NotionBundle.maxRequestBytes - budget.inflated;
-    final content = switch (method) {
-      _stored => payload,
-      _deflated => _inflate(payload, limit, name),
-      _ => _invalid(name),
-    };
+    final content = method == _stored
+        ? payload
+        : _inflate(payload, limit, name);
     if (content.length != size) _invalid(name);
     if (isArchive) {
-      _readZip(content, entryName, budget, entries, depth: depth + 1);
+      _readZip(content, entryName, budget, entries, images, depth: depth + 1);
       continue;
     }
     budget.inflated += content.length;

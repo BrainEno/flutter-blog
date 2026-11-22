@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/core/nowave/transport/api_error.dart';
@@ -16,6 +18,8 @@ import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
+
+import '../support/zip_builder.dart';
 
 class _Identity implements NowaveSessionIdentity {
   String? user = 'user';
@@ -41,6 +45,24 @@ class _Repo implements NotionImportRepository {
   Failure? failure;
   List<NotionImportIssue> issues = const [];
   NotionImportAction action = NotionImportAction.create;
+  final uploads = <_Upload>[];
+
+  /// Answers for successive uploads; a URL when exhausted.
+  final uploadAnswers = <Either<Failure, String>>[];
+  Completer<Either<Failure, String>>? uploadPending;
+
+  @override
+  Future<Either<Failure, String>> uploadImage({
+    required List<int> bytes,
+    required String contentType,
+    required NowaveSessionFence sessionFence,
+  }) async {
+    uploads.add(_Upload(contentType, bytes.length));
+    if (uploadPending != null) return uploadPending!.future;
+    if (uploadAnswers.isNotEmpty) return uploadAnswers.removeAt(0);
+    return right('https://example.invalid/api/v1/media/${uploads.length}');
+  }
+
   @override
   Future<Either<Failure, NotionImportReport>> submit({
     required NotionBundle bundle,
@@ -71,6 +93,12 @@ class _Repo implements NotionImportRepository {
   }
 }
 
+class _Upload {
+  const _Upload(this.contentType, this.length);
+  final String contentType;
+  final int length;
+}
+
 NotionImportPlan _planFor(NotionBundle bundle, NowaveSessionFence fence) =>
     NotionImportPlan.fromPreview(
       bundle: bundle,
@@ -86,6 +114,15 @@ NotionImportPlan _planFor(NotionBundle bundle, NowaveSessionFence fence) =>
 const _input =
     '{"version":1,"database":{"id":"db"},"pages":[{"id":"p","properties":{},"blocks":[]}]}';
 const _fence = NowaveSessionFence(userId: 'user', generation: 1);
+const _png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3];
+const _jpeg = [0xff, 0xd8, 0xff, 0xe0, 4, 5, 6];
+
+/// The image URLs of a submitted page, in order.
+List<String> _imageUrls(Object? page) => [
+  for (final block in (page! as Map)['blocks'] as List)
+    if ((block as Map)['type'] == 'image')
+      (block['image'] as Map)['external']['url'] as String,
+];
 
 void main() {
   late _Identity identity;
@@ -313,9 +350,9 @@ void main() {
       expect(find.text('First'), findsOneWidget);
       expect(find.text('Second'), findsOneWidget);
       expect(find.text(l10n.notionImportUntitledPage(3)), findsOneWidget);
-      expect(find.text(l10n.notionImportSelectionCount(0, 3)), findsOneWidget);
-      await tap(tester, 'First');
-      await tap(tester, l10n.notionImportUntitledPage(3));
+      // Every page starts selected; the author unticks what stays behind.
+      expect(find.text(l10n.notionImportSelectionCount(3, 3)), findsOneWidget);
+      await tap(tester, 'Second');
       await tap(tester, l10n.notionImportPreviewSelected);
       final pages = repo.bundles.single.json['pages'] as List;
       expect(pages.map((page) => page['id']).toList(), ['a', 'c']);
@@ -341,6 +378,7 @@ void main() {
       '{"id":"b","properties":{},"blocks":[]}]}',
     );
     await tap(tester, l10n.notionImportReadBundle);
+    await tap(tester, l10n.notionImportClearSelection);
     final button = tester.widget<FilledButton>(
       find.widgetWithText(FilledButton, l10n.notionImportPreviewSelected),
     );
@@ -449,10 +487,8 @@ void main() {
         findsOneWidget,
       );
       expect(find.text(l10n.notionImportWarnFileNameIdentity), findsOneWidget);
-      // Several pages: the author chooses.
-      expect(find.text(l10n.notionImportSelectionCount(0, 2)), findsOneWidget);
+      expect(find.text(l10n.notionImportSelectionCount(2, 2)), findsOneWidget);
 
-      await tap(tester, l10n.notionImportSelectAll);
       await tap(tester, l10n.notionImportPreviewSelected);
       final pages = repo.bundles.single.json['pages'] as List;
       expect(pages.map((page) => page['id']).toList(), [
@@ -638,5 +674,207 @@ void main() {
     await tap(tester, l10n.notionImportPreviewSelected);
     expect(find.text(l10n.notionImportRateLimited), findsOneWidget);
     expect(repo.calls, [false, false]);
+  });
+
+  testWidgets('export images are uploaded before the preview, once each', (
+    tester,
+  ) async {
+    const id = '0123456789abcdef0123456789abcdef';
+    final zip = buildZip([
+      ZipEntry.text(
+        'Export/Wall $id.md',
+        '# Wall\n\n![Photo](Wall%20$id/photo.png)\n\n'
+            '![Broken](Wall%20$id/broken.png)\n',
+      ),
+      ZipEntry.text(
+        'Export/Other.md',
+        '# Other\n\n![Again](Wall%20$id/photo.png)\n\n![](Other/shot.jpg)\n',
+      ),
+      ZipEntry('Export/Wall $id/photo.png', _png),
+      ZipEntry('Export/Wall $id/broken.png', utf8.encode('not an image')),
+      ZipEntry('Export/Other/shot.jpg', _jpeg),
+    ]);
+    await pumpSheet(
+      tester,
+      pickFiles: () async => [NotionImportFile(name: 'export.zip', bytes: zip)],
+    );
+    await tester.tap(find.byKey(const ValueKey('notion-import-choose')));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.notionImportImagesNote(3)), findsOneWidget);
+
+    repo.uploadPending = Completer<Either<Failure, String>>();
+    await tester.ensureVisible(find.text(l10n.notionImportPreviewSelected));
+    await tester.tap(find.text(l10n.notionImportPreviewSelected));
+    await tester.pump();
+    expect(find.text(l10n.notionImportUploadingImages(0, 3)), findsOneWidget);
+    expect(repo.calls, isEmpty);
+    final first = repo.uploadPending!;
+    repo.uploadPending = null;
+    first.complete(right('https://site.example/api/v1/media/a'));
+    await tester.pumpAndSettle();
+
+    // The bytes decide the type; an image that is not one is left out.
+    expect(repo.uploads.map((u) => u.contentType), ['image/png', 'image/jpeg']);
+    expect(
+      find.text(l10n.notionImportImagesSkipped(1, 'broken.png')),
+      findsOneWidget,
+    );
+    expect(repo.calls, [false]);
+    final pages = repo.bundles.single.json['pages'] as List;
+    expect(_imageUrls(pages[0]), ['https://site.example/api/v1/media/a']);
+    expect(_imageUrls(pages[1]), [
+      'https://site.example/api/v1/media/a',
+      'https://example.invalid/api/v1/media/2',
+    ]);
+
+    // A second preview, after a selection change, uploads nothing again.
+    await tap(tester, 'Other');
+    expect(find.text(l10n.notionImportImagesNote(2)), findsOneWidget);
+    await tap(tester, l10n.notionImportPreviewSelected);
+    expect(repo.uploads, hasLength(2));
+    expect(repo.calls, [false, false]);
+    expect(_imageUrls((repo.bundles.last.json['pages'] as List).single), [
+      'https://site.example/api/v1/media/a',
+    ]);
+  });
+
+  testWidgets('a refused image is left out; any other failure stops', (
+    tester,
+  ) async {
+    final failure = Failure.timeout();
+    repo.uploadAnswers.addAll([
+      left(
+        const Failure(
+          'animated',
+          kind: FailureKind.server,
+          code: 'server.BAD_USER_INPUT',
+        ),
+      ),
+      left(failure),
+    ]);
+    await pumpSheet(
+      tester,
+      pickFiles: () async => [
+        NotionImportFile(
+          name: 'Wall.md',
+          bytes: utf8.encode('# Wall\n\n![](a.png)\n\n![](b.png)\n'),
+        ),
+        NotionImportFile(name: 'a.png', bytes: Uint8List.fromList(_png)),
+        NotionImportFile(
+          name: 'b.png',
+          bytes: Uint8List.fromList([..._png, 9]),
+        ),
+      ],
+    );
+    await tester.tap(find.byKey(const ValueKey('notion-import-choose')));
+    await tester.pumpAndSettle();
+    await tap(tester, l10n.notionImportPreviewSelected);
+
+    expect(
+      find.text(
+        l10n.notionImportImageUploadFailed(localizedFailure(l10n, failure)),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('notion-import-skipped')), findsNothing);
+    expect(repo.calls, isEmpty);
+
+    // Trying again sends only what has no address yet.
+    await tap(tester, l10n.notionImportPreviewSelected);
+    expect(repo.uploads, hasLength(4));
+    expect(repo.calls, [false]);
+    expect(_imageUrls((repo.bundles.single.json['pages'] as List).single), [
+      'https://example.invalid/api/v1/media/3',
+      'https://example.invalid/api/v1/media/4',
+    ]);
+  });
+
+  testWidgets('a rate limit stops the upload with the wait', (tester) async {
+    repo.uploadAnswers.add(
+      left(
+        const Failure(
+          'limited',
+          kind: FailureKind.server,
+          code: 'server.RATE_LIMITED',
+          cause: NowaveApiException(
+            statusCode: 429,
+            code: 'RATE_LIMITED',
+            message: 'slow down',
+            retryAfterSeconds: 60,
+          ),
+        ),
+      ),
+    );
+    await pumpSheet(
+      tester,
+      pickFiles: () async => [
+        NotionImportFile(
+          name: 'Wall.md',
+          bytes: utf8.encode('# Wall\n\n![](a.png)\n'),
+        ),
+        NotionImportFile(name: 'a.png', bytes: Uint8List.fromList(_png)),
+      ],
+    );
+    await tester.tap(find.byKey(const ValueKey('notion-import-choose')));
+    await tester.pumpAndSettle();
+    await tap(tester, l10n.notionImportPreviewSelected);
+    expect(find.text(l10n.notionImportRateLimitedRetry(1)), findsOneWidget);
+    expect(repo.calls, isEmpty);
+  });
+
+  testWidgets('too many images for one preview are refused before upload', (
+    tester,
+  ) async {
+    const count = 61;
+    await pumpSheet(
+      tester,
+      pickFiles: () async => [
+        NotionImportFile(
+          name: 'Wall.md',
+          bytes: utf8.encode(
+            '# Wall\n\n${[for (var i = 0; i < count; i++) '![](i$i.png)'].join('\n\n')}\n',
+          ),
+        ),
+        for (var i = 0; i < count; i++)
+          NotionImportFile(name: 'i$i.png', bytes: Uint8List.fromList(_png)),
+      ],
+    );
+    await tester.tap(find.byKey(const ValueKey('notion-import-choose')));
+    await tester.pumpAndSettle();
+    await tap(tester, l10n.notionImportPreviewSelected);
+    expect(
+      find.text(l10n.notionImportTooManyImages(count, 60)),
+      findsOneWidget,
+    );
+    expect(repo.uploads, isEmpty);
+    expect(repo.calls, isEmpty);
+  });
+
+  testWidgets('a session change mid-upload drops what was uploaded', (
+    tester,
+  ) async {
+    await pumpSheet(
+      tester,
+      pickFiles: () async => [
+        NotionImportFile(
+          name: 'Wall.md',
+          bytes: utf8.encode('# Wall\n\n![](a.png)\n'),
+        ),
+        NotionImportFile(name: 'a.png', bytes: Uint8List.fromList(_png)),
+      ],
+    );
+    await tester.tap(find.byKey(const ValueKey('notion-import-choose')));
+    await tester.pumpAndSettle();
+    repo.uploadPending = Completer<Either<Failure, String>>();
+    await tester.ensureVisible(find.text(l10n.notionImportPreviewSelected));
+    await tester.tap(find.text(l10n.notionImportPreviewSelected));
+    await tester.pump();
+    identity
+      ..user = 'other'
+      ..changes.add(null);
+    repo.uploadPending!.complete(right('https://site.example/api/v1/media/a'));
+    await tester.pump();
+    expect(repo.calls, isEmpty);
+    expect(find.text('Wall'), findsNothing);
   });
 }

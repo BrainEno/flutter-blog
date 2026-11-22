@@ -68,6 +68,17 @@ abstract final class AppLimits {
   /// server, and the conversion says so first.
   static const int notionMarkdownMaxCodeChars = 50000;
 
+  /// The most an author may choose at once for a Notion import, files
+  /// together. Larger than one import request (8 MiB of JSON) because an
+  /// export's images travel separately, one media upload each; the Markdown
+  /// and CSV inside stay bounded by the request limit.
+  static const int notionImportMaxSourceBytes = 64 * 1024 * 1024;
+
+  /// The most images from an export one preview uploads. Each is a separate
+  /// media upload sized for a slow uplink, so a larger selection is split by
+  /// the author rather than left uploading for an hour.
+  static const int notionImportMaxImages = 60;
+
   // --- Display ------------------------------------------------------------
 
   /// UTF-16 code units per page when a long structured value is shown in the
