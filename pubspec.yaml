@@ -141,8 +141,12 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icons/logo.png"
+  # Drawn by tool/brand/launcher_icon.py - edit the geometry there, rerun it,
+  # then regenerate; never paint these PNGs by hand.
   adaptive_icon_foreground: "assets/icons/logo-foreground.png"
-  adaptive_icon_background: "#000000"
+  # AppPalette.ink, the same warm black as the launch curtain.
+  adaptive_icon_background: "#0F0D0C"
+  adaptive_icon_monochrome: "assets/icons/logo-monochrome.png"
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package
 

@@ -86,6 +86,44 @@ void main() {
   });
 
   testWidgets(
+    'a numbered row keeps one left edge and ends on the author line',
+    (tester) async {
+      setViewport(tester, const Size(390, 900));
+      final blog = article();
+      await tester.pumpWidget(
+        testApp(
+          Scaffold(
+            body: BlogCard(
+              blog: blog,
+              index: 2,
+              onTap: () {},
+              onTagTap: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final card = tester.getRect(find.byType(BlogCard));
+      final ordinal = tester.getRect(find.text('02'));
+      final tag = tester.getRect(find.text('Poetry'));
+      final title = tester.getRect(find.text(blog.title));
+      final author = tester.getRect(find.text('A writer with a long name'));
+      final arrow = tester.getRect(find.byIcon(Icons.arrow_forward));
+      // The number opens the kicker line, centred with the tags (which sit
+      // in 48pt targets) instead of pinned above them in its own column.
+      expect(ordinal.left, card.left);
+      expect((ordinal.center.dy - tag.center.dy).abs(), lessThan(1));
+      // Title and author start on the same edge as the number.
+      expect(title.left, card.left);
+      expect(author.left, card.left);
+      // The arrow finishes the author line, as on the lead story.
+      expect((arrow.center.dy - author.center.dy).abs(), lessThan(1));
+      expect(arrow.top, greaterThan(title.bottom));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'article row delegates pointer and keyboard activation without a router',
     (tester) async {
       setViewport(tester, const Size(320, 900));
