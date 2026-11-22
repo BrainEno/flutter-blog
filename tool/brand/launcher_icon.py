@@ -31,9 +31,9 @@ PAPER = (242, 238, 230)
 ORANGE = (216, 84, 31)
 
 # Geometry in mark units: mark width 1.0, baseline y 0, +y points down.
-WAVE_WIDTH = 0.10  # orange stroke
-RULE_WIDTH = 0.030  # paper rule
-RULE_GAP = 0.105  # baseline of the wave to the rule
+WAVE_WIDTH = 0.13  # orange stroke - heavy enough to read at 48 px
+RULE_WIDTH = 0.034  # paper rule
+RULE_GAP = 0.125  # baseline of the wave to the rule
 RULE_START = 0.50  # the rule only sits under the settled, flat part
 DIP = 0.035  # the stroke starts a little below the baseline
 CREST = 0.16  # crest height above the baseline

@@ -30,6 +30,13 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
     with WidgetsBindingObserver, RouteAware {
   List<Blog> _lastBlogs = []; // Store the last successful blog list
 
+  /// Whether the page is in view: its tab is the selected one and no page
+  /// covers it. Null before the first build. The list is read again each
+  /// time the page comes back into view, so an article saved somewhere the
+  /// app cannot hear about - the web edition, another phone - is there when
+  /// the reader opens the tab, not only after a pull to refresh.
+  bool? _inView;
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +47,16 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // The tab shell keeps an unselected tab alive behind a disabled
+    // TickerMode, and so does a navigator for a page under another one:
+    // ticking back on is the page coming back into view.
+    final inView = TickerMode.valuesOf(context).enabled;
+    if (_inView == false && inView) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _followElsewhere();
+      });
+    }
+    _inView = inView;
     final route = ModalRoute.of(context);
     if (route != null) {
       savedRouteObserver.subscribe(this, route);
@@ -55,8 +72,10 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _fetchSavedBlogs();
+    // Only the tab in view reads again; a hidden one catches up when it
+    // is opened.
+    if (state == AppLifecycleState.resumed && _inView != false) {
+      _followElsewhere();
     }
   }
 
@@ -64,6 +83,15 @@ class _SavedBlogsPageState extends State<SavedBlogsPage>
   void didPopNext() {
     // The viewer above this page owns its own like state; refresh so likes
     // toggled there are reflected in the saved list.
+    _followElsewhere();
+  }
+
+  /// Reads the list again for a reason the reader did not ask for (back in
+  /// view, back from a page, back in the app). Several of those can land
+  /// together - closing a page both pops a route and turns the tab's
+  /// tickers back on - so one read already in flight answers them all.
+  void _followElsewhere() {
+    if (context.read<BlogLikedBloc>().state is UserLikedBlogsLoading) return;
     _fetchSavedBlogs();
   }
 

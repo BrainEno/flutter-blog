@@ -65,9 +65,7 @@ void main() {
     expect(taps, 1);
   });
 
-  testWidgets('a link that belongs to a field keeps to its end', (
-    tester,
-  ) async {
+  testWidgets('an end-aligned link keeps to the column end', (tester) async {
     await tester.pumpWidget(
       _app(
         AuthFrame(
