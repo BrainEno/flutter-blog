@@ -1,13 +1,15 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
+import 'package:belog/features/blog/domain/notion_import/notion_local_images.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_markdown.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_zip.dart';
 
 /// A file the author chose on the device: a no-wave JSON bundle, a Markdown
-/// page exported from Notion, or the ZIP Notion's "Export → Markdown & CSV"
-/// produces.
+/// page exported from Notion, a database CSV or an image beside it, or the
+/// ZIP Notion's "Export → Markdown & CSV" produces.
 class NotionImportFile {
   const NotionImportFile({required this.name, required this.bytes});
 
@@ -18,11 +20,12 @@ class NotionImportFile {
 /// Why a choice could not become a bundle at all. The sheet words each kind;
 /// [name] is the file it is about, when there is one.
 enum NotionImportSourceError {
-  /// More than the 8 MiB request limit, before or after conversion.
+  /// More than may be chosen at once, more Markdown and CSV than one
+  /// request carries, or a converted bundle too large for a request.
   tooLarge,
 
-  /// Neither `.json`, `.md` nor `.zip` - or more than one JSON bundle, or a
-  /// JSON bundle mixed with Markdown.
+  /// Not `.json`, `.md`, `.csv`, `.zip` or an image - or more than one JSON
+  /// bundle, or a JSON bundle mixed with other files.
   unsupportedFile,
 
   /// A JSON file that is not a no-wave bundle.
@@ -43,8 +46,11 @@ enum NotionImportSourceError {
   /// Two pages with the same identity: the same export chosen twice.
   duplicatePage,
 
-  /// Nothing that can become an article: no page starts with `# Title`.
+  /// Nothing that can become an article: no page has a title.
   noPages,
+
+  /// Only database CSVs: they carry properties, not articles.
+  csvOnly,
 }
 
 class NotionImportSourceException implements Exception {
@@ -58,25 +64,29 @@ class NotionImportSourceException implements Exception {
 }
 
 /// What was read: the bundle to preview, how many Markdown files went into
-/// it (zero for a JSON bundle), and what the conversion could not carry.
+/// it (zero for a JSON bundle), what the conversion could not carry, and the
+/// local images its pages use, which are uploaded before a preview.
 class NotionImportSource {
   const NotionImportSource({
     required this.bundle,
     this.warnings = const [],
     this.markdownFiles = 0,
+    this.images = const {},
   });
 
   final NotionBundle bundle;
   final List<NotionMarkdownWarning> warnings;
   final int markdownFiles;
+  final Map<String, NotionLocalImage> images;
 }
 
 /// Reads the author's chosen files into one bundle, the way the no-wave
-/// desk does: a single `.json` is a bundle as it is; any number of `.md`
-/// and `.zip` files are converted on the device. Nothing is uploaded here.
+/// desk does: a single `.json` is a bundle as it is; any number of `.md`,
+/// `.csv` and `.zip` files are converted on the device, with the images
+/// chosen beside them or inside the ZIPs. Nothing is uploaded here.
 NotionImportSource readNotionImportFiles(List<NotionImportFile> files) {
   final total = files.fold<int>(0, (sum, file) => sum + file.bytes.length);
-  if (total > NotionBundle.maxRequestBytes) {
+  if (total > AppLimits.notionImportMaxSourceBytes) {
     throw const NotionImportSourceException(NotionImportSourceError.tooLarge);
   }
   bool named(NotionImportFile file, String extension) =>
@@ -95,11 +105,33 @@ NotionImportSource readNotionImportFiles(List<NotionImportFile> files) {
     return NotionImportSource(bundle: _parseBundle(text, file.name));
   }
   final entries = <NotionMarkdownEntry>[];
+  final images = <String, NotionLocalImage>{};
+  var text = 0;
   for (final file in files) {
-    if (named(file, '.md')) {
+    if (named(file, '.md') || named(file, '.csv')) {
+      // The same budget a ZIP's Markdown and CSV have.
+      text += file.bytes.length;
+      if (text > NotionBundle.maxRequestBytes) {
+        throw const NotionImportSourceException(
+          NotionImportSourceError.tooLarge,
+        );
+      }
       entries.add(NotionMarkdownEntry(file.name, decodeMarkdown(file)));
     } else if (named(file, '.zip')) {
-      entries.addAll(readNotionZip(file.bytes, name: file.name));
+      final contents = readNotionZip(file.bytes, name: file.name);
+      entries.addAll(contents.entries);
+      for (final MapEntry(:key, :value) in contents.images.entries) {
+        images.putIfAbsent(key, () => value);
+      }
+    } else if (isNotionImageFileName(file.name)) {
+      images.putIfAbsent(
+        file.name,
+        () => NotionLocalImage(
+          name: file.name,
+          size: file.bytes.length,
+          read: () => file.bytes,
+        ),
+      );
     } else {
       throw NotionImportSourceException(
         NotionImportSourceError.unsupportedFile,
@@ -107,11 +139,14 @@ NotionImportSource readNotionImportFiles(List<NotionImportFile> files) {
       );
     }
   }
-  final converted = markdownEntriesToBundle(entries);
+  final converted = markdownEntriesToBundle(entries, images: images);
   return NotionImportSource(
     bundle: converted.bundle,
     warnings: converted.warnings,
-    markdownFiles: entries.length,
+    markdownFiles: entries
+        .where((entry) => !entry.name.toLowerCase().endsWith('.csv'))
+        .length,
+    images: converted.images,
   );
 }
 

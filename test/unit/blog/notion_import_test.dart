@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
@@ -530,4 +531,64 @@ void main() {
     expect(result.count(NotionImportAction.failed), 1);
     expect(result.canApply, isFalse);
   });
+
+  test(
+    'an export image is uploaded once and known by its media address',
+    () async {
+      final requests = <http.Request>[];
+      var status = 201;
+      final client = NowaveApiClient(
+        baseUrl: Uri.parse('https://example.invalid'),
+        authenticator: _Auth(),
+        httpClient: MockClient((request) async {
+          requests.add(request);
+          return http.Response(
+            jsonEncode(
+              status == 201
+                  ? {
+                      'data': {
+                        'id': '0b8a6f39-3a9e-4f57-9c51-1f8f7f6f2b10',
+                        'src':
+                            '/api/media/0b8a6f39-3a9e-4f57-9c51-1f8f7f6f2b10',
+                      },
+                    }
+                  : {
+                      'error': {
+                        'code': 'BAD_USER_INPUT',
+                        'message': 'Animated images are not supported.',
+                      },
+                    },
+            ),
+            status,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+      final repository = NotionImportRepositoryImpl(client);
+      final bytes = Uint8List.fromList([0x89, 0x50, 0x4e, 0x47]);
+      final uploaded = await repository.uploadImage(
+        bytes: bytes,
+        contentType: 'image/png',
+        sessionFence: _fence,
+      );
+      expect(
+        uploaded.getRight().toNullable(),
+        client.mediaUri('0b8a6f39-3a9e-4f57-9c51-1f8f7f6f2b10').toString(),
+      );
+      expect(requests.single.method, 'POST');
+      expect(requests.single.url.path, '/api/v1/me/media');
+      expect(requests.single.headers['content-type'], startsWith('image/png'));
+      expect(requests.single.bodyBytes, bytes);
+
+      status = 400;
+      final refused = await repository.uploadImage(
+        bytes: bytes,
+        contentType: 'image/png',
+        sessionFence: _fence,
+      );
+      expect(refused.getLeft().toNullable()?.code, 'server.BAD_USER_INPUT');
+      // Never retried: one request per upload.
+      expect(requests, hasLength(2));
+    },
+  );
 }

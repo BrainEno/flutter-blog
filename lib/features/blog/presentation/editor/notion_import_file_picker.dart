@@ -1,4 +1,4 @@
-import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import_source.dart';
 import 'package:file_selector/file_selector.dart';
 
@@ -15,7 +15,7 @@ Future<List<NotionImportFile>?> pickNotionImportFiles() async {
   var total = 0;
   for (final file in files) {
     total += await file.length();
-    if (total > NotionBundle.maxRequestBytes) {
+    if (total > AppLimits.notionImportMaxSourceBytes) {
       throw const NotionImportSourceException(NotionImportSourceError.tooLarge);
     }
   }

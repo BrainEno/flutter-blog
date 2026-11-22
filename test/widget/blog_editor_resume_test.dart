@@ -120,6 +120,13 @@ class _NotionRepository implements NotionImportRepository {
     required NowaveSessionFence sessionFence,
     NotionImportPlan? plan,
   }) async => right(NotionImportReport(applied: apply, pages: const []));
+
+  @override
+  Future<Either<Failure, String>> uploadImage({
+    required List<int> bytes,
+    required String contentType,
+    required NowaveSessionFence sessionFence,
+  }) async => left(Failure.timeout());
 }
 
 class _ExportRepository implements NotionExportRepository {
