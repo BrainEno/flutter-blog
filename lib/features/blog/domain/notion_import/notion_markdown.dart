@@ -5,7 +5,12 @@ import 'package:belog/features/blog/domain/notion_import/notion_csv.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import_source.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_local_images.dart';
+import 'package:belog/features/blog/domain/notion_import/notion_markdown_warning.dart';
+import 'package:belog/features/blog/domain/notion_import/notion_values.dart';
 import 'package:markdown/markdown.dart' as md;
+
+export 'package:belog/features/blog/domain/notion_import/notion_markdown_warning.dart';
+export 'package:belog/features/blog/domain/notion_import/notion_values.dart';
 
 /// One Markdown page: the file it came from, or the name a pasted page is
 /// given, and its text.
@@ -17,121 +22,6 @@ class NotionMarkdownEntry {
 
   /// Pasted rather than read from a file: identified by its title.
   final bool pasted;
-}
-
-/// Something the conversion could not carry exactly. The import still goes
-/// ahead; the sheet lists these before the preview so nothing is lost
-/// silently.
-enum NotionMarkdownWarningKind {
-  /// Skipped: no `# Title` and no file name to take one from.
-  missingTitle,
-
-  /// No `# Title`: the file name ([detail]) is the title.
-  titleFromFileName,
-
-  /// Skipped: no Notion page ID and an unusable file name.
-  invalidFileName,
-
-  /// No Notion page ID in the file name: identified by the name instead,
-  /// so a renamed file imports as a new article.
-  fileNameIdentity,
-
-  /// Pasted: identified by its title, so a new title is a new article.
-  pastedIdentity,
-
-  /// A Notion property the site has no field for ([detail] names it).
-  propertyIgnored,
-
-  /// `Published` was neither yes nor no: treated as a draft.
-  publishedUnrecognized,
-
-  /// `Date` ([detail], when from a CSV) could not be read: the server's
-  /// default applies.
-  dateUnrecognized,
-
-  /// `Date` is a range: only its start is kept.
-  dateRange,
-
-  /// `English` or `Parent item` ([detail]) named no page this reader knows.
-  relationUnrecognized,
-
-  /// `English` or `Parent item` ([detail]) points to a page not chosen.
-  relationMissing,
-
-  /// An image inside a line of text was left out.
-  inlineImageDropped,
-
-  /// A link to another page of the export, not a web address: the text
-  /// stays, the link does not.
-  relativeLinkDropped,
-
-  /// A fourth-level or deeper heading was raised to the third level.
-  headingLowered,
-
-  /// A code block longer than the site keeps.
-  codeTooLong,
-
-  /// A local image ([detail] is its caption) that is not in the chosen
-  /// files.
-  localImageMissing,
-
-  /// A local image ([detail]) in a format the site does not take.
-  localImageUnsupported,
-
-  /// A local image ([detail]) larger than one upload may be.
-  localImageTooLarge,
-
-  /// A signed image address that cannot be copied safely.
-  signedImageDropped,
-
-  /// A nested list or a list item with several paragraphs was flattened.
-  listSimplified,
-
-  /// A table became one paragraph per row.
-  tableFlattened,
-
-  /// A callout, HTML or other construct was kept as plain text.
-  otherFlattened,
-
-  /// Columns ([detail]) of a database CSV ([source]) with no article field.
-  csvColumnsIgnored,
-
-  /// A CSV's ([source]) Published column ([detail]) holds more than
-  /// checkbox values, so it does not decide publication.
-  csvPublishedNotCheckbox,
-
-  /// No row of the database CSVs matches the page.
-  csvNoRow,
-
-  /// Several ([detail]) CSV rows match the page: none is used.
-  csvAmbiguousRow,
-
-  /// Empty properties ([detail]) were filled from a CSV ([table]).
-  csvFilled,
-
-  /// The page's CSV row ([table]) had nothing the Markdown lacked.
-  csvNothingToFill,
-
-  /// The CSV cover is a file inside the export, not an address.
-  csvLocalCover,
-}
-
-class NotionMarkdownWarning {
-  const NotionMarkdownWarning(
-    this.kind,
-    this.source, {
-    this.detail = '',
-    this.table = '',
-  });
-
-  final NotionMarkdownWarningKind kind;
-
-  /// The file (or pasted title, or CSV) it is about.
-  final String source;
-  final String detail;
-
-  /// The database CSV involved, for the CSV kinds that name one.
-  final String table;
 }
 
 class NotionMarkdownBundle {
@@ -148,117 +38,6 @@ class NotionMarkdownBundle {
   /// (see `notionLocalImageKey`). They are uploaded before a preview.
   final Map<String, NotionLocalImage> images;
 }
-
-/// Notion writes a checkbox as Yes/No; other tools and hand-edited exports
-/// use true/false, Y/N, the Chinese yes/no, and Notion's own API dump uses
-/// __YES__/__NO__. Anything else is not a checkbox value, so a caller can
-/// tell a real checkbox column from a Status select called "Published".
-bool? notionBoolean(String value) {
-  final v = value.trim();
-  if (RegExp(
-    '^(yes|true|y|__yes__|\u662f)\$',
-    caseSensitive: false,
-  ).hasMatch(v)) {
-    return true;
-  }
-  if (RegExp(
-    '^(no|false|n|__no__|\u5426)\$',
-    caseSensitive: false,
-  ).hasMatch(v)) {
-    return false;
-  }
-  return null;
-}
-
-const _monthNames = [
-  'january',
-  'february',
-  'march',
-  'april',
-  'may',
-  'june',
-  'july',
-  'august',
-  'september',
-  'october',
-  'november',
-  'december',
-];
-
-/// A calendar day in any of the spellings a Notion export or a Chinese
-/// spreadsheet produces, read as **UTC midnight** - the desk's
-/// `notionDateStart` and the API's `notionDateToInstant` rule, so the same
-/// file gives the same date from the web and from the app. A full ISO
-/// timestamp is honoured exactly; one without a zone is UTC. A Notion range
-/// ("A -> B") keeps its start and says so. Anything else is not a date.
-({String start, bool range})? notionDateStart(String raw) {
-  final parts = raw.split(RegExp('\\s*\u2192\\s*'));
-  final value = parts.first.trim();
-  final range = parts.length > 1;
-  ({String start, bool range})? day(int year, int month, int date) {
-    final at = DateTime.utc(year, month, date);
-    return at.year == year && at.month == month && at.day == date
-        ? (start: at.toIso8601String(), range: range)
-        : null;
-  }
-
-  final numeric =
-      RegExp(r'^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$').firstMatch(value) ??
-      RegExp(
-        '^(\\d{4})\\s*\u5e74\\s*(\\d{1,2})\\s*\u6708\\s*(\\d{1,2})\\s*\u65e5?\$',
-      ).firstMatch(value);
-  if (numeric != null) {
-    return day(
-      int.parse(numeric.group(1)!),
-      int.parse(numeric.group(2)!),
-      int.parse(numeric.group(3)!),
-    );
-  }
-  final named = RegExp(
-    r'^([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})$',
-  ).firstMatch(value);
-  if (named != null) {
-    final name = named.group(1)!.toLowerCase();
-    final month = _monthNames.indexWhere(
-      (full) => full.startsWith(name.substring(0, 3)),
-    );
-    if (month < 0 ||
-        !(name.length == 3 || _monthNames[month].startsWith(name))) {
-      return null;
-    }
-    return day(
-      int.parse(named.group(3)!),
-      month + 1,
-      int.parse(named.group(2)!),
-    );
-  }
-  if (RegExp(
-    r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?([zZ]|[+-]\d{2}:?\d{2})?$',
-  ).hasMatch(value)) {
-    final zoned = RegExp(r'[zZ]$|[+-]\d{2}:?\d{2}$').hasMatch(value);
-    final parsed = DateTime.tryParse(zoned ? value : '${value}Z');
-    if (parsed == null) return null;
-    // Millisecond precision, as JavaScript writes an instant.
-    final instant = DateTime.fromMillisecondsSinceEpoch(
-      parsed.millisecondsSinceEpoch,
-      isUtc: true,
-    );
-    return (start: instant.toIso8601String(), range: range);
-  }
-  return null;
-}
-
-/// "Wall 0123...cdef.md" -> "Wall": what a person would call the file.
-String notionFileTitle(String name) => _basename(name)
-    .replaceFirst(RegExp(r'\.(md|csv)$', caseSensitive: false), '')
-    .replaceFirst(RegExp(r'_all$', caseSensitive: false), '')
-    .replaceFirst(RegExp(r'\s+[a-f0-9]{32}$', caseSensitive: false), '')
-    .trim();
-
-Map<String, dynamic> notionTextProperty(String text) => {
-  'type': 'rich_text',
-  'rich_text': [_rich(text)],
-};
 
 /// The image a page's local reference [src] means: the path relative to the
 /// page's own folder, as Notion writes it, or - for pages and images chosen
@@ -291,7 +70,7 @@ NotionLocalImage? resolveNotionLocalImage(
   final exact = images[parts.join('/')];
   if (exact != null || parts.isEmpty) return exact;
   final same = images.values
-      .where((image) => _basename(image.name) == parts.last)
+      .where((image) => notionBaseName(image.name) == parts.last)
       .take(2)
       .toList();
   return same.length == 1 ? same.single : null;
@@ -339,10 +118,6 @@ const _knownProperties = {
 String _canonical(String id) =>
     '${id.substring(0, 8)}-${id.substring(8, 12)}-${id.substring(12, 16)}-'
     '${id.substring(16, 20)}-${id.substring(20)}';
-
-String _basename(String name) => name.split(RegExp(r'[\\/]')).last;
-
-Map<String, dynamic> _rich(String text) => {'plain_text': text};
 
 /// Converts Markdown pages - Notion's own "Markdown & CSV" export, or text
 /// copied out of a page - into the bundle the import endpoint takes, exactly
@@ -483,7 +258,7 @@ class _MarkdownPage {
       _warn(NotionMarkdownWarningKind.missingTitle);
       return null;
     }
-    final basename = _basename(entry.name);
+    final basename = notionBaseName(entry.name);
     final id = _pageId.firstMatch(basename)?.group(1)?.toLowerCase();
     if (id == null &&
         (basename.isEmpty ||
@@ -504,7 +279,7 @@ class _MarkdownPage {
     final properties = <String, dynamic>{
       'Name': {
         'type': 'title',
-        'title': [_rich(title)],
+        'title': [notionRichText(title)],
       },
     };
     var i = heading == null ? first : first + 1;
@@ -615,7 +390,7 @@ class _MarkdownPage {
         if (text.isEmpty) continue;
         _warn(NotionMarkdownWarningKind.otherFlattened);
         _block('paragraph', {
-          'rich_text': [_rich(text)],
+          'rich_text': [notionRichText(text)],
         });
         continue;
       }
@@ -649,12 +424,12 @@ class _MarkdownPage {
             _warn(NotionMarkdownWarningKind.codeTooLong);
           }
           _block('code', {
-            'rich_text': [_rich(text)],
+            'rich_text': [notionRichText(text)],
             'language': language ?? 'text',
           });
         case 'blockquote':
           _block('quote', {
-            'rich_text': [_rich(_plainBlocks(children))],
+            'rich_text': [notionRichText(_plainBlocks(children))],
           });
         case 'ul' || 'ol':
           _list(node, ordered: node.tag == 'ol');
@@ -664,7 +439,7 @@ class _MarkdownPage {
           _warn(NotionMarkdownWarningKind.tableFlattened);
           for (final row in _rows(node)) {
             _block('paragraph', {
-              'rich_text': [_rich(row)],
+              'rich_text': [notionRichText(row)],
             });
           }
         default:
@@ -672,7 +447,7 @@ class _MarkdownPage {
           _warn(NotionMarkdownWarningKind.otherFlattened);
           if (text.isNotEmpty) {
             _block('paragraph', {
-              'rich_text': [_rich(text)],
+              'rich_text': [notionRichText(text)],
             });
           }
       }
@@ -691,7 +466,7 @@ class _MarkdownPage {
       _block('image', {
         'type': 'file',
         'file': {'url': src},
-        'caption': [_rich(alt)],
+        'caption': [notionRichText(alt)],
       });
     } else if (url.queryParameters.keys.any(
       (key) => key.toLowerCase().startsWith('x-amz-'),
@@ -701,7 +476,7 @@ class _MarkdownPage {
       _block('image', {
         'type': 'external',
         'external': {'url': src},
-        'caption': [_rich(alt)],
+        'caption': [notionRichText(alt)],
       });
     }
   }
@@ -713,11 +488,11 @@ class _MarkdownPage {
     if (image == null) {
       _warn(
         NotionMarkdownWarningKind.localImageMissing,
-        detail: alt.isNotEmpty ? alt : _basename(src),
+        detail: alt.isNotEmpty ? alt : notionBaseName(src),
       );
       return;
     }
-    final name = _basename(image.name);
+    final name = notionBaseName(image.name);
     if (!isNotionUploadableImageName(image.name)) {
       _warn(NotionMarkdownWarningKind.localImageUnsupported, detail: name);
       return;
@@ -730,7 +505,7 @@ class _MarkdownPage {
     _block('image', {
       'type': 'external',
       'external': {'url': notionLocalImageUrl(image.name)},
-      'caption': [_rich(alt)],
+      'caption': [notionRichText(alt)],
     });
   }
 
@@ -752,7 +527,7 @@ class _MarkdownPage {
       final text = _plainBlocks(children);
       if (text.trim().isNotEmpty) {
         _block(ordered ? 'numbered_list_item' : 'bulleted_list_item', {
-          'rich_text': [_rich(text)],
+          'rich_text': [notionRichText(text)],
         });
       }
     }
