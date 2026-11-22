@@ -94,7 +94,7 @@
 > `NotionPageSelection`，逐张上传、按内容去重、不重试的规则收进
 > `NotionImageUploader`（结果是密封类：完成 / 中止 / 不再需要），两者都有单元
 > 测试；文案映射移到 `notion_import_messages.dart`，选择列表与报告移到
-> `notion_import_report_view.dart`；面板里四处手写的「清空来源/预览」合并为
+> `notion_import_report_view.dart`；面板里多处手写的「清空来源/预览」合并为
 > `_resetSource` / `_resetPreview`。编辑器会话协调器 936 → 约 400 行，草稿、封面、
 > 发布各自成 part 文件中的私有 mixin（见 [编辑器路线图](editor-architecture-roadmap.md)）。
 > `LocalStructuredSession` 的纯文本与富文本交接原本各写一遍「保存 → 关闭 → 校验」，
