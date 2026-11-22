@@ -442,10 +442,10 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final background = mine
-        ? scheme.primaryContainer
-        : scheme.surfaceContainerHighest;
-    final foreground = mine ? scheme.onPrimaryContainer : scheme.onSurface;
+    // Your own message carries the theme's primary pair, so it stands
+    // apart from the other side's quiet surface at a glance.
+    final background = mine ? scheme.primary : scheme.surfaceContainerHighest;
+    final foreground = mine ? scheme.onPrimary : scheme.onSurface;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: NoWaveSpacing.xs),
       child: Column(

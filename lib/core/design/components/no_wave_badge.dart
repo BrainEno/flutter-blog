@@ -30,10 +30,9 @@ class NoWaveBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final (background, foreground) = switch (tone) {
-      NoWaveBadgeTone.emphasize => (
-        scheme.secondaryContainer,
-        scheme.onSecondaryContainer,
-      ),
+      // The accent itself, in both themes: it sits on a cover photo, where
+      // the quiet container tint would disappear.
+      NoWaveBadgeTone.emphasize => (scheme.secondary, scheme.onSecondary),
       NoWaveBadgeTone.neutral => (
         scheme.surfaceContainerHighest,
         scheme.onSurfaceVariant,

@@ -299,6 +299,72 @@ void main() {
         );
       });
 
+      test('$label: every filled button uses the one primary pair', () {
+        // The two themes differ (oxblood on paper, orange on ink), but inside
+        // a theme the floating action, the Material fallbacks and
+        // NoWaveButton.primary must never show two different main colours.
+        final scheme = theme.colorScheme;
+        for (final style in [
+          theme.filledButtonTheme.style,
+          theme.elevatedButtonTheme.style,
+        ]) {
+          expect(style?.backgroundColor?.resolve({}), scheme.primary);
+          expect(style?.foregroundColor?.resolve({}), scheme.onPrimary);
+        }
+        expect(theme.floatingActionButtonTheme.backgroundColor, scheme.primary);
+        expect(
+          theme.floatingActionButtonTheme.foregroundColor,
+          scheme.onPrimary,
+        );
+        expect(
+          _contrast(scheme.primary, scheme.onPrimary),
+          greaterThanOrEqualTo(4.5),
+        );
+      });
+
+      test('$label: container roles are quiet tints, not the accent', () {
+        // Left unset, Material resolves a container to its accent, so a
+        // tonal button or a comparison panel turned into a second
+        // primary fill with whatever text colour happened to be inherited.
+        final scheme = theme.colorScheme;
+        final pairs = {
+          'primaryContainer': (
+            scheme.primaryContainer,
+            scheme.onPrimaryContainer,
+          ),
+          'secondaryContainer': (
+            scheme.secondaryContainer,
+            scheme.onSecondaryContainer,
+          ),
+          'tertiaryContainer': (
+            scheme.tertiaryContainer,
+            scheme.onTertiaryContainer,
+          ),
+          'errorContainer': (scheme.errorContainer, scheme.onErrorContainer),
+        };
+        for (final MapEntry(key: role, value: (fill, text)) in pairs.entries) {
+          expect(fill, isNot(scheme.primary), reason: role);
+          expect(fill, isNot(scheme.secondary), reason: role);
+          expect(fill, isNot(scheme.error), reason: role);
+          expect(
+            _contrast(fill, text),
+            greaterThanOrEqualTo(4.5),
+            reason: role,
+          );
+          // Body text drawn without an explicit colour inherits onSurface.
+          expect(
+            _contrast(fill, scheme.onSurface),
+            greaterThanOrEqualTo(4.5),
+            reason: role,
+          );
+          expect(
+            _contrast(fill, scheme.onSurfaceVariant),
+            greaterThanOrEqualTo(4.5),
+            reason: '$role muted text',
+          );
+        }
+      });
+
       test('$label: the divider is the token opacity', () {
         expect(
           theme.dividerTheme.color,
@@ -314,4 +380,12 @@ void main() {
     expect(AppTheme.lightThemeMode.scaffoldBackgroundColor, AppPalette.paper);
     expect(AppTheme.darkThemeMode.scaffoldBackgroundColor, AppPalette.ink);
   });
+}
+
+double _contrast(Color a, Color b) {
+  final la = a.computeLuminance();
+  final lb = b.computeLuminance();
+  final hi = la > lb ? la : lb;
+  final lo = la > lb ? lb : la;
+  return (hi + 0.05) / (lo + 0.05);
 }
