@@ -60,16 +60,21 @@ class BlogCard extends StatelessWidget {
         // column of its own: centred on the same line as the tags (which
         // carry 48pt targets) rather than pinned above them, and the title
         // keeps the gutter the lead story's title starts on.
+        // An extra step after it, so the number reads as the row's label
+        // rather than as one more tag.
         if (ordinal != null)
-          Text(
-            formatNumber(
-              Localizations.localeOf(context),
-              ordinal,
-            ).padLeft(2, '0'),
-            style: NoWaveTypography.meta(context).copyWith(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
-              fontFeatures: const [FontFeature.tabularFigures()],
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: NoWaveSpacing.small),
+            child: Text(
+              formatNumber(
+                Localizations.localeOf(context),
+                ordinal,
+              ).padLeft(2, '0'),
+              style: NoWaveTypography.meta(context).copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
         // A quiet row is a pointer to the next piece: its date, title and
