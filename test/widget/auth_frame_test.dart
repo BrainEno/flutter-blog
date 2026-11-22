@@ -30,7 +30,6 @@ void main() {
         AuthFrame(
           title: '登录',
           companion: 'Sign in',
-          eyebrow: '收藏、评论和写作，从这里开始',
           child: AuthLink(
             prompt: '没有账号？',
             label: '注册',
@@ -46,12 +45,17 @@ void main() {
     );
     expect(heading.title, '登录');
     expect(heading.companion, 'Sign in');
-    // One left edge: heading and link start on the page gutter.
+    // No strapline over the title: the heading says what the page is for.
+    expect(heading.eyebrow, isNull);
     expect(
       tester.getTopLeft(find.byType(NoWaveSectionHeading)).dx,
       NoWaveSpacing.page,
     );
-    expect(tester.getTopLeft(find.byType(TextButton)).dx, NoWaveSpacing.page);
+    // The line under the button hangs from the column's middle.
+    expect(
+      tester.getCenter(find.byType(TextButton)).dx,
+      closeTo(tester.getRect(find.byType(NoWaveSectionHeading)).center.dx, 0.5),
+    );
     expect(
       tester.getSize(find.byType(TextButton)).height,
       greaterThanOrEqualTo(NoWaveSizes.tapTarget),
@@ -59,6 +63,32 @@ void main() {
 
     await tester.tap(find.text('没有账号？注册'));
     expect(taps, 1);
+  });
+
+  testWidgets('a link that belongs to a field keeps to its end', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        AuthFrame(
+          title: '登录',
+          child: AuthLink(
+            label: '找回密码',
+            alignment: AlignmentDirectional.centerEnd,
+            onPressed: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.getTopRight(find.byType(TextButton)).dx,
+      tester.getRect(find.byType(NoWaveSectionHeading)).right,
+    );
+    final text = tester.widget<Text>(
+      find.descendant(of: find.byType(TextButton), matching: find.byType(Text)),
+    );
+    expect(text.textAlign, TextAlign.end);
   });
 
   testWidgets('on a wide screen the form keeps to its measure, centred', (

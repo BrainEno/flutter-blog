@@ -99,6 +99,18 @@ class CommentTile extends StatelessWidget {
     );
   }
 
+  /// Avatar side for a thread's first comment and for a reply: a reply's
+  /// face is a step smaller, like its words.
+  static const _rootAvatar = 36.0;
+  static const _replyAvatar = 28.0;
+
+  /// Space between the avatar and the text column - the same at every
+  /// depth, so a reply's name sits as close to its face as a root's does.
+  static const _avatarGap = NoWaveSpacing.small + NoWaveSpacing.xs;
+
+  /// Where a thread's words start, measured from the section's edge.
+  static const rootTextColumn = _rootAvatar + _avatarGap;
+
   @override
   Widget build(BuildContext context) {
     final users = context.watch<AppUserCubit>();
@@ -116,26 +128,39 @@ class CommentTile extends StatelessWidget {
       (bloc) => bloc.state.deletingIds.contains(comment.id),
     );
 
-    // Replies hang from the parent's text column: their avatar starts where
-    // the parent's name and body do.
-    const indent = NoWaveSizes.listThumbnailSmall;
+    final root = depth == 0;
+    final avatar = root ? _rootAvatar : _replyAvatar;
+    // The text column: name, date, body and actions all start on it, and a
+    // reply's avatar hangs from it.
+    final column = avatar + _avatarGap;
     final scheme = Theme.of(context).colorScheme;
-    final quiet = NoWaveTypography.meta(
+    // Four steps, told apart by size and weight before colour: the name is
+    // the only bold ink, what was said is the largest regular type, and
+    // when it was said is the smallest and muted. The actions sit between
+    // the two muted sizes, weighted so they read as things to press.
+    final nameStyle = NoWaveTypography.meta(context).copyWith(
+      fontSize: NoWaveTypeScale.label,
+      fontWeight: FontWeight.w700,
+      height: 1.3,
+      color: scheme.onSurface,
+    );
+    final dateStyle = NoWaveTypography.metaLabel(
       context,
-    ).copyWith(color: scheme.onSurfaceVariant);
+      size: NoWaveTypeScale.caption,
+      color: scheme.onSurfaceVariant,
+    ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
     // Threads are told apart by space, not rules: each opens on its
     // author's face and name, and its replies hang from its text column,
     // so the eye reads one conversation per group.
     return Padding(
-      padding: EdgeInsets.only(
-        top: depth == 0 ? NoWaveSpacing.small : 0,
-        bottom: depth == 0 ? NoWaveSpacing.large : NoWaveSpacing.xs,
-      ),
+      padding: EdgeInsets.only(bottom: root ? NoWaveSpacing.medium : 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // The head: the face, then who and when stacked beside it - the
+          // name on top in bold, the date under it in small muted type - so
+          // the avatar is centred on the whole head rather than on one line.
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Both avatar and name open the author's public profile.
               Semantics(
@@ -143,16 +168,17 @@ class CommentTile extends StatelessWidget {
                 button: true,
                 child: InkWell(
                   onTap: () => onOpenAuthor(comment.authorId),
-                  child: SizedBox.square(
-                    dimension: NoWaveSizes.listThumbnailSmall,
+                  child: SizedBox(
+                    width: column,
+                    height: NoWaveSizes.tapTarget,
                     // On the column edge, like every other first glyph on
-                    // the page; the rest of the 48pt target lies after it.
+                    // the page; the rest of the target lies after it.
                     child: Align(
                       alignment: AlignmentDirectional.centerStart,
                       child: NoWaveAvatar(
                         name: authorName,
                         imageUrl: comment.authorAvatarUrl,
-                        size: depth == 0 ? 32 : 26,
+                        size: avatar,
                         // The thread lies on the end-matter sheet, which is
                         // the avatar's own tone: a paper tile keeps it seen.
                         background: scheme.surface,
@@ -164,90 +190,25 @@ class CommentTile extends StatelessWidget {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Name and date on one line beside the avatar: who and
-                    // when read as the comment's head, the body below it.
+                    InkWell(
+                      onTap: () => onOpenAuthor(comment.authorId),
+                      child: Text(authorName, style: nameStyle),
+                    ),
                     Wrap(
-                      spacing: NoWaveSpacing.small,
-                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: NoWaveSpacing.xs,
                       children: [
-                        InkWell(
-                          onTap: () => onOpenAuthor(comment.authorId),
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(
-                              minHeight: NoWaveSizes.tapTarget,
-                            ),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: 1,
-                              child: Text(
-                                authorName,
-                                style: NoWaveTypography.meta(context).copyWith(
-                                  fontSize: NoWaveTypeScale.label,
-                                  fontWeight: FontWeight.w700,
-                                  color: scheme.onSurface,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
                         Text(
                           formatDate(
                             Localizations.localeOf(context),
                             comment.createdAt,
                           ),
-                          style: quiet,
+                          style: dateStyle,
                         ),
-                        if (comment.editedAt != null)
-                          Text(context.l10n.commentEdited, style: quiet),
-                      ],
-                    ),
-                    // Plain-text rendering (content version 0): no markup
-                    // is interpreted, the body renders exactly as stored.
-                    Text(
-                      comment.content,
-                      style: TextStyle(
-                        fontSize: depth == 0
-                            ? NoWaveTypeScale.comment
-                            : NoWaveTypeScale.label,
-                        height: 1.65,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    Wrap(
-                      spacing: NoWaveSpacing.small,
-                      children: [
-                        _ActionText(
-                          label: replyRequiresLogin
-                              ? context.l10n.signInToReply
-                              : context.l10n.actionReply,
-                          onPressed: onReply == null
-                              ? null
-                              : () => onReply!(comment),
-                        ),
-                        if (isOwn) ...[
-                          if (CommentEditGuard.canEdit(
-                            comment,
-                            maxLength: CommentBloc.maxContentLength,
-                          ))
-                            _ActionText(
-                              label: context.l10n.commentEditAction,
-                              onPressed: deleting
-                                  ? null
-                                  : () => _openEditor(context, users, revision),
-                            ),
-                          _ActionText(
-                            label: deleting
-                                ? context.l10n.commentDeleting
-                                : context.l10n.actionDelete,
-                            onPressed: deleting
-                                ? null
-                                : () => _confirmCurrentDelete(
-                                    context,
-                                    users,
-                                    revision,
-                                  ),
-                          ),
+                        if (comment.editedAt != null) ...[
+                          ExcludeSemantics(child: Text('·', style: dateStyle)),
+                          Text(context.l10n.commentEdited, style: dateStyle),
                         ],
                       ],
                     ),
@@ -256,11 +217,72 @@ class CommentTile extends StatelessWidget {
               ),
             ],
           ),
+          Padding(
+            padding: EdgeInsetsDirectional.only(
+              start: column,
+              top: NoWaveSpacing.xs,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Plain-text rendering (content version 0): no markup is
+                // interpreted, the body renders exactly as stored.
+                Text(
+                  comment.content,
+                  style: TextStyle(
+                    fontSize: root
+                        ? NoWaveTypeScale.comment
+                        : NoWaveTypeScale.label,
+                    height: 1.6,
+                    color: scheme.onSurface,
+                  ),
+                ),
+                Wrap(
+                  spacing: NoWaveSpacing.small,
+                  children: [
+                    _ActionText(
+                      label: replyRequiresLogin
+                          ? context.l10n.signInToReply
+                          : context.l10n.actionReply,
+                      onPressed: onReply == null
+                          ? null
+                          : () => onReply!(comment),
+                    ),
+                    if (isOwn) ...[
+                      if (CommentEditGuard.canEdit(
+                        comment,
+                        maxLength: CommentBloc.maxContentLength,
+                      ))
+                        _ActionText(
+                          label: context.l10n.commentEditAction,
+                          onPressed: deleting
+                              ? null
+                              : () => _openEditor(context, users, revision),
+                        ),
+                      _ActionText(
+                        label: deleting
+                            ? context.l10n.commentDeleting
+                            : context.l10n.actionDelete,
+                        onPressed: deleting
+                            ? null
+                            : () => _confirmCurrentDelete(
+                                context,
+                                users,
+                                revision,
+                              ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
           if (comment.replies.isNotEmpty)
             Padding(
-              // Limit indentation for deep (including legacy) threads.
+              // Replies hang from this comment's text column; deep (and
+              // legacy) threads stop indenting so the leaf keeps a measure.
               padding: depth < 2
-                  ? const EdgeInsetsDirectional.only(start: indent)
+                  ? EdgeInsetsDirectional.only(start: column)
                   : EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

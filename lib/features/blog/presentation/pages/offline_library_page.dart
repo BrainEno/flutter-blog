@@ -186,10 +186,7 @@ class _OfflineLibraryPageState extends State<OfflineLibraryPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        NoWaveSectionHeading(
-          title: l10n.offlineLibraryTitle,
-          eyebrow: l10n.offlineLibraryEyebrow,
-        ),
+        NoWaveSectionHeading(title: l10n.offlineLibraryTitle),
         const SizedBox(height: NoWaveSpacing.small),
         Text(
           l10n.offlineLibraryDescription,

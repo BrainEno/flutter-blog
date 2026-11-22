@@ -9,6 +9,7 @@ import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
 import 'package:belog/features/blog/domain/entities/comment_page.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
@@ -192,6 +193,70 @@ void main() {
     // Two roots + one nested reply share the same neutral portrait component.
     expect(find.text('已加载 3 条'), findsOneWidget);
     expect(find.byType(NoWaveAvatar), findsNWidgets(3));
+  });
+
+  testWidgets('a comment keeps one text column and four type steps', (
+    tester,
+  ) async {
+    when(() => getComments('my-slug')).thenAnswer(
+      (_) async => right<Failure, CommentPage>(
+        _page([
+          _comment(
+            'c1',
+            replies: [_comment('c2', content: '同感', parentId: 'c1')],
+          ),
+        ]),
+      ),
+    );
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+    await _pumpSection(tester, appUserCubit: appUserCubit, commentBloc: bloc);
+    await tester.pumpAndSettle();
+
+    final l10n = lookupAppLocalizations(const Locale('zh'));
+    final name = l10n.anonymousReader;
+    final date = formatDate(const Locale('zh'), DateTime.utc(2025, 6, 1));
+    Finder tile(String id) => find.byWidgetPredicate(
+      (widget) => widget is CommentTile && widget.comment.id == id,
+    );
+    Finder inTile(String id, Finder matching) =>
+        find.descendant(of: tile(id), matching: matching).first;
+    double left(Finder finder) => tester.getTopLeft(finder).dx;
+
+    final rootName = inTile('c1', find.text(name));
+    final rootDate = inTile('c1', find.text(date));
+    final rootBody = inTile('c1', find.text('写得真好'));
+    final rootReply = inTile('c1', find.widgetWithText(TextButton, '回复'));
+    final replyName = inTile('c2', find.text(name));
+    final replyBody = inTile('c2', find.text('同感'));
+
+    // The face on the section's edge; who, when, what and the actions all
+    // start on one text column beside it.
+    expect(left(find.byType(NoWaveAvatar).first), 0);
+    for (final part in [rootName, rootDate, rootBody, rootReply]) {
+      expect(left(part), CommentTile.rootTextColumn);
+    }
+    // A reply's face hangs from that column; its own words share a column.
+    expect(left(find.byType(NoWaveAvatar).last), CommentTile.rootTextColumn);
+    expect(left(replyName), left(replyBody));
+    expect(left(replyBody), greaterThan(CommentTile.rootTextColumn));
+    // The avatar is centred on the stacked name and date, not on one line.
+    final head = tester
+        .getRect(rootName)
+        .expandToInclude(tester.getRect(rootDate));
+    expect(
+      tester.getCenter(find.byType(NoWaveAvatar).first).dy,
+      closeTo(head.center.dy, 1),
+    );
+
+    // Size and weight before colour: bold name, large body, small date;
+    // a reply's words a step under its parent's.
+    TextStyle style(Finder finder) => tester.widget<Text>(finder).style!;
+    expect(style(rootName).fontWeight, FontWeight.w700);
+    expect(style(rootBody).fontWeight, isNot(FontWeight.w700));
+    expect(style(rootDate).fontSize, lessThan(style(rootName).fontSize!));
+    expect(style(rootName).fontSize, lessThan(style(rootBody).fontSize!));
+    expect(style(replyBody).fontSize, lessThan(style(rootBody).fontSize!));
   });
 
   for (final locale in [const Locale('en'), const Locale('zh')]) {

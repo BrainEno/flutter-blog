@@ -128,7 +128,6 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                     NoWaveSectionHeading(
                       title: l10n.tabSearch,
                       companion: l10n.searchHeadingCompanion,
-                      eyebrow: l10n.searchEyebrow,
                     ),
                     const SizedBox(height: NoWaveSpacing.small),
                     // Both are browsing doors out of search: the editor's

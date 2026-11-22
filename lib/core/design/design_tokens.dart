@@ -104,6 +104,10 @@ abstract final class NoWaveTypeScale {
   /// 12: the words of the bottom tab bar, under their glyphs.
   static const tabLabel = 12.0;
 
+  /// 12: a comment's date and "edited" mark, under its author's name - the
+  /// smallest step of a comment, below its actions.
+  static const caption = 12.0;
+
   /// 15: chip labels (tags, categories) and the words of the sliding tabs.
   static const label = 15.0;
 

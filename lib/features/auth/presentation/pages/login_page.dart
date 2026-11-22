@@ -113,7 +113,6 @@ class _LoginPageState extends State<LoginPage> {
           return AuthFrame(
             title: l10n.loginTitle,
             companion: l10n.loginHeadingCompanion,
-            eyebrow: l10n.loginEyebrow,
             languageMenu: true,
             child: Form(
               key: formKey,

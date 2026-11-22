@@ -78,7 +78,6 @@ class _SignUpPageState extends State<SignUpPage> {
           return AuthFrame(
             title: l10n.signUpTitle,
             companion: l10n.signUpHeadingCompanion,
-            eyebrow: l10n.signUpEyebrow,
             child: Form(
               key: formKey,
               child: Column(

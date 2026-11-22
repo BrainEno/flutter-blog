@@ -264,7 +264,6 @@ class _AuthorPageState extends State<AuthorPage> {
                       const SizedBox(height: NoWaveSpacing.medium),
                       NoWaveSectionHeading(
                         title: context.l10n.authorArticlesTitle,
-                        eyebrow: context.l10n.authorArticlesEyebrow,
                       ),
                       const SizedBox(height: NoWaveSpacing.small),
                       // Two orders, one list at a time. `popular` is re-ranked
