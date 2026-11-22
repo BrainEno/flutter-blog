@@ -1,18 +1,29 @@
 import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
-
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
+import 'package:belog/core/nowave/transport/api_error.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import_plan.dart';
+import 'package:belog/features/blog/domain/notion_import/notion_import_source.dart';
+import 'package:belog/features/blog/domain/notion_import/notion_markdown.dart';
+import 'package:belog/features/blog/presentation/editor/notion_import_file_picker.dart';
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 /// Import is separate from the editor's own draft and never changes its text.
+///
+/// The source is either files chosen on the device - Notion's "Markdown &
+/// CSV" export ZIP, `.md` pages, or a no-wave JSON bundle - or pasted text
+/// (a page's Markdown or a bundle). Markdown is converted here, the way the
+/// no-wave desk converts it; only the resulting bundle is sent, and only
+/// for a preview until the author confirms.
 class NotionImportSheet extends StatefulWidget {
   const NotionImportSheet({
     super.key,
@@ -21,12 +32,16 @@ class NotionImportSheet extends StatefulWidget {
     required this.fence,
     required this.userCubit,
     this.onApplyStarted,
+    this.pickFiles,
   });
   final NotionImportRepository repository;
   final NowaveSessionIdentity identity;
   final NowaveSessionFence fence;
   final AppUserCubit userCubit;
   final VoidCallback? onApplyStarted;
+
+  /// The file picker; the system document picker when null.
+  final NotionImportFilePicker? pickFiles;
 
   @override
   State<NotionImportSheet> createState() => _NotionImportSheetState();
@@ -38,6 +53,13 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
   StreamSubscription<AppUserState>? _userSubscription;
   NotionBundle? _source;
   final Set<int> _selected = {};
+
+  /// What converting Markdown could not carry, shown before the preview.
+  List<NotionMarkdownWarning> _warnings = const [];
+
+  /// The chosen file names and how many pages they made, when the source is
+  /// files rather than pasted text.
+  String? _filesRead;
   NotionBundle? _snapshot;
   NotionImportReport? _report;
   NotionImportPlan? _plan;
@@ -96,6 +118,8 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
         setState(() {
           _source = null;
           _selected.clear();
+          _warnings = const [];
+          _filesRead = null;
           _snapshot = null;
           _report = null;
           _error = null;
@@ -118,6 +142,8 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
     setState(() {
       _source = null;
       _selected.clear();
+      _warnings = const [];
+      _filesRead = null;
       _snapshot = null;
       _report = null;
       _error = null;
@@ -129,25 +155,76 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
     if (!_current || _busy) return;
     _discardPlan();
     try {
-      final bundle = NotionBundle.parse(_input.text);
-      setState(() {
-        _source = bundle;
-        _selected.clear();
-        _snapshot = null;
-        _report = null;
-        _error = null;
-        _confirming = false;
-      });
-    } on FormatException {
-      setState(() {
-        _source = null;
-        _selected.clear();
-        _error = context.l10n.notionImportInvalid;
-        _report = null;
-        _snapshot = null;
-        _confirming = false;
+      _show(readPastedNotionText(_input.text));
+    } on NotionImportSourceException catch (error) {
+      _fail(switch (error.error) {
+        NotionImportSourceError.invalidBundle ||
+        NotionImportSourceError.noPages => context.l10n.notionImportInvalid,
+        _ => _sourceError(context.l10n, error),
       });
     }
+  }
+
+  /// Files chosen on the device: read, converted, and shown for selection.
+  /// The pasted text is cleared - one source at a time.
+  Future<void> _chooseFiles() async {
+    if (!_current || _busy) return;
+    final List<NotionImportFile>? files;
+    try {
+      files = await (widget.pickFiles ?? pickNotionImportFiles)();
+    } on NotionImportSourceException catch (error) {
+      if (mounted && _current) _fail(_sourceError(context.l10n, error));
+      return;
+    } catch (_) {
+      if (mounted && _current) {
+        _fail(context.l10n.notionImportSourceUnreadable);
+      }
+      return;
+    }
+    if (!mounted || !_current || files == null || files.isEmpty) return;
+    _discardPlan();
+    _input.clear();
+    try {
+      final source = readNotionImportFiles(files);
+      _show(
+        source,
+        filesRead: context.l10n.notionImportFilesRead(
+          files.map((file) => file.name).join(', '),
+          source.bundle.pageCount,
+        ),
+      );
+    } on NotionImportSourceException catch (error) {
+      _fail(_sourceError(context.l10n, error));
+    }
+  }
+
+  /// A single page is selected for the author: there is nothing to choose.
+  void _show(NotionImportSource source, {String? filesRead}) {
+    setState(() {
+      _source = source.bundle;
+      _selected
+        ..clear()
+        ..addAll(source.bundle.pageCount == 1 ? const {0} : const <int>{});
+      _warnings = source.warnings;
+      _filesRead = filesRead;
+      _snapshot = null;
+      _report = null;
+      _error = null;
+      _confirming = false;
+    });
+  }
+
+  void _fail(String message) {
+    setState(() {
+      _source = null;
+      _selected.clear();
+      _warnings = const [];
+      _filesRead = null;
+      _error = message;
+      _report = null;
+      _snapshot = null;
+      _confirming = false;
+    });
   }
 
   void _setSelection(Set<int> selection) {
@@ -223,6 +300,8 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
           // server-side apply did not land; require a fresh preview.
           _error = failure.code == 'notion.planInvalid'
               ? context.l10n.notionImportPlanInvalid
+              : failure.code == 'server.RATE_LIMITED'
+              ? _rateLimited(context.l10n, failure)
               : apply
               ? context.l10n.notionImportOutcomeUnknown
               : localizedFailure(context.l10n, failure);
@@ -309,7 +388,19 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Text(l10n.notionImportDescription),
+                            const SizedBox(height: NoWaveSpacing.small),
+                            Text(
+                              l10n.notionImportExportHint,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                             const SizedBox(height: NoWaveSpacing.medium),
+                            FilledButton.tonalIcon(
+                              key: const ValueKey('notion-import-choose'),
+                              onPressed: _busy ? null : _chooseFiles,
+                              icon: const Icon(Icons.upload_file_outlined),
+                              label: Text(l10n.notionImportChooseFiles),
+                            ),
+                            const SizedBox(height: NoWaveSpacing.large),
                             TextField(
                               controller: _input,
                               onChanged: _changed,
@@ -325,6 +416,17 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
                               onPressed: _busy ? null : _readBundle,
                               child: Text(l10n.notionImportReadBundle),
                             ),
+                            if (source != null && _filesRead != null) ...[
+                              const SizedBox(height: NoWaveSpacing.medium),
+                              Text(
+                                _filesRead!,
+                                key: const ValueKey('notion-import-files'),
+                              ),
+                            ],
+                            if (source != null && _warnings.isNotEmpty) ...[
+                              const SizedBox(height: NoWaveSpacing.medium),
+                              _ConversionWarnings(warnings: _warnings),
+                            ],
                             if (source != null) ...[
                               const SizedBox(height: NoWaveSpacing.medium),
                               Text(
@@ -463,12 +565,7 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
                                   Text(
                                     '${l10n.notionImportArticleId}: ${page.articleId}',
                                   ),
-                                for (final issue in page.issues)
-                                  Text(
-                                    issue.code == 'expiring-image-url'
-                                        ? issue.code
-                                        : '${issue.code}: ${issue.detail}',
-                                  ),
+                                _ReportIssues(issues: page.issues),
                               ],
                               if (report.canApply &&
                                   _snapshot != null &&
@@ -523,3 +620,210 @@ class _NotionImportSheetState extends State<NotionImportSheet> {
     );
   }
 }
+
+/// A 429 is refused before any work, so even an apply is known not to have
+/// landed. The server's Retry-After, when sent, says how long to wait.
+String _rateLimited(AppLocalizations l10n, Failure failure) {
+  final cause = failure.cause;
+  final seconds = cause is NowaveApiException ? cause.retryAfterSeconds : null;
+  if (seconds == null || seconds <= 0) return l10n.notionImportRateLimited;
+  return l10n.notionImportRateLimitedRetry(
+    (seconds / Duration.secondsPerMinute).ceil(),
+  );
+}
+
+String _sourceError(AppLocalizations l10n, NotionImportSourceException error) {
+  final name = error.name.isEmpty ? l10n.notionImportChosenFile : error.name;
+  return switch (error.error) {
+    NotionImportSourceError.tooLarge => l10n.notionImportSourceTooLarge,
+    NotionImportSourceError.unsupportedFile =>
+      l10n.notionImportSourceUnsupported(name),
+    NotionImportSourceError.invalidBundle =>
+      l10n.notionImportSourceInvalidBundle(name),
+    NotionImportSourceError.invalidZip => l10n.notionImportSourceInvalidZip(
+      name,
+    ),
+    NotionImportSourceError.tooManyEntries =>
+      l10n.notionImportSourceTooManyEntries(name),
+    NotionImportSourceError.tooManyPages => l10n.notionImportSourceTooManyPages,
+    NotionImportSourceError.invalidText => l10n.notionImportSourceInvalidText(
+      name,
+    ),
+    NotionImportSourceError.duplicatePage => l10n.notionImportSourceDuplicate(
+      name,
+    ),
+    NotionImportSourceError.noPages => l10n.notionImportSourceNoPages,
+  };
+}
+
+/// The conversion's warnings, one line per kind: a 200-page export that
+/// lacks page IDs says so once, with a count and the first few files, not
+/// two hundred times.
+class _ConversionWarnings extends StatelessWidget {
+  const _ConversionWarnings({required this.warnings});
+
+  final List<NotionMarkdownWarning> warnings;
+
+  static const _namedFiles = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final groups = <(NotionMarkdownWarningKind, String), List<String>>{};
+    for (final warning in warnings) {
+      groups
+          .putIfAbsent((warning.kind, warning.detail), () => [])
+          .add(warning.source);
+    }
+    return Column(
+      key: const ValueKey('notion-import-warnings'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.notionImportWarningsTitle(warnings.length),
+          style: theme.textTheme.titleSmall,
+        ),
+        for (final MapEntry(key: (kind, detail), value: sources)
+            in groups.entries) ...[
+          const SizedBox(height: NoWaveSpacing.small),
+          Text(
+            sources.length > 1
+                ? '${_message(l10n, kind, detail)} '
+                      '(${l10n.notionImportWarningCount(sources.length)})'
+                : _message(l10n, kind, detail),
+          ),
+          Text(
+            _sources(l10n, sources),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ],
+    );
+  }
+
+  static String _sources(AppLocalizations l10n, List<String> sources) {
+    final unique = sources.toSet().toList();
+    final named = unique.take(_namedFiles).join(', ');
+    return unique.length > _namedFiles
+        ? l10n.notionImportWarningSources(named, unique.length - _namedFiles)
+        : named;
+  }
+
+  static String _message(
+    AppLocalizations l10n,
+    NotionMarkdownWarningKind kind,
+    String detail,
+  ) => switch (kind) {
+    NotionMarkdownWarningKind.missingTitle => l10n.notionImportWarnMissingTitle,
+    NotionMarkdownWarningKind.invalidFileName =>
+      l10n.notionImportWarnInvalidFileName,
+    NotionMarkdownWarningKind.fileNameIdentity =>
+      l10n.notionImportWarnFileNameIdentity,
+    NotionMarkdownWarningKind.pastedIdentity =>
+      l10n.notionImportWarnPastedIdentity,
+    NotionMarkdownWarningKind.propertyIgnored =>
+      l10n.notionImportWarnPropertyIgnored(detail),
+    NotionMarkdownWarningKind.publishedUnrecognized =>
+      l10n.notionImportWarnPublished,
+    NotionMarkdownWarningKind.dateUnrecognized => l10n.notionImportWarnDate,
+    NotionMarkdownWarningKind.relationUnrecognized =>
+      l10n.notionImportWarnRelationUnrecognized(detail),
+    NotionMarkdownWarningKind.relationMissing =>
+      l10n.notionImportWarnRelationMissing(detail),
+    NotionMarkdownWarningKind.inlineImageDropped =>
+      l10n.notionImportWarnInlineImage,
+    NotionMarkdownWarningKind.relativeLinkDropped =>
+      l10n.notionImportWarnRelativeLink,
+    NotionMarkdownWarningKind.headingLowered => l10n.notionImportWarnHeading,
+    NotionMarkdownWarningKind.codeTooLong => l10n.notionImportWarnCode,
+    NotionMarkdownWarningKind.localImageDropped =>
+      l10n.notionImportWarnLocalImage,
+    NotionMarkdownWarningKind.signedImageDropped =>
+      l10n.notionImportWarnSignedImage,
+    NotionMarkdownWarningKind.listSimplified => l10n.notionImportWarnList,
+    NotionMarkdownWarningKind.tableFlattened => l10n.notionImportWarnTable,
+    NotionMarkdownWarningKind.otherFlattened => l10n.notionImportWarnOther,
+  };
+}
+
+/// A page's report issues in words, one line per kind with a count. The
+/// server's detail - a block type, a property - follows in small print; the
+/// detail of an expiring image is its signed address and is never shown.
+class _ReportIssues extends StatelessWidget {
+  const _ReportIssues({required this.issues});
+
+  final List<NotionImportIssue> issues;
+
+  static const _namedDetails = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    if (issues.isEmpty) return const SizedBox.shrink();
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final groups = <String, List<String>>{};
+    for (final issue in issues) {
+      final details = groups.putIfAbsent(issue.code, () => []);
+      final detail = issue.detail.trim();
+      if (issue.code != 'expiring-image-url' && detail.isNotEmpty) {
+        details.add(detail);
+      }
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final MapEntry(key: code, value: details) in groups.entries) ...[
+          Text(
+            _counted(l10n, code, issues.where((i) => i.code == code).length),
+          ),
+          if (details.isNotEmpty)
+            Text(
+              details.toSet().take(_namedDetails).join(', '),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+        ],
+      ],
+    );
+  }
+
+  static String _counted(AppLocalizations l10n, String code, int count) {
+    final message = notionIssueMessage(l10n, code);
+    return count > 1
+        ? '$message (${l10n.notionImportWarningCount(count)})'
+        : message;
+  }
+}
+
+/// The words for a server issue code; an unknown code is named, not hidden.
+@visibleForTesting
+String notionIssueMessage(AppLocalizations l10n, String code) => switch (code) {
+  'slug-derived' => l10n.notionImportIssueSlugDerived,
+  'empty-block-dropped' => l10n.notionImportIssueEmptyBlock,
+  'expiring-image-url' => l10n.notionImportIssueExpiringImage,
+  'featured-image-not-carried' => l10n.notionImportIssueFeaturedImage,
+  'hierarchy-not-carried' => l10n.notionImportIssueHierarchy,
+  'work-type-fallback' => l10n.notionImportIssueWorkTypeFallback,
+  'link-block-flattened' => l10n.notionImportIssueLinkBlock,
+  'equation-flattened' => l10n.notionImportIssueEquation,
+  'callout-flattened' => l10n.notionImportIssueCallout,
+  'toggle-flattened' => l10n.notionImportIssueToggle,
+  'checkbox-state-dropped' => l10n.notionImportIssueCheckbox,
+  'table-block-dropped' => l10n.notionImportIssueTable,
+  'unsupported-block' => l10n.notionImportIssueUnsupportedBlock,
+  'invalid-block-dropped' => l10n.notionImportIssueInvalidBlock,
+  'empty-title' => l10n.notionImportIssueEmptyTitle,
+  'empty-body' => l10n.notionImportIssueEmptyBody,
+  'image-copy-failed' => l10n.notionImportIssueImageCopyFailed,
+  'translation-locale-not-carried' => l10n.notionImportIssueTranslationLocale,
+  'work-type-not-carried' => l10n.notionImportIssueWorkType,
+  _ => l10n.notionImportIssueOther(code),
+};
