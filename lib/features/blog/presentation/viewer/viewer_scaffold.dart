@@ -14,6 +14,8 @@ import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/features/blog/presentation/read_aloud/structured_article_nodes.dart';
 import 'package:belog/features/blog/presentation/viewer/reader_app_bar.dart';
+import 'package:belog/features/blog/presentation/viewer/reader_text_size_controller.dart';
+import 'package:belog/features/blog/presentation/viewer/reader_text_size_sheet.dart';
 import 'package:belog/features/blog/presentation/viewer/resume_reading_slip.dart';
 import 'package:belog/features/blog/presentation/viewer/viewer_article_body.dart';
 import 'package:belog/router/read_aloud_route_observers.dart';
@@ -37,7 +39,12 @@ class ViewerScaffold extends StatefulWidget {
     required this.readAloudRouteObserver,
     this.resumeAt,
     this.onProgress,
+    this.textSize,
   });
+
+  /// The reader's text size, shared by every article; null hides the
+  /// text-size button and sets the text at the standard size.
+  final ReaderTextSizeController? textSize;
 
   /// Where the reader left this article last time, as a share of its text;
   /// the page offers to go back there. Null when there is nothing to offer.
@@ -110,6 +117,25 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    widget.textSize?.addListener(_onTextSizeChanged);
+  }
+
+  /// Reflowing the text at a new size moves every line under the reader's
+  /// eye: keep the same share of the text behind them, so they are still at
+  /// the paragraph they were reading.
+  void _onTextSizeChanged() {
+    final kept = _progress();
+    setState(() {});
+    if (kept == null || kept == 0) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final span = _textSpan();
+      if (span == null) return;
+      final position = _scrollController.position;
+      _scrollController.jumpTo(
+        (kept * span).clamp(position.minScrollExtent, position.maxScrollExtent),
+      );
+    });
   }
 
   @override
@@ -158,6 +184,10 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
   @override
   void didUpdateWidget(covariant ViewerScaffold oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.textSize != widget.textSize) {
+      oldWidget.textSize?.removeListener(_onTextSizeChanged);
+      widget.textSize?.addListener(_onTextSizeChanged);
+    }
     if (oldWidget.blog.id != blog.id ||
         oldWidget.blog.title != blog.title ||
         oldWidget.blog.content != blog.content ||
@@ -307,6 +337,7 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
 
   @override
   void dispose() {
+    widget.textSize?.removeListener(_onTextSizeChanged);
     _scrollRequest++;
     _reader?.removeListener(_onReaderChanged);
     for (final observer in readAloudBranchObservers) {
@@ -490,8 +521,12 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
 
   @override
   Widget build(BuildContext context) {
+    final textSize = widget.textSize;
     return Scaffold(
       appBar: ReaderAppBar(
+        onTextSize: textSize == null
+            ? null
+            : () => ReaderTextSizeSheet.show(context, textSize),
         blog: blog,
         onRequestLogin: onRequestLogin,
         runningHead: _runningHead,
@@ -518,6 +553,9 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
                 titleKey: _titleKey,
                 controlsKey: _controlsKey,
                 endKey: _endKey,
+                textFactor: textSize == null
+                    ? 1
+                    : readerTextFactor(textSize.value),
               ),
             ),
           ),

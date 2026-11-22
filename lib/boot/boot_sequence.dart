@@ -6,6 +6,7 @@ import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/features/auth/auth_session_sync.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/blog/data/publish/publish_queue_service.dart';
+import 'package:belog/features/blog/presentation/viewer/reader_text_size_controller.dart';
 import 'package:belog/init_dependencies.dart';
 
 /// How long the cold-start session restore may hold back the app.
@@ -75,4 +76,9 @@ Future<void> runBootSequence() async {
   // account is signed in, and it is not awaited: boot must not wait for the
   // network.
   unawaited(serviceLocator<PublishQueueService>().start());
+
+  // The article text size: one small local read, started now so the first
+  // article opens at the reader's size. Not awaited - until it lands an
+  // article simply opens at the standard size.
+  unawaited(serviceLocator<ReaderTextSizeController>().load());
 }

@@ -152,6 +152,15 @@ abstract final class NoWaveTypeScale {
   /// 40: a counted figure in a summary (the reading-history totals), in the
   /// display face with tabular figures.
   static const figure = 40.0;
+
+  /// 18: the article body at the reader's standard text size - the step the
+  /// rest of [readerBodySizes] is measured from.
+  static const articleBody = 18.0;
+
+  /// The article body at each of the reader's text-size steps, smallest
+  /// first. Everything inside the text - headings, code, captions - scales
+  /// by the same ratio to [articleBody], on top of the system text size.
+  static const readerBodySizes = <double>[16, 18, 20, 22, 24];
 }
 
 /// Line weights.

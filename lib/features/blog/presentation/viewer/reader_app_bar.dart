@@ -12,8 +12,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-/// The article reader's app bar: share (only when a canonical URL exists) and
-/// the save/like toggle.
+/// The article reader's app bar: text size (when the page can change it),
+/// share (only when a canonical URL exists) and the save/like toggle.
 ///
 /// Both actions need only the route-scoped `BlogLikedBloc` and `AppUserCubit`,
 /// so this widget reads them from the context instead of taking callbacks.
@@ -24,6 +24,7 @@ class ReaderAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onRequestLogin,
     this.runningHead,
     this.onRunningHeadTap,
+    this.onTextSize,
   });
 
   final Blog blog;
@@ -37,6 +38,9 @@ class ReaderAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   /// Usually: back to the top of the article.
   final VoidCallback? onRunningHeadTap;
+
+  /// Opens the text-size sheet; no button without it.
+  final VoidCallback? onTextSize;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -73,6 +77,13 @@ class ReaderAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       actions: [
+        if (onTextSize case final onTextSize?)
+          IconButton(
+            key: const ValueKey('reader-text-size'),
+            tooltip: context.l10n.readerTextSizeTooltip,
+            icon: const Icon(Icons.text_fields),
+            onPressed: onTextSize,
+          ),
         // Only share a canonical URL when WEB_BASE_URL is configured, and
         // never for the viewer's own draft: the public web page would not
         // exist for the recipient (issue #21, "don't share drafts").

@@ -16,6 +16,7 @@ import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_viewer/blog_viewer_cubit.dart';
+import 'package:belog/features/blog/presentation/viewer/reader_text_size_controller.dart';
 import 'package:belog/features/blog/presentation/viewer/viewer_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -47,6 +48,10 @@ class BlogViewerPage extends StatefulWidget {
   final ReadAloudPreferences? readAloudPreferences;
   final RouteObserver<PageRoute<dynamic>>? readAloudRouteObserver;
 
+  /// The reader's text size; injectable for tests, resolved from the service
+  /// locator when absent.
+  final ReaderTextSizeController? textSize;
+
   const BlogViewerPage({
     super.key,
     required this.blogId,
@@ -56,6 +61,7 @@ class BlogViewerPage extends StatefulWidget {
     this.speechCoordinator,
     this.readAloudPreferences,
     this.readAloudRouteObserver,
+    this.textSize,
   });
 
   @override
@@ -288,6 +294,11 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
             readAloudRouteObserver: widget.readAloudRouteObserver,
             resumeAt: _resumeAt,
             onProgress: _saveProgress,
+            textSize:
+                widget.textSize ??
+                (GetIt.instance.isRegistered<ReaderTextSizeController>()
+                    ? GetIt.instance<ReaderTextSizeController>()
+                    : null),
           );
         }
         if (state is BlogViewerFailure) {

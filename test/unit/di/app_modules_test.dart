@@ -33,6 +33,7 @@ import 'package:belog/features/blog/data/publish/publish_queue_service.dart';
 import 'package:belog/features/blog/domain/notion_export/notion_export.dart';
 import 'package:belog/features/blog/domain/notion_import/notion_import.dart';
 import 'package:belog/features/blog/domain/read_aloud/read_aloud_settings.dart';
+import 'package:belog/features/blog/domain/reader/reader_text_size.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/repositories/category_repository.dart';
@@ -80,6 +81,7 @@ import 'package:belog/features/blog/presentation/blocs/publish_queue/publish_que
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
+import 'package:belog/features/blog/presentation/viewer/reader_text_size_controller.dart';
 import 'package:belog/features/messages/domain/repositories/message_repository.dart';
 import 'package:belog/features/messages/domain/services/message_participant_names.dart';
 import 'package:belog/features/messages/presentation/bloc/message_inbox_cubit.dart';
@@ -211,6 +213,8 @@ const Map<String, _Row<Object>> _resolutions = {
   'PublishQueueService': _Row<PublishQueueService>(),
   'PublishQueueStore': _Row<PublishQueueStore>(),
   'ReadAloudPreferences': _Row<ReadAloudPreferences>(),
+  'ReaderTextSizeController': _Row<ReaderTextSizeController>(),
+  'ReaderTextSizeStore': _Row<ReaderTextSizeStore>(),
   'ReadingHistoryStore': _Row<ReadingHistoryStore>(),
   'RecordArticleView': _Row<RecordArticleView>(),
   'RecycleBinBloc': _Row<RecycleBinBloc>(),
