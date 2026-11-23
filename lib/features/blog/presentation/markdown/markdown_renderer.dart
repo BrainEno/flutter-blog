@@ -29,6 +29,7 @@ class MarkdownRenderer {
     required this.readAloudDocument,
     required this.readAloudController,
     required this.readAloudBlockKeys,
+    this.headingKeys,
   });
 
   /// The parsed document, in render order.
@@ -45,6 +46,10 @@ class MarkdownRenderer {
   final ReadAloudDocument? readAloudDocument;
   final ReadAloudController? readAloudController;
   final List<GlobalKey>? readAloudBlockKeys;
+
+  /// Keys for the body's headings, so the reader's contents list can find
+  /// them; keyed by node identity.
+  final Map<md.Node, GlobalKey>? headingKeys;
 
   /// Renders every block of [nodes] as one column.
   Widget build(BuildContext context) {
@@ -67,13 +72,17 @@ class MarkdownRenderer {
       case 'h4':
       case 'h5':
       case 'h6':
-        return Padding(
+        final heading = Padding(
           padding: const EdgeInsets.only(
             top: NoWaveSpacing.large,
             bottom: NoWaveSpacing.small,
           ),
           child: _heading(context, node),
         );
+        // The key takes in the space above the heading, so a jump to it
+        // leaves that breath under the app bar.
+        final key = headingKeys?[node];
+        return key == null ? heading : KeyedSubtree(key: key, child: heading);
       case 'p':
         return _paragraph(context, node.children ?? const [], owner: node);
       case 'blockquote':

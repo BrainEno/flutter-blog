@@ -36,7 +36,7 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
 | 互动 | 点赞（乐观更新 + 服务端校准）、收藏列表、纯文本嵌套评论（幂等发送，未发出的评论按账号留在本机） | [评论线程](docs/comments.md) |
 | 作者 | 公开作者主页、关注 / 取关、粉丝与关注列表、作者目录与搜索 | [功能清单](docs/features.md) |
 | 消息 | 通知收件箱与私信，打开时读取、不轮询，按账号围栏 | [通知](docs/notifications.md)、[私信](docs/messages.md) |
-| 阅读 | 设备本地阅读历史（列表标出「读到 42%」/「已读完」）、系统朗读、分享到系统面板、`nowave://article/<slug>` 深链 | [分享与深链](docs/deep-links.md)、[朗读](docs/read-aloud.md) |
+| 阅读 | 设备本地阅读历史（列表标出「读到 42%」/「已读完」）、长文目录、系统朗读、分享到系统面板、`nowave://article/<slug>` 深链 | [分享与深链](docs/deep-links.md)、[朗读](docs/read-aloud.md) |
 | 草稿与发布 | 按后端 / 账号 / 文章隔离的本地草稿与 2 秒防抖自动保存；离线发布队列带幂等键重试 | [发布队列](docs/publish-queue.md)、[未归属旧草稿](docs/unclaimed-drafts.md) |
 | Notion bundle | 编辑器可预览后导入、或把已保存内容导出为经 no-wave 后端处理的 Notion bundle | 见下文「Notion 的范围」 |
 | 数据导出 | 资料与最多 100 篇简体中文已发布作品的部分文字导出为 JSON，**不是完整备份** | [功能清单](docs/features.md) |

@@ -28,6 +28,10 @@ class MarkdownBody extends StatefulWidget {
   final ReadAloudController? readAloudController;
   final List<GlobalKey>? readAloudBlockKeys;
 
+  /// Keys for the headings of [readAloudDocument]'s nodes, for the reader's
+  /// contents list.
+  final Map<md.Node, GlobalKey>? headingKeys;
+
   const MarkdownBody({
     super.key,
     required this.markdown,
@@ -36,6 +40,7 @@ class MarkdownBody extends StatefulWidget {
     this.readAloudDocument,
     this.readAloudController,
     this.readAloudBlockKeys,
+    this.headingKeys,
   });
 
   @override
@@ -97,6 +102,7 @@ class _MarkdownBodyState extends State<MarkdownBody> {
       readAloudDocument: readAloudDocument,
       readAloudController: readAloudController,
       readAloudBlockKeys: readAloudBlockKeys,
+      headingKeys: widget.headingKeys,
     ).build(context);
   }
 

@@ -13,6 +13,8 @@ import 'package:belog/features/blog/presentation/read_aloud/read_aloud_dock.dart
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_document.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/features/blog/presentation/read_aloud/structured_article_nodes.dart';
+import 'package:belog/features/blog/presentation/viewer/article_outline.dart';
+import 'package:belog/features/blog/presentation/viewer/article_outline_sheet.dart';
 import 'package:belog/features/blog/presentation/viewer/reader_app_bar.dart';
 import 'package:belog/features/blog/presentation/viewer/reader_text_size_controller.dart';
 import 'package:belog/features/blog/presentation/viewer/reader_text_size_sheet.dart';
@@ -21,6 +23,7 @@ import 'package:belog/features/blog/presentation/viewer/viewer_article_body.dart
 import 'package:belog/router/read_aloud_route_observers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:markdown/markdown.dart' as md;
 
 /// The loaded article: read-aloud wiring, follow-scroll, and the reading
 /// surface.
@@ -106,6 +109,11 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
   ReadAloudDocument? _document;
   ReadAloudController? _reader;
   List<GlobalKey> _blockKeys = const [];
+
+  /// The article's headings, and a key on each so the contents list can go
+  /// to it; empty when there are too few headings to list.
+  List<OutlineEntry> _outline = const [];
+  Map<md.Node, GlobalKey> _headingKeys = const {};
   int _scrollRequest = 0;
   bool _prepared = false;
 
@@ -164,6 +172,12 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
         : ReadAloudDocument.parse(blog.title, blog.content);
     // Rendering does not depend on whether a speech engine is available.
     _document = document;
+    final outline = ArticleOutline.of(document.nodes);
+    _outline = outline.worthShowing ? outline.entries : const [];
+    _headingKeys = Map.identity()
+      ..addEntries([
+        for (final entry in _outline) MapEntry(entry.node, GlobalKey()),
+      ]);
     final coordinator = widget.speechCoordinator;
     final preferences = widget.readAloudPreferences;
     if (coordinator == null || preferences == null) return;
@@ -411,6 +425,61 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
     }
   }
 
+  /// Where [key]'s widget starts, as a scroll offset; null before layout.
+  double? _offsetOf(GlobalKey? key) {
+    final box = key?.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.attached) return null;
+    return RenderAbstractViewport.maybeOf(
+      box,
+    )?.getOffsetToReveal(box, 0).offset;
+  }
+
+  /// The section being read: the last heading that has reached the upper
+  /// third of the screen. Null above the first one.
+  int? _currentSection() {
+    if (!_scrollController.hasClients) return null;
+    final position = _scrollController.position;
+    final line = position.pixels + position.viewportDimension / 3;
+    int? current;
+    for (final (index, entry) in _outline.indexed) {
+      final offset = _offsetOf(_headingKeys[entry.node]);
+      if (offset == null || offset > line) break;
+      current = index;
+    }
+    return current;
+  }
+
+  /// Opens the contents list and goes to the chosen heading: a glide down
+  /// (or up) the same page, a jump when less motion is asked for. Choosing
+  /// a place is the reader taking the scroll, so the voice lets go and the
+  /// offer to pick up an old place is withdrawn.
+  Future<void> _openOutline() async {
+    final chosen = await ArticleOutlineSheet.show(
+      context,
+      entries: _outline,
+      current: _currentSection(),
+    );
+    if (!mounted || chosen == null || chosen >= _outline.length) return;
+    final offset = _offsetOf(_headingKeys[_outline[chosen].node]);
+    if (offset == null || !_scrollController.hasClients) return;
+    _letGo();
+    _resumeDone.value = true;
+    final position = _scrollController.position;
+    final target = offset.clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if (NoWaveMotionPolicy.reducesMotion(context)) {
+      _scrollController.jumpTo(target);
+    } else {
+      await _scrollController.animateTo(
+        target,
+        duration: NoWaveMotion.normal,
+        curve: NoWaveMotionPolicy.travel,
+      );
+    }
+  }
+
   /// Shows the running head once the title has passed under the app bar.
   /// Only the article's own scroll view counts, not a code block scrolling
   /// sideways inside it.
@@ -524,6 +593,7 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
     final textSize = widget.textSize;
     return Scaffold(
       appBar: ReaderAppBar(
+        onOutline: _outline.isEmpty ? null : () => unawaited(_openOutline()),
         onTextSize: textSize == null
             ? null
             : () => ReaderTextSizeSheet.show(context, textSize),
@@ -553,6 +623,7 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
                 titleKey: _titleKey,
                 controlsKey: _controlsKey,
                 endKey: _endKey,
+                headingKeys: _headingKeys,
                 textFactor: textSize == null
                     ? 1
                     : readerTextFactor(textSize.value),
