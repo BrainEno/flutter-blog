@@ -378,10 +378,16 @@ List<String> _copyFindings(
 /// guideline compare a glyph's own edge shades. With the test font every
 /// glyph is a solid em box - the widest a word can get, and two clean
 /// colours for contrast - so that run checks the rest.
+///
+/// [fullSizeAbove] names controls that already passed the tap-target check
+/// before the page scrolled: after scrolling one may be half hidden under
+/// the app bar, which is the scroll, not the control (the phones' a11y check
+/// skips elements cut by a scroll edge the same way).
 Future<List<String>> _audit(
   WidgetTester tester,
   Locale locale, {
   required bool bundledFonts,
+  Set<String> fullSizeAbove = const {},
 }) async {
   final findings = <String>[
     ..._copyFindings(locale, cut: bundledFonts, untranslated: !bundledFonts),
@@ -399,7 +405,12 @@ Future<List<String>> _audit(
       final lines = (result.reason ?? '')
           .split('\n')
           .map(_compact)
-          .where((line) => line.isNotEmpty);
+          .where((line) => line.isNotEmpty)
+          .where(
+            (line) =>
+                guideline != androidTapTargetGuideline ||
+                !fullSizeAbove.any((label) => line.contains('label: "$label"')),
+          );
       findings.addAll([
         for (final line in lines) '${guideline.description} | $line',
       ]);
@@ -407,6 +418,12 @@ Future<List<String>> _audit(
   }
   return findings;
 }
+
+/// The names of the controls on screen that take a tap.
+Set<String> _tapTargetLabels() => {
+  for (final node in find.semantics.byAction(SemanticsAction.tap).evaluate())
+    if (node.label.isNotEmpty) node.label,
+};
 
 /// Scrolls the page's longest vertical list to its end, the way an agent
 /// swipes down a screen before leaving it. False when nothing scrolls.
@@ -510,20 +527,23 @@ void definePersonaSweep({required bool bundledFonts}) {
             await act(tester, lookupAppLocalizations(persona.locale));
           }
 
-          final findings = [
-            for (final finding in await _audit(
-              tester,
-              persona.locale,
-              bundledFonts: bundledFonts,
-            ))
-              '[top] $finding',
-          ];
+          final targets = _tapTargetLabels();
+          final top = await _audit(
+            tester,
+            persona.locale,
+            bundledFonts: bundledFonts,
+          );
+          final findings = [for (final finding in top) '[top] $finding'];
           if (act == null && await _scrollToEnd(tester)) {
             findings.addAll([
               for (final finding in await _audit(
                 tester,
                 persona.locale,
                 bundledFonts: bundledFonts,
+                fullSizeAbove: {
+                  for (final label in targets)
+                    if (!top.any((f) => f.contains('label: "$label"'))) label,
+                },
               ))
                 '[end] $finding',
             ]);
