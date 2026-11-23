@@ -56,16 +56,13 @@ class _FakeDraftStore implements BlogDraftStore {
 }
 
 class _FakeCategoryRepository implements CategoryRepository {
-  _FakeCategoryRepository(this.categories, {this.failure});
+  _FakeCategoryRepository(this.categories);
 
   final List<CategoryRef> categories;
-  final Failure? failure;
 
   @override
-  Future<Either<Failure, List<CategoryRef>>> listCategories() async {
-    final failure = this.failure;
-    return failure == null ? right(categories) : left(failure);
-  }
+  Future<Either<Failure, List<CategoryRef>>> listCategories() async =>
+      right(categories);
 
   @override
   Future<Either<Failure, CategoryRef?>> getCategory(String slug) async =>
