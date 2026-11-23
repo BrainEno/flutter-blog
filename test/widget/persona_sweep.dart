@@ -35,7 +35,14 @@ import 'router_test.dart' show Harness, sampleUser;
 /// - every tappable control is at least 48 x 48 (the app's own tap target,
 ///   stricter than iOS's 44 pt);
 /// - every tappable control has a name a screen reader can say;
-/// - text meets the WCAG contrast minimum against what is painted under it.
+/// - text meets the WCAG contrast minimum against what is painted under it;
+/// - no one-line label, button or name is cut short;
+/// - the English interface shows no Chinese copy.
+///
+/// It runs twice: persona_sweep_test.dart with the test font (layout at the
+/// widest a word can be, targets, names, contrast, untranslated copy) and
+/// persona_sweep_fonts_test.dart with the bundled faces (layout and cut text
+/// at real glyph widths).
 ///
 /// A failure lists every finding of that screen, so one CI run reads like an
 /// agent's report. Run with `--dart-define=PERSONA_SWEEP_REPORT=true` to

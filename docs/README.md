@@ -74,6 +74,8 @@
 - [Agent 开发流程](agent-development.md) 和 [AGENTS.md](../AGENTS.md)：工程约束、
   验证与 PR 证据；会话平台若限定工作分支，应遵守该更高优先级的约束。
 - [CI 可观测性](ci-observability.md)：失败证据与构建诊断。
+- [人设巡检与 AI 真机测试员](agent-testers.md)：mobile-agent-testers 式的 6 人设 ×
+  17 界面巡检（布局、点击区域、名称、对比度、截断、漏翻），以及手动跑真机代理的步骤。
 - [路线图](roadmap.md)：已落地阶段与重点修复（开放工作以 issue 列表为准）。
 - [代码健壮性审查](code-audit.md)：指定基线的已修复项与剩余风险。
 - [未引用资源来源](assets-source/README.md)：保留在仓库、但不再随应用打包的历史图片。
