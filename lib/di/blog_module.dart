@@ -10,6 +10,7 @@ import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart'
 import 'package:belog/features/blog/data/views/nowave_article_view_recorder.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
+import 'package:belog/features/blog/domain/usecase/upload_article_image.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/get_articles_by_tag.dart';
 import 'package:belog/features/blog/domain/usecase/get_author_articles.dart';
@@ -93,6 +94,7 @@ void registerBlogModule(GetIt locator, DependencyContext context) {
     ..registerFactory(() => IsBlogLiked(locator<BlogRepository>()))
     ..registerFactory(() => GetUserLikedBlogs(locator<BlogRepository>()))
     ..registerFactory(() => UpdateBlog(locator<BlogRepository>()))
+    ..registerFactory(() => UploadArticleImage(locator<BlogRepository>()))
     ..registerFactory(() => DeleteBlog(locator<BlogRepository>()))
     ..registerFactory(() => GetBlogsByPoster(locator<BlogRepository>()))
     ..registerFactory(() => GetAuthorArticles(locator<BlogRepository>()))

@@ -488,7 +488,9 @@ class BlogRepositoryImpl implements BlogRepository {
           ),
         );
       }
+      final editable = blogToUpdate.editableBody;
       if (!blogToUpdate.plainEditorCompatible ||
+          editable == null ||
           blogToUpdate.serverSummary == null) {
         // Reject before uploading a cover or mutating anything: flattening a
         // richer server document into v0 paragraphs would overwrite content.
@@ -503,9 +505,11 @@ class BlogRepositoryImpl implements BlogRepository {
       // An empty URL means "no new cover": the fetched article keeps its own.
       final coverUrl =
           uploadedCoverUrl ?? await _uploadCoverBytes(image, sessionFence);
-      if (coverUrl.isNotEmpty) {
-        blogToUpdate = blogToUpdate.copyWith(imageUrl: coverUrl);
-      }
+      // The kept cover is the editor's, not merely the first image: a
+      // structured article's later images stay in the body where they are.
+      blogToUpdate = blogToUpdate.copyWith(
+        imageUrl: coverUrl.isNotEmpty ? coverUrl : editable.coverUrl,
+      );
       blogToUpdate = blogToUpdate.copyWith(
         title: title,
         content: content,

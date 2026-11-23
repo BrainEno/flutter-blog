@@ -4,7 +4,19 @@ import 'package:belog/core/theme/app_palette.dart';
 import 'package:flutter/material.dart';
 
 /// The popup menu entries of [EditorAppBar].
-enum EditorMenuAction { publish, saveDraft, importNotion, exportNotion, cancel }
+enum EditorMenuAction {
+  publish,
+  saveDraft,
+  focusMode,
+  importNotion,
+  exportNotion,
+  cancel,
+}
+
+/// Below this many logical pixels per unit of text scale, the focus-mode
+/// switch moves from the bar into the overflow menu so the publish button
+/// keeps its full label (a 320pt phone at 200% text is 160).
+const double _focusSwitchInBarMinWidth = 280;
 
 /// The editor's app bar: publish, save draft, and cancel when editing.
 ///
@@ -19,6 +31,8 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onCancel,
     required this.onImportNotion,
     this.onExportNotion,
+    this.focusMode = false,
+    this.onToggleFocusMode,
   });
 
   /// True when an existing article is being edited, false for a new one.
@@ -30,6 +44,10 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onImportNotion;
   final VoidCallback? onExportNotion;
 
+  /// Focus mode hides the cover, tags and categories; null hides the switch.
+  final bool focusMode;
+  final VoidCallback? onToggleFocusMode;
+
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
@@ -38,6 +56,9 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final background = isDarkMode ? AppPalette.ink : AppPalette.paper;
     final foreground = isDarkMode ? AppPalette.paper : AppPalette.ink;
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    final roomy =
+        MediaQuery.sizeOf(context).width / scale >= _focusSwitchInBarMinWidth;
     return AppBar(
       backgroundColor: background,
       elevation: 0,
@@ -49,6 +70,17 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
         style: TextStyle(color: foreground, fontWeight: FontWeight.bold),
       ),
       actions: [
+        if (onToggleFocusMode case final VoidCallback toggle when roomy)
+          IconButton(
+            key: const Key('editor-focus-mode'),
+            tooltip: focusMode
+                ? context.l10n.editorFocusModeExit
+                : context.l10n.editorFocusModeEnter,
+            isSelected: focusMode,
+            icon: const Icon(Icons.fullscreen),
+            selectedIcon: const Icon(Icons.fullscreen_exit),
+            onPressed: toggle,
+          ),
         // A square, full-weight primary action - the previous pill was the
         // last rounded button in the app. Its min size and padding now come
         // from the design tokens, so it sits in the 56pt toolbar like every
@@ -57,7 +89,7 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
         PopupMenuButton<EditorMenuAction>(
           icon: const Icon(Icons.more_vert),
           onSelected: _onSelected,
-          itemBuilder: _menuItems,
+          itemBuilder: (context) => _menuItems(context, focusInMenu: !roomy),
         ),
       ],
     );
@@ -69,6 +101,8 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
         onPublish();
       case EditorMenuAction.saveDraft:
         onSaveDraft();
+      case EditorMenuAction.focusMode:
+        onToggleFocusMode?.call();
       case EditorMenuAction.importNotion:
         onImportNotion();
       case EditorMenuAction.exportNotion:
@@ -78,7 +112,10 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
     }
   }
 
-  List<PopupMenuEntry<EditorMenuAction>> _menuItems(BuildContext context) {
+  List<PopupMenuEntry<EditorMenuAction>> _menuItems(
+    BuildContext context, {
+    required bool focusInMenu,
+  }) {
     return [
       PopupMenuItem<EditorMenuAction>(
         value: EditorMenuAction.publish,
@@ -94,6 +131,18 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
         value: EditorMenuAction.saveDraft,
         child: Center(child: Text(context.l10n.saveDraft)),
       ),
+      if (focusInMenu && onToggleFocusMode != null)
+        PopupMenuItem<EditorMenuAction>(
+          key: const Key('editor-focus-mode-menu'),
+          value: EditorMenuAction.focusMode,
+          child: Center(
+            child: Text(
+              focusMode
+                  ? context.l10n.editorFocusModeExit
+                  : context.l10n.editorFocusModeEnter,
+            ),
+          ),
+        ),
       PopupMenuItem<EditorMenuAction>(
         value: EditorMenuAction.importNotion,
         child: Center(child: Text(context.l10n.notionImportTitle)),

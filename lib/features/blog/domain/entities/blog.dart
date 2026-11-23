@@ -1,3 +1,4 @@
+import 'package:belog/features/blog/domain/authoring/article_markdown.dart';
 import 'package:belog/features/blog/domain/entities/article_document.dart';
 import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
@@ -41,6 +42,17 @@ class Blog {
   /// Structured server body for read-only rendering, or null for the
   /// app's legacy Markdown format. An unsupported document is explicit.
   final ArticleDocument? document;
+
+  /// The body as the traditional editor edits it, or null when the server
+  /// document cannot be shown as editable text without losing anything.
+  ///
+  /// A legacy body (no [document]) is already the editor's Markdown, with the
+  /// cover beside it. A structured document is rendered to the same dialect
+  /// and only offered when parsing it back gives the identical blocks.
+  late final EditableArticleBody? editableBody = switch (document) {
+    null => EditableArticleBody(markdown: content, coverUrl: imageUrl),
+    final ArticleDocument structured => editableBodyOf(structured),
+  };
 
   final String posterId;
   final String imageUrl;

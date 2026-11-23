@@ -47,6 +47,7 @@ import 'package:belog/features/blog/domain/repositories/structured_edition_reade
 import 'package:belog/features/blog/domain/repositories/structured_recovery_catalog.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
+import 'package:belog/features/blog/domain/usecase/upload_article_image.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/get_articles_by_category.dart';
 import 'package:belog/features/blog/domain/usecase/get_articles_by_tag.dart';
@@ -240,6 +241,7 @@ const Map<String, _Row<Object>> _resolutions = {
   'ToggleLikeBlog': _Row<ToggleLikeBlog>(),
   'UnfollowAuthor': _Row<UnfollowAuthor>(),
   'UpdateBlog': _Row<UpdateBlog>(),
+  'UploadArticleImage': _Row<UploadArticleImage>(),
   'UploadBlog': _Row<UploadBlog>(),
   'UserEditBloc': _Row<UserEditBloc>(),
   'UserLogin': _Row<UserLogin>(),

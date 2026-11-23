@@ -52,7 +52,7 @@ void main() {
     body.dispose();
   });
 
-  EditorForm form() => EditorForm(
+  EditorForm form({bool focusMode = false, FocusNode? bodyFocus}) => EditorForm(
     formKey: formKey,
     titleController: title,
     contentController: body,
@@ -71,6 +71,8 @@ void main() {
     categoriesFailed: false,
     onCategoriesChanged: (_) {},
     onRetryCategories: () {},
+    focusMode: focusMode,
+    bodyFocusNode: bodyFocus,
   );
 
   Future<void> render(
@@ -79,6 +81,9 @@ void main() {
     bool notionApplied = false,
     bool editing = false,
     bool canExport = false,
+    bool focusMode = false,
+    VoidCallback? onToggleFocusMode,
+    FocusNode? bodyFocus,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -91,7 +96,13 @@ void main() {
             isCurrentEditor: current,
             notionApplyStarted: notionApplied,
             isEditing: editing,
-            form: current ? form() : null,
+            form: current
+                ? form(focusMode: focusMode, bodyFocus: bodyFocus)
+                : null,
+            focusMode: focusMode,
+            onToggleFocusMode: onToggleFocusMode,
+            bodyFocusNode: bodyFocus,
+            toolbar: bodyFocus == null ? null : const Text('format tools'),
             onPublish: () => publishes++,
             onSaveDraft: () => saves++,
             onCancel: () => cancels++,
@@ -165,5 +176,93 @@ void main() {
     final appBar = tester.widget<EditorAppBar>(find.byType(EditorAppBar));
     expect(appBar.isEditing, isFalse);
     expect(appBar.onExportNotion, isNull);
+  });
+
+  testWidgets('the format toolbar shows only while the body has focus', (
+    tester,
+  ) async {
+    final bodyFocus = FocusNode();
+    addTearDown(bodyFocus.dispose);
+    await render(tester, bodyFocus: bodyFocus);
+    expect(find.text('format tools'), findsNothing);
+
+    await tester.showKeyboard(find.byKey(const Key('editor-body-field')));
+    await tester.pump();
+    expect(bodyFocus.hasFocus, isTrue);
+    expect(find.text('format tools'), findsOneWidget);
+
+    await tester.showKeyboard(find.byKey(const Key('editor-title-field')));
+    await tester.pump();
+    expect(find.text('format tools'), findsNothing);
+  });
+
+  testWidgets('focus mode keeps only the writing on screen', (tester) async {
+    var toggles = 0;
+    await render(tester, onToggleFocusMode: () => toggles++);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.text(l10n.editorCoverChooseFromLibrary), findsOneWidget);
+    await tester.tap(find.byKey(const Key('editor-focus-mode')));
+    expect(toggles, 1);
+
+    await render(tester, focusMode: true, onToggleFocusMode: () {});
+    expect(find.text(l10n.editorCoverChooseFromLibrary), findsNothing);
+    expect(find.text('private title'), findsOneWidget);
+    expect(find.text('private body'), findsOneWidget);
+    expect(find.byTooltip(l10n.editorFocusModeExit), findsOneWidget);
+  });
+
+  testWidgets('a narrow, large-text screen keeps focus mode in the menu', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var toggles = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          appBar: EditorAppBar(
+            isEditing: false,
+            onPublish: () {},
+            onSaveDraft: () {},
+            onImportNotion: () {},
+            onCancel: () {},
+            onToggleFocusMode: () => toggles++,
+          ),
+        ),
+      ),
+    );
+    expect(find.byKey(const Key('editor-focus-mode')), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('editor-focus-mode-menu')));
+    await tester.pumpAndSettle();
+    expect(toggles, 1);
+  });
+
+  testWidgets('without a toggle there is no focus mode switch', (tester) async {
+    await render(tester);
+    expect(find.byKey(const Key('editor-focus-mode')), findsNothing);
+  });
+
+  testWidgets('the body counts words as they are typed', (tester) async {
+    await render(tester);
+    expect(find.byKey(const Key('editor-word-count')), findsOneWidget);
+    // 'private body' is two words.
+    expect(find.textContaining('2 words'), findsOneWidget);
+    body.text = '';
+    await tester.pump();
+    expect(find.text('No words yet'), findsOneWidget);
   });
 }

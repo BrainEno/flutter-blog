@@ -90,6 +90,12 @@ class _ProfileView extends StatelessWidget {
     unawaited(badge.refresh());
   }
 
+  /// Opens the editor above the profile; a published article lands in
+  /// "my articles", which re-reads the list whenever it opens.
+  Future<void> _openEditor(BuildContext context) async {
+    await context.push<bool>(RoutePaths.profileEditor);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -190,6 +196,17 @@ class _ProfileView extends StatelessWidget {
                           forward: true,
                           onPressed: () =>
                               context.push(RoutePaths.profileAuthor(user.id)),
+                        ),
+                        const SizedBox(height: NoWaveSpacing.medium),
+                        // Writing is what an account is for here, so it is
+                        // the page's one primary action rather than a row
+                        // buried among the settings.
+                        NoWaveButton(
+                          key: const Key('profile-write-article'),
+                          label: l10n.editorNewTitle,
+                          icon: Icons.edit_outlined,
+                          expand: true,
+                          onPressed: () => _openEditor(context),
                         ),
                         // Thirteen destinations in four groups, the ones
                         // with news first: a flat list made the reader scan

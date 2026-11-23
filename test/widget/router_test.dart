@@ -1166,6 +1166,9 @@ void main() {
     await harness.pump(tester);
     await tester.pumpAndSettle();
 
+    // The write button sits above the library rows; scroll to the row.
+    await tester.ensureVisible(find.text('我的文章'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('我的文章'));
     await tester.pumpAndSettle();
     expect(find.byType(UserBlogsPage), findsOneWidget);

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:belog/core/design/components/no_wave_refresh.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/widgets/no_wave_status.dart';
@@ -12,15 +10,6 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/article_editions.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
-import 'package:belog/core/nowave/nowave_session_fence.dart';
-import 'package:belog/core/nowave/session/session_identity.dart';
-import 'package:belog/features/blog/domain/editing/local_structured_session.dart';
-import 'package:belog/features/blog/domain/editing/structured_authoring_key.dart';
-import 'package:belog/features/blog/domain/usecase/open_structured_editing_session.dart';
-import 'package:belog/features/blog/domain/usecase/list_structured_recoveries.dart';
-import 'package:belog/features/blog/presentation/editor/structured_recovery_catalog_page.dart';
-import 'package:belog/features/blog/presentation/editor/structured_local_editor_page.dart';
-import 'package:get_it/get_it.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_grid_item.dart';
@@ -30,12 +19,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:belog/router/route_paths.dart';
 
+/// The author's own archive: every article and server draft, the way into the
+/// editor for a new piece (the write button) or an existing one (a tap), and
+/// deletion into the recycle bin (the row's delete button or a long press).
 class UserBlogsPage extends StatefulWidget {
-  const UserBlogsPage({super.key, this.structuredOpener, this.recoveryList});
-
-  /// Override only for tests; production uses the shared backend/session.
-  final OpenStructuredEditingSession? structuredOpener;
-  final ListStructuredRecoveries? recoveryList;
+  const UserBlogsPage({super.key});
 
   @override
   State<UserBlogsPage> createState() => _UserBlogsPageState();
@@ -49,7 +37,6 @@ class _UserBlogsPageState extends State<UserBlogsPage>
   /// what most readers of their own archive expect. Turning it on is how an
   /// author finds the `en` or legacy `zh-TW` edition they meant to edit.
   bool _allEditions = false;
-  bool _structuredOpen = false;
 
   @override
   void initState() {
@@ -91,99 +78,27 @@ class _UserBlogsPageState extends State<UserBlogsPage>
     _fetchUserBlogs();
   }
 
+  /// Opens an article in the editor. Every body the editor can carry without
+  /// losing anything opens there - plain text and structured documents alike;
+  /// anything richer (a quote with an attribution, say) is only editable on
+  /// the web, and the author is told so instead of losing it on save.
   Future<void> _editBlog(Blog blog) async {
-    if (blog.document != null) {
-      if (_structuredOpen) return;
-      final opener =
-          widget.structuredOpener ?? GetIt.I<OpenStructuredEditingSession>();
-      final userCubit = context.read<AppUserCubit>();
-      final user = userCubit.state;
-      final key = user is AppUserLoggedIn
-          ? structuredAuthoringKey(
-              blog: blog,
-              signedInUserId: user.user.id,
-              identity: opener.identity,
-            )
-          : null;
-      if (key == null) {
-        showSnackBar(context, context.l10n.structuredMissingIdentity);
-        return;
-      }
-      final fence = NowaveSessionFence(
-        userId: key.userId,
-        generation: opener.identity.sessionGeneration,
-      );
-      final identity = _AuthoringIdentity(
-        inner: opener.identity,
-        user: userCubit,
-        fence: fence,
-        routeCurrent: () => mounted,
-      );
-      final session = LocalStructuredSession(
-        key: key,
-        fence: fence,
-        opener: OpenStructuredEditingSession(
-          reader: opener.reader,
-          store: opener.store,
-          identity: identity,
-        ),
-      );
-      _structuredOpen = true;
-      try {
-        await Navigator.of(context).push<void>(
-          MaterialPageRoute<void>(
-            builder: (_) => StructuredLocalEditorPage(session: session),
-          ),
-        );
-      } finally {
-        _structuredOpen = false;
-        await identity.close();
-      }
-      // Local changes were not published and do not change the server list.
+    if (blog.editableBody == null) {
+      showSnackBar(context, context.l10n.articleNotEditableInApp);
       return;
     }
-    // The ordinary Markdown path and its publish safeguards stay unchanged.
+    await _openEditor(blog);
+  }
+
+  /// The editor answers `true` after a publish, so the list re-reads only
+  /// when something on the server changed.
+  Future<void> _openEditor([Blog? blog]) async {
     final changed = await context.push<bool>(
       RoutePaths.profileEditor,
       extra: blog,
     );
     if (changed == true && mounted) {
       _fetchUserBlogs();
-    }
-  }
-
-  Future<void> _openLocalRecoveries() async {
-    if (_structuredOpen) return;
-    final opener =
-        widget.structuredOpener ?? GetIt.I<OpenStructuredEditingSession>();
-    final list = widget.recoveryList ?? GetIt.I<ListStructuredRecoveries>();
-    final user = context.read<AppUserCubit>();
-    final state = user.state;
-    if (state is! AppUserLoggedIn ||
-        state.user.id != opener.identity.activeUserId ||
-        !(opener.identity.accessToken?.isNotEmpty ?? false) ||
-        !identical(list.identity, opener.identity)) {
-      showSnackBar(context, context.l10n.structuredMissingIdentity);
-      return;
-    }
-    final fence = NowaveSessionFence(
-      userId: state.user.id,
-      generation: opener.identity.sessionGeneration,
-    );
-    _structuredOpen = true;
-    try {
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(
-          builder: (_) => StructuredRecoveryCatalogPage(
-            list: list,
-            opener: opener,
-            user: user,
-            fence: fence,
-          ),
-        ),
-      );
-    } finally {
-      _structuredOpen = false;
     }
   }
 
@@ -224,16 +139,17 @@ class _UserBlogsPageState extends State<UserBlogsPage>
             onPressed: _toggleEditions,
           ),
           IconButton(
-            tooltip: context.l10n.structuredCatalogTitle,
-            icon: const Icon(Icons.offline_bolt_outlined),
-            onPressed: _openLocalRecoveries,
-          ),
-          IconButton(
             tooltip: context.l10n.recycleBinTooltip,
             icon: const Icon(Icons.delete_outline),
             onPressed: _openRecycleBin,
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        key: const Key('my-articles-write'),
+        onPressed: _openEditor,
+        icon: const Icon(Icons.edit_outlined),
+        label: Text(context.l10n.editorNewTitle),
       ),
       body: MultiBlocListener(
         listeners: [
@@ -370,7 +286,13 @@ class _UserBlogsPageState extends State<UserBlogsPage>
               ),
             ),
           SliverPadding(
-            padding: const EdgeInsets.all(NoWaveSpacing.page),
+            // Room under the last row for the write button floating over it.
+            padding: const EdgeInsets.fromLTRB(
+              NoWaveSpacing.page,
+              NoWaveSpacing.page,
+              NoWaveSpacing.page,
+              NoWaveSpacing.page + NoWaveSizes.tapTarget + NoWaveSpacing.large,
+            ),
             sliver: SliverGrid.builder(
               gridDelegate: blogGridDelegate(
                 context,
@@ -393,59 +315,5 @@ class _UserBlogsPageState extends State<UserBlogsPage>
         ],
       ),
     );
-  }
-}
-
-/// Immediately fences private editor state on either UI-account or network
-/// session changes. Once invalidated, switching back cannot resurrect it.
-class _AuthoringIdentity implements NowaveSessionIdentity {
-  _AuthoringIdentity({
-    required this.inner,
-    required this.user,
-    required this.fence,
-    required this.routeCurrent,
-  }) {
-    user.identityRevision.addListener(_changed);
-    _subscription = inner.identityChanges.listen((_) => _changed());
-  }
-  final NowaveSessionIdentity inner;
-  final AppUserCubit user;
-  final NowaveSessionFence fence;
-  final bool Function() routeCurrent;
-  final _events = StreamController<void>.broadcast(sync: true);
-  late final StreamSubscription<void> _subscription;
-  bool _invalid = false;
-
-  bool get _active {
-    final current = user.state;
-    if (!routeCurrent() ||
-        current is! AppUserLoggedIn ||
-        current.user.id != fence.userId ||
-        inner.activeUserId != fence.userId ||
-        inner.sessionGeneration != fence.generation ||
-        (inner.accessToken?.isEmpty ?? true)) {
-      _invalid = true;
-    }
-    return !_invalid;
-  }
-
-  void _changed() {
-    if (!_active) _invalid = true;
-    if (!_events.isClosed) _events.add(null);
-  }
-
-  @override
-  String? get activeUserId => _active ? inner.activeUserId : null;
-  @override
-  String? get accessToken => _active ? inner.accessToken : null;
-  @override
-  int get sessionGeneration => inner.sessionGeneration;
-  @override
-  Stream<void> get identityChanges => _events.stream;
-
-  Future<void> close() async {
-    user.identityRevision.removeListener(_changed);
-    await _subscription.cancel();
-    await _events.close();
   }
 }

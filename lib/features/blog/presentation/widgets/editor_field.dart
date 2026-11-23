@@ -2,6 +2,7 @@ import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart'; // Shorthand for AppLocalizations
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 enum BlogEditorContentType {
   title,
@@ -10,36 +11,129 @@ enum BlogEditorContentType {
   other,
 }
 
+/// One borderless writing field: the article title in the serif, or the body
+/// at the reader's size and line height, so a draft already reads like the
+/// published piece.
 class EditorField extends StatelessWidget {
-  final TextEditingController controller;
+  /// The field's name - read by screen readers and used in the "required"
+  /// message. [placeholder] is the friendlier text shown while it is empty.
   final String hintText;
-  final BlogEditorContentType contentType; // New: Content Type parameter
+  final String? placeholder;
+  final TextEditingController controller;
+  final BlogEditorContentType contentType;
   final TextStyle? hintStyle;
   final TextStyle? textStyle;
   final int? maxLines;
+  final int? minLines;
   final bool expands;
+
+  /// Grow with the text instead of scrolling inside a capped box. The page
+  /// around the field scrolls; a long article never hides in a small window.
+  final bool grows;
+
+  final FocusNode? focusNode;
+  final UndoHistoryController? undoController;
+  final List<TextInputFormatter>? inputFormatters;
+  final bool autofocus;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
 
   const EditorField({
     super.key,
     required this.controller,
     required this.hintText,
-    this.contentType =
-        BlogEditorContentType.body, // Default to body content type
+    this.placeholder,
+    this.contentType = BlogEditorContentType.body,
     this.hintStyle,
     this.textStyle,
     this.maxLines = 1,
+    this.minLines,
     this.expands = false,
+    this.grows = false,
+    this.focusNode,
+    this.undoController,
+    this.inputFormatters,
+    this.autofocus = false,
+    this.textInputAction,
+    this.onSubmitted,
   });
+
+  bool get _isTitle => contentType == BlogEditorContentType.title;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final contentPadding = _getContentPadding(contentType);
-    final fontSize = _getFontSize(contentType);
-    final fontWeight = _getFontWeight(contentType);
-    final hintFontSize = _getHintFontSize(contentType);
-    final hintFontWeight = _getHintFontWeight(contentType);
+    final fontSize = _isTitle
+        ? NoWaveTypeScale.dialogTitle
+        : NoWaveTypeScale.articleBody;
+    final family = _isTitle ? 'InstrumentSerif' : 'InterTight';
+    final fallback = _isTitle ? NoWaveTypography.serifFallback : null;
+    // Titles sit tight; body text gets the reader's generous leading.
+    final lineHeight = _isTitle ? 1.3 : 1.75;
 
+    final field = TextFormField(
+      controller: controller,
+      focusNode: focusNode,
+      undoController: undoController,
+      autofocus: autofocus,
+      inputFormatters: inputFormatters,
+      textInputAction: textInputAction,
+      onFieldSubmitted: onSubmitted,
+      textCapitalization: TextCapitalization.sentences,
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return context.l10n.editorFieldRequiredPrompt(hintText);
+        }
+        return null;
+      },
+      decoration: InputDecoration(
+        hintText: placeholder ?? hintText,
+        hintMaxLines: _isTitle ? 2 : 8,
+        hintStyle:
+            hintStyle ??
+            TextStyle(
+              fontSize: fontSize,
+              height: lineHeight,
+              fontWeight: _isTitle ? FontWeight.w500 : FontWeight.w300,
+              fontFamily: family,
+              fontFamilyFallback: fallback,
+              color: scheme.onSurfaceVariant,
+            ),
+        border: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        errorBorder: InputBorder.none,
+        disabledBorder: InputBorder.none,
+        focusedErrorBorder: InputBorder.none,
+        isDense: true,
+        contentPadding: EdgeInsets.symmetric(
+          vertical: _isTitle ? NoWaveSpacing.small : NoWaveSpacing.medium,
+        ),
+      ),
+      style:
+          textStyle ??
+          TextStyle(
+            fontSize: fontSize,
+            height: lineHeight,
+            fontWeight: _isTitle ? FontWeight.w600 : FontWeight.w400,
+            fontFamily: family,
+            fontFamilyFallback: fallback,
+            color: scheme.onSurface,
+          ),
+      maxLines: grows ? null : maxLines,
+      minLines: grows ? (minLines ?? 1) : minLines,
+      expands: !grows && expands,
+      // A title wraps but never breaks: Enter moves on to the body.
+      keyboardType: _isTitle
+          ? TextInputType.text
+          : maxLines == 1 && !grows
+          ? null
+          : TextInputType.multiline,
+      cursorColor: scheme.primary,
+    );
+
+    final labelled = Semantics(label: hintText, child: field);
+    if (grows) return labelled;
     final scale = MediaQuery.textScalerOf(context).scale(16) / 16;
     final heightScale = scale < 1 ? 1.0 : scale;
     return Container(
@@ -51,117 +145,7 @@ class EditorField extends StatelessWidget {
         vertical: 2.0, // design-token-ok: the field hugs the text it holds
         horizontal: NoWaveSpacing.small,
       ),
-      child: TextFormField(
-        controller: controller,
-        autofocus: false,
-        validator: (value) {
-          if (value!.isEmpty) {
-            return context.l10n.editorFieldRequiredPrompt(hintText);
-          }
-          return null;
-        },
-        decoration: InputDecoration(
-          labelText: hintText,
-          hintText: hintText,
-          hintStyle:
-              hintStyle ??
-              TextStyle(
-                fontSize: hintFontSize, // Dynamic hint font size
-                fontWeight: hintFontWeight, // Dynamic hint font weight
-                fontFamily: contentType == BlogEditorContentType.title
-                    ? 'InstrumentSerif'
-                    : 'InterTight',
-                fontFamilyFallback: contentType == BlogEditorContentType.title
-                    ? NoWaveTypography.serifFallback
-                    : null,
-                color: scheme.onSurfaceVariant,
-              ),
-          border: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          errorBorder: InputBorder.none,
-          disabledBorder: InputBorder.none,
-          contentPadding: contentPadding, // Dynamic content padding
-        ),
-        style:
-            textStyle ??
-            TextStyle(
-              fontSize: fontSize, // Dynamic font size
-              height: 1.6,
-              fontWeight: fontWeight, // Dynamic font weight
-              fontFamily: contentType == BlogEditorContentType.title
-                  ? 'InstrumentSerif'
-                  : 'InterTight',
-              fontFamilyFallback: contentType == BlogEditorContentType.title
-                  ? NoWaveTypography.serifFallback
-                  : null,
-              color: scheme.onSurface,
-            ),
-        maxLines: maxLines,
-        expands: expands,
-        cursorColor: scheme.onSurface,
-      ),
+      child: labelled,
     );
-  }
-
-  EdgeInsetsGeometry _getContentPadding(BlogEditorContentType contentType) {
-    switch (contentType) {
-      case BlogEditorContentType.title:
-        return const EdgeInsets.symmetric(
-          vertical: NoWaveSpacing.large,
-          horizontal: NoWaveSpacing.small,
-        ); // More vertical padding for title
-      case BlogEditorContentType.body:
-      default:
-        return const EdgeInsets.symmetric(
-          vertical: NoWaveSpacing.medium,
-          horizontal: NoWaveSpacing.small,
-        ); // Standard vertical padding for body
-      // Adjust padding for other content types as needed
-    }
-  }
-
-  double _getFontSize(BlogEditorContentType contentType) {
-    switch (contentType) {
-      case BlogEditorContentType.title:
-        return 20.0; // Larger font size for title
-      case BlogEditorContentType.body:
-      default:
-        return 16.0; // Standard font size for body
-      // Adjust font size for other content types as needed
-    }
-  }
-
-  FontWeight _getFontWeight(BlogEditorContentType contentType) {
-    switch (contentType) {
-      case BlogEditorContentType.title:
-        return FontWeight.w600; // Bolder font weight for title
-      case BlogEditorContentType.body:
-      default:
-        return FontWeight.w400; // Normal font weight for body
-      // Adjust font weight for other content types as needed
-    }
-  }
-
-  double _getHintFontSize(BlogEditorContentType contentType) {
-    switch (contentType) {
-      case BlogEditorContentType.title:
-        return 20.0; // Slightly smaller hint for title, but still prominent
-      case BlogEditorContentType.body:
-      default:
-        return 16.0; // Standard hint font size for body
-      // Adjust hint font size for other content types as needed
-    }
-  }
-
-  FontWeight _getHintFontWeight(BlogEditorContentType contentType) {
-    switch (contentType) {
-      case BlogEditorContentType.title:
-        return FontWeight.w500; // Legible hint for title
-      case BlogEditorContentType.body:
-      default:
-        return FontWeight.w300; // Standard hint font weight
-      // Adjust hint font weight for other content types as needed
-    }
   }
 }
