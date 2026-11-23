@@ -82,6 +82,7 @@ import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_b
 import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/features/blog/presentation/viewer/reader_text_size_controller.dart';
+import 'package:belog/features/blog/presentation/search/recent_searches.dart';
 import 'package:belog/features/blog/presentation/viewer/reading_marks.dart';
 import 'package:belog/features/messages/domain/repositories/message_repository.dart';
 import 'package:belog/features/messages/domain/services/message_participant_names.dart';
@@ -218,6 +219,7 @@ const Map<String, _Row<Object>> _resolutions = {
   'ReaderTextSizeStore': _Row<ReaderTextSizeStore>(),
   'ReadingHistoryStore': _Row<ReadingHistoryStore>(),
   'ReadingMarks': _Row<ReadingMarks>(),
+  'RecentSearches': _Row<RecentSearches>(),
   'RecordArticleView': _Row<RecordArticleView>(),
   'RecycleBinBloc': _Row<RecycleBinBloc>(),
   'RequestPasswordReset': _Row<RequestPasswordReset>(),
@@ -370,6 +372,12 @@ void main() {
     // passes through them.
     expect(
       identical(locator<ReadingHistoryStore>(), locator<ReadingMarks>()),
+      isTrue,
+    );
+    // One list for the whole app, so a search made on one tab is offered
+    // on the next.
+    expect(
+      identical(locator<RecentSearches>(), locator<RecentSearches>()),
       isTrue,
     );
     expect(

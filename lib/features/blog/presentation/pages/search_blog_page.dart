@@ -17,15 +17,23 @@ import 'package:belog/features/blog/domain/usecase/search_blogs.dart'
     show kMaxSearchResults;
 import 'package:belog/features/blog/presentation/blocs/blog_search/bloc/blog_search_bloc.dart';
 import 'package:belog/features/blog/presentation/category_navigation.dart';
+import 'package:belog/features/blog/presentation/search/recent_search_list.dart';
+import 'package:belog/features/blog/presentation/search/recent_searches.dart';
 import 'package:belog/features/blog/presentation/tag_navigation.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:belog/router/route_paths.dart';
 
 class SearchBlogPage extends StatefulWidget {
-  const SearchBlogPage({super.key});
+  const SearchBlogPage({super.key, this.recentSearches});
+
+  /// The recent searches to offer under the empty field; the app's own when
+  /// null. Where none is registered, as in most widget tests, the page shows
+  /// its plain prompt instead.
+  final RecentSearches? recentSearches;
 
   @override
   State<SearchBlogPage> createState() => _SearchBlogPageState();
@@ -34,10 +42,17 @@ class SearchBlogPage extends StatefulWidget {
 class _SearchBlogPageState extends State<SearchBlogPage> {
   final TextEditingController _searchController = TextEditingController();
   final SearchDebounce _debounce = SearchDebounce();
+  RecentSearches? _recent;
 
   @override
   void initState() {
     super.initState();
+    final locator = GetIt.instance;
+    _recent =
+        widget.recentSearches ??
+        (locator.isRegistered<RecentSearches>()
+            ? locator<RecentSearches>()
+            : null);
     _searchController.addListener(_onQueryChanged);
   }
 
@@ -71,7 +86,66 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
       context.read<BlogSearchBloc>().add(const SearchBlogsCleared());
       return;
     }
+    // Pressing search is what makes a query worth offering again; the
+    // words typed on the way to it are not.
+    _recent?.remember(trimmed);
     context.read<BlogSearchBloc>().add(SearchBlogsEvent(query: trimmed));
+  }
+
+  /// Runs a recent search again: the words go back in the field, and the
+  /// keyboard steps aside for the results.
+  void _searchAgain(String query) {
+    _searchController.value = TextEditingValue(
+      text: query,
+      selection: TextSelection.collapsed(offset: query.length),
+    );
+    FocusManager.instance.primaryFocus?.unfocus();
+    _onSubmitted(query);
+  }
+
+  void _clearRecent(RecentSearches recent) {
+    final cleared = recent.queries;
+    recent.clear();
+    final l10n = context.l10n;
+    showSnackBar(
+      context,
+      l10n.recentSearchesCleared,
+      action: SnackBarAction(
+        label: l10n.actionUndo,
+        onPressed: () => recent.restore(cleared),
+      ),
+    );
+  }
+
+  Widget _initial(BuildContext context) {
+    final prompt = _state(NoWaveStatus(message: context.l10n.searchInitial));
+    final recent = _recent;
+    if (recent == null) return prompt;
+    return ListenableBuilder(
+      listenable: recent,
+      builder: (context, _) {
+        final queries = recent.queries;
+        if (queries.isEmpty) return prompt;
+        return SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            NoWaveSpacing.page,
+            NoWaveSpacing.small,
+            NoWaveSpacing.page,
+            NoWaveSpacing.large,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: _contentWidth(
+              RecentSearchList(
+                queries: queries,
+                onSelect: _searchAgain,
+                onRemove: recent.remove,
+                onClear: () => _clearRecent(recent),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _contentWidth(Widget child) => NoWaveColumn(child: child);
@@ -224,9 +298,7 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
               }
             },
             builder: (context, state) {
-              if (state is BlogSearchInitial) {
-                return _state(NoWaveStatus(message: l10n.searchInitial));
-              }
+              if (state is BlogSearchInitial) return _initial(context);
               if (state is BlogSearchLoading) {
                 return _state(
                   NoWaveLoadingLabel(semanticLabel: l10n.searching),
@@ -286,10 +358,15 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                             ruled: index > 0,
                             labelAuthor: true,
                             onTagTap: (tag) => openTagArticles(context, tag),
-                            onTap: () => context.push(
-                              RoutePaths.searchView(blog.id),
-                              extra: blog,
-                            ),
+                            onTap: () {
+                              // Opening a result is the clearest sign the
+                              // search found something, typed or submitted.
+                              _recent?.remember(_searchController.text);
+                              context.push(
+                                RoutePaths.searchView(blog.id),
+                                extra: blog,
+                              );
+                            },
                           ),
                         ),
                       );

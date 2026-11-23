@@ -735,6 +735,25 @@
   "loadingMoreArticles": "Loading more articles…",
   "searching": "Searching…",
   "clearSearch": "Clear search",
+  "recentSearchesTitle": "Recent searches",
+  "recentSearchAgain": "Search for “{query}” again",
+  "@recentSearchAgain": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "recentSearchRemove": "Remove “{query}” from recent searches",
+  "@recentSearchRemove": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "recentSearchesCleared": "Recent searches cleared",
+  "actionUndo": "Undo",
   "switchToLight": "Switch to light theme",
   "switchToDark": "Switch to dark theme",
   "tagPoetry": "Poetry",

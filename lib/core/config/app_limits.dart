@@ -21,6 +21,9 @@ abstract final class AppLimits {
   /// The reading-history rows a single list read returns, newest first.
   static const int readingHistoryPageSize = 200;
 
+  /// The searches the search page offers again, newest first.
+  static const int recentSearches = 8;
+
   // --- Server pages -------------------------------------------------------
 
   /// One page of the notification inbox.
