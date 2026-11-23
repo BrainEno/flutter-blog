@@ -25,7 +25,9 @@ import 'router_test.dart' show Harness, sampleUser;
 /// - text meets the WCAG contrast minimum against what is painted under it.
 ///
 /// A failure lists every finding of that screen, so one CI run reads like an
-/// agent's report. See docs/agent-testers.md.
+/// agent's report. Run with `--dart-define=PERSONA_SWEEP_REPORT=true` to
+/// collect every finding without failing and print one compact report at
+/// the end instead. See docs/agent-testers.md.
 class Persona {
   const Persona({
     required this.id,
@@ -219,6 +221,24 @@ void _stub(Harness harness) {
   );
 }
 
+/// Report mode: collect, never fail, print once at the end.
+const _reportOnly = bool.fromEnvironment('PERSONA_SWEEP_REPORT');
+
+/// "screen | finding" -> the personas that hit it, in sweep order.
+final _report = <String, List<String>>{};
+
+/// One finding on one line: the node ids, rectangles, tags and links of a
+/// guideline's reason say nothing a reader of the report can act on.
+String _compact(String text) => text
+    .replaceAll(RegExp(r'SemanticsNode#\d+\(Rect\.fromLTRB\([^)]*\),?'), '')
+    .replaceAll(RegExp(r'tags: \[[^\]]*\],?'), '')
+    .replaceAll(RegExp(r'actions: \[[^\]]*\],?'), '')
+    .replaceAll(RegExp(r'flags: \[[^\]]*\],?'), '')
+    .replaceAll(RegExp(r'textDirection: \w+\)?'), '')
+    .replaceAll(RegExp(r'See also: \S+'), '')
+    .replaceAll(RegExp(r'\s+'), ' ')
+    .trim();
+
 /// Everything wrong with what is on screen now.
 Future<List<String>> _audit(WidgetTester tester) async {
   final findings = <String>[];
@@ -231,7 +251,13 @@ Future<List<String>> _audit(WidgetTester tester) async {
   ]) {
     final result = await guideline.evaluate(tester);
     if (!result.passed) {
-      findings.add('${guideline.description}:\n${result.reason}');
+      final lines = (result.reason ?? '')
+          .split('\n')
+          .map(_compact)
+          .where((line) => line.isNotEmpty);
+      findings.addAll([
+        for (final line in lines) '${guideline.description} | $line',
+      ]);
     }
   }
   return findings;
@@ -260,6 +286,20 @@ Future<bool> _scrollToEnd(WidgetTester tester) async {
 
 void main() {
   setUp(() => GetIt.instance.reset());
+  if (_reportOnly) {
+    tearDownAll(() {
+      final lines = [
+        for (final MapEntry(:key, :value) in _report.entries)
+          '$key  <- ${value.join(',')}',
+      ];
+      // ignore: avoid_print
+      print(
+        '===== persona sweep report (${lines.length} findings) =====\n'
+        '${lines.join('\n')}\n'
+        '===== end of persona sweep report =====',
+      );
+    });
+  }
 
   for (final persona in personas) {
     group(persona.toString(), () {
@@ -269,7 +309,6 @@ void main() {
           tester.view.devicePixelRatio = 1;
           addTearDown(tester.view.reset);
           final semantics = tester.ensureSemantics();
-          addTearDown(semantics.dispose);
 
           final harness = Harness();
           addTearDown(harness.dispose);
@@ -291,6 +330,15 @@ void main() {
             findings.addAll([
               for (final finding in await _audit(tester)) '[end] $finding',
             ]);
+          }
+          semantics.dispose();
+          if (_reportOnly) {
+            for (final finding in findings) {
+              _report
+                  .putIfAbsent('${screen.name} | $finding', () => [])
+                  .add(persona.id);
+            }
+            return;
           }
           expect(
             findings,
