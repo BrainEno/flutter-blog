@@ -881,7 +881,7 @@ void main() {
           (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
             'user_version',
           ),
-          20,
+          21,
         );
         expect(await storeFor(db).load(key()), isNull);
         await create(storeFor(db));

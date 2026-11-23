@@ -472,6 +472,7 @@ void main() {
       ).thenAnswer((_) async => _blog());
     }
 
+    // One verify per test: mocktail marks the call as verified.
     BlogModel created() =>
         verify(
               () => remote.uploadBlog(
@@ -495,8 +496,9 @@ void main() {
         posterId: 'u1',
         tags: const [],
       );
-      expect(created().isDraft, isFalse);
-      expect(created().serverSummary, isNull);
+      final model = created();
+      expect(model.isDraft, isFalse);
+      expect(model.serverSummary, isNull);
     });
 
     test('a private draft carries its summary to the write', () async {
@@ -509,8 +511,9 @@ void main() {
         summary: '一句话',
         publish: false,
       );
-      expect(created().isDraft, isTrue);
-      expect(created().serverSummary, '一句话');
+      final model = created();
+      expect(model.isDraft, isTrue);
+      expect(model.serverSummary, '一句话');
     });
 
     test('an edit without a summary keeps the one just read', () async {
@@ -522,8 +525,9 @@ void main() {
         content: '新正文',
         tags: const [],
       );
-      expect(updated().serverSummary, '作者的摘要');
-      expect(updated().isDraft, isFalse);
+      final model = updated();
+      expect(model.serverSummary, '作者的摘要');
+      expect(model.isDraft, isFalse);
     });
 
     test('a rewritten summary replaces it; an empty one is sent', () async {
@@ -538,8 +542,9 @@ void main() {
         publish: false,
       );
       // Empty asks no-wave to write a fresh summary from the new body.
-      expect(updated().serverSummary, '');
-      expect(updated().isDraft, isTrue);
+      final model = updated();
+      expect(model.serverSummary, '');
+      expect(model.isDraft, isTrue);
     });
   });
 
