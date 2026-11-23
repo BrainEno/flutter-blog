@@ -543,7 +543,7 @@
   "loginHeadingCompanion": "Welcome back",
   "fieldEmail": "E-mail",
   "fieldPassword": "Password",
-  "fieldPasswordWithMin": "Password (at least 12 characters)",
+  "passwordRuleHint": "At least 12 characters",
   "noAccountPrompt": "No account yet? ",
   "signUpLink": "Sign up",
   "browseWithoutSignIn": "Browse without signing in",

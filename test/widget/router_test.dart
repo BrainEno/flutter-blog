@@ -25,6 +25,7 @@ import 'package:belog/features/auth/presentation/pages/change_password_page.dart
 import 'package:belog/features/auth/presentation/pages/password_recovery_page.dart';
 import 'package:belog/features/auth/presentation/pages/password_reset_page.dart';
 import 'package:belog/core/theme/app_theme_mode.dart';
+import 'package:belog/core/theme/theme.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
@@ -409,6 +410,7 @@ class Harness {
     Locale locale = const Locale('zh'),
     double textScale = 1,
     bool disableAnimations = false,
+    ThemeMode? themeMode,
   }) async {
     final currentRouter = router!;
     await tester.pumpWidget(
@@ -423,6 +425,11 @@ class Harness {
           locale: locale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
+          // The shipped themes, when a test asks for them; the routing tests
+          // keep Material's defaults, which they were written against.
+          theme: themeMode == null ? null : AppTheme.lightThemeMode,
+          darkTheme: themeMode == null ? null : AppTheme.darkThemeMode,
+          themeMode: themeMode ?? ThemeMode.system,
           routerConfig: currentRouter.router,
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(

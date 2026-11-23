@@ -7,7 +7,9 @@ import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
 import 'package:belog/features/blog/presentation/viewer/reader_text_size_controller.dart';
 import 'package:belog/features/blog/presentation/viewer/reader_text_size_sheet.dart';
 import 'package:belog/features/blog/presentation/widgets/markdown_body.dart';
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
@@ -197,6 +199,60 @@ void main() {
 
     expect(find.byKey(const ValueKey('reader-text-size')), findsNothing);
     expect(_bodySize(tester), NoWaveTypeScale.articleBody);
+  });
+
+  testWidgets('at a large system text size the steps stack, names whole', (
+    tester,
+  ) async {
+    // The persona sweep's grace: a 412 dp phone at twice the text size,
+    // where five names side by side were cut to their first letters and
+    // the sheet ran past its bottom.
+    tester.view.physicalSize = const Size(412, 915);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final textSize = ReaderTextSizeController(MemoryTextSizeStore());
+    addTearDown(textSize.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => ReaderTextSizeSheet.show(context, textSize),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    final names = ['Small', 'Default', 'Large', 'Larger', 'Largest'];
+    for (final name in names) {
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(name));
+      expect(paragraph.didExceedMaxLines, isFalse, reason: name);
+    }
+    // One under another, in a single column.
+    expect(
+      tester.getTopLeft(find.text('Largest')).dx,
+      tester.getTopLeft(find.text('Small')).dx,
+    );
+
+    // The whole line is the target, name included.
+    await tester.ensureVisible(find.text('Largest'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Largest'));
+    await tester.pumpAndSettle();
+    expect(textSize.value, ReaderTextSize.largest);
   });
 
   testWidgets('the size sits on top of the system text size', (tester) async {

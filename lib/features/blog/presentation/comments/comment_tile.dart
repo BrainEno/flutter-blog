@@ -202,82 +202,98 @@ class CommentTile extends StatelessWidget {
         // The head: the face, then who and when stacked beside it - the
         // name on top in bold, the date under it in small muted type - so
         // the avatar is centred on the whole head rather than on one line.
-        Row(
-          children: [
-            // Both avatar and name open the author's public profile.
-            Semantics(
-              label: context.l10n.authorPageSemantic(authorName),
-              button: true,
-              child: InkWell(
-                onTap: () => onOpenAuthor(comment.authorId),
-                child: SizedBox(
-                  width: column,
-                  height: NoWaveSizes.tapTarget,
-                  // On the column edge, like every other first glyph on
-                  // the page; the rest of the target lies after it.
-                  child: Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: NoWaveAvatar(
-                      name: authorName,
-                      imageUrl: comment.authorAvatarUrl,
-                      size: avatar,
+        // The whole head is one way to the author's profile, at least a tap
+        // target tall: a name alone was a 20-40 pt strip a thumb misses,
+        // and a second, separate stop for the same page in a screen
+        // reader. It reads as one control - who, when, then where it goes.
+        MergeSemantics(
+          child: Semantics(
+            button: true,
+            hint: context.l10n.authorPageSemantic(authorName),
+            child: InkWell(
+              onTap: () => onOpenAuthor(comment.authorId),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minHeight: NoWaveSizes.tapTarget,
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: column,
+                      // On the column edge, like every other first glyph on
+                      // the page.
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: ExcludeSemantics(
+                          child: NoWaveAvatar(
+                            name: authorName,
+                            imageUrl: comment.authorAvatarUrl,
+                            size: avatar,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Wrap(
+                            spacing: NoWaveSpacing.small,
+                            runSpacing: NoWaveSpacing.xs,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(authorName, style: nameStyle),
+                              // The writer of the piece answering in their
+                              // own thread is the one voice a reader looks
+                              // for.
+                              if (byArticleAuthor)
+                                NoWaveBadge(
+                                  label: context.l10n.commentArticleAuthor,
+                                  tone: NoWaveBadgeTone.neutral,
+                                ),
+                            ],
+                          ),
+                          Wrap(
+                            spacing: NoWaveSpacing.xs,
+                            children: [
+                              Text(
+                                formatDate(
+                                  Localizations.localeOf(context),
+                                  comment.createdAt,
+                                ),
+                                style: dateStyle,
+                              ),
+                              if (comment.editedAt != null) ...[
+                                ExcludeSemantics(
+                                  child: Text('·', style: dateStyle),
+                                ),
+                                Text(
+                                  context.l10n.commentEdited,
+                                  style: dateStyle,
+                                ),
+                              ],
+                              // Past the second level replies stop stepping
+                              // in, so the row names whom it answers instead.
+                              if (inReplyTo != null) ...[
+                                ExcludeSemantics(
+                                  child: Text('·', style: dateStyle),
+                                ),
+                                Text(
+                                  context.l10n.commentInReplyTo(inReplyTo),
+                                  style: dateStyle,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Wrap(
-                    spacing: NoWaveSpacing.small,
-                    runSpacing: NoWaveSpacing.xs,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      InkWell(
-                        onTap: () => onOpenAuthor(comment.authorId),
-                        child: Text(authorName, style: nameStyle),
-                      ),
-                      // The writer of the piece answering in their own
-                      // thread is the one voice a reader looks for.
-                      if (byArticleAuthor)
-                        NoWaveBadge(
-                          label: context.l10n.commentArticleAuthor,
-                          tone: NoWaveBadgeTone.neutral,
-                        ),
-                    ],
-                  ),
-                  Wrap(
-                    spacing: NoWaveSpacing.xs,
-                    children: [
-                      Text(
-                        formatDate(
-                          Localizations.localeOf(context),
-                          comment.createdAt,
-                        ),
-                        style: dateStyle,
-                      ),
-                      if (comment.editedAt != null) ...[
-                        ExcludeSemantics(child: Text('·', style: dateStyle)),
-                        Text(context.l10n.commentEdited, style: dateStyle),
-                      ],
-                      // Past the second level replies stop stepping in, so
-                      // the row names whom it answers instead.
-                      if (inReplyTo != null) ...[
-                        ExcludeSemantics(child: Text('·', style: dateStyle)),
-                        Text(
-                          context.l10n.commentInReplyTo(inReplyTo),
-                          style: dateStyle,
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
         Padding(
           padding: EdgeInsetsDirectional.only(

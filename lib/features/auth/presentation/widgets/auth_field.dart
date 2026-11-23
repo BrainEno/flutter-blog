@@ -7,6 +7,11 @@ import 'package:flutter/material.dart';
 /// A validated auth field: a labelled underline in ink, orange on focus.
 class AuthField extends StatelessWidget {
   final String hintText;
+
+  /// A standing rule shown under the line (for example a password's
+  /// minimum length). It wraps instead of riding in the label, which is
+  /// one line and would cut the rule off at a large text size.
+  final String? helperText;
   final bool isObscureText;
   final TextEditingController controller;
   final IconData? prefixIcon;
@@ -24,6 +29,7 @@ class AuthField extends StatelessWidget {
     super.key,
     required this.hintText,
     required this.controller,
+    this.helperText,
     this.isObscureText = false,
     this.prefixIcon,
     this.style,
@@ -63,6 +69,11 @@ class AuthField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: hintText,
         hintStyle: hintStyle,
+        helperText: helperText,
+        // Rules and errors are sentences; at 2x text on a narrow phone one
+        // line cuts them mid-word, so they may wrap.
+        helperMaxLines: _messageMaxLines,
+        errorMaxLines: _messageMaxLines,
         filled: false,
         contentPadding: const EdgeInsets.symmetric(
           vertical: NoWaveSpacing.medium,
@@ -83,6 +94,8 @@ class AuthField extends StatelessWidget {
       validator: (value) => _effectiveValidator(context.l10n, value),
     );
   }
+
+  static const _messageMaxLines = 4;
 
   String? _effectiveValidator(AppLocalizations l10n, String? value) {
     if (validator != null) return validator!(value);

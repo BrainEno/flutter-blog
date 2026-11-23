@@ -46,6 +46,7 @@
 | 内联代码链接的 link 语义 | `test/widget/markdown_body_test.dart` |
 | 2× 字体、320 dp 窄屏 | `test/widget/a11y_text_scale_test.dart`、`test/widget/localized_feed_search_test.dart` |
 | 点击区域 ≥48 dp | `test/widget/article_tag_label_test.dart` |
+| 6 个设备人设 × 主要界面：溢出、点击区域、名称、对比度、截断、漏翻 | `test/widget/persona_sweep_test.dart`、`test/widget/persona_sweep_fonts_test.dart`（见 [agent-testers.md](agent-testers.md)） |
 | 系统字体缩放不被夹取 | `test/widget/a11y_text_scale_test.dart`（源码扫描） |
 | 加载态没有转圈 | `test/unit/design/no_spinner_test.dart`、`test/widget/no_wave_loading_test.dart` |
 | 减少动效 | `test/widget/no_wave_fade_transition_test.dart`、`test/unit/design/no_magic_durations_test.dart`、`test/widget/no_wave_splash_test.dart` |

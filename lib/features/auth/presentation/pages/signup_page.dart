@@ -99,7 +99,8 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   const SizedBox(height: NoWaveSpacing.medium),
                   AuthField(
-                    hintText: l10n.fieldPasswordWithMin,
+                    hintText: l10n.fieldPassword,
+                    helperText: l10n.passwordRuleHint,
                     controller: passwordController,
                     isObscureText: true,
                     enabled: !busy,
