@@ -8,6 +8,7 @@ import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.da
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
 import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:belog/features/blog/domain/usecase/get_categories.dart';
+import 'package:belog/features/blog/domain/usecase/upload_article_image.dart';
 import 'package:belog/features/user/domain/usecases/get_user_media_library_page.dart';
 import 'package:belog/features/blog/presentation/editor/editor_session_config.dart';
 import 'package:belog/features/blog/presentation/editor/editor_session_coordinator.dart';
@@ -44,6 +45,10 @@ class BlogEditorPage extends StatelessWidget {
   final GetUserMediaLibraryPage? getUserMediaLibraryPage;
   final NotionImportRepository? notionImportRepository;
   final NotionExportRepository? notionExportRepository;
+
+  /// The body-picture upload. Injectable for tests; production resolves the
+  /// registered use case.
+  final UploadArticleImage? uploadArticleImage;
   const BlogEditorPage({
     super.key,
     this.blog,
@@ -57,6 +62,7 @@ class BlogEditorPage extends StatelessWidget {
     this.getUserMediaLibraryPage,
     this.notionImportRepository,
     this.notionExportRepository,
+    this.uploadArticleImage,
   });
 
   @override
@@ -73,6 +79,7 @@ class BlogEditorPage extends StatelessWidget {
       getUserMediaLibraryPage: getUserMediaLibraryPage,
       notionImportRepository: notionImportRepository,
       notionExportRepository: notionExportRepository,
+      uploadArticleImage: uploadArticleImage,
     ),
   );
 }

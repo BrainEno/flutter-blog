@@ -160,6 +160,7 @@ class _Harness {
               'messages',
               'sessions',
               'about',
+              'editor',
             ])
               GoRoute(
                 path: path,
@@ -332,6 +333,25 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ProfilePage), findsOneWidget);
     }
+  });
+
+  testWidgets('a signed-in reader can start a new article from the profile', (
+    tester,
+  ) async {
+    final harness = _Harness(_user());
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final write = find.byKey(const Key('profile-write-article'));
+    expect(write, findsOneWidget);
+    expect(find.text('Write a new article'), findsOneWidget);
+    await tester.ensureVisible(write);
+    await tester.pumpAndSettle();
+    await tester.tap(write);
+    await tester.pumpAndSettle();
+    expect(find.text('destination: editor'), findsOneWidget);
+    harness.router.pop();
+    await tester.pumpAndSettle();
+    expect(find.byType(ProfilePage), findsOneWidget);
   });
 
   testWidgets('the notification row shows the server unread count', (

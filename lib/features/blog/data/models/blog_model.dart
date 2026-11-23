@@ -1,5 +1,6 @@
 import 'package:belog/features/blog/data/datasources/article_document_codec.dart';
 import 'package:belog/features/blog/data/datasources/nowave_article_codec.dart';
+import 'package:belog/features/blog/domain/authoring/article_markdown.dart';
 import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
@@ -61,8 +62,9 @@ class BlogModel extends Blog {
   /// must fail closed instead of implicitly asking the server to regenerate it.
   final String? serverSummary;
 
-  /// True only after inspecting a fresh server document known to use the
-  /// plain editor's supported block shape. Cached/unknown models fail closed.
+  /// True only after inspecting a fresh server document: the legacy v0 shape
+  /// the editor always wrote, or a structured document [Blog.editableBody]
+  /// proved it can round-trip. Cached/unknown models fail closed.
   final bool plainEditorCompatible;
 
   BlogModel copyWith({
@@ -162,11 +164,14 @@ class BlogModel extends Blog {
       documentJson: document == null
           ? null
           : encodeArticleDocument(version: version, blocks: rawBlocks),
+      // Either the legacy shape the app always wrote, or a structured
+      // document the editor's Markdown can carry without losing anything.
       plainEditorCompatible:
-          document == null &&
           rawBlocks is List &&
           rawBlocks.length == blocks.length &&
-          supportsPlainEditor(version: version, blocks: blocks),
+          (document == null
+              ? supportsPlainEditor(version: version, blocks: blocks)
+              : editableBodyOf(document) != null),
       serverSummary: map['summary'] is String ? map['summary'] as String : null,
       summary: map['summary'] is String ? map['summary'] as String : '',
       // `status` is only present on the author's own rows; the public lists

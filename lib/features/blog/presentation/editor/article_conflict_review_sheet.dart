@@ -125,9 +125,15 @@ class _ArticleConflictReviewSheet extends StatelessWidget {
                     _ConflictField(
                       icon: Icons.subject,
                       label: l10n.articleConflictBodyField,
-                      opened: openedArticle.content,
+                      // Compare what the editor shows, not the flattened
+                      // reading text of a structured article.
+                      opened:
+                          openedArticle.editableBody?.markdown ??
+                          openedArticle.content,
                       local: localDraft.content,
-                      latest: latestArticle.content,
+                      latest:
+                          latestArticle.editableBody?.markdown ??
+                          latestArticle.content,
                       expands: true,
                     ),
                     _ConflictField(

@@ -20,6 +20,7 @@ import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/category_ref.dart';
 import 'package:belog/features/blog/domain/usecase/get_categories.dart';
+import 'package:belog/features/blog/domain/usecase/upload_article_image.dart';
 import 'package:belog/features/user/domain/entities/user_media_asset.dart';
 import 'package:belog/features/user/domain/usecases/get_user_media_library_page.dart';
 import 'package:belog/features/user/presentation/widgets/user_media_picker_sheet.dart';
@@ -30,6 +31,8 @@ import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upl
 import 'package:belog/features/blog/presentation/editor/article_conflict_review_sheet.dart';
 import 'package:belog/features/blog/presentation/editor/auto_save_banner.dart';
 import 'package:belog/features/blog/presentation/editor/editor_form.dart';
+import 'package:belog/features/blog/presentation/editor/editor_format_toolbar.dart';
+import 'package:belog/features/blog/presentation/editor/markdown_text_controller.dart';
 import 'package:belog/features/blog/presentation/editor/editor_publish_intent.dart';
 import 'package:belog/features/blog/presentation/widgets/draft_recovery_dialog.dart';
 import 'package:flutter/material.dart';
@@ -93,7 +96,10 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
     });
     if (_target != null && !_invalidated) {
       titleController.text = _target.title;
-      contentController.text = _target.content;
+      // The editor's Markdown: for a structured article, its blocks rendered
+      // as the same text the web editor would show, not the reading text.
+      contentController.text =
+          _target.editableBody?.markdown ?? _target.content;
       selectedTags = List.from(_target.tags);
       // Show what the server says it is. Until the author touches the row this
       // is display only - the write omits `categoryIds` entirely.
@@ -184,6 +190,9 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
     _notion.dismiss();
     titleController.dispose();
     contentController.dispose();
+    titleFocusNode.dispose();
+    bodyFocusNode.dispose();
+    bodyUndoController.dispose();
     super.dispose();
   }
 
@@ -202,6 +211,15 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
           ? null
           : () => unawaited(_notion.openExport(context, _target.id)),
       onUploadState: _onUploadState,
+      bodyFocusNode: bodyFocusNode,
+      toolbar: EditorFormatToolbar(
+        controller: contentController,
+        focusNode: bodyFocusNode,
+        undoController: bodyUndoController,
+        onPickImage: _bodyImageUploader == null ? null : _insertBodyImage,
+      ),
+      focusMode: _focusMode,
+      onToggleFocusMode: () => setState(() => _focusMode = !_focusMode),
       form: !current
           ? null
           : EditorForm(
@@ -231,8 +249,57 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
               categoriesFailed: _categoriesFailed,
               onCategoriesChanged: _onCategoriesChanged,
               onRetryCategories: () => unawaited(_loadCategories()),
+              titleFocusNode: titleFocusNode,
+              bodyFocusNode: bodyFocusNode,
+              bodyUndoController: bodyUndoController,
+              // A blank new piece starts in the title; an opened article or
+              // a resumed entry keeps the reader where they are.
+              autofocusTitle:
+                  _target == null &&
+                  widget.config.queueEntry == null &&
+                  titleController.text.isEmpty,
+              focusMode: _focusMode,
             ),
     );
+  }
+
+  UploadArticleImage? get _bodyImageUploader =>
+      widget.config.uploadArticleImage ??
+      (GetIt.instance.isRegistered<UploadArticleImage>()
+          ? GetIt.instance<UploadArticleImage>()
+          : null);
+
+  /// Picks a picture and uploads it under this editor's account and session,
+  /// answering its address for the toolbar to write into the body. A failure
+  /// is reported here and answers null, leaving the text untouched.
+  Future<String?> _insertBodyImage() async {
+    final upload = _bodyImageUploader;
+    final ownerId = _draftOwnerId;
+    if (upload == null || ownerId == null || !_isCurrentEditor) return null;
+    final PickedImage? picked;
+    try {
+      picked = await pickImage();
+    } catch (_) {
+      if (mounted && _isCurrentEditor) {
+        showSnackBar(context, context.l10n.imagePickFailed);
+      }
+      return null;
+    }
+    if (picked == null || !_isCurrentEditor) return null;
+    final result = await upload(
+      UploadArticleImageParams(
+        image: picked.upload,
+        sessionFence: NowaveSessionFence(
+          userId: ownerId,
+          generation: _editorGeneration,
+        ),
+      ),
+    );
+    if (!mounted || !_isCurrentEditor) return null;
+    return result.fold<String?>((failure) {
+      showSnackBar(context, localizedFailure(context.l10n, failure));
+      return null;
+    }, (url) => url);
   }
 
   void _onTagsChanged(List<String> tags) {
@@ -287,7 +354,15 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
 /// [_isCurrentEditor] after each await - an account switch freezes the page.
 abstract class _EditorSessionBase extends State<EditorSessionCoordinator> {
   final titleController = TextEditingController();
-  final contentController = TextEditingController();
+
+  /// Plain Markdown text, painted with live highlighting in the field.
+  final contentController = MarkdownTextController();
+  final titleFocusNode = FocusNode(debugLabel: 'editor title');
+  final bodyFocusNode = FocusNode(debugLabel: 'editor body');
+  final bodyUndoController = UndoHistoryController();
+
+  /// Writing only: the cover, tags and categories are hidden.
+  bool _focusMode = false;
   final formKey = GlobalKey<FormState>();
   List<String> selectedTags = [];
 

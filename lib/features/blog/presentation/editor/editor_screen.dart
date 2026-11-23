@@ -24,6 +24,10 @@ class EditorScreen extends StatelessWidget {
     required this.onImportNotion,
     required this.onExportNotion,
     required this.onUploadState,
+    this.toolbar,
+    this.bodyFocusNode,
+    this.focusMode = false,
+    this.onToggleFocusMode,
   }) : assert(!isCurrentEditor || form != null);
 
   final bool isCurrentEditor;
@@ -36,6 +40,16 @@ class EditorScreen extends StatelessWidget {
   final VoidCallback onImportNotion;
   final VoidCallback? onExportNotion;
   final void Function(BuildContext, BlogUploadState) onUploadState;
+
+  /// The format toolbar. It rides above the keyboard while [bodyFocusNode]
+  /// has focus and is gone otherwise, so the title and settings stay calm.
+  final Widget? toolbar;
+  final FocusNode? bodyFocusNode;
+
+  /// Whether the form shows only the writing; null [onToggleFocusMode] hides
+  /// the switch.
+  final bool focusMode;
+  final VoidCallback? onToggleFocusMode;
 
   @override
   Widget build(BuildContext context) {
@@ -64,15 +78,35 @@ class EditorScreen extends StatelessWidget {
         onCancel: onCancel,
         onImportNotion: onImportNotion,
         onExportNotion: onExportNotion,
+        focusMode: focusMode,
+        onToggleFocusMode: onToggleFocusMode,
       ),
-      body: BlocConsumer<BlogUploadBloc, BlogUploadState>(
-        listener: onUploadState,
-        builder: (context, state) {
-          if (state is BlogUploadLoading) {
-            return const Center(child: NoWaveLoadingLabel());
-          }
-          return form!;
-        },
+      body: Column(
+        children: [
+          Expanded(
+            child: BlocConsumer<BlogUploadBloc, BlogUploadState>(
+              listener: onUploadState,
+              builder: (context, state) {
+                if (state is BlogUploadLoading) {
+                  return const Center(child: NoWaveLoadingLabel());
+                }
+                return form!;
+              },
+            ),
+          ),
+          if ((toolbar, bodyFocusNode) case (
+            final Widget tools,
+            final FocusNode focus,
+          ))
+            ListenableBuilder(
+              listenable: focus,
+              builder: (context, _) => focus.hasFocus
+                  // Part of the body field's tap region: pressing a tool
+                  // must not count as tapping outside and close the keyboard.
+                  ? TextFieldTapRegion(child: tools)
+                  : const SizedBox.shrink(),
+            ),
+        ],
       ),
     );
   }

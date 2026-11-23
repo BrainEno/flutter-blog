@@ -19,6 +19,8 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onCancel,
     required this.onImportNotion,
     this.onExportNotion,
+    this.focusMode = false,
+    this.onToggleFocusMode,
   });
 
   /// True when an existing article is being edited, false for a new one.
@@ -29,6 +31,10 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onCancel;
   final VoidCallback onImportNotion;
   final VoidCallback? onExportNotion;
+
+  /// Focus mode hides the cover, tags and categories; null hides the switch.
+  final bool focusMode;
+  final VoidCallback? onToggleFocusMode;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -49,6 +55,17 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
         style: TextStyle(color: foreground, fontWeight: FontWeight.bold),
       ),
       actions: [
+        if (onToggleFocusMode case final VoidCallback toggle)
+          IconButton(
+            key: const Key('editor-focus-mode'),
+            tooltip: focusMode
+                ? context.l10n.editorFocusModeExit
+                : context.l10n.editorFocusModeEnter,
+            isSelected: focusMode,
+            icon: const Icon(Icons.fullscreen),
+            selectedIcon: const Icon(Icons.fullscreen_exit),
+            onPressed: toggle,
+          ),
         // A square, full-weight primary action - the previous pill was the
         // last rounded button in the app. Its min size and padding now come
         // from the design tokens, so it sits in the 56pt toolbar like every

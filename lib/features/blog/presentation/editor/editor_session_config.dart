@@ -8,6 +8,7 @@ import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.da
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
 import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:belog/features/blog/domain/usecase/get_categories.dart';
+import 'package:belog/features/blog/domain/usecase/upload_article_image.dart';
 import 'package:belog/features/user/domain/usecases/get_user_media_library_page.dart';
 
 /// Route inputs and optional test dependencies for one editor session. These
@@ -26,6 +27,7 @@ class EditorSessionConfig {
     this.getUserMediaLibraryPage,
     this.notionImportRepository,
     this.notionExportRepository,
+    this.uploadArticleImage,
   });
   final Blog? blog;
   final PublishQueueEntry? queueEntry;
@@ -38,4 +40,8 @@ class EditorSessionConfig {
   final GetUserMediaLibraryPage? getUserMediaLibraryPage;
   final NotionImportRepository? notionImportRepository;
   final NotionExportRepository? notionExportRepository;
+
+  /// Uploads pictures placed in the body; without one the toolbar offers no
+  /// image button.
+  final UploadArticleImage? uploadArticleImage;
 }

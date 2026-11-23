@@ -1,5 +1,7 @@
 import 'package:belog/core/error/exceptions.dart';
 import 'package:belog/core/error/failures.dart';
+import 'package:belog/features/blog/domain/authoring/article_markdown.dart';
+import 'package:belog/features/blog/domain/entities/article_document.dart';
 import 'package:uuid/uuid.dart';
 
 /// Codec between the app's plain-text article body and the no-wave
@@ -152,6 +154,124 @@ List<Map<String, dynamic>> blogToContentBlocks({
   ];
   return blocks;
 }
+
+/// The `contentBlocks` and `contentBlocksVersion` an article write sends.
+class ArticleBodyPayload {
+  const ArticleBodyPayload({required this.version, required this.blocks});
+
+  final int version;
+  final List<Map<String, dynamic>> blocks;
+}
+
+/// Builds the body of an article write from the traditional editor's text.
+///
+/// Text with no formatting at all keeps the version 0 shape the app has
+/// always written, byte for byte. As soon as the author uses a heading, a
+/// list, a quote, code, an image, a link or an inline mark - or escapes a
+/// character - the text is written as a version 1 document, so the web shows
+/// the same structure instead of raw Markdown signs.
+///
+/// Throws a validation [ServerException] when the body has no publishable text.
+ArticleBodyPayload articleBodyPayload({
+  required String content,
+  String? coverUrl,
+}) {
+  final blocks = parseArticleMarkdown(content);
+  final plain = splitContentParagraphs(content);
+  final unchanged =
+      isPlainParagraphs(blocks) &&
+      blocks.length == plain.length &&
+      [
+        for (var index = 0; index < blocks.length; index++)
+          (blocks[index] as ArticleTextBlock).text == plain[index],
+      ].every((same) => same);
+  if (unchanged || blocks.isEmpty) {
+    return ArticleBodyPayload(
+      version: 0,
+      blocks: blogToContentBlocks(content: content, coverUrl: coverUrl),
+    );
+  }
+  final uuid = const Uuid();
+  return ArticleBodyPayload(
+    version: 1,
+    blocks: [
+      if (coverUrl != null && coverUrl.isNotEmpty)
+        <String, dynamic>{
+          'id': uuid.v4(),
+          'type': 'image',
+          'src': coverUrl,
+          'alt': '',
+        },
+      for (final block in blocks) _blockJson(block, uuid.v4()),
+    ],
+  );
+}
+
+Map<String, dynamic> _blockJson(ArticleBlock block, String id) {
+  switch (block) {
+    case ArticleTextBlock():
+      return <String, dynamic>{
+        'id': id,
+        'type': switch (block.kind) {
+          ArticleTextKind.paragraph => 'paragraph',
+          ArticleTextKind.heading => 'heading',
+          ArticleTextKind.quote => 'quote',
+        },
+        'text': block.text,
+        if (block.kind == ArticleTextKind.heading) 'level': block.level ?? 2,
+        if (_isFormatted(block.runs)) 'inlines': _runsJson(block.runs),
+      };
+    case ArticleListBlock():
+      final formatted = block.items.any((item) => _isFormatted(item.runs));
+      return <String, dynamic>{
+        'id': id,
+        'type': 'list',
+        'ordered': block.ordered,
+        'items': [for (final item in block.items) item.text],
+        if (formatted)
+          'itemInlines': [for (final item in block.items) _runsJson(item.runs)],
+      };
+    case ArticleImageBlock():
+      return <String, dynamic>{
+        'id': id,
+        'type': 'image',
+        'src': block.src,
+        'alt': block.alt,
+        if ((block.caption ?? '').isNotEmpty) 'caption': block.caption,
+      };
+    case ArticleCodeBlock():
+      return <String, dynamic>{
+        'id': id,
+        'type': 'code',
+        'language': block.language,
+        'code': block.code,
+      };
+  }
+}
+
+bool _isFormatted(List<ArticleInlineRun> runs) =>
+    runs.any((run) => run.marks.isNotEmpty || run.href != null);
+
+const _markNames = {
+  ArticleInlineMark.bold: 'bold',
+  ArticleInlineMark.italic: 'italic',
+  ArticleInlineMark.underline: 'underline',
+  ArticleInlineMark.strikethrough: 'strikethrough',
+  ArticleInlineMark.code: 'code',
+};
+
+List<Map<String, dynamic>> _runsJson(List<ArticleInlineRun> runs) => [
+  for (final run in normalizeInlineRuns(runs))
+    <String, dynamic>{
+      'text': run.text,
+      if (run.marks.isNotEmpty)
+        'marks': [
+          for (final mark in ArticleInlineMark.values)
+            if (run.marks.contains(mark)) _markNames[mark],
+        ],
+      if (run.href != null) 'href': run.href,
+    },
+];
 
 /// Flattens a contentBlocks document back into the app's plain-text body
 /// and picks the first image block as the cover.

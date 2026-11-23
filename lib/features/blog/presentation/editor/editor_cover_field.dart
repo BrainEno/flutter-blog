@@ -113,8 +113,10 @@ class EditorCoverField extends StatelessWidget {
         ),
       );
     }
-    final published = blog;
-    if (published != null && published.imageUrl.isNotEmpty) {
+    // The editor's cover: for a structured article only a leading image is
+    // one, and its other pictures stay in the body text.
+    final publishedCover = blog?.editableBody?.coverUrl ?? blog?.imageUrl ?? '';
+    if (publishedCover.isNotEmpty) {
       return SizedBox(
         height: NoWaveSizes.coverEditorBox,
         width: double.infinity,
@@ -123,7 +125,7 @@ class EditorCoverField extends StatelessWidget {
           child: CachedNetworkImage(
             // Cover media are immutable on no-wave (each upload is a new
             // asset id), so the URL is used as-is: no cache-busting suffix.
-            imageUrl: published.imageUrl,
+            imageUrl: publishedCover,
             fit: BoxFit.cover,
             memCacheWidth: decode.width,
             memCacheHeight: decode.height,
