@@ -19,8 +19,8 @@ class CommentLoginPrompt extends StatelessWidget {
         // The comments sit on the article's darker end-matter sheet; the
         // prompt is a card of the page's own paper laid on it. A theme role
         // instead of a fixed grey (issue #24), so it holds in both themes.
+        // Square, like the thread cards under it.
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(NoWaveRadius.surface),
       ),
       // Set on the section's one left edge, like the comments under it: a
       // centred block here was the only thing in the thread on its own axis.

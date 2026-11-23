@@ -211,6 +211,7 @@ class ViewerArticleBody extends StatelessWidget {
                         slug: blog.id,
                         onRequestLogin: onRequestLogin,
                         onOpenAuthor: openAuthor,
+                        articleAuthorId: blog.posterId,
                       ),
                     ],
                   ),
