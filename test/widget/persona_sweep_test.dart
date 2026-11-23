@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/design/components/no_wave_button.dart';
@@ -6,15 +7,20 @@ import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/data/models/comment_model.dart';
 import 'package:belog/features/blog/domain/entities/comment_page.dart';
+import 'package:belog/features/blog/presentation/viewer/reader_text_size_controller.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/router/route_paths.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
 
+import '../support/read_aloud_fakes.dart';
+import 'read_aloud_navigation_test.dart' show installSpeech, startPlayback;
+import 'reader_text_size_test.dart' show MemoryTextSizeStore;
 import 'router_test.dart' show Harness, sampleUser;
 
 /// The persona sweep: the checks the mobile-agent-testers phones run on
@@ -164,10 +170,14 @@ final screens = <Screen>[
     arrange: _commentsFail,
   ),
   Screen(
-    'article (delete-comment dialog)',
+    'article (text-size sheet)',
     RoutePaths.view(_slug),
-    signedIn: true,
-    act: _openDeleteDialog,
+    act: _openTextSize,
+  ),
+  Screen(
+    'article (read aloud playing)',
+    RoutePaths.view(_slug),
+    act: _startReadAloud,
   ),
   const Screen('login (rejected)', RoutePaths.login, act: _rejectedLogin),
 ];
@@ -182,19 +192,14 @@ void _commentsFail(Harness harness) {
   ).thenThrow(const SocketException('offline'));
 }
 
-Future<void> _openDeleteDialog(
-  WidgetTester tester,
-  AppLocalizations l10n,
-) async {
-  // The reader's own comment is the last one, at the end of the page.
-  await _scrollToEnd(tester);
-  final delete = find.widgetWithText(TextButton, l10n.actionDelete).first;
-  await tester.ensureVisible(delete);
+Future<void> _openTextSize(WidgetTester tester, AppLocalizations l10n) async {
+  await tester.tap(find.byKey(const ValueKey('reader-text-size')));
   await tester.pumpAndSettle();
-  await tester.tap(delete);
-  await tester.pumpAndSettle();
-  expect(find.byType(Dialog), findsOneWidget);
+  expect(find.byType(BottomSheet), findsOneWidget);
 }
+
+Future<void> _startReadAloud(WidgetTester tester, AppLocalizations l10n) =>
+    startPlayback(tester);
 
 Future<void> _rejectedLogin(WidgetTester tester, AppLocalizations l10n) async {
   await tester.enterText(
@@ -403,7 +408,30 @@ Future<bool> _scrollToEnd(WidgetTester tester) async {
   return true;
 }
 
+/// The bundled faces, so a word is measured at the width a phone draws it:
+/// the test font sets every glyph one em wide, which cuts Latin labels that
+/// fit on a device. Chinese has no bundled face and falls back to that test
+/// font - one em per character, which is what a system CJK face draws too.
+Future<void> _loadBundledFonts() async {
+  const families = {
+    'InterTight': ['assets/fonts/InterTight-Variable.ttf'],
+    'InstrumentSerif': [
+      'assets/fonts/InstrumentSerif-Regular.ttf',
+      'assets/fonts/InstrumentSerif-Italic.ttf',
+    ],
+  };
+  for (final MapEntry(key: family, value: files) in families.entries) {
+    final loader = FontLoader(family);
+    for (final file in files) {
+      final bytes = File(file).readAsBytesSync();
+      loader.addFont(Future.value(ByteData.sublistView(bytes)));
+    }
+    await loader.load();
+  }
+}
+
 void main() {
+  setUpAll(_loadBundledFonts);
   setUp(() => GetIt.instance.reset());
   if (_reportOnly) {
     tearDownAll(() {
@@ -430,7 +458,18 @@ void main() {
           final semantics = tester.ensureSemantics();
 
           final harness = Harness();
-          addTearDown(harness.dispose);
+          // What production registers around the reader: read-aloud and
+          // the reader's text size, so the agents' screens are the real
+          // ones, toolbar and player included.
+          final engine = FakeSpeechEngine();
+          installSpeech(engine);
+          final textSize = ReaderTextSizeController(MemoryTextSizeStore());
+          GetIt.instance.registerSingleton<ReaderTextSizeController>(textSize);
+          addTearDown(() async {
+            await harness.dispose();
+            await engine.close();
+            textSize.dispose();
+          });
           _stub(harness);
           screen.arrange?.call(harness);
           if (screen.signedIn) harness.appUserCubit.updateUser(sampleUser());
