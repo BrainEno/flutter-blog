@@ -211,6 +211,46 @@ void main() {
     expect(find.byTooltip(l10n.editorFocusModeExit), findsOneWidget);
   });
 
+  testWidgets('a narrow, large-text screen keeps focus mode in the menu', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var toggles = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          appBar: EditorAppBar(
+            isEditing: false,
+            onPublish: () {},
+            onSaveDraft: () {},
+            onImportNotion: () {},
+            onCancel: () {},
+            onToggleFocusMode: () => toggles++,
+          ),
+        ),
+      ),
+    );
+    expect(find.byKey(const Key('editor-focus-mode')), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('editor-focus-mode-menu')));
+    await tester.pumpAndSettle();
+    expect(toggles, 1);
+  });
+
   testWidgets('without a toggle there is no focus mode switch', (tester) async {
     await render(tester);
     expect(find.byKey(const Key('editor-focus-mode')), findsNothing);
