@@ -131,8 +131,10 @@ void main() {
     expect(find.text('Finished'), findsOneWidget);
 
     // Signing out takes the marks with the account.
+    // (The account change arrives through the cubit's stream, a microtask
+    // or two after it is emitted.)
     users.updateUser(null);
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('Finished'), findsNothing);
   });
 
