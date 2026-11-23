@@ -8,6 +8,7 @@ import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
 import 'package:belog/core/common/widgets/no_wave_avatar.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/comment.dart';
@@ -89,6 +90,7 @@ Future<void> _pumpSection(
   double textScale = 1,
   double horizontalPadding = 0,
   VoidCallback? onRequestLogin,
+  String? articleAuthorId,
 }) {
   return tester.pumpWidget(
     MultiBlocProvider(
@@ -116,6 +118,7 @@ Future<void> _pumpSection(
                 slug: 'my-slug',
                 onOpenAuthor: _ignoreAuthor,
                 onRequestLogin: onRequestLogin,
+                articleAuthorId: articleAuthorId,
               ),
             ),
           ),
@@ -232,16 +235,36 @@ void main() {
     final replyName = inTile('c2', find.text(name));
     final replyBody = inTile('c2', find.text('同感'));
 
-    // The face on the section's edge; who, when, what and the actions all
-    // start on one text column beside it.
-    expect(left(find.byType(NoWaveAvatar).first), 0);
+    // The thread is one card; the face sits its inset in from the card's
+    // edge, and who, when, what and the actions all start on one text
+    // column beside it.
+    final card = find.byKey(const ValueKey('comment-thread-c1'));
+    expect(left(card), 0);
+    expect(
+      find.descendant(of: card, matching: find.text('同感')),
+      findsOneWidget,
+      reason: 'a reply stays inside its thread card',
+    );
+    const inset = CommentTile.cardInset;
+    expect(left(find.byType(NoWaveAvatar).first), inset);
     for (final part in [rootName, rootDate, rootBody, rootReply]) {
-      expect(left(part), CommentTile.rootTextColumn);
+      expect(left(part), inset + CommentTile.rootTextColumn);
     }
     // A reply's face hangs from that column; its own words share a column.
-    expect(left(find.byType(NoWaveAvatar).last), CommentTile.rootTextColumn);
+    expect(
+      left(find.byType(NoWaveAvatar).last),
+      inset + CommentTile.rootTextColumn,
+    );
     expect(left(replyName), left(replyBody));
-    expect(left(replyBody), greaterThan(CommentTile.rootTextColumn));
+    expect(left(replyBody), greaterThan(inset + CommentTile.rootTextColumn));
+    // The rail the replies hang from runs under the centre of the face.
+    final rail = tester.getRect(
+      find.byKey(const ValueKey('comment-replies-c1')),
+    );
+    expect(
+      rail.left + NoWaveStroke.focus / 2,
+      closeTo(tester.getCenter(find.byType(NoWaveAvatar).first).dx, 0.5),
+    );
     // The avatar is centred on the stacked name and date, not on one line.
     final head = tester
         .getRect(rootName)
@@ -259,6 +282,88 @@ void main() {
     expect(style(rootDate).fontSize, lessThan(style(rootName).fontSize!));
     expect(style(rootName).fontSize, lessThan(style(rootBody).fontSize!));
     expect(style(replyBody).fontSize, lessThan(style(rootBody).fontSize!));
+  });
+
+  testWidgets('each thread is its own card and the author is marked', (
+    tester,
+  ) async {
+    when(() => getComments('my-slug')).thenAnswer(
+      (_) async => right<Failure, CommentPage>(
+        _page([
+          _comment(
+            'c1',
+            replies: [
+              _comment(
+                'c2',
+                authorId: 'writer',
+                content: '谢谢',
+                parentId: 'c1',
+                replies: [
+                  _comment(
+                    'c3',
+                    content: '第三层',
+                    parentId: 'c2',
+                    replies: [_comment('c5', content: '第四层', parentId: 'c3')],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          _comment('c4', content: '沙发'),
+        ]),
+      ),
+    );
+    final bloc = buildBloc();
+    addTearDown(bloc.close);
+    await _pumpSection(
+      tester,
+      appUserCubit: appUserCubit,
+      commentBloc: bloc,
+      articleAuthorId: 'writer',
+    );
+    await tester.pumpAndSettle();
+
+    final l10n = lookupAppLocalizations(const Locale('zh'));
+    final first = find.byKey(const ValueKey('comment-thread-c1'));
+    final second = find.byKey(const ValueKey('comment-thread-c4'));
+    expect(first, findsOneWidget);
+    expect(second, findsOneWidget);
+    // Two cards with a visible gap of the darker paper between them.
+    expect(
+      tester.getRect(second).top,
+      greaterThan(tester.getRect(first).bottom),
+    );
+    for (final body in ['写得真好', '谢谢', '第三层', '第四层']) {
+      expect(
+        find.descendant(of: first, matching: find.text(body)),
+        findsOneWidget,
+      );
+    }
+    // Only the article's author carries the badge.
+    final badge = find.text(l10n.commentArticleAuthor);
+    expect(badge, findsOneWidget);
+    Finder tile(String id) => find.byWidgetPredicate(
+      (widget) => widget is CommentTile && widget.comment.id == id,
+    );
+    expect(find.descendant(of: tile('c2'), matching: badge), findsOneWidget);
+    expect(find.descendant(of: tile('c3'), matching: badge), findsNothing);
+    // Past the levels that step in, a row names whom it answers.
+    final answering = l10n.commentInReplyTo(l10n.anonymousReader);
+    expect(
+      find.descendant(of: tile('c5'), matching: find.text(answering)),
+      findsOneWidget,
+    );
+    expect(find.text(answering), findsOneWidget);
+    // It no longer steps in: its face lines up with its parent's.
+    double faceLeft(String id) => tester
+        .getTopLeft(
+          find
+              .descendant(of: tile(id), matching: find.byType(NoWaveAvatar))
+              .first,
+        )
+        .dx;
+    expect(faceLeft('c5'), faceLeft('c3'));
+    expect(tester.takeException(), isNull);
   });
 
   for (final locale in [const Locale('en'), const Locale('zh')]) {

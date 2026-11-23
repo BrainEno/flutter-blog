@@ -1,6 +1,7 @@
 import 'package:belog/core/common/widgets/no_wave_status.dart';
 import 'package:belog/core/design/components/no_wave_list_note.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
 import 'package:belog/core/design/components/no_wave_loading_label.dart';
 import 'package:belog/core/design/components/no_wave_section_head.dart';
@@ -35,11 +36,15 @@ class CommentsSection extends StatefulWidget {
   final VoidCallback? onRequestLogin;
   final ValueChanged<String> onOpenAuthor;
 
+  /// The article's author: their comments carry a small "author" badge.
+  final String? articleAuthorId;
+
   const CommentsSection({
     super.key,
     required this.slug,
     required this.onOpenAuthor,
     this.onRequestLogin,
+    this.articleAuthorId,
   });
 
   @override
@@ -175,7 +180,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                 onCancelReply: _cancelReply,
                 onSubmit: _submit,
               ),
-            const SizedBox(height: NoWaveSpacing.large),
+            const SizedBox(height: NoWaveSpacing.medium),
             _buildList(state, signedIn: signedIn),
           ],
         );
@@ -238,6 +243,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                 replyRequiresLogin: !signedIn,
                 onOpenAuthor: widget.onOpenAuthor,
                 confirmDelete: () => _confirmDelete(context),
+                articleAuthorId: widget.articleAuthorId,
               ),
             ),
             _buildPaginationFooter(state),
@@ -277,24 +283,18 @@ class _CommentsSectionState extends State<CommentsSection> {
       );
     }
     if (!state.hasMore) return const SizedBox.shrink();
-    // The way on keeps to the text column the comments start on, set like
-    // their actions but in ink: it continues the list, it does not end it.
-    final scheme = Theme.of(context).colorScheme;
+    // The way on spans the column under the last card, outlined in ink: a
+    // plain button the thumb finds at the end of the stack, not one more
+    // muted word that reads like a comment's action.
     return Padding(
-      padding: const EdgeInsetsDirectional.only(
-        start: CommentTile.rootTextColumn,
-      ),
-      child: TextButton.icon(
+      padding: const EdgeInsets.only(top: NoWaveSpacing.small),
+      child: NoWaveButton(
+        label: l10n.commentsLoadMore,
+        icon: Icons.expand_more,
+        variant: NoWaveButtonVariant.secondary,
+        expand: true,
         onPressed: () =>
             context.read<CommentBloc>().add(const MoreCommentsRequested()),
-        style: TextButton.styleFrom(
-          foregroundColor: scheme.onSurface,
-          padding: const EdgeInsetsDirectional.only(end: NoWaveSpacing.small),
-          minimumSize: const Size(NoWaveSizes.tapTarget, NoWaveSizes.tapTarget),
-          alignment: AlignmentDirectional.centerStart,
-        ),
-        icon: const Icon(Icons.expand_more, size: 18),
-        label: Text(l10n.commentsLoadMore),
       ),
     );
   }
