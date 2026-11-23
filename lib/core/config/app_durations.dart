@@ -90,6 +90,10 @@ abstract final class AppDurations {
   /// draft. It only writes to the device, never to the server.
   static const Duration editorAutoSave = Duration(seconds: 2);
 
+  /// How long the comment box waits after the last keystroke before keeping
+  /// the unsent text; leaving the article or the app keeps it at once.
+  static const Duration commentDraftSave = Duration(seconds: 1);
+
   // --- Retention and retry schedules --------------------------------------
 
   /// Diagnostics records older than this are dropped even when there is room.

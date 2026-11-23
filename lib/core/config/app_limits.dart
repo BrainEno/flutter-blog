@@ -24,6 +24,10 @@ abstract final class AppLimits {
   /// The searches the search page offers again, newest first.
   static const int recentSearches = 8;
 
+  /// The unsent comment drafts kept per account, most recently written first;
+  /// an older one is dropped when a new article's draft is saved.
+  static const int commentDrafts = 20;
+
   // --- Server pages -------------------------------------------------------
 
   /// One page of the notification inbox.
