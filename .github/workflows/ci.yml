@@ -262,7 +262,7 @@ jobs:
           mkdir -p build/reports
           set +e
           # TEMPORARY (persona sweep discovery, revert before merge)
-          flutter test test/widget/persona_sweep_test.dart --dart-define=PERSONA_SWEEP_REPORT=true --reporter expanded 2>&1 | grep -v '^[0-9][0-9]:[0-9][0-9] +' | tee build/reports/flutter-test.log; false
+          flutter test test/widget/persona_sweep_test.dart test/widget/persona_sweep_fonts_test.dart --dart-define=PERSONA_SWEEP_REPORT=true --reporter expanded 2>&1 | grep -v '^[0-9][0-9]:[0-9][0-9] +' | tee build/reports/flutter-test.log; false
           statuses=("${PIPESTATUS[@]}")
           status=${statuses[0]}
           set -e
