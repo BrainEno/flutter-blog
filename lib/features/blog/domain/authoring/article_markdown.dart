@@ -410,7 +410,10 @@ class _InlineParser {
         final close = _findCloser(index + 3, end, '</u>');
         if (close != null && close > index + 3) {
           flush();
-          parse(index + 3, close, {...marks, ArticleInlineMark.underline}, href);
+          parse(index + 3, close, {
+            ...marks,
+            ArticleInlineMark.underline,
+          }, href);
           index = close + 4;
           continue;
         }
@@ -735,8 +738,7 @@ String _escapeLines(String text, {required bool first}) {
       lines[index] = '$lead\\$rest';
     } else if (_orderedEscape.hasMatch(rest)) {
       final mark = rest.indexOf(RegExp(r'[.)]'));
-      lines[index] =
-          '$lead${rest.substring(0, mark)}\\${rest.substring(mark)}';
+      lines[index] = '$lead${rest.substring(0, mark)}\\${rest.substring(mark)}';
     }
   }
   return lines.join('\n');
@@ -949,7 +951,7 @@ bool isPlainParagraphs(List<ArticleBlock> blocks) => blocks.every(
   (block) =>
       block is ArticleTextBlock &&
       block.kind == ArticleTextKind.paragraph &&
-      normalizeInlineRuns(block.runs).every(
-        (run) => run.marks.isEmpty && run.href == null,
-      ),
+      normalizeInlineRuns(
+        block.runs,
+      ).every((run) => run.marks.isEmpty && run.href == null),
 );

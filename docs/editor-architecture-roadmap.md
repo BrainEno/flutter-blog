@@ -1,28 +1,59 @@
 # 编辑器收敛与退役路线图
 
-> 状态：active ｜ 最后核对：2026-11-19 @ f4d9ccf
+> 状态：active ｜ 最后核对：2026-11-19 @ 7b62fa6
 
-> 本文描述 Flutter 客户端当前能安全写回 no-wave 的边界，以及把本地结构化原型
-> 收敛为可维护的单一作者流程所需的步骤。
-> 它不是服务端能力承诺；未列为可写的形状必须继续只读或本地恢复。
+> 本文描述 Flutter 客户端当前能安全写回 no-wave 的边界，以及编辑器从「普通文本
+> + 本地结构化原型」收敛为单一传统编辑器的过程。
+> 它不是服务端能力承诺；未列为可写的形状必须继续只读，并引导作者到网页端编辑。
 
 ## 当前边界
 
-应用现在有两类正文来源，不能把它们混成同一种“可编辑文章”：
+应用只有**一个**作者编辑器：`BlogEditorPage`（`EditorSessionCoordinator` +
+`EditorScreen`），和 no-wave 网页编辑器一样是「标题 + 正文」的传统写作界面。
+正文是一份 Markdown 文本，使用固定的小方言，与 no-wave 的 block 一一对应
+（`lib/features/blog/domain/authoring/article_markdown.dart`）：
 
-1. **普通文本正文**：`BlogEditorPage` 把 Markdown 文本写为 no-wave 的
-   `contentBlocksVersion: 0`。编辑请求必须携带从打开文章或显式 rebase 得到
-   的 `expectedRevision`，否则保留草稿并拒绝 PUT。发布失败会先持久化精确
-   快照，再以同一 `Idempotency-Key` 放入账号隔离的 publish queue。
-2. **结构化正文**：`structured_local_*_page.dart` 是本地探索、恢复和可视化
-   工具；`MarkdownRenderer`/文章阅读器负责兼容性只读显示。它们不能把
-   `contentBlocksVersion: 1`、未知 block 或未证明可逆的富文本压平成文本后
-   远端提交。这样做会丢掉 block identity、图片说明、样式或摘要，也会绕开
-   条件并发写入。
+| 正文写法 | no-wave block / mark |
+|---|---|
+| 空行分隔的文字 | `paragraph` |
+| `## ` / `### ` / `#### ` | `heading` level 2–4（单个 `#` 记为 2，标题本身是 1 级） |
+| `> ` 行 | `quote`（不含 attribution） |
+| `- ` / `1. ` 行 | `list`（无序 / 有序） |
+| ```` ```lang ```` 围栏 | `code`（未写语言时为 `text`） |
+| 独占一行的 `![alt](src "caption")` | `image` |
+| `**粗**` `*斜*` `~~删~~` `<u>下划</u>` `` `代码` `` `[文字](url)` | inline marks / link |
 
-因此，临时结构化页面不应被当成第二个生产编辑器。它们有价值：用于验证选择、
-range、rich-text 的本地操作，以及从损坏/不支持正文中恢复作者文字；但必须明确
-标注本地、不可发布，并且不应在导航、deep link 或资料页中成为默认“编辑”入口。
+- **写入**：`articleBodyPayload` 先把正文解析成 blocks。完全没有格式的正文仍按
+  原样写成 `contentBlocksVersion: 0`（与以前逐字节一致）；只要用了标题、列表、
+  引用、代码、图片、链接、行内样式或转义，就写成 `contentBlocksVersion: 1`，
+  网页端看到的是同样的结构而不是 Markdown 符号。块 id 写入时用 uuid 新生成。
+- **打开**：`Blog.editableBody` 决定一篇文章能否进编辑器。旧的 v0 正文本来就是
+  这份 Markdown；结构化文档会渲染成同一方言，并且**必须**解析回完全相同的
+  blocks 才算可编辑（`editableBodyOf`）。带 attribution 的引用、无法表达的结构、
+  未知文档版本都失败关闭：「我的文章」提示到网页端编辑，不进编辑器。
+- **封面**：文档开头那张 alt 和 caption 都为空的图片是编辑器的封面，其余图片
+  留在正文原位。
+- **更新**：`BlogRepositoryImpl.editBlog` 先重新读取服务器文章；只有
+  `plainEditorCompatible` 且 `editableBody != null`、有 server summary 时才继续，
+  否则在上传封面或任何修改之前返回 `article.structuredEditUnsupported`。
+  条件写入（`expectedRevision`）、草稿、离线队列和幂等键与以前相同。
+
+编辑器本身：键盘上方的格式工具栏（撤销/重做、H2–H4、粗体、斜体、删除线、下划线、
+行内代码、引用、两种列表、代码块、链接、插入图片并上传）、实时 Markdown 高亮、
+回车续写列表/引用（空项回车退出列表）、字数与阅读时长、专注模式（隐藏封面/标签/
+分类）、带图标的自动保存状态，以及编辑/预览切换。
+
+## 收敛结果（2026-11）
+
+原计划的阶段 3 是把结构化 composer 嵌进正式编辑器。实际采用了更简单的方案：
+不做 block 编辑器，而是让传统编辑器的 Markdown 与 no-wave blocks 无损互转。
+
+- `structured_local_*_page.dart` 等 22 个本地结构编辑界面文件及其 widget 测试已
+  删除；「我的文章」不再有「本地结构编辑」或本地恢复目录入口。
+- `lib/features/blog/domain/editing/` 与 SQLite 恢复存储、`editor_module` 的 DI
+  注册和单元测试保留为基础设施（见 [structured-session-recovery.md](structured-session-recovery.md)），
+  当前没有界面打开它们。
+- 下文「收敛顺序」和 Local … form 各节保留为历史记录，描述的是已移除的原型。
 
 ## 已落地的协调边界
 
@@ -51,7 +82,7 @@ mixin。它们仍共享同一份可变状态、同一组账号围栏检查，行
 - 自动草稿、冲突核对和队列行仍只有 `EditorSessionCoordinator` 这一处协调。成功只能清理
   “本次发布前保存的精确 draft”，不能清理作者在请求期间继续输入的内容。
 
-## 收敛顺序
+## 收敛顺序（历史）
 
 ### 阶段 1：明确入口和数据所有权（下一次结构化功能变更前）
 
@@ -110,7 +141,7 @@ snapshot；账号切换和重启后 queue 不会把正文发送给另一个账�
 - **无障碍与离线说明**：本地/只读/不可发布状态必须被文本和 semantics 说清楚，不能
   用禁用的图标让读者猜测。
 
-### Local block-property form
+### Local block-property form (removed)
 
 The local structure editor can change image alternative text and optional
 caption, code language and literal code, quote attribution, heading level,
@@ -127,7 +158,7 @@ Markdown publishing, upload images, or publish a structured article. An input
 method composition must finish before applying. Unsupported malformed UTF-16
 is not rendered or edited through this form.
 
-### Local structural insertion and list actions
+### Local structural insertion and list actions (removed)
 
 The local structure editor can insert one of the six currently validated block
 shapes after an existing block. IDs are generated locally and checked for

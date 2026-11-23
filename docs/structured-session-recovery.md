@@ -1,9 +1,16 @@
 # Structured editing session recovery
 
-> 状态：active ｜ 最后核对：2026-11-19 @ ae4b70a
+> 状态：active ｜ 最后核对：2026-11-19 @ 7b62fa6
+
+> **2026-11 update:** the local block editor pages built on this store (the
+> 「本地结构编辑」 UI) have been removed. Structured articles now open in the
+> ordinary Markdown editor whenever their blocks round-trip losslessly (see
+> [editor-architecture-roadmap.md](editor-architecture-roadmap.md)). The
+> domain and storage layer described below stays as tested infrastructure; no
+> screen opens it today.
 
 The recovery store is local infrastructure, **not a publishing path**. It is
-connected to a limited local editor but not the publish queue. It only addresses an
+not connected to the publish queue. It only addresses an
 existing article by backend namespace, signed-in account, stable server article
 ID and explicit content locale. It cannot recover a new article without a
 server ID. Its base/body and base/session metadata snapshots are committed in
@@ -613,26 +620,9 @@ invalidation and on close for both sessions; the plain-text session still
 exposes the values it was constructed with. `test/unit/editing/local_buffer_session_test.dart`
 pins the two switches through an in-memory port.
 
-### Shared page chrome (#291)
+### Shared page chrome (#291, removed)
 
-The local editing pages share their way out as well as their state machine.
-`lib/features/blog/presentation/editor/structured_local_page_chrome.dart`
-holds three pieces:
-
-- `StructuredLocalScaffold`: the `PopScope(canPop: false)`, the app bar with
-  its back arrow and the `SafeArea` body. The system back gesture,
-  predictive back and the arrow all call the same `onLeave`, so a page cannot
-  wire one and forget the other.
-- `closeStructuredSessionForExit`: close once; if the last write did not reach
-  the buffer, ask with `structuredExitTitle` / `structuredExitBody`, and only
-  after a confirmation close again with `abandonUnsaved: true`. It returns
-  whether the page may pop, and the page re-arms its own exit guard otherwise.
-- `StructuredLocalNotice`: the centred one-line states (loading, changed
-  session, local failure, conflict), with the page margin; only the loading
-  line is a live region.
-
-The block editor, the plain-text page and the rich-text page use all three.
-The inline page keeps its own `PopScope(canPop: !_handingOff)`, because it
-hands its result back to the editor instead of closing a buffer, and the range
-page has no buffer to close; neither has an exit question to share.
-`test/widget/structured_local_page_chrome_test.dart` pins the exit paths.
+The local editing pages once shared one scaffold, exit question and notice
+widget. They were removed together with the local block editor UI; the exit
+rule they enforced (close the buffer once, ask before abandoning an unsaved
+write) remains in the session classes above.

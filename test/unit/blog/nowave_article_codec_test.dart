@@ -92,13 +92,26 @@ void main() {
       expect(model.serverSummary, '作者的摘要');
       expect(model.copyWith(title: 'changed').plainEditorCompatible, isTrue);
       expect(model.copyWith(title: 'changed').serverSummary, '作者的摘要');
-      final richer = BlogModel.fromNowaveArticle({
+      // A structured document the editor's Markdown can carry is editable...
+      final structured = BlogModel.fromNowaveArticle({
         'slug': 'test',
         'id': 'id',
         'contentBlocksVersion': 1,
         'contentBlocks': [paragraph],
       });
+      expect(structured.plainEditorCompatible, isTrue);
+      expect(structured.editableBody?.markdown, '正文');
+      // ...one it cannot carry (a quote attribution) stays closed.
+      final richer = BlogModel.fromNowaveArticle({
+        'slug': 'test',
+        'id': 'id',
+        'contentBlocksVersion': 1,
+        'contentBlocks': [
+          {'id': 'q', 'type': 'quote', 'text': '引文', 'attribution': '某人'},
+        ],
+      });
       expect(richer.plainEditorCompatible, isFalse);
+      expect(richer.editableBody, isNull);
       expect(richer.copyWith(title: 'changed').plainEditorCompatible, isFalse);
     });
   });
@@ -235,6 +248,81 @@ void main() {
       expect(
         extracted.coverUrl,
         'https://api.example.invalid/api/v1/media/cover',
+      );
+    });
+  });
+
+  group('articleBodyPayload', () {
+    test('unformatted text keeps the version 0 shape', () {
+      final payload = articleBodyPayload(
+        content: '第一段\n\n第二段 5 * 3',
+        coverUrl: 'https://api.example.invalid/api/v1/media/cover',
+      );
+      expect(payload.version, 0);
+      expect(payload.blocks.map((block) => block['type']), [
+        'image',
+        'paragraph',
+        'paragraph',
+      ]);
+      expect(payload.blocks[2]['text'], '第二段 5 * 3');
+      expect(
+        payload.blocks.every((block) => !block.containsKey('inlines')),
+        isTrue,
+      );
+    });
+
+    test('formatting is written as a version 1 document', () {
+      final payload = articleBodyPayload(
+        content:
+            '## 小标题\n\n'
+            '这是 **重点** 和 [链接](https://example.com)。\n\n'
+            '- 一\n- 二\n\n'
+            '> 引用\n\n'
+            '```dart\nmain();\n```\n\n'
+            '![图](https://example.com/p.png)',
+        coverUrl: 'https://api.example.invalid/api/v1/media/cover',
+      );
+      expect(payload.version, 1);
+      final blocks = payload.blocks;
+      expect(blocks.map((block) => block['type']), [
+        'image',
+        'heading',
+        'paragraph',
+        'list',
+        'quote',
+        'code',
+        'image',
+      ]);
+      // The cover leads with an empty description, as the app always wrote.
+      expect(blocks[0]['alt'], '');
+      expect(blocks[1]['level'], 2);
+      expect(blocks[1]['text'], '小标题');
+      expect(blocks[2]['text'], '这是 重点 和 链接。');
+      final inlines = (blocks[2]['inlines'] as List)
+          .cast<Map<String, dynamic>>();
+      expect(inlines.map((run) => run['text']).join(), blocks[2]['text']);
+      expect(inlines.firstWhere((run) => run['text'] == '重点')['marks'], [
+        'bold',
+      ]);
+      expect(
+        inlines.firstWhere((run) => run['text'] == '链接')['href'],
+        'https://example.com',
+      );
+      expect(blocks[3]['ordered'], isFalse);
+      expect(blocks[3]['items'], ['一', '二']);
+      expect(blocks[3].containsKey('itemInlines'), isFalse);
+      expect(blocks[5]['language'], 'dart');
+      expect(blocks[5]['code'], 'main();');
+      expect(blocks[6]['alt'], '图');
+      final ids = blocks.map((block) => block['id'] as String).toSet();
+      expect(ids, hasLength(blocks.length));
+      expect(ids.every((id) => id.isNotEmpty && id.length <= 100), isTrue);
+    });
+
+    test('an empty body is still refused before any request', () {
+      expect(
+        () => articleBodyPayload(content: '  \n\n '),
+        throwsA(isA<ServerException>()),
       );
     });
   });
