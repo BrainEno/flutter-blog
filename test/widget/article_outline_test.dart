@@ -164,9 +164,11 @@ void main() {
         expect(_line(title), findsOneWidget);
       }
       // A nested heading sits a step in.
+      Finder words(String title) =>
+          find.descendant(of: _line(title), matching: find.text(title));
       expect(
-        tester.getTopLeft(find.text('A side street')).dx,
-        greaterThan(tester.getTopLeft(find.text('Roads')).dx),
+        tester.getTopLeft(words('A side street')).dx,
+        greaterThan(tester.getTopLeft(words('Roads')).dx),
       );
       // Near the top of the article the later sections are not marked.
       for (final title in ['Roads', 'A side street', 'Rewrites']) {
