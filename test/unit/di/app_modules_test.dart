@@ -82,6 +82,7 @@ import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_b
 import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/features/blog/presentation/viewer/reader_text_size_controller.dart';
+import 'package:belog/features/blog/presentation/viewer/reading_marks.dart';
 import 'package:belog/features/messages/domain/repositories/message_repository.dart';
 import 'package:belog/features/messages/domain/services/message_participant_names.dart';
 import 'package:belog/features/messages/presentation/bloc/message_inbox_cubit.dart';
@@ -216,6 +217,7 @@ const Map<String, _Row<Object>> _resolutions = {
   'ReaderTextSizeController': _Row<ReaderTextSizeController>(),
   'ReaderTextSizeStore': _Row<ReaderTextSizeStore>(),
   'ReadingHistoryStore': _Row<ReadingHistoryStore>(),
+  'ReadingMarks': _Row<ReadingMarks>(),
   'RecordArticleView': _Row<RecordArticleView>(),
   'RecycleBinBloc': _Row<RecycleBinBloc>(),
   'RequestPasswordReset': _Row<RequestPasswordReset>(),
@@ -362,6 +364,12 @@ void main() {
     // runner the background service drives - not a second queue worker.
     expect(
       identical(locator<PublishQueueDrainer>(), locator<PublishQueueRunner>()),
+      isTrue,
+    );
+    // The lists' reading marks only stay current if every history write
+    // passes through them.
+    expect(
+      identical(locator<ReadingHistoryStore>(), locator<ReadingMarks>()),
       isTrue,
     );
     expect(
