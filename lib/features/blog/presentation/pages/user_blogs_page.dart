@@ -9,7 +9,6 @@ import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
-import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/article_editions.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
