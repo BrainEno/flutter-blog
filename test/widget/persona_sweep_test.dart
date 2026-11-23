@@ -9,6 +9,7 @@ import 'package:belog/features/blog/domain/entities/comment_page.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/router/route_paths.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:get_it/get_it.dart';
@@ -185,6 +186,8 @@ Future<void> _openDeleteDialog(
   WidgetTester tester,
   AppLocalizations l10n,
 ) async {
+  // The reader's own comment is the last one, at the end of the page.
+  await _scrollToEnd(tester);
   final delete = find.widgetWithText(TextButton, l10n.actionDelete).first;
   await tester.ensureVisible(delete);
   await tester.pumpAndSettle();
@@ -318,9 +321,46 @@ String _compact(String text) => text
     .replaceAll(RegExp(r'\s+'), ' ')
     .trim();
 
+/// Chinese the fixtures put on screen as content (titles, names, tags) and
+/// the two Chinese strings the English interface carries on purpose: the
+/// language's own name in the language menu and the brand's subline.
+final _contentInChinese = <String>{
+  '\u591c\u91cc\u7684\u57ce\u5e02', // the second article's title
+  sampleUser().name,
+  '\u6df1\u94fe', // the harness's default author and article
+  '\u8bd7\u6b4c', // the harness's default tag
+  '\u4e2d\u6587', // languageChinese
+  '\u7121\u6d6a\u6f6e', // splashBrandSubline
+};
+
+final _han = RegExp(r'[\u4e00-\u9fff]');
+
+/// Short text that was cut, and Chinese left in the English interface: the
+/// two kinds of copy bugs the agents report most after layout.
+List<String> _copyFindings(Locale locale) {
+  final findings = <String>{};
+  for (final element in find.byType(RichText).evaluate()) {
+    final paragraph = element.renderObject;
+    if (paragraph is! RenderParagraph || !paragraph.hasSize) continue;
+    final text = paragraph.text.toPlainText().trim();
+    if (text.isEmpty) continue;
+    // Titles and excerpts are clamped on purpose; a label, a button or a
+    // name that loses its end is not.
+    if (paragraph.didExceedMaxLines && text.runes.length <= 40) {
+      findings.add('cut text | "$text"');
+    }
+    if (locale.languageCode == 'en' &&
+        _han.hasMatch(text) &&
+        !_contentInChinese.any(text.contains)) {
+      findings.add('untranslated | "$text"');
+    }
+  }
+  return findings.toList();
+}
+
 /// Everything wrong with what is on screen now.
-Future<List<String>> _audit(WidgetTester tester) async {
-  final findings = <String>[];
+Future<List<String>> _audit(WidgetTester tester, Locale locale) async {
+  final findings = <String>[..._copyFindings(locale)];
   final error = tester.takeException();
   if (error != null) findings.add('layout/exception: $error');
   for (final guideline in <AccessibilityGuideline>[
@@ -408,11 +448,13 @@ void main() {
           }
 
           final findings = [
-            for (final finding in await _audit(tester)) '[top] $finding',
+            for (final finding in await _audit(tester, persona.locale))
+              '[top] $finding',
           ];
           if (act == null && await _scrollToEnd(tester)) {
             findings.addAll([
-              for (final finding in await _audit(tester)) '[end] $finding',
+              for (final finding in await _audit(tester, persona.locale))
+                '[end] $finding',
             ]);
           }
           semantics.dispose();
