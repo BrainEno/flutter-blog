@@ -142,6 +142,21 @@ awk 'BEGIN { for (i=1; i<=25000; i++) printf "x"; print "END" }' > "$tmp/log"
 output="$(bash "$annotation" analyze "$tmp/log")"
 message="${output#*diagnostics::}"
 [[ ${#message} == 3600 && "$message" == *END ]]
+# Every failing test is named in its own annotation with the evidence that
+# preceded it, even when the combined excerpt is cut after the first one.
+cat > "$tmp/log" <<'EOF'
+00:01 +1: a_test.dart: first
+Expected: 1
+  Actual: 2
+unrelated noise
+00:01 +1 -1: a_test.dart: first [E]
+00:02 +1 -1: b_test.dart: second
+00:02 +1 -2: b_test.dart: second [E]
+EOF
+output="$(bash "$annotation" analyze "$tmp/log")"
+[[ "$(printf '%s\n' "$output" | sed -n 1p)" == '::error title=failing test::00:01 +1 -1: a_test.dart: first [E]%0AExpected: 1%0A  Actual: 2' ]]
+[[ "$(printf '%s\n' "$output" | sed -n 2p)" == '::error title=failing test::00:02 +1 -2: b_test.dart: second [E]' ]]
+[[ "$(printf '%s\n' "$output" | sed -n 3p)" == '::error title=analyze failure diagnostics::'* ]]
 expect_failure 'Usage:' bash "$annotation" unknown "$tmp/log"
 expect_failure 'not readable' bash "$annotation" analyze "$tmp/missing"
 

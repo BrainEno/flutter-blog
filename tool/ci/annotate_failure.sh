@@ -4,7 +4,8 @@
 # For `analyze` (also reused for the test step) the excerpt keeps, in file
 # order: every failing-test progress line (marked with `[E]`), the full
 # "EXCEPTION CAUGHT" blocks, and the trailing 100 lines as before. For
-# `android` the original error-context window is kept. The message cap is
+# `android` the original error-context window is kept. Each failing test also
+# gets its own short annotation (first 10), so one run names every failure. The message cap is
 # unchanged (last 24000 bytes-equivalent kept).
 set -euo pipefail
 if [[ $# != 2 || ( "$1" != analyze && "$1" != android ) ]]; then
@@ -27,6 +28,29 @@ awk -v mode="$1" '
     }
   }
   END {
+    # One short annotation per failing test (first 10): its `[E]` line plus
+    # the expectation evidence printed above it since the previous progress
+    # line. The combined excerpt below is capped, so on its own it only ever
+    # showed the first failure of a run.
+    if (mode == "analyze") {
+      shown = 0
+      for (i = 1; i <= NR && shown < 10; i++) {
+        if (lines[i] !~ /\[E\][[:space:]]*$/) continue
+        evidence = ""
+        for (j = i - 1; j >= 1 && j >= i - 120; j--) {
+          if (lines[j] ~ /^[0-9][0-9]:[0-9][0-9] \+[0-9]+/) break
+          if (lines[j] ~ /Expected:|Actual:|Which:|overflowed|was thrown|test\/[^ ]*_test\.dart line [0-9]+|Bad state|Null check/)
+            evidence = lines[j] (evidence == "" ? "" : "\n" evidence)
+        }
+        one = lines[i] (evidence == "" ? "" : "\n" evidence)
+        if (length(one) > 1500) one = substr(one, 1, 1500)
+        gsub(/%/, "%25", one)
+        gsub(/\r/, "%0D", one)
+        gsub(/\n/, "%0A", one)
+        printf "::error title=failing test::%s\n", one
+        shown++
+      }
+    }
     has_failures = 0
     if (mode == "analyze") {
       # Failing-test progress lines carry "[E]" at the end; keep the line
