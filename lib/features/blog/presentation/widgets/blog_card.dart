@@ -8,6 +8,7 @@ import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/reader/article_excerpt.dart';
 import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
 import 'package:belog/features/blog/presentation/widgets/article_tag_label.dart';
+import 'package:belog/features/blog/presentation/widgets/reading_mark.dart';
 import 'package:flutter/material.dart';
 
 /// A presentational article item. Navigation is deliberately supplied by the
@@ -148,11 +149,28 @@ class BlogCard extends StatelessWidget {
   }
 
   /// The author, with the arrow at the end of the same line: the lead story
-  /// and every row after it finish the same way.
+  /// and every row after it finish the same way. An article the reader has
+  /// opened says how far they got just before the arrow ("42% read",
+  /// "Finished"), so a list tells what is new from what is half done.
   Widget _byline(BuildContext context, String author) {
     return Row(
       children: [
         Expanded(child: Text(author, style: NoWaveTypography.meta(context))),
+        ReadingMarkBuilder(
+          blogId: blog.id,
+          builder: (context, mark) => mark == null
+              ? const SizedBox.shrink()
+              : Padding(
+                  padding: const EdgeInsetsDirectional.only(
+                    start: NoWaveSpacing.small,
+                  ),
+                  child: Text(
+                    mark,
+                    key: ValueKey('reading-mark-${blog.id}'),
+                    style: NoWaveTypography.meta(context),
+                  ),
+                ),
+        ),
         const SizedBox(width: NoWaveSpacing.small),
         const NoWavePressArrow(),
       ],

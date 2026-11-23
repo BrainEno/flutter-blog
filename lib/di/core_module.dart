@@ -17,6 +17,7 @@ import 'package:belog/features/blog/domain/reader/reader_text_size.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
 import 'package:belog/features/blog/presentation/read_aloud/speech_coordinator.dart';
 import 'package:belog/features/blog/presentation/viewer/reader_text_size_controller.dart';
+import 'package:belog/features/blog/presentation/viewer/reading_marks.dart';
 import 'package:get_it/get_it.dart';
 
 /// App-wide state that every feature reads: the database, the authenticated
@@ -32,9 +33,16 @@ void registerCoreModule(GetIt locator, DependencyContext context) {
       () => SqliteThemePreferenceStore(locator<AppDatabase>()),
     )
     // Device-local reading history (issue #22); never synced anywhere.
-    ..registerLazySingleton<ReadingHistoryStore>(
-      () => SqliteReadingHistoryStore(database, apiBaseUrl: context.apiBaseUrl),
+    // Every read and write passes through ReadingMarks, which keeps the
+    // article lists' "42% read" marks in step with the history.
+    ..registerLazySingleton(
+      () => ReadingMarks(
+        SqliteReadingHistoryStore(database, apiBaseUrl: context.apiBaseUrl),
+        users: locator(),
+      ),
+      dispose: (marks) => marks.dispose(),
     )
+    ..registerLazySingleton<ReadingHistoryStore>(() => locator<ReadingMarks>())
     ..registerLazySingleton<ReadAloudPreferences>(
       () => SqliteReadAloudPreferences(database),
     )

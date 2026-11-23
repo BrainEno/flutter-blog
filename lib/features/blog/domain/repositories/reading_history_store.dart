@@ -27,6 +27,19 @@ class ReadingHistoryEntry {
   });
 }
 
+/// How far a reader got with an article, as the history and the article
+/// lists name it.
+enum ReadingStage {
+  /// Never measured, or barely begun: nothing worth saying.
+  unstarted,
+
+  /// Somewhere in the text: worth a percentage.
+  partway,
+
+  /// The end mark was in sight.
+  finished,
+}
+
 /// Where a saved reading position starts to mean something.
 abstract final class ReadingProgress {
   /// Below this the reader had barely begun: no offer to go back, and no
@@ -36,6 +49,14 @@ abstract final class ReadingProgress {
   /// From here the text is behind the reader - the end mark is in sight -
   /// and the article counts as read.
   static const finished = 0.95;
+
+  /// The stage a saved [progress] stands for.
+  static ReadingStage stageOf(double? progress) => switch (progress) {
+    null => ReadingStage.unstarted,
+    < started => ReadingStage.unstarted,
+    >= finished => ReadingStage.finished,
+    _ => ReadingStage.partway,
+  };
 }
 
 /// Device-local reading history, scoped per signed-in account.

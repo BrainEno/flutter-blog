@@ -13,6 +13,7 @@ import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/router/app_router.dart';
 import 'package:belog/features/blog/domain/entities/reading_stats.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
+import 'package:belog/features/blog/presentation/widgets/reading_mark.dart';
 import 'package:belog/features/user/presentation/widgets/reading_stats_card.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:flutter/material.dart';
@@ -365,12 +366,7 @@ class _HistoryRow extends StatelessWidget {
     final readAt = formatDate(locale, entry.readAt);
     // How far the reader got, after the date: a log of what was read says
     // also what was left unfinished.
-    final progress = entry.progress;
-    final reached = progress == null || progress < ReadingProgress.started
-        ? null
-        : progress >= ReadingProgress.finished
-        ? l10n.historyFinished
-        : l10n.historyProgress(formatPercent(locale, progress));
+    final reached = readingMarkLabel(l10n, locale, entry.progress);
     return NoWavePressable(
       onTap: onOpen,
       child: Padding(

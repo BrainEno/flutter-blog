@@ -8,6 +8,7 @@ import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/reader/article_excerpt.dart';
 import 'package:belog/features/blog/presentation/widgets/article_cover.dart';
+import 'package:belog/features/blog/presentation/widgets/reading_mark.dart';
 import 'package:flutter/material.dart';
 
 /// Size the cover and text independently so wider screens and large system
@@ -137,14 +138,22 @@ class BlogGridItem extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: NoWaveTypography.meta(context),
                     ),
-                    Text(
-                      formatDate(
-                        Localizations.localeOf(context),
-                        blog.updatedAt,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: NoWaveTypography.meta(context),
+                    // How far the reader got rides on the date's line, so
+                    // every tile in a row keeps the same height.
+                    ReadingMarkBuilder(
+                      blogId: blog.id,
+                      builder: (context, mark) {
+                        final date = formatDate(
+                          Localizations.localeOf(context),
+                          blog.updatedAt,
+                        );
+                        return Text(
+                          mark == null ? date : '$date · $mark',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: NoWaveTypography.meta(context),
+                        );
+                      },
                     ),
                   ],
                 ),
