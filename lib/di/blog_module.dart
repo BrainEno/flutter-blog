@@ -5,6 +5,7 @@ import 'package:belog/di/dependency_context.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_blog_cache.dart';
+import 'package:belog/features/blog/data/datasources/sqlite_recent_search_store.dart';
 import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart';
 import 'package:belog/features/blog/data/views/nowave_article_view_recorder.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
@@ -36,6 +37,7 @@ import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upl
 import 'package:belog/features/blog/presentation/blocs/offline_library/offline_library_cubit.dart';
 import 'package:belog/features/blog/presentation/blocs/recycle_bin/recycle_bin_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/tag_articles/bloc/tag_articles_bloc.dart';
+import 'package:belog/features/blog/presentation/search/recent_searches.dart';
 import 'package:get_it/get_it.dart';
 
 /// Articles: the feed, reading, likes, search, tags, the offline library,
@@ -112,6 +114,18 @@ void registerBlogModule(GetIt locator, DependencyContext context) {
       ),
     )
     ..registerFactory(() => BlogSearchBloc(searchBlogs: locator<SearchBlogs>()))
+    // The signed-in reader's recent searches: one list for the whole app,
+    // kept on this device per backend and account, following the account.
+    ..registerLazySingleton(
+      () => RecentSearches(
+        SqliteRecentSearchStore(
+          locator<AppDatabase>(),
+          apiBaseUrl: context.apiBaseUrl,
+        ),
+        users: locator(),
+      ),
+      dispose: (recent) => recent.dispose(),
+    )
     ..registerFactory(
       () => OfflineLibraryCubit(
         getOfflineLibrary: locator<GetOfflineLibrary>(),

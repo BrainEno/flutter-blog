@@ -31,7 +31,7 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
 | --- | --- | --- |
 | 账号 | 邮箱注册（注册即登录）/ 登录 / 退出；资料编辑；登录态改密、改邮箱、忘记密码 | [会话生命周期](docs/session-lifecycle.md)、[账户邮箱](docs/account-email.md)、[密码恢复](docs/password-recovery.md) |
 | 文章 | 发布 / 编辑 v0 Markdown 正文并预览；只读展示 v0/v1 结构化正文；不兼容正文拒绝普通编辑器覆盖 | [编辑器路线图](docs/editor-architecture-roadmap.md)、[语言版本](docs/article-editions.md) |
-| 浏览 | 分页 Feed（最新 / 精选 / 收藏榜 / 关注）、标签与分类、文章搜索、文末相关阅读 | [首页分页](docs/latest-feed-cursor.md) |
+| 浏览 | 分页 Feed（最新 / 精选 / 收藏榜 / 关注）、标签与分类、文章搜索（登录后记住最近搜索）、文末相关阅读 | [首页分页](docs/latest-feed-cursor.md) |
 | 离线 | SQLite 缓存可离线阅读；搜索页「离线书库」按服务器与内容语言有界检索 | [离线书库](docs/offline-library.md)、[SQLite 存储](docs/sqlite-storage.md) |
 | 互动 | 点赞（乐观更新 + 服务端校准）、收藏列表、纯文本嵌套评论（幂等发送） | [评论线程](docs/comments.md) |
 | 作者 | 公开作者主页、关注 / 取关、粉丝与关注列表、作者目录与搜索 | [功能清单](docs/features.md) |

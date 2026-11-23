@@ -57,6 +57,10 @@ an excerpt from the body.
 | 19 | `reading_history.progress`: where the reader left each article, for 「从上次停下的地方继续」 |
 | 20 | `blog_cache.summary`: the server summary, for the excerpt under each title in an offline feed |
 
+Recent searches need no migration: each signed-in account's list (at most 8,
+newest first) is one JSON array in `metadata`, under a key naming the backend
+and the user, so another backend or account never reads it.
+
 The production file connection sets SQLite WAL and a 5000 ms busy timeout before
 migrations. New cache writes prune least-recently-accessed entries to 250 per
 backend and content language. Access is tracked best-effort: if a touch cannot
@@ -68,7 +72,8 @@ multiple backends and the preserved legacy namespace can still consume space.
 
 `belog.sqlite` can hold a session fallback containing access/refresh tokens when
 platform secure storage is unavailable, as well as unpublished drafts, queued
-writes, reading history, article cache and reader preferences. Android therefore
+writes, reading history, recent searches, article cache and reader preferences.
+Android therefore
 sets `android:allowBackup="false"` in the release manifest. It also references
 explicit `res/xml/backup_rules.xml` and `data_extraction_rules.xml` deny-lists
 for legacy full backup and Android 12+ cloud/device-transfer parsers; each
