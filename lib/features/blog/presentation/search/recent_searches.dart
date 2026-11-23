@@ -58,7 +58,12 @@ class RecentSearches extends ChangeNotifier {
       _queries = const [];
       notifyListeners();
     }
-    if (userId != null) unawaited(_load(userId, generation));
+    if (userId == null) return;
+    // Writes queue behind the read: a search saved before the stored list
+    // is read would otherwise overwrite it, and the merge below would find
+    // nothing left to merge.
+    final loading = _load(userId, generation);
+    _writes = _writes.then((_) => loading);
   }
 
   Future<void> _load(String userId, int generation) async {

@@ -184,6 +184,10 @@ void main() {
       recent.remember('rain');
       recent.remember('wall');
       recent.remove('wall');
+      await pumpEventQueue();
+      // Nothing is written before the stored list is read, or it would be
+      // overwritten and lost.
+      expect(store.saves, isEmpty);
       store.gate!.complete();
       await pumpEventQueue();
       await recent.settled;
