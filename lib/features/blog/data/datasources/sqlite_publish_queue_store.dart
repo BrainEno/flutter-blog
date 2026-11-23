@@ -55,6 +55,8 @@ class SqlitePublishQueueStore implements PublishQueueStore {
     String? locale,
     ArticleRevision? expectedRevision,
     List<String>? categoryIds,
+    String? summary,
+    bool publish = true,
   }) {
     if (userId.isEmpty) {
       throw ArgumentError('A queued publish needs the account that asked.');
@@ -85,10 +87,11 @@ class SqlitePublishQueueStore implements PublishQueueStore {
       await database.customInsert(
         'INSERT INTO publish_queue(id, backend, user_id, idempotency_key, '
         'title, content, tags, cover_file, cover_mime, cover_url, kind, '
-        'target_id, locale, category_ids, expected_revision, state, attempts, '
-        'next_attempt_at, last_error_code, created_at, updated_at) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, '
-        'NULL, ?, ?)',
+        'target_id, locale, category_ids, expected_revision, summary, '
+        'publish, state, attempts, next_attempt_at, last_error_code, '
+        'created_at, updated_at) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '
+        'NULL, NULL, ?, ?)',
         variables: [
           Variable<String>(id),
           Variable<String>(_backend),
@@ -111,6 +114,8 @@ class SqlitePublishQueueStore implements PublishQueueStore {
           Variable<String>(
             kind == PublishQueueKind.edit ? expectedRevision?.value : null,
           ),
+          Variable<String>(summary),
+          Variable<int>(publish ? 1 : 0),
           Variable<String>(PublishQueueStatus.queued.name),
           Variable<int>(now.microsecondsSinceEpoch),
           Variable<int>(now.microsecondsSinceEpoch),
@@ -134,6 +139,8 @@ class SqlitePublishQueueStore implements PublishQueueStore {
         locale: kind == PublishQueueKind.edit
             ? _normalizedLocale(locale)
             : null,
+        summary: summary,
+        publish: publish,
         status: PublishQueueStatus.queued,
         attempts: 0,
         createdAt: now,
@@ -371,6 +378,9 @@ class SqlitePublishQueueStore implements PublishQueueStore {
       expectedRevision: ArticleRevision.parse(
         row.readNullable<String>('expected_revision'),
       ),
+      summary: row.readNullable<String>('summary'),
+      // NULL is a row queued before drafts could be sent: it publishes.
+      publish: row.readNullable<int>('publish') != 0,
       nextAttemptAt: _timeOf(row.readNullable<int>('next_attempt_at')),
       lastErrorCode: row.readNullable<String>('last_error_code'),
     );

@@ -77,6 +77,8 @@ class BlogRepositoryImpl implements BlogRepository {
     NowaveSessionFence? sessionFence,
     String? idempotencyKey,
     List<String>? categoryIds,
+    String? summary,
+    bool publish = true,
   }) async {
     try {
       if (!await (connectionChecker.isConnected)) {
@@ -99,6 +101,8 @@ class BlogRepositoryImpl implements BlogRepository {
         imageUrl: imageUrl,
         tags: tags,
         updatedAt: DateTime.now(),
+        serverSummary: summary,
+        isDraft: !publish,
       );
       final blog = sessionFence == null
           ? await blogRemoteDataSource.uploadBlog(
@@ -424,6 +428,8 @@ class BlogRepositoryImpl implements BlogRepository {
     String? locale,
     NowaveSessionFence? sessionFence,
     List<String>? categoryIds,
+    String? summary,
+    bool publish = true,
   }) async {
     try {
       final condition = expectedRevision;
@@ -515,6 +521,9 @@ class BlogRepositoryImpl implements BlogRepository {
         content: content,
         tags: tags,
         updatedAt: DateTime.now(),
+        // Null keeps the summary just read from the server.
+        serverSummary: summary,
+        isDraft: !publish,
       );
 
       final blogUpdated = sessionFence == null

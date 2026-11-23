@@ -449,6 +449,105 @@ void main() {
     });
   });
 
+  group('drafts and summaries', () {
+    void answerWrites() {
+      when(
+        () => remote.uploadBlog(
+          any(),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).thenAnswer(
+        (invocation) async => invocation.positionalArguments[0] as BlogModel,
+      );
+      when(
+        () => remote.editBlog(
+          any(),
+          expectedRevision: any(named: 'expectedRevision'),
+        ),
+      ).thenAnswer(
+        (invocation) async => invocation.positionalArguments[0] as BlogModel,
+      );
+      when(
+        () => remote.getBlogById('my-slug'),
+      ).thenAnswer((_) async => _blog());
+    }
+
+    // One verify per test: mocktail marks the call as verified.
+    BlogModel created() =>
+        verify(
+              () => remote.uploadBlog(
+                captureAny(),
+                idempotencyKey: any(named: 'idempotencyKey'),
+              ),
+            ).captured.single
+            as BlogModel;
+
+    BlogModel updated() =>
+        verify(
+              () => remote.editBlog(captureAny(), expectedRevision: _revision),
+            ).captured.single
+            as BlogModel;
+
+    test('a new article is published by default, summary left out', () async {
+      answerWrites();
+      await repository.uploadBlog(
+        title: '标题',
+        content: '正文',
+        posterId: 'u1',
+        tags: const [],
+      );
+      final model = created();
+      expect(model.isDraft, isFalse);
+      expect(model.serverSummary, isNull);
+    });
+
+    test('a private draft carries its summary to the write', () async {
+      answerWrites();
+      await repository.uploadBlog(
+        title: '标题',
+        content: '正文',
+        posterId: 'u1',
+        tags: const [],
+        summary: '一句话',
+        publish: false,
+      );
+      final model = created();
+      expect(model.isDraft, isTrue);
+      expect(model.serverSummary, '一句话');
+    });
+
+    test('an edit without a summary keeps the one just read', () async {
+      answerWrites();
+      await repository.editBlog(
+        blogId: 'my-slug',
+        expectedRevision: _revision,
+        title: '新标题',
+        content: '新正文',
+        tags: const [],
+      );
+      final model = updated();
+      expect(model.serverSummary, '作者的摘要');
+      expect(model.isDraft, isFalse);
+    });
+
+    test('a rewritten summary replaces it; an empty one is sent', () async {
+      answerWrites();
+      await repository.editBlog(
+        blogId: 'my-slug',
+        expectedRevision: _revision,
+        title: '新标题',
+        content: '新正文',
+        tags: const [],
+        summary: '',
+        publish: false,
+      );
+      // Empty asks no-wave to write a fresh summary from the new body.
+      final model = updated();
+      expect(model.serverSummary, '');
+      expect(model.isDraft, isTrue);
+    });
+  });
+
   group('getBlogById', () {
     test('caches a fetched article locally', () async {
       when(

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:belog/core/design/components/no_wave_notice.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -8,13 +9,14 @@ import 'package:belog/features/blog/presentation/editor/auto_save_banner.dart';
 import 'package:belog/features/blog/presentation/editor/editor_body_field.dart';
 import 'package:belog/features/blog/presentation/editor/editor_category_selector.dart';
 import 'package:belog/features/blog/presentation/editor/editor_cover_field.dart';
+import 'package:belog/features/blog/presentation/editor/editor_summary_field.dart';
 import 'package:belog/features/blog/presentation/editor/editor_tag_selector.dart';
 import 'package:belog/features/blog/presentation/widgets/editor_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// The scrollable editor form: draft notices, cover, tags, title and body -
-/// or, in focus mode, only the notices, the title and the body.
+/// The scrollable editor form: draft notices, cover, tags, title, body and
+/// summary - or, in focus mode, only the notices, the title and the body.
 ///
 /// It is deliberately stateless and side-effect free: the page owns the
 /// controllers, the draft state machine and every decision, so this widget
@@ -50,6 +52,7 @@ class EditorForm extends StatelessWidget {
     this.bodyUndoController,
     this.autofocusTitle = false,
     this.focusMode = false,
+    this.summaryController,
   });
 
   final GlobalKey<FormState> formKey;
@@ -95,6 +98,9 @@ class EditorForm extends StatelessWidget {
   /// Writing only: the cover, tags and categories step aside until the author
   /// leaves focus mode. Notices that need an answer stay.
   final bool focusMode;
+
+  /// The optional summary under the body; null leaves the field out.
+  final TextEditingController? summaryController;
 
   @override
   Widget build(BuildContext context) {
@@ -160,6 +166,15 @@ class EditorForm extends StatelessWidget {
                     ),
                   ),
                 ),
+              // An unpublished article says so, and how it reaches readers.
+              if (blog?.isDraft ?? false)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: NoWaveSpacing.medium),
+                  child: NoWaveNotice(
+                    key: const Key('editor-draft-notice'),
+                    message: context.l10n.editorDraftArticleNotice,
+                  ),
+                ),
               AutoSaveBanner(status: autoSaveStatus),
               if (!focusMode) ...[
                 // Space between the buttons and the cover image.
@@ -221,6 +236,13 @@ class EditorForm extends StatelessWidget {
                 focusNode: bodyFocusNode,
                 undoController: bodyUndoController,
               ),
+              // Written once the piece is: below the body, out of the way in
+              // focus mode.
+              if (summaryController case final TextEditingController summary
+                  when !focusMode) ...[
+                const SizedBox(height: NoWaveSpacing.section),
+                EditorSummaryField(controller: summary),
+              ],
             ],
           ),
         ),

@@ -127,6 +127,87 @@ void main() {
       },
     );
 
+    test('a private draft carries the choice and summary to both paths', () {
+      EditorPublishIntent intent({Blog? target}) => EditorPublishIntent(
+        draft: BlogDraft(
+          userId: 'author',
+          title: 'Title',
+          content: 'Body',
+          tags: const [],
+          summary: '  One line.  ',
+          updatedAt: DateTime.utc(2026),
+        ),
+        target: target,
+        expectedRevision: ArticleRevision.parse('3'),
+        image: null,
+        coverUrl: null,
+        sessionGeneration: 1,
+        idempotencyKey: 'draft-key',
+        publish: false,
+      );
+
+      final upload = intent().buildEvent() as UploadBlogEvent;
+      expect(upload.publish, isFalse);
+      expect(upload.summary, 'One line.');
+      final update = intent(target: article()).buildEvent() as UpdateBlogEvent;
+      expect(update.publish, isFalse);
+      expect(update.summary, 'One line.');
+    });
+
+    test('an untouched summary is left to the server', () {
+      final upload = createIntent().buildEvent() as UploadBlogEvent;
+      expect(upload.summary, isNull);
+      expect(upload.publish, isTrue);
+    });
+
+    test('a queued private draft keeps its summary and choice', () async {
+      final store = _MockPublishQueueStore();
+      final calls = <Invocation>[];
+      when(
+        () => store.enqueue(
+          userId: any(named: 'userId'),
+          title: any(named: 'title'),
+          content: any(named: 'content'),
+          tags: any(named: 'tags'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+          cover: any(named: 'cover'),
+          coverUrl: any(named: 'coverUrl'),
+          kind: any(named: 'kind'),
+          targetId: any(named: 'targetId'),
+          categoryIds: any(named: 'categoryIds'),
+          expectedRevision: any(named: 'expectedRevision'),
+          locale: any(named: 'locale'),
+          summary: any(named: 'summary'),
+          publish: any(named: 'publish'),
+        ),
+      ).thenAnswer((invocation) async {
+        calls.add(invocation);
+        throw UnimplementedError();
+      });
+      final intent = EditorPublishIntent(
+        draft: BlogDraft(
+          userId: 'author',
+          title: 'Title',
+          content: 'Body',
+          tags: const [],
+          summary: '',
+          updatedAt: DateTime.utc(2026),
+        ),
+        target: null,
+        expectedRevision: null,
+        image: null,
+        coverUrl: null,
+        sessionGeneration: 1,
+        idempotencyKey: 'draft-key',
+        publish: false,
+      );
+
+      await expectLater(intent.enqueue(store), throwsUnimplementedError);
+      final named = calls.single.namedArguments;
+      expect(named[#summary], '');
+      expect(named[#publish], isFalse);
+    });
+
     test('only transient failures can be queued', () {
       expect(EditorPublishIntent.shouldQueue(Failure.networkOffline()), isTrue);
       expect(

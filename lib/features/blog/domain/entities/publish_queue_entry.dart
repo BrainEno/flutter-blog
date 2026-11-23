@@ -63,6 +63,8 @@ class PublishQueueEntry {
     this.coverUrl,
     this.nextAttemptAt,
     this.lastErrorCode,
+    this.summary,
+    this.publish = true,
   });
 
   /// Local identifier (UUID). It is not a server identifier: nothing outside
@@ -115,6 +117,14 @@ class PublishQueueEntry {
   /// turn an old local draft into an unprotected overwrite.
   final ArticleRevision? expectedRevision;
 
+  /// The summary the author wrote, or null when they left it alone (see
+  /// `BlogDraft.summary`).
+  final String? summary;
+
+  /// False when the author asked to store a private draft rather than
+  /// publish. Every entry queued before drafts could be sent publishes.
+  final bool publish;
+
   final PublishQueueStatus status;
 
   /// How many sends have been attempted. Reset by a manual retry.
@@ -166,6 +176,8 @@ class PublishQueueEntry {
       locale: locale,
       categoryIds: categoryIds,
       expectedRevision: expectedRevision,
+      summary: summary,
+      publish: publish,
       status: status ?? this.status,
       attempts: attempts ?? this.attempts,
       createdAt: createdAt,

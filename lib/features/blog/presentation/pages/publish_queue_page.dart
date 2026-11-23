@@ -247,6 +247,15 @@ class _QueueEntryCard extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
+            // Says what a send will do when it is not the usual publish.
+            if (!entry.publish) ...[
+              const SizedBox(height: NoWaveSpacing.xs),
+              Text(
+                context.l10n.publishQueueDraftEntry,
+                key: const Key('publish-queue-draft-entry'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
             if (entry.attempts > 0) ...[
               const SizedBox(height: NoWaveSpacing.small),
               Text(

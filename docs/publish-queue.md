@@ -1,6 +1,6 @@
 # 发布队列（#23）
 
-> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+> 状态：active ｜ 最后核对：2026-11-19 @ 70c39a8
 
 发帖有两种失败：**内容被拒**和**网络没送到**。前者需要人改，后者只需要再试一次。
 发布队列只负责后者：用户按下发布后，这一意图先落盘，再重试，直到服务端接受或需要
@@ -99,6 +99,8 @@ no-wave 的媒体上传**没有幂等键**，所以旧实现里每一次重试�
   `publish_queue_due(backend, user_id, state, created_at)`；v9 加了
   `cover_url TEXT`，v10 加了 `kind TEXT NOT NULL DEFAULT 'create'` 与
   `target_id TEXT`（旧行升级后就是「新建文章」条目，行为与升级前一致）；
+  v21 加了 `summary TEXT`（NULL = 作者没改摘要）与 `publish INTEGER`（0 = 存为
+  服务端草稿；旧行为 NULL，按发布处理），列表里存草稿的条目注明「将存为草稿」；
 - 端口：`lib/features/blog/domain/repositories/publish_queue_store.dart`、
   `publish_queue_drainer.dart`；
 - SQLite 实现：`lib/features/blog/data/datasources/sqlite_publish_queue_store.dart`；

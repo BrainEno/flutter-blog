@@ -37,6 +37,12 @@ abstract interface class BlogRepository {
 
     /// The author's category choice; null leaves the field out of the request.
     List<String>? categoryIds,
+
+    /// The author's summary; null or blank lets the server write one.
+    String? summary,
+
+    /// False stores the article as a draft only its author can see.
+    bool publish = true,
   });
 
   /// Soft-deletes the article with the public id [blogId] (slug): it
@@ -165,6 +171,13 @@ abstract interface class BlogRepository {
     /// The author's category choice; null leaves the article's categories as
     /// they are, an empty list clears them.
     List<String>? categoryIds,
+
+    /// The summary the author rewrote. Null keeps the server's own summary;
+    /// an empty string asks the server to write a new one from the body.
+    String? summary,
+
+    /// False keeps the article (or takes it back to) a private draft.
+    bool publish = true,
   });
 
   Future<Either<Failure, bool>> toggleLikeBlog(String userId, String blogId);

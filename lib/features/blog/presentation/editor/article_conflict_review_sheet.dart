@@ -171,6 +171,16 @@ class _ArticleConflictReviewSheet extends StatelessWidget {
                         l10n.articleConflictNoCategories,
                       ),
                     ),
+                    // Only a summary the author rewrote is theirs to compare;
+                    // an untouched one follows whatever the server holds.
+                    if (localDraft.summary case final String localSummary)
+                      _ConflictField(
+                        icon: Icons.short_text,
+                        label: l10n.articleConflictSummaryField,
+                        opened: _summary(openedArticle.summary, l10n),
+                        local: _summary(localSummary, l10n),
+                        latest: _summary(latestArticle.summary, l10n),
+                      ),
                     _ConflictField(
                       icon: Icons.image_outlined,
                       label: l10n.articleConflictCoverField,
@@ -235,6 +245,9 @@ class _ArticleConflictReviewSheet extends StatelessWidget {
 
   static String _joined(List<String> values, String empty) =>
       values.isEmpty ? empty : values.join(', ');
+
+  static String _summary(String value, AppLocalizations l10n) =>
+      value.trim().isEmpty ? l10n.articleConflictNoSummary : value.trim();
 
   static String _cover(String value, AppLocalizations l10n) =>
       value.trim().isEmpty ? l10n.articleConflictNoCover : value;

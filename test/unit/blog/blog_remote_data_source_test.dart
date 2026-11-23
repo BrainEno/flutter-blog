@@ -509,6 +509,54 @@ void main() {
       expect(body['tagIds'], ['t1']);
     });
 
+    test('a new article publishes, with no summary of its own', () async {
+      await dataSource.uploadBlog(_blog());
+
+      final body = capturedCreate();
+      expect(body['publish'], isTrue);
+      // Omitted: no-wave writes the summary from the body.
+      expect(body.containsKey('summary'), isFalse);
+    });
+
+    test('a private draft is stored unpublished with its summary', () async {
+      await dataSource.uploadBlog(
+        _blog().copyWith(isDraft: true, serverSummary: '  一句话摘要  '),
+      );
+
+      final body = capturedCreate();
+      expect(body['publish'], isFalse);
+      expect(body['summary'], '一句话摘要');
+    });
+
+    test('a blank summary on a new article is left to the server', () async {
+      await dataSource.uploadBlog(_blog().copyWith(serverSummary: '   '));
+
+      expect(capturedCreate().containsKey('summary'), isFalse);
+    });
+
+    test(
+      'an edit sends the publish choice and the summary it carries',
+      () async {
+        final original = BlogModel.fromNowaveArticle(_articleMap());
+        when(
+          () => client.putJson('/articles/server-uuid-1', any()),
+        ).thenAnswer((_) async => _articleMap());
+
+        await dataSource.editBlog(
+          original.copyWith(isDraft: true, serverSummary: '改写的摘要'),
+          expectedRevision: _revision,
+        );
+
+        final body =
+            verify(
+                  () => client.putJson('/articles/server-uuid-1', captureAny()),
+                ).captured.single
+                as Map<String, dynamic>;
+        expect(body['publish'], isFalse);
+        expect(body['summary'], '改写的摘要');
+      },
+    );
+
     test('an untouched edit keeps the article categories', () async {
       final original = BlogModel.fromNowaveArticle(_articleMap());
       when(

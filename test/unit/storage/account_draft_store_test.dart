@@ -274,6 +274,38 @@ void main() {
     },
   );
 
+  test('a summary survives the store; untouched stays null', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final store = SqliteBlogDraftStore(db, apiBaseUrl: _firstBackend);
+
+    await store.save(_draft('alice', null, 'untouched'));
+    BlogDraft summarised(String? summary) => BlogDraft(
+      userId: 'alice',
+      blogId: 'summed',
+      title: 'summed',
+      content: 'body',
+      tags: const [],
+      summary: summary,
+      updatedAt: DateTime.utc(2025),
+    );
+    await store.save(summarised('一句话'));
+
+    expect((await store.load(null, userId: 'alice'))?.summary, isNull);
+    final loaded = await store.load('summed', userId: 'alice');
+    expect(loaded?.summary, '一句话');
+
+    // Emptied on purpose is not the same as never touched.
+    await store.save(summarised('')..id = loaded?.id);
+    final cleared = await store.load('summed', userId: 'alice');
+    expect(cleared?.summary, '');
+
+    // A copy with another summary is a different draft and is kept.
+    final other = summarised('另一句')..id = cleared?.id;
+    expect(await store.discardIfUnchanged(other), isFalse);
+    expect(await store.discardIfUnchanged(cleared!), isTrue);
+  });
+
   test(
     'v5 ownerless drafts remain intact and hidden after upgrade and restart',
     () async {
@@ -325,7 +357,7 @@ void main() {
         final version = await db
             .customSelect('PRAGMA user_version')
             .getSingle();
-        expect(version.read<int>('user_version'), 20);
+        expect(version.read<int>('user_version'), 21);
       } finally {
         await db.close();
       }

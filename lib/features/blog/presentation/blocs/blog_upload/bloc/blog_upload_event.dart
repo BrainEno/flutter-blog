@@ -23,6 +23,12 @@ class UploadBlogEvent extends BlogUploadEvent {
   /// The author's category choice; null leaves the field out of the request.
   final List<String>? categoryIds;
 
+  /// The author's summary; null or blank lets the server write one.
+  final String? summary;
+
+  /// False stores a private draft instead of publishing.
+  final bool publish;
+
   const UploadBlogEvent({
     required this.image,
     this.uploadedCoverUrl,
@@ -33,6 +39,8 @@ class UploadBlogEvent extends BlogUploadEvent {
     required this.sessionFence,
     this.idempotencyKey,
     this.categoryIds,
+    this.summary,
+    this.publish = true,
   });
 
   @override
@@ -47,6 +55,8 @@ class UploadBlogEvent extends BlogUploadEvent {
     sessionFence.generation,
     idempotencyKey,
     categoryIds,
+    summary,
+    publish,
   ];
 }
 
@@ -75,6 +85,12 @@ class UpdateBlogEvent extends BlogUploadEvent {
   /// they are.
   final List<String>? categoryIds;
 
+  /// The rewritten summary; null keeps the server's own.
+  final String? summary;
+
+  /// False keeps the article (or takes it back to) a private draft.
+  final bool publish;
+
   const UpdateBlogEvent({
     required this.blogId,
     required this.expectedRevision,
@@ -86,6 +102,8 @@ class UpdateBlogEvent extends BlogUploadEvent {
     required this.sessionFence,
     this.locale,
     this.categoryIds,
+    this.summary,
+    this.publish = true,
   });
 
   @override
@@ -101,6 +119,8 @@ class UpdateBlogEvent extends BlogUploadEvent {
     sessionFence.generation,
     locale,
     categoryIds,
+    summary,
+    publish,
   ];
 }
 

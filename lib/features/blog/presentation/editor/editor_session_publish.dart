@@ -51,7 +51,29 @@ mixin _EditorPublishFlow on _EditorSessionBase, _EditorDraftLifecycle {
     return true;
   }
 
-  Future<void> saveBlog() async {
+  /// Stores the article on the server without publishing it. Taking a
+  /// published article back to a draft hides it from readers, so that asks
+  /// first.
+  Future<void> _saveServerDraft() async {
+    if (!_isCurrentEditor || _publishStartedAt != null) return;
+    final target = _target;
+    if (target != null && !target.isDraft) {
+      final l10n = context.l10n;
+      final confirmed = await showNoWaveConfirmDialog(
+        context,
+        title: l10n.editorUnpublishTitle,
+        message: l10n.editorUnpublishBody,
+        cancelLabel: l10n.actionCancel,
+        confirmLabel: l10n.editorUnpublishConfirm,
+      );
+      if (!confirmed || !mounted || !_isCurrentEditor) return;
+    }
+    await saveBlog(publish: false);
+  }
+
+  /// Sends the article: published for readers, or with [publish] false a
+  /// private draft only its author can see (and continue on the web).
+  Future<void> saveBlog({bool publish = true}) async {
     if (!_isCurrentEditor || _publishStartedAt != null) return;
     final version = ++_draftRequestVersion;
     // Cover and tags are optional (issue #17): title and body are the
@@ -86,6 +108,8 @@ mixin _EditorPublishFlow on _EditorSessionBase, _EditorDraftLifecycle {
     final publishCoverUrl = isNewImageSelected ? _selectedCoverUrl : null;
     // A key identifies one intent to publish. It is generated once, before the
     // first request, and reused by every retry of that intent (#23).
+    if (_idempotencyKeyPublishes != publish) _publishIdempotencyKey = null;
+    _idempotencyKeyPublishes = publish;
     final idempotencyKey = _publishIdempotencyKey ??= const Uuid().v4();
     final intent = EditorPublishIntent(
       draft: draft,
@@ -95,6 +119,7 @@ mixin _EditorPublishFlow on _EditorSessionBase, _EditorDraftLifecycle {
       coverUrl: publishCoverUrl,
       sessionGeneration: _editorGeneration,
       idempotencyKey: idempotencyKey,
+      publish: publish,
     );
     // Persist the exact request snapshot first. If the route is closed, the
     // account changes, or the server response is lost, the text survives.
@@ -131,12 +156,15 @@ mixin _EditorPublishFlow on _EditorSessionBase, _EditorDraftLifecycle {
   }
 
   Future<void> _reportPublishFailure(BlogUploadFailure failure) async {
+    final publishes = _publishIntent?.publish ?? true;
     if (EditorPublishIntent.shouldQueue(failure.failure) &&
         await _queueFailedPublish()) {
       if (!mounted || !_isCurrentEditor) return;
       showSnackBar(
         context,
-        _target == null
+        !publishes
+            ? context.l10n.serverDraftQueued
+            : _target == null
             ? context.l10n.publishQueued
             : context.l10n.publishQueuedUpdate,
       );
@@ -226,9 +254,14 @@ mixin _EditorPublishFlow on _EditorSessionBase, _EditorDraftLifecycle {
       unawaited(_reportPublishFailure(state));
     } else if (state is BlogUploadSuccess) {
       // Covers use immutable media URLs; no manual imageCache eviction.
+      final target = _target;
+      final publishes = _publishIntent?.publish ?? true;
       showSnackBar(
         context,
-        _target == null
+        !publishes
+            ? context.l10n.serverDraftSaved
+            // A draft going public is a first publication, not an update.
+            : target == null || target.isDraft
             ? context.l10n.uploadSuccess
             : context.l10n.updateSuccess,
       );

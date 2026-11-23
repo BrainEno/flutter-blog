@@ -72,6 +72,8 @@ class SqliteBlogDraftStore implements BlogDraftStore {
       expectedRevision: ArticleRevision.parse(
         row.readNullable<String>('expected_revision'),
       ),
+      // NULL is "the summary was left alone", as for the categories.
+      summary: row.readNullable<String>('summary'),
       updatedAt: DateTime.fromMicrosecondsSinceEpoch(
         row.read<int>('updated_at'),
       ),
@@ -95,7 +97,8 @@ class SqliteBlogDraftStore implements BlogDraftStore {
           draft.id = existing.id;
           await database.customStatement(
             'UPDATE account_drafts SET title = ?, content = ?, tags = ?, '
-            'category_ids = ?, expected_revision = ?, updated_at = ? '
+            'category_ids = ?, expected_revision = ?, summary = ?, '
+            'updated_at = ? '
             'WHERE id = ? AND backend = ? AND user_id = ? AND blog_id IS ?',
             [
               draft.title,
@@ -103,6 +106,7 @@ class SqliteBlogDraftStore implements BlogDraftStore {
               tags,
               categoryIds,
               expectedRevision,
+              draft.summary,
               draft.updatedAt.microsecondsSinceEpoch,
               draft.id,
               _backend,
@@ -113,8 +117,9 @@ class SqliteBlogDraftStore implements BlogDraftStore {
         } else {
           final id = await database.customInsert(
             'INSERT INTO account_drafts(backend, user_id, blog_id, title, '
-            'content, tags, category_ids, expected_revision, updated_at) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'content, tags, category_ids, expected_revision, summary, '
+            'updated_at) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             variables: [
               Variable<String>(_backend),
               Variable<String>(draft.userId),
@@ -124,6 +129,7 @@ class SqliteBlogDraftStore implements BlogDraftStore {
               Variable(tags),
               Variable<String>(categoryIds),
               Variable<String>(expectedRevision),
+              Variable<String>(draft.summary),
               Variable(draft.updatedAt.microsecondsSinceEpoch),
             ],
           );
@@ -142,7 +148,7 @@ class SqliteBlogDraftStore implements BlogDraftStore {
         'DELETE FROM account_drafts '
         'WHERE id = ? AND backend = ? AND user_id = ? AND blog_id IS ? '
         'AND updated_at = ? AND title = ? AND content = ? AND tags = ? '
-        'AND category_ids IS ? AND expected_revision IS ?',
+        'AND category_ids IS ? AND expected_revision IS ? AND summary IS ?',
         variables: [
           Variable(id),
           Variable<String>(_backend),
@@ -156,6 +162,7 @@ class SqliteBlogDraftStore implements BlogDraftStore {
             draft.categoryIds == null ? null : jsonEncode(draft.categoryIds),
           ),
           Variable<String>(draft.expectedRevision?.value),
+          Variable<String>(draft.summary),
         ],
       );
       return deleted == 1;

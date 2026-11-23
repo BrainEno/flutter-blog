@@ -24,6 +24,14 @@ class BlogDraft {
   /// while an empty list means the author explicitly removed it.
   final List<String>? categoryIds;
 
+  /// The summary the author wrote, or null when they left the article's own
+  /// summary as it was.
+  ///
+  /// Null and empty differ like [categoryIds]: null keeps the server summary
+  /// (a new article gets one written from its body), while an empty string
+  /// means the author cleared it and the server should write a fresh one.
+  final String? summary;
+
   final DateTime updatedAt;
 
   /// The precise server revision the author was editing against.
@@ -43,6 +51,7 @@ class BlogDraft {
     required this.updatedAt,
     this.expectedRevision,
     List<String>? categoryIds,
+    this.summary,
   }) : tags = List.unmodifiable(tags),
        categoryIds = categoryIds == null
            ? null

@@ -22,6 +22,8 @@ class UploadBlog implements UseCase<Blog, UploadBlogParams> {
       sessionFence: params.sessionFence,
       idempotencyKey: params.idempotencyKey,
       categoryIds: params.categoryIds,
+      summary: params.summary,
+      publish: params.publish,
     );
   }
 }
@@ -49,6 +51,12 @@ class UploadBlogParams {
   /// the server keeps whatever the article already had.
   final List<String>? categoryIds;
 
+  /// The author's summary; null or blank lets the server write one.
+  final String? summary;
+
+  /// False stores a private draft instead of publishing.
+  final bool publish;
+
   UploadBlogParams({
     required this.image,
     this.uploadedCoverUrl,
@@ -59,5 +67,7 @@ class UploadBlogParams {
     required this.sessionFence,
     this.idempotencyKey,
     this.categoryIds,
+    this.summary,
+    this.publish = true,
   });
 }

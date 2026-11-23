@@ -187,9 +187,9 @@
   "editorNewTitle": "Write a new article",
   "editorEditTitle": "Edit article",
   "saveAndPublish": "Save and publish",
-  "saveDraft": "Save draft",
-  "uploadSuccess": "Published successfully",
-  "updateSuccess": "Updated successfully",
+  "saveDraft": "Save on this device",
+  "uploadSuccess": "Published",
+  "updateSuccess": "Changes published",
   "draftRestored": "Draft restored",
   "draftDiscarded": "Draft discarded",
   "draftChanged": "The draft changed — please reopen the editor",
@@ -1253,6 +1253,8 @@
   "articleConflictRebased": "The latest version is now the save base. Review and publish when ready.",
   "articleConflictClose": "Close review",
   "articleConflictNoTags": "No tags",
+  "articleConflictSummaryField": "Summary",
+  "articleConflictNoSummary": "No summary of its own (written from the body)",
   "articleConflictNoCategories": "No categories",
   "articleConflictNoCover": "No cover",
 
@@ -1283,5 +1285,24 @@
   "editorLinkTextLabel": "Link text",
   "editorLinkInvalid": "Enter a full address starting with http:// or https://",
   "editorLinkInsert": "Insert",
-  "editorImageUploading": "Uploading image…"
+  "editorImageUploading": "Uploading image…",
+  "editorSaveServerDraft": "Save as draft (only you can see it)",
+  "editorUnpublishToDraft": "Turn back into a draft",
+  "editorUnpublishTitle": "Turn this article back into a draft?",
+  "editorUnpublishBody": "Readers will no longer see it until you publish it again. Your text and its address stay as they are.",
+  "editorUnpublishConfirm": "Turn into draft",
+  "serverDraftSaved": "Saved as a draft. Only you can see it; publish it from My articles or the editor when it is ready.",
+  "serverDraftQueued": "Added to the publish queue; it will be saved as a draft when you are online",
+  "editorDraftArticleNotice": "This is a draft: only you can see it. Readers will find it once you tap Publish.",
+  "publishQueueDraftEntry": "Will be saved as a draft, not published",
+  "editorSummaryLabel": "Summary (optional)",
+  "editorSummaryHelper": "Shown under the title in lists and when the article is shared. Leave it empty and one is written from the body.",
+  "editorSummaryCounter": "{count} / {max}",
+  "@editorSummaryCounter": {
+    "description": "Character count of the summary, shown near the limit.",
+    "placeholders": {
+      "count": {"type": "int"},
+      "max": {"type": "int"}
+    }
+  }
 }

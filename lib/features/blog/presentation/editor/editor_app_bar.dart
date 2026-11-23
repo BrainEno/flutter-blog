@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 /// The popup menu entries of [EditorAppBar].
 enum EditorMenuAction {
   publish,
+  serverDraft,
   saveDraft,
   focusMode,
   importNotion,
@@ -33,6 +34,8 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onExportNotion,
     this.focusMode = false,
     this.onToggleFocusMode,
+    this.onSaveServerDraft,
+    this.isPublishedArticle = false,
   });
 
   /// True when an existing article is being edited, false for a new one.
@@ -47,6 +50,13 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Focus mode hides the cover, tags and categories; null hides the switch.
   final bool focusMode;
   final VoidCallback? onToggleFocusMode;
+
+  /// Stores the article on the server without publishing it; null hides the
+  /// entry.
+  final VoidCallback? onSaveServerDraft;
+
+  /// The edited article is public: the draft entry takes it back to a draft.
+  final bool isPublishedArticle;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -99,6 +109,8 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
     switch (action) {
       case EditorMenuAction.publish:
         onPublish();
+      case EditorMenuAction.serverDraft:
+        onSaveServerDraft?.call();
       case EditorMenuAction.saveDraft:
         onSaveDraft();
       case EditorMenuAction.focusMode:
@@ -120,13 +132,26 @@ class EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
       PopupMenuItem<EditorMenuAction>(
         value: EditorMenuAction.publish,
         child: Center(
+          // Editing a draft publishes it, so only a public article "saves".
           child: Text(
-            isEditing
+            isPublishedArticle
                 ? context.l10n.actionSaveChanges
                 : context.l10n.saveAndPublish,
           ),
         ),
       ),
+      if (onSaveServerDraft != null)
+        PopupMenuItem<EditorMenuAction>(
+          key: const Key('editor-server-draft'),
+          value: EditorMenuAction.serverDraft,
+          child: Center(
+            child: Text(
+              isPublishedArticle
+                  ? context.l10n.editorUnpublishToDraft
+                  : context.l10n.editorSaveServerDraft,
+            ),
+          ),
+        ),
       PopupMenuItem<EditorMenuAction>(
         value: EditorMenuAction.saveDraft,
         child: Center(child: Text(context.l10n.saveDraft)),

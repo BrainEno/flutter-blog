@@ -28,6 +28,7 @@ class EditorPublishIntent {
     required this.coverUrl,
     required this.sessionGeneration,
     required this.idempotencyKey,
+    this.publish = true,
   });
 
   /// The durable text snapshot saved before any network request begins.
@@ -56,6 +57,10 @@ class EditorPublishIntent {
   /// Stable for this exact create intent; the server uses it to replay a lost
   /// response without creating a duplicate article.
   final String idempotencyKey;
+
+  /// False stores a private draft on the server (or takes a published article
+  /// back to one) instead of publishing.
+  final bool publish;
 
   bool get isUpdate => target != null;
 
@@ -86,6 +91,8 @@ class EditorPublishIntent {
         sessionFence: sessionFence,
         idempotencyKey: idempotencyKey,
         categoryIds: _copyCategories(draft.categoryIds),
+        summary: draft.summary?.trim(),
+        publish: publish,
       );
     }
     final revision = expectedRevision;
@@ -104,6 +111,8 @@ class EditorPublishIntent {
       // This is the edition that was opened, not the current display locale.
       locale: article.locale,
       categoryIds: _copyCategories(draft.categoryIds),
+      summary: draft.summary?.trim(),
+      publish: publish,
     );
   }
 
@@ -132,6 +141,8 @@ class EditorPublishIntent {
       expectedRevision: article == null ? null : revision,
       // A queue may run days later while the app displays another language.
       locale: article?.locale,
+      summary: draft.summary?.trim(),
+      publish: publish,
     );
   }
 
