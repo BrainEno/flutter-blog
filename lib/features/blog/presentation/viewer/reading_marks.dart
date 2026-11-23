@@ -143,16 +143,15 @@ class ReadingMarks extends ChangeNotifier
   }
 
   @override
-  Future<bool> hasUnattributedHistory() async {
-    final history = _history;
-    return history is UnattributedHistoryMaintenance &&
-        await history.hasUnattributedHistory();
-  }
+  Future<bool> hasUnattributedHistory() async => switch (_history) {
+    final UnattributedHistoryMaintenance history =>
+      await history.hasUnattributedHistory(),
+    _ => false,
+  };
 
   @override
   Future<void> clearUnattributedHistory() async {
-    final history = _history;
-    if (history is UnattributedHistoryMaintenance) {
+    if (_history case final UnattributedHistoryMaintenance history) {
       await history.clearUnattributedHistory();
     }
   }
