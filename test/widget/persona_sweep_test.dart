@@ -1,9 +1,16 @@
+import 'dart:io';
+
+import 'package:belog/core/common/entities/user.dart';
+import 'package:belog/core/design/components/no_wave_button.dart';
+import 'package:belog/core/error/failures.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/data/models/comment_model.dart';
 import 'package:belog/features/blog/domain/entities/comment_page.dart';
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/router/route_paths.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -114,12 +121,26 @@ const personas = <Persona>[
 ];
 
 /// A screen of the first walk, opened at [location].
+///
+/// [arrange] changes what the fake backend answers before the app starts
+/// (offline, a failing request); [act] is what the agent does once the
+/// screen has settled (open a dialog, submit a form) before it is audited.
+/// A screen with an [act] is audited where the act leaves it, without
+/// scrolling: a dialog does not scroll the page under it.
 class Screen {
-  const Screen(this.name, this.location, {this.signedIn = false});
+  const Screen(
+    this.name,
+    this.location, {
+    this.signedIn = false,
+    this.arrange,
+    this.act,
+  });
 
   final String name;
   final String location;
   final bool signedIn;
+  final void Function(Harness harness)? arrange;
+  final Future<void> Function(WidgetTester tester, AppLocalizations l10n)? act;
 }
 
 final screens = <Screen>[
@@ -132,7 +153,58 @@ final screens = <Screen>[
   Screen('article (signed in)', RoutePaths.view(_slug), signedIn: true),
   const Screen('profile', RoutePaths.profile, signedIn: true),
   const Screen('saved', RoutePaths.saved, signedIn: true),
+  const Screen('my articles', RoutePaths.myArticles, signedIn: true),
+  const Screen('search', RoutePaths.search),
+  Screen('author page', RoutePaths.author('author')),
+  const Screen('feed (offline)', RoutePaths.feed, arrange: _offline),
+  Screen(
+    'article (comments fail to load)',
+    RoutePaths.view(_slug),
+    arrange: _commentsFail,
+  ),
+  Screen(
+    'article (delete-comment dialog)',
+    RoutePaths.view(_slug),
+    signedIn: true,
+    act: _openDeleteDialog,
+  ),
+  const Screen('login (rejected)', RoutePaths.login, act: _rejectedLogin),
 ];
+
+void _offline(Harness harness) {
+  when(() => harness.connection.isConnected).thenAnswer((_) async => false);
+}
+
+void _commentsFail(Harness harness) {
+  when(
+    () => harness.commentRemote.getComments(any()),
+  ).thenThrow(const SocketException('offline'));
+}
+
+Future<void> _openDeleteDialog(
+  WidgetTester tester,
+  AppLocalizations l10n,
+) async {
+  final delete = find.widgetWithText(TextButton, l10n.actionDelete).first;
+  await tester.ensureVisible(delete);
+  await tester.pumpAndSettle();
+  await tester.tap(delete);
+  await tester.pumpAndSettle();
+  expect(find.byType(Dialog), findsOneWidget);
+}
+
+Future<void> _rejectedLogin(WidgetTester tester, AppLocalizations l10n) async {
+  await tester.enterText(
+    find.byType(TextFormField).first,
+    'anna@example.invalid',
+  );
+  await tester.enterText(find.byType(TextFormField).last, 'wrong password');
+  final submit = find.widgetWithText(NoWaveButton, l10n.loginTitle);
+  await tester.ensureVisible(submit);
+  await tester.pumpAndSettle();
+  await tester.tap(submit);
+  await tester.pumpAndSettle();
+}
 
 const _slug = 'night-city';
 
@@ -193,6 +265,13 @@ void _stub(Harness harness) {
   when(
     () => harness.remote.isBlogLikedByUser(any(), any()),
   ).thenAnswer((_) async => false);
+  when(
+    () => harness.authRepository.loginWithEmailPassword(
+      email: any(named: 'email'),
+      password: any(named: 'password'),
+      intent: any(named: 'intent'),
+    ),
+  ).thenAnswer((_) async => left<Failure, User>(Failure.auth('rejected')));
   when(() => harness.commentRemote.getComments(any())).thenAnswer(
     (_) async => CommentPage(
       items: [
@@ -313,6 +392,7 @@ void main() {
           final harness = Harness();
           addTearDown(harness.dispose);
           _stub(harness);
+          screen.arrange?.call(harness);
           if (screen.signedIn) harness.appUserCubit.updateUser(sampleUser());
           harness.buildRouter(initialLocation: screen.location);
           await harness.pump(
@@ -322,11 +402,15 @@ void main() {
             themeMode: persona.themeMode,
           );
           await tester.pumpAndSettle();
+          final act = screen.act;
+          if (act != null) {
+            await act(tester, lookupAppLocalizations(persona.locale));
+          }
 
           final findings = [
             for (final finding in await _audit(tester)) '[top] $finding',
           ];
-          if (await _scrollToEnd(tester)) {
+          if (act == null && await _scrollToEnd(tester)) {
             findings.addAll([
               for (final finding in await _audit(tester)) '[end] $finding',
             ]);
