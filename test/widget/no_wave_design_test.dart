@@ -333,7 +333,7 @@ void main() {
           setViewport(tester, size);
           for (final mode in [ThemeMode.light, ThemeMode.dark]) {
             var opens = 0;
-            var deletes = 0;
+            var actions = 0;
             final blog = article();
             await tester.pumpWidget(
               testApp(
@@ -345,7 +345,8 @@ void main() {
                         BlogGridItem(
                           blog: blog,
                           onTap: () => opens++,
-                          onLongPress: () => deletes++,
+                          onLongPress: () => actions++,
+                          onActions: () => actions++,
                         ),
                       ],
                     ),
@@ -358,10 +359,10 @@ void main() {
             );
             await tester.pumpAndSettle();
             await tester.tap(find.text(blog.title));
-            await tester.tap(find.byTooltip('删除文章'));
+            await tester.tap(find.byTooltip('文章操作'));
             await tester.longPress(find.text(blog.title));
             expect(opens, 1);
-            expect(deletes, 2);
+            expect(actions, 2);
             expect(tester.takeException(), isNull);
 
             var authors = 0;

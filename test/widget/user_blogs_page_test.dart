@@ -2,7 +2,12 @@ import 'dart:async';
 
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/user.dart';
+import 'package:belog/core/design/components/no_wave_busy_mark.dart';
+import 'package:belog/core/error/failures.dart';
+import 'package:belog/core/nowave/session/session_identity.dart';
+import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/article_document.dart';
+import 'package:belog/features/blog/domain/entities/article_revision.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
@@ -18,6 +23,34 @@ import 'package:mocktail/mocktail.dart';
 class _BlogByBloc extends Mock implements BlogByBloc {}
 
 class _UploadBloc extends Mock implements BlogUploadBloc {}
+
+class _Session implements NowaveSessionIdentity {
+  @override
+  String? get activeUserId => 'author';
+  @override
+  String? get accessToken => 'synthetic-token';
+  @override
+  int get sessionGeneration => 3;
+  @override
+  Stream<void> get identityChanges => const Stream<void>.empty();
+}
+
+/// An article as `/me/articles` lists it: with the revision a write needs.
+Blog _listed(String id, {bool isDraft = false, ArticleDocument? document}) =>
+    BlogModel(
+      id: id,
+      articleId: 'article-$id',
+      articleRevision: ArticleRevision.parse('5'),
+      title: 'Title $id',
+      content: 'Body of $id',
+      posterId: 'author',
+      imageUrl: '',
+      tags: const ['poetry'],
+      isDraft: isDraft,
+      locale: 'en',
+      document: document,
+      updatedAt: DateTime.utc(2026, 11, 1),
+    );
 
 Blog _blog(String id, {ArticleDocument? document}) => Blog(
   id: id,
@@ -50,6 +83,9 @@ class _Harness {
     });
     when(() => upload.state).thenReturn(BlogUploadInitial());
     when(() => upload.stream).thenAnswer((_) => uploadChanges.stream);
+    when(() => upload.add(any())).thenAnswer((invocation) {
+      uploads.add(invocation.positionalArguments.single as BlogUploadEvent);
+    });
     appUser.updateUser(
       User(
         id: 'author',
@@ -61,7 +97,10 @@ class _Harness {
     router = GoRouter(
       initialLocation: '/',
       routes: [
-        GoRoute(path: '/', builder: (_, _) => const UserBlogsPage()),
+        GoRoute(
+          path: '/',
+          builder: (_, _) => UserBlogsPage(sessionIdentity: _Session()),
+        ),
         GoRoute(
           path: RoutePaths.profileEditor,
           builder: (context, state) {
@@ -96,6 +135,7 @@ class _Harness {
   late final GoRouter router;
 
   final events = <BlogByEvent>[];
+  final uploads = <BlogUploadEvent>[];
 
   /// How many times the page has read the author's list so far.
   int get fetches => events.whereType<GetMyArticlesEvent>().length;
@@ -128,7 +168,10 @@ class _Harness {
 }
 
 void main() {
-  setUpAll(() => registerFallbackValue(GetMyArticlesEvent(userId: 'x')));
+  setUpAll(() {
+    registerFallbackValue(GetMyArticlesEvent(userId: 'x'));
+    registerFallbackValue(const DeleteBlogEvent(blogId: 'x'));
+  });
 
   testWidgets('the write button opens a blank editor and a publish refreshes', (
     tester,
@@ -216,11 +259,162 @@ void main() {
     expect(harness.opened, isEmpty);
   });
 
-  testWidgets('every article row offers deletion', (tester) async {
+  testWidgets('every article row offers its actions', (tester) async {
     final harness = _Harness([_blog('one'), _blog('two')]);
     addTearDown(harness.dispose);
     await harness.pump(tester);
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-    expect(find.byTooltip(l10n.deleteArticleTitle), findsNWidgets(2));
+    expect(find.byTooltip(l10n.myArticleActionsTooltip), findsNWidgets(2));
+  });
+
+  testWidgets('delete from the actions still asks first', (tester) async {
+    final harness = _Harness([_listed('one')]);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+    await tester.longPress(find.text('Title one'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('my-article-action-delete')));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.deleteArticleBody('Title one')), findsOneWidget);
+    await tester.tap(find.text(l10n.actionDelete));
+    await tester.pumpAndSettle();
+
+    expect(harness.uploads.single, const DeleteBlogEvent(blogId: 'one'));
+  });
+
+  testWidgets('a draft is published from the list, unchanged', (tester) async {
+    final harness = _Harness([_listed('draft', isDraft: true)]);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(harness.fetches, 1);
+
+    await tester.tap(find.byTooltip(l10n.myArticleActionsTooltip));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.myArticleActionPublish));
+    // The row shows it is busy; its mark keeps moving, so no settling.
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    final event = harness.uploads.single as UpdateBlogEvent;
+    expect(event.publish, isTrue);
+    expect(event.blogId, 'draft');
+    expect(event.title, 'Title draft');
+    expect(event.content, 'Body of draft');
+    expect(event.tags, ['poetry']);
+    expect(event.locale, 'en');
+    expect(event.expectedRevision, ArticleRevision.parse('5'));
+    expect(event.sessionFence.userId, 'author');
+    expect(event.sessionFence.generation, 3);
+    // Nothing else changes: cover, categories and summary stay the server's.
+    expect(event.image, isNull);
+    expect(event.uploadedCoverUrl, isNull);
+    expect(event.categoryIds, isNull);
+    expect(event.summary, isNull);
+    expect(find.byType(NoWaveBusyMark), findsOneWidget);
+    expect(find.byTooltip(l10n.myArticleActionsTooltip), findsNothing);
+
+    harness.uploadChanges.add(BlogUploadSuccess());
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.myArticlePublished), findsOneWidget);
+    expect(harness.fetches, 2, reason: 'the badge must follow the server');
+    expect(find.byType(NoWaveBusyMark), findsNothing);
+  });
+
+  testWidgets('taking a public article back to a draft asks first', (
+    tester,
+  ) async {
+    final harness = _Harness([_listed('live')]);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+    Future<void> chooseUnpublish() async {
+      await tester.tap(find.byTooltip(l10n.myArticleActionsTooltip));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.editorUnpublishToDraft));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.editorUnpublishTitle), findsOneWidget);
+    }
+
+    await chooseUnpublish();
+    await tester.tap(find.text(l10n.actionCancel));
+    await tester.pumpAndSettle();
+    expect(harness.uploads, isEmpty);
+
+    await chooseUnpublish();
+    await tester.tap(find.text(l10n.editorUnpublishConfirm));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    final event = harness.uploads.single as UpdateBlogEvent;
+    expect(event.publish, isFalse);
+
+    harness.uploadChanges.add(BlogUploadSuccess());
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.myArticleUnpublished), findsOneWidget);
+  });
+
+  testWidgets('a conflict refreshes the list instead of overwriting', (
+    tester,
+  ) async {
+    final harness = _Harness([_listed('draft', isDraft: true)]);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+    await tester.tap(find.byTooltip(l10n.myArticleActionsTooltip));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.myArticleActionPublish));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    harness.uploadChanges.add(
+      BlogUploadVersionConflict(Failure.networkOffline()),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.myArticleVisibilityConflict), findsOneWidget);
+    expect(harness.fetches, 2);
+    expect(find.byTooltip(l10n.myArticleActionsTooltip), findsOneWidget);
+  });
+
+  testWidgets('a body the app cannot carry is published on the web only', (
+    tester,
+  ) async {
+    final rich = _listed(
+      'rich',
+      isDraft: true,
+      document: ArticleDocument(
+        version: 1,
+        blocks: [_paragraph('Quoted words', attribution: 'Someone')],
+      ),
+    );
+    final harness = _Harness([rich]);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+    await tester.tap(find.byTooltip(l10n.myArticleActionsTooltip));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.myArticleVisibilityWebOnly), findsOneWidget);
+    await tester.tap(find.text(l10n.myArticleActionPublish));
+    await tester.pumpAndSettle();
+    expect(harness.uploads, isEmpty);
+  });
+
+  testWidgets('a row without a revision asks for a refresh', (tester) async {
+    final harness = _Harness([_blog('plain')]);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+    await tester.tap(find.byTooltip(l10n.myArticleActionsTooltip));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.myArticleVisibilityRefreshFirst), findsOneWidget);
+    await tester.tap(find.text(l10n.editorUnpublishToDraft));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.editorUnpublishTitle), findsNothing);
+    expect(harness.uploads, isEmpty);
   });
 }

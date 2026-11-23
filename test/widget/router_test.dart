@@ -1108,7 +1108,10 @@ void main() {
     await harness.pump(tester);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('删除文章'));
+    // Deletion sits in the row's actions, behind a confirmation.
+    await tester.tap(find.byTooltip('文章操作'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除文章'));
     await tester.pumpAndSettle();
     expect(find.text('确定删除「可删除的文章」吗？删除后可在回收站中恢复。'), findsOneWidget);
     await tester.tap(find.text('取消'));
@@ -1116,7 +1119,9 @@ void main() {
     verifyNever(() => harness.remote.deleteArticle(any()));
     expect(find.text('可删除的文章'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('删除文章'));
+    await tester.longPress(find.text('可删除的文章'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除文章'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('删除'));
     await tester.pumpAndSettle();
@@ -1214,7 +1219,7 @@ void main() {
       find.descendant(of: find.byType(BlogGridItem), matching: find.text('草稿')),
       findsOneWidget,
     );
-    expect(find.text('草稿只有你自己能看到；在编辑器中打开并发布后才会公开。'), findsOneWidget);
+    expect(find.text('草稿只有你自己能看到；点文章右下角的「⋯」或在编辑器中发布后才会公开。'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

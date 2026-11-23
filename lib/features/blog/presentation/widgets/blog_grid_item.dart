@@ -1,4 +1,5 @@
 import 'package:belog/core/design/components/no_wave_badge.dart';
+import 'package:belog/core/design/components/no_wave_busy_mark.dart';
 import 'package:belog/core/design/components/no_wave_pressable.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
@@ -45,12 +46,22 @@ class BlogGridItem extends StatelessWidget {
     required this.blog,
     required this.onTap,
     this.onLongPress,
+    this.onActions,
+    this.busy = false,
     this.editionLabel,
   });
 
   final Blog blog;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+
+  /// Opens the author's actions for this article (the trailing "more"
+  /// button); null leaves the button out.
+  final VoidCallback? onActions;
+
+  /// A write for this article is in flight: the actions button gives way to
+  /// a busy mark, so the same change cannot be asked for twice.
+  final bool busy;
 
   /// Language edition label, shown next to the draft badge.
   ///
@@ -122,8 +133,8 @@ class BlogGridItem extends StatelessWidget {
             ),
           ],
           const SizedBox(height: NoWaveSpacing.xs),
-          // Delete waits at the end of the byline as a plain glyph. It used
-          // to be a filled red disc on every cover - the loudest thing on
+          // The actions wait at the end of the byline as a plain glyph. Delete
+          // used to be a filled red disc on every cover - the loudest thing on
           // the page was the one action nobody comes here to take.
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -158,15 +169,23 @@ class BlogGridItem extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onLongPress != null)
-                IconButton(
-                  tooltip: context.l10n.deleteArticleTitle,
-                  onPressed: onLongPress,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    size: NoWaveIconSize.row,
+              if (busy)
+                SizedBox.square(
+                  dimension: NoWaveSizes.tapTarget,
+                  child: Center(
+                    child: NoWaveBusyMark(
+                      size: NoWaveIconSize.row,
+                      semanticsLabel: context.l10n.myArticleActionBusy,
+                    ),
                   ),
+                )
+              else if (onActions != null)
+                IconButton(
+                  key: Key('blog-actions-${blog.id}'),
+                  tooltip: context.l10n.myArticleActionsTooltip,
+                  onPressed: onActions,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  icon: const Icon(Icons.more_horiz, size: NoWaveIconSize.row),
                 ),
             ],
           ),
