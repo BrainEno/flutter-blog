@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_busy_mark.dart';
 import 'package:belog/features/blog/presentation/editor/editor_format_toolbar.dart';
 import 'package:belog/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -164,9 +165,9 @@ void main() {
     select('Intro', 5);
 
     await tapTool(tester, 'image');
-    // While the upload runs the button is a progress mark.
+    // While the upload runs the button is a busy mark.
     expect(find.byKey(const Key('editor-tool-image')), findsNothing);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(NoWaveBusyMark), findsOneWidget);
     answer.complete('https://example.com/p.png');
     await tester.pump();
     await tester.pump();

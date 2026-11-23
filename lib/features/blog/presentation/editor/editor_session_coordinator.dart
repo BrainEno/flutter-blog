@@ -126,6 +126,8 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
     }
     // Attached after the initial text is in place, so pre-filling the
     // editors is not mistaken for an edit.
+    _seenTitle = titleController.text;
+    _seenBody = contentController.text;
     titleController.addListener(_onEditorContentChanged);
     contentController.addListener(_onEditorContentChanged);
     if (!_invalidated) {
@@ -304,7 +306,7 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
 
   void _onTagsChanged(List<String> tags) {
     setState(() => selectedTags = tags);
-    _onEditorContentChanged();
+    _markEdited();
   }
 
   Future<void> _loadCategories() async {
@@ -344,7 +346,7 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
       _selectedCategoryIds = List.of(categoryIds);
       _categoryTouched = true;
     });
-    _onEditorContentChanged();
+    _markEdited();
   }
 }
 
@@ -393,6 +395,13 @@ abstract class _EditorSessionBase extends State<EditorSessionCoordinator> {
   /// Cover bytes that have no picker file behind them (a resumed queue entry).
   Uint8List? imageBytes;
   int _draftRequestVersion = 0;
+
+  /// The title and body last seen by the edit listener. A controller also
+  /// notifies for a caret, a selection or IME composing, and focusing a field
+  /// (the title autofocus, a tap) is not an edit: only a change of these
+  /// strings starts an autosave or supersedes the draft-recovery question.
+  String _seenTitle = '';
+  String _seenBody = '';
   late final BlogDraftStore _draftStore;
   late final AppUserCubit _userCubit;
   late final NowaveSessionIdentity _session;

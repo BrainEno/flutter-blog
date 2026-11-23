@@ -27,8 +27,18 @@ mixin _EditorDraftLifecycle on _EditorSessionBase {
     }
   }
 
-  /// Debounces the 2s background draft save. It only writes locally.
+  /// The title and body listener: only a change of the text is an edit.
   void _onEditorContentChanged() {
+    final title = titleController.text;
+    final body = contentController.text;
+    final changed = title != _seenTitle || body != _seenBody;
+    _seenTitle = title;
+    _seenBody = body;
+    if (changed) _markEdited();
+  }
+
+  /// Debounces the 2s background draft save. It only writes locally.
+  void _markEdited() {
     if (!_isCurrentEditor || _restoringDraft) return;
     _draftRequestVersion++;
     _hasUnsavedEdits = true;

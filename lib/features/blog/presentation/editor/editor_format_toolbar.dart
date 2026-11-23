@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belog/core/design/components/no_wave_busy_mark.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/article_resource_url.dart';
@@ -190,11 +191,10 @@ class _EditorFormatToolbarState extends State<EditorFormatToolbar> {
                   horizontal: NoWaveSpacing.medium,
                 ),
                 child: Semantics(
-                  label: l10n.editorImageUploading,
                   liveRegion: true,
-                  child: const SizedBox.square(
-                    dimension: NoWaveSpacing.large,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                  child: NoWaveBusyMark(
+                    size: NoWaveIconSize.action,
+                    semanticsLabel: l10n.editorImageUploading,
                   ),
                 ),
               )
