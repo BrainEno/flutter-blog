@@ -28,6 +28,8 @@ class EditorScreen extends StatelessWidget {
     this.bodyFocusNode,
     this.focusMode = false,
     this.onToggleFocusMode,
+    this.onSaveServerDraft,
+    this.isPublishedArticle = false,
   }) : assert(!isCurrentEditor || form != null);
 
   final bool isCurrentEditor;
@@ -50,6 +52,13 @@ class EditorScreen extends StatelessWidget {
   /// the switch.
   final bool focusMode;
   final VoidCallback? onToggleFocusMode;
+
+  /// Stores the article on the server unpublished; null hides the entry.
+  final VoidCallback? onSaveServerDraft;
+
+  /// Whether the edited article is already public, so the draft entry
+  /// reads as taking it back rather than keeping it private.
+  final bool isPublishedArticle;
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +89,8 @@ class EditorScreen extends StatelessWidget {
         onExportNotion: onExportNotion,
         focusMode: focusMode,
         onToggleFocusMode: onToggleFocusMode,
+        onSaveServerDraft: onSaveServerDraft,
+        isPublishedArticle: isPublishedArticle,
       ),
       body: Column(
         children: [

@@ -243,7 +243,7 @@ String titleText(WidgetTester tester) => tester
 Future<void> tapSaveDraft(WidgetTester tester) async {
   await tester.tap(find.byIcon(Icons.more_vert));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('保存草稿'));
+  await tester.tap(find.text('保存到本机'));
   await tester.pumpAndSettle();
 }
 

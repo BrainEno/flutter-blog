@@ -179,6 +179,8 @@ class PublishQueueRunner implements PublishQueueDrainer {
                 tags: entry.tags,
                 uploadedCoverUrl: coverUrl,
                 categoryIds: entry.categoryIds,
+                summary: entry.summary,
+                publish: entry.publish,
                 expectedRevision: expectedRevision!,
                 sessionFence: fence,
               )
@@ -190,6 +192,8 @@ class PublishQueueRunner implements PublishQueueDrainer {
                 uploadedCoverUrl: coverUrl,
                 locale: locale,
                 categoryIds: entry.categoryIds,
+                summary: entry.summary,
+                publish: entry.publish,
                 expectedRevision: expectedRevision!,
                 sessionFence: fence,
               );
@@ -202,6 +206,8 @@ class PublishQueueRunner implements PublishQueueDrainer {
           tags: entry.tags,
           idempotencyKey: entry.idempotencyKey,
           categoryIds: entry.categoryIds,
+          summary: entry.summary,
+          publish: entry.publish,
           sessionFence: fence,
         );
       }

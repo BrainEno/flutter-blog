@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:belog/core/config/app_durations.dart';
+import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/image_upload.dart';
 import 'package:belog/core/error/failures.dart';
@@ -101,6 +102,8 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
       contentController.text =
           _target.editableBody?.markdown ?? _target.content;
       selectedTags = List.from(_target.tags);
+      _initialSummary = _target.summary;
+      summaryController.text = _target.summary;
       // Show what the server says it is. Until the author touches the row this
       // is display only - the write omits `categoryIds` entirely.
       _selectedCategoryIds = List.of(_target.categoryIds);
@@ -116,6 +119,11 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
         contentController.text = resumed.content;
         selectedTags = List.from(resumed.tags);
       }
+      // The summary the author had written when the send was queued.
+      if (resumed.summary case final String queuedSummary) {
+        summaryController.text = queuedSummary;
+        _initialSummary = null;
+      }
       // The entry carries whether the picker had been touched at queue time.
       final queuedCategoryIds = resumed.categoryIds;
       if (queuedCategoryIds != null) {
@@ -128,8 +136,10 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
     // editors is not mistaken for an edit.
     _seenTitle = titleController.text;
     _seenBody = contentController.text;
+    _seenSummary = summaryController.text;
     titleController.addListener(_onEditorContentChanged);
     contentController.addListener(_onEditorContentChanged);
+    summaryController.addListener(_onEditorContentChanged);
     if (!_invalidated) {
       loadDraft();
       _loadUnclaimedDraftNotice();
@@ -192,6 +202,7 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
     _notion.dismiss();
     titleController.dispose();
     contentController.dispose();
+    summaryController.dispose();
     titleFocusNode.dispose();
     bodyFocusNode.dispose();
     bodyUndoController.dispose();
@@ -207,6 +218,8 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
       isEditing: _target != null,
       onPublish: saveBlog,
       onSaveDraft: saveDraft,
+      isPublishedArticle: _target != null && !_target.isDraft,
+      onSaveServerDraft: () => unawaited(_saveServerDraft()),
       onCancel: () => Navigator.of(context).pop(),
       onImportNotion: () => unawaited(_notion.openImport(context)),
       onExportNotion: _target == null
@@ -261,6 +274,7 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
                   widget.config.queueEntry == null &&
                   titleController.text.isEmpty,
               focusMode: _focusMode,
+              summaryController: summaryController,
             ),
     );
   }
@@ -359,6 +373,14 @@ abstract class _EditorSessionBase extends State<EditorSessionCoordinator> {
 
   /// Plain Markdown text, painted with live highlighting in the field.
   final contentController = MarkdownTextController();
+
+  /// The article's summary as the author wants it. It starts as the summary
+  /// the article already has ([_initialSummary]); left as it was, the write
+  /// keeps the server's own (see [_summaryForWrite]). Null once the field
+  /// holds a summary the author already chose - a resumed send - so it is
+  /// sent as it stands, even emptied.
+  final summaryController = TextEditingController();
+  String? _initialSummary = '';
   final titleFocusNode = FocusNode(debugLabel: 'editor title');
   final bodyFocusNode = FocusNode(debugLabel: 'editor body');
   final bodyUndoController = UndoHistoryController();
@@ -402,6 +424,7 @@ abstract class _EditorSessionBase extends State<EditorSessionCoordinator> {
   /// strings starts an autosave or supersedes the draft-recovery question.
   String _seenTitle = '';
   String _seenBody = '';
+  String _seenSummary = '';
   late final BlogDraftStore _draftStore;
   late final AppUserCubit _userCubit;
   late final NowaveSessionIdentity _session;
@@ -437,6 +460,12 @@ abstract class _EditorSessionBase extends State<EditorSessionCoordinator> {
   /// server replays the article instead of creating a second one. It is only
   /// cleared when this intent is finished - accepted, or handed to the queue.
   String? _publishIdempotencyKey;
+
+  /// Whether [_publishIdempotencyKey] belongs to a publish or to a private
+  /// draft. A key replays its first request, so switching between the two
+  /// after a failure needs a new one, or the server would answer the retry
+  /// with the earlier article (a draft when the author now asked to publish).
+  bool _idempotencyKeyPublishes = true;
 
   /// The article this editor updates, or null when it creates a new one.
   ///

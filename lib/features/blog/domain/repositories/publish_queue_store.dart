@@ -49,6 +49,12 @@ abstract interface class PublishQueueStore {
     /// The author's category choice at queue time; null leaves the article's
     /// categories alone when the entry is eventually sent.
     List<String>? categoryIds,
+
+    /// The summary the author wrote; null leaves it to the server.
+    String? summary,
+
+    /// False sends the entry as a private draft instead of publishing it.
+    bool publish = true,
   });
 
   /// Every entry this account queued, oldest first, including failed ones.

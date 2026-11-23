@@ -24,6 +24,8 @@ class UpdateBlog implements UseCase<Blog, UpdateBlogParams> {
       locale: params.locale,
       sessionFence: params.sessionFence,
       categoryIds: params.categoryIds,
+      summary: params.summary,
+      publish: params.publish,
     );
   }
 }
@@ -52,6 +54,12 @@ class UpdateBlogParams {
   /// they are, an empty list clears them.
   final List<String>? categoryIds;
 
+  /// The author's summary; null keeps the server's summary, empty asks it for a new one.
+  final String? summary;
+
+  /// False stores a private draft instead of publishing.
+  final bool publish;
+
   UpdateBlogParams({
     required this.blogId,
     required this.expectedRevision,
@@ -63,5 +71,7 @@ class UpdateBlogParams {
     required this.sessionFence,
     this.locale,
     this.categoryIds,
+    this.summary,
+    this.publish = true,
   });
 }

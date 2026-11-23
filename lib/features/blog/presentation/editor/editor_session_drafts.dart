@@ -31,10 +31,22 @@ mixin _EditorDraftLifecycle on _EditorSessionBase {
   void _onEditorContentChanged() {
     final title = titleController.text;
     final body = contentController.text;
-    final changed = title != _seenTitle || body != _seenBody;
+    final summary = summaryController.text;
+    final changed =
+        title != _seenTitle || body != _seenBody || summary != _seenSummary;
     _seenTitle = title;
     _seenBody = body;
+    _seenSummary = summary;
     if (changed) _markEdited();
+  }
+
+  /// The summary a write sends: null while it is still the article's own
+  /// (the server keeps it, or writes one for a new article), otherwise what
+  /// the author typed - an empty string asks the server for a fresh one.
+  String? get _summaryForWrite {
+    final summary = summaryController.text.trim();
+    final initial = _initialSummary;
+    return initial != null && summary == initial.trim() ? null : summary;
   }
 
   /// Debounces the 2s background draft save. It only writes locally.
@@ -79,6 +91,7 @@ mixin _EditorDraftLifecycle on _EditorSessionBase {
     content: contentController.text,
     tags: List.of(selectedTags),
     categoryIds: _categoryTouched ? List.of(_selectedCategoryIds) : null,
+    summary: _summaryForWrite,
     expectedRevision: _target == null
         ? null
         : (expectedRevision ?? _expectedRevision),
@@ -152,6 +165,9 @@ mixin _EditorDraftLifecycle on _EditorSessionBase {
             if (draftCategoryIds != null) {
               _categoryTouched = true;
               _selectedCategoryIds = List.of(draftCategoryIds);
+            }
+            if (draft.summary case final String draftSummary) {
+              summaryController.text = draftSummary;
             }
           });
         } finally {

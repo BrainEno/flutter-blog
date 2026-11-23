@@ -23,7 +23,7 @@ class AppDatabase extends GeneratedDatabase {
   );
 
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 21;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -297,6 +297,34 @@ class AppDatabase extends GeneratedDatabase {
           );
         }
       }
+      if (from < 21) {
+        // The author's own summary travels with a draft and a queued send,
+        // and a queued send remembers whether it publishes or only stores a
+        // private draft. NULL summary is "left as it was" (the server keeps
+        // or writes one); NULL publish is a row queued before drafts could be
+        // sent, and those always published.
+        if (!await _tableExists('account_drafts')) {
+          await _createAccountDrafts();
+        } else if (!await _columnExists('account_drafts', 'summary')) {
+          await customStatement(
+            'ALTER TABLE account_drafts ADD COLUMN summary TEXT',
+          );
+        }
+        if (!await _tableExists('publish_queue')) {
+          await _createPublishQueue();
+        } else {
+          if (!await _columnExists('publish_queue', 'summary')) {
+            await customStatement(
+              'ALTER TABLE publish_queue ADD COLUMN summary TEXT',
+            );
+          }
+          if (!await _columnExists('publish_queue', 'publish')) {
+            await customStatement(
+              'ALTER TABLE publish_queue ADD COLUMN publish INTEGER',
+            );
+          }
+        }
+      }
     },
   );
 
@@ -321,7 +349,7 @@ class AppDatabase extends GeneratedDatabase {
       'id INTEGER PRIMARY KEY AUTOINCREMENT, backend TEXT NOT NULL, '
       'user_id TEXT NOT NULL, blog_id TEXT, title TEXT NOT NULL, '
       'content TEXT NOT NULL, tags TEXT NOT NULL, category_ids TEXT, '
-      'expected_revision TEXT, updated_at INTEGER NOT NULL)',
+      'expected_revision TEXT, summary TEXT, updated_at INTEGER NOT NULL)',
     );
     await customStatement(
       'CREATE UNIQUE INDEX account_drafts_new '
@@ -366,7 +394,8 @@ class AppDatabase extends GeneratedDatabase {
       'content TEXT NOT NULL, tags TEXT NOT NULL, cover_file TEXT, '
       'cover_mime TEXT, cover_url TEXT, '
       "kind TEXT NOT NULL DEFAULT 'create', target_id TEXT, locale TEXT, "
-      'category_ids TEXT, expected_revision TEXT, state TEXT NOT NULL, '
+      'category_ids TEXT, expected_revision TEXT, summary TEXT, '
+      'publish INTEGER, state TEXT NOT NULL, '
       'attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at INTEGER, '
       'last_error_code TEXT, '
       'created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',

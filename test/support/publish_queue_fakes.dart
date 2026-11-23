@@ -26,6 +26,8 @@ PublishQueueEntry queueEntry({
   String? locale,
   List<String>? categoryIds,
   ArticleRevision? expectedRevision,
+  String? summary,
+  bool publish = true,
 }) => PublishQueueEntry(
   id: id,
   userId: userId,
@@ -45,6 +47,8 @@ PublishQueueEntry queueEntry({
   targetId: targetId,
   locale: locale,
   categoryIds: categoryIds,
+  summary: summary,
+  publish: publish,
   expectedRevision:
       expectedRevision ??
       (kind == PublishQueueKind.edit ? _defaultEditRevision : null),
@@ -87,6 +91,8 @@ class FakePublishQueueStore implements PublishQueueStore {
     String? locale,
     ArticleRevision? expectedRevision,
     List<String>? categoryIds,
+    String? summary,
+    bool publish = true,
   }) async {
     final entry = queueEntry(
       id: 'queued-${enqueued.length + 1}',
@@ -104,6 +110,8 @@ class FakePublishQueueStore implements PublishQueueStore {
       categoryIds: categoryIds,
       expectedRevision: expectedRevision,
       coverUrl: coverUrl,
+      summary: summary,
+      publish: publish,
     );
     enqueued.add(entry);
     rows = [...rows, entry];

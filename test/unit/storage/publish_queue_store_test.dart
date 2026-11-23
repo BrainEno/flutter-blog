@@ -130,6 +130,33 @@ void main() {
     },
   );
 
+  test('a queued private draft keeps its summary and choice', () async {
+    await store.enqueue(
+      userId: 'alice',
+      title: 'Draft title',
+      content: 'body',
+      tags: const [],
+      idempotencyKey: 'key-draft',
+      summary: '一句话',
+      publish: false,
+    );
+    await store.enqueue(
+      userId: 'alice',
+      title: 'Plain publish',
+      content: 'body',
+      tags: const [],
+      idempotencyKey: 'key-plain',
+    );
+
+    final stored = await store.entries(userId: 'alice');
+    final draft = stored.singleWhere((e) => e.idempotencyKey == 'key-draft');
+    final plain = stored.singleWhere((e) => e.idempotencyKey == 'key-plain');
+    expect(draft.summary, '一句话');
+    expect(draft.publish, isFalse);
+    expect(plain.summary, isNull);
+    expect(plain.publish, isTrue);
+  });
+
   test('a cover is optional', () async {
     final entry = await store.enqueue(
       userId: 'alice',
@@ -513,6 +540,10 @@ void main() {
     expect(row.attempts, 1);
     // NULL reads as "not uploaded yet", which is what v8 did on every attempt.
     expect(row.coverUrl, isNull);
+    // Rows queued before drafts could be sent always published, with the
+    // server's own summary.
+    expect(row.publish, isTrue);
+    expect(row.summary, isNull);
 
     // The new column is usable right after the upgrade.
     await legacyStore.recordCoverUrl(
@@ -526,7 +557,7 @@ void main() {
     final version = await upgraded
         .customSelect('PRAGMA user_version')
         .getSingle();
-    expect(version.read<int>('user_version'), 20);
+    expect(version.read<int>('user_version'), 21);
   });
 
   test('a pre-v8 database gains the queue with cover_url', () async {

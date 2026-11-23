@@ -82,6 +82,12 @@ class BlogModel extends Blog {
     String? locale,
     List<String>? categoryIds,
     List<CategoryRef>? categories,
+
+    /// The summary an edit writes; null keeps the fetched server summary.
+    String? serverSummary,
+
+    /// Whether the write keeps the article unpublished; null keeps [isDraft].
+    bool? isDraft,
   }) {
     return BlogModel(
       id: id ?? this.id,
@@ -92,7 +98,7 @@ class BlogModel extends Blog {
       documentJson: content == null || content == this.content
           ? documentJson
           : null,
-      serverSummary: serverSummary,
+      serverSummary: serverSummary ?? this.serverSummary,
       plainEditorCompatible: plainEditorCompatible,
       content: content ?? this.content,
       summary: summary,
@@ -103,7 +109,7 @@ class BlogModel extends Blog {
       updatedAt: updatedAt ?? this.updatedAt,
       posterName: posterName ?? this.posterName,
       posterAvatar: posterAvatar ?? this.posterAvatar,
-      isDraft: isDraft,
+      isDraft: isDraft ?? this.isDraft,
       locale: locale ?? this.locale,
       // Named categories win: they carry the names, and the ids come from them.
       // An id-only override loses the names it cannot know - that is what a
