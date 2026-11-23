@@ -12,8 +12,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-/// The article reader's app bar: text size (when the page can change it),
-/// share (only when a canonical URL exists) and the save/like toggle.
+/// The article reader's app bar: contents (when the article has enough
+/// headings), text size (when the page can change it), share (only when a
+/// canonical URL exists) and the save/like toggle.
 ///
 /// Both actions need only the route-scoped `BlogLikedBloc` and `AppUserCubit`,
 /// so this widget reads them from the context instead of taking callbacks.
@@ -25,6 +26,7 @@ class ReaderAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.runningHead,
     this.onRunningHeadTap,
     this.onTextSize,
+    this.onOutline,
   });
 
   final Blog blog;
@@ -41,6 +43,9 @@ class ReaderAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   /// Opens the text-size sheet; no button without it.
   final VoidCallback? onTextSize;
+
+  /// Opens the contents list; no button without it.
+  final VoidCallback? onOutline;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -77,6 +82,13 @@ class ReaderAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       actions: [
+        if (onOutline case final onOutline?)
+          IconButton(
+            key: const ValueKey('reader-outline'),
+            tooltip: context.l10n.readerOutlineTooltip,
+            icon: const Icon(Icons.toc),
+            onPressed: onOutline,
+          ),
         if (onTextSize case final onTextSize?)
           IconButton(
             key: const ValueKey('reader-text-size'),

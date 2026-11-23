@@ -95,4 +95,8 @@ abstract final class AppLimits {
   /// Characters (code points) of body text a list row shows under a title
   /// when the article has no excerpt of its own.
   static const int articleExcerptCharacters = 150;
+
+  /// Headings an article needs before the reader offers a contents list;
+  /// with fewer, the list would only repeat what one scroll shows.
+  static const int outlineMinHeadings = 3;
 }

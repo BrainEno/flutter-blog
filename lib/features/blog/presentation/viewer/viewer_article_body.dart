@@ -17,6 +17,7 @@ import 'package:belog/features/blog/presentation/widgets/related_articles_sectio
 import 'package:belog/router/shell_branch_location.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:markdown/markdown.dart' as md;
 import 'package:belog/router/route_paths.dart';
 
 /// The scrolling article: header, read-aloud controls, body, related articles
@@ -37,6 +38,7 @@ class ViewerArticleBody extends StatelessWidget {
     this.titleKey,
     this.controlsKey,
     this.endKey,
+    this.headingKeys,
     this.textFactor = 1,
   });
 
@@ -66,6 +68,9 @@ class ViewerArticleBody extends StatelessWidget {
   /// Marks the end of the text, so the page can measure how far into the
   /// article - not into the comments under it - the reader is.
   final GlobalKey? endKey;
+
+  /// Marks the body's headings, for the contents list.
+  final Map<md.Node, GlobalKey>? headingKeys;
 
   /// How much larger than standard the reader has set the text.
   final double textFactor;
@@ -146,6 +151,7 @@ class ViewerArticleBody extends StatelessWidget {
                         readAloudDocument: document,
                         readAloudController: reader,
                         readAloudBlockKeys: blockKeys,
+                        headingKeys: headingKeys,
                         bodyStyle: NoWaveTypography.title(
                           context,
                           size: NoWaveTypeScale.articleBody,
