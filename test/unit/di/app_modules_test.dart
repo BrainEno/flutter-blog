@@ -37,6 +37,7 @@ import 'package:belog/features/blog/domain/reader/reader_text_size.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/repositories/category_repository.dart';
+import 'package:belog/features/blog/domain/repositories/comment_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
@@ -161,6 +162,7 @@ const Map<String, _Row<Object>> _resolutions = {
   'CategoryRemoteDataSource': _Row<CategoryRemoteDataSource>(),
   'CategoryRepository': _Row<CategoryRepository>(),
   'ClearOfflineLibrary': _Row<ClearOfflineLibrary>(),
+  'CommentDraftStore': _Row<CommentDraftStore>(),
   'CommentRemoteDataSource': _Row<CommentRemoteDataSource>(),
   'CommentRepository': _Row<CommentRepository>(),
   'ConnectionChecker': _Row<ConnectionChecker>(),
@@ -378,6 +380,12 @@ void main() {
     // on the next.
     expect(
       identical(locator<RecentSearches>(), locator<RecentSearches>()),
+      isTrue,
+    );
+    // Every comment box writes through one queue, so two articles saving
+    // at once cannot drop each other's draft.
+    expect(
+      identical(locator<CommentDraftStore>(), locator<CommentDraftStore>()),
       isTrue,
     );
     expect(

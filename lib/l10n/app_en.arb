@@ -752,6 +752,9 @@
       }
     }
   },
+  "commentDraftRestored": "Your unsent comment is back",
+  "commentDraftDiscard": "Discard",
+  "commentDraftDiscarded": "Unsent comment discarded",
   "recentSearchesCleared": "Recent searches cleared",
   "actionUndo": "Undo",
   "switchToLight": "Switch to light theme",

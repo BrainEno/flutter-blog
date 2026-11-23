@@ -1,8 +1,11 @@
 import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/network/connection_checker.dart';
+import 'package:belog/core/storage/app_database.dart';
 import 'package:belog/di/dependency_context.dart';
 import 'package:belog/features/blog/data/datasources/comment_remote_data_source.dart';
+import 'package:belog/features/blog/data/datasources/sqlite_comment_draft_store.dart';
 import 'package:belog/features/blog/data/repositories/comment_repository_impl.dart';
+import 'package:belog/features/blog/domain/repositories/comment_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:get_it/get_it.dart';
@@ -33,5 +36,13 @@ void registerCommentsModule(GetIt locator, DependencyContext context) {
         sessionIdentity: context.sessionManager,
       ),
     )
-    ..registerFactory(() => DeleteComment(locator<CommentRepository>()));
+    ..registerFactory(() => DeleteComment(locator<CommentRepository>()))
+    // Unsent comments, kept on this device per backend, account and article.
+    // One instance, so every comment box shares its one queue of writes.
+    ..registerLazySingleton<CommentDraftStore>(
+      () => SqliteCommentDraftStore(
+        locator<AppDatabase>(),
+        apiBaseUrl: context.apiBaseUrl,
+      ),
+    );
 }

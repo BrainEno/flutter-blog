@@ -61,6 +61,12 @@ Recent searches need no migration: each signed-in account's list (at most 8,
 newest first) is one JSON array in `metadata`, under a key naming the backend
 and the user, so another backend or account never reads it.
 
+Unsent comments need no migration either: each signed-in account's drafts (at
+most 20 articles, most recently written first; text, the comment it answers and
+that author's name) are one JSON array in `metadata` under a key naming the
+backend and the user. A blank draft removes its entry, and the last one removes
+the row.
+
 The production file connection sets SQLite WAL and a 5000 ms busy timeout before
 migrations. New cache writes prune least-recently-accessed entries to 250 per
 backend and content language. Access is tracked best-effort: if a touch cannot
@@ -72,7 +78,8 @@ multiple backends and the preserved legacy namespace can still consume space.
 
 `belog.sqlite` can hold a session fallback containing access/refresh tokens when
 platform secure storage is unavailable, as well as unpublished drafts, queued
-writes, reading history, recent searches, article cache and reader preferences.
+writes, reading history, recent searches, unsent comments, article cache and
+reader preferences.
 Android therefore
 sets `android:allowBackup="false"` in the release manifest. It also references
 explicit `res/xml/backup_rules.xml` and `data_extraction_rules.xml` deny-lists
