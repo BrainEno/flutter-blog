@@ -21,28 +21,104 @@ mixin _EditorCoverSelection on _EditorSessionBase {
     WidgetsBinding.instance.ensureVisualUpdate();
   }
 
-  void selectImage() async {
+  Future<PickedImage?> Function() get _pickCover =>
+      widget.config.pickCoverImage ?? pickImage;
+
+  CoverCropper get _coverCropper =>
+      widget.config.coverCropper ?? const CoverCropper();
+
+  /// Picks a photo and opens the crop frame on it. Backing out of either step
+  /// keeps whatever cover was there before.
+  void selectImage() => unawaited(_pickAndCropCover());
+
+  Future<void> _pickAndCropCover() async {
     if (!_isCurrentEditor) return;
+    final PickedImage? picked;
     try {
-      final pickedImage = await pickImage();
-      if (!_isCurrentEditor) return;
-      if (pickedImage != null) {
-        _coverSelectionVersion++;
-        setState(() {
-          image = pickedImage.file;
-          imageUpload = pickedImage.upload;
-          imageBytes = null;
-          _selectedCoverUrl = null;
-          isNewImageSelected = true;
-        });
-      }
-      // null = the user cancelled the picker: nothing to do.
+      picked = await _pickCover();
     } catch (_) {
       // Picking failed (as opposed to being cancelled): surface it
       // instead of silently keeping the old cover.
       if (mounted && _isCurrentEditor) {
         showSnackBar(context, context.l10n.imagePickFailed);
       }
+      return;
+    }
+    // null = the user cancelled the picker: nothing to do.
+    if (picked == null || !mounted || !_isCurrentEditor) return;
+    await _cropCover(picked.upload);
+  }
+
+  /// Reopens the frame on the uncut photo, where the last cut left it.
+  Future<void> recropCover() async {
+    final source = _coverCropSource;
+    if (source == null || !mounted || !_isCurrentEditor) return;
+    await _cropCover(source, initialRect: _coverCropRect);
+  }
+
+  /// Drops the cover chosen in this session. An article falls back to the
+  /// cover it already has (the write sends none, and the server keeps its
+  /// own); a new piece goes back to having none.
+  void clearCoverSelection() {
+    if (!_isCurrentEditor || !isNewImageSelected) return;
+    _coverSelectionVersion++;
+    setState(() {
+      imageUpload = null;
+      imageBytes = null;
+      _selectedCoverUrl = null;
+      _coverCropSource = null;
+      _coverCropRect = null;
+      isNewImageSelected = false;
+    });
+  }
+
+  Future<void> _cropCover(ImageUpload source, {Rect? initialRect}) async {
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final route = coverCropRoute(
+      source: source.bytes,
+      initialRect: initialRect,
+      cropper: _coverCropper,
+    );
+    // The frame is a root route like the media sheet: an account change takes
+    // it down through the same slot (see [_dismissMediaPicker]).
+    _mediaPickerNavigator = navigator;
+    _mediaPickerRoute = route;
+    _mediaPickerOpen = true;
+    CoverCropOutcome? outcome;
+    try {
+      outcome = await navigator.push(route);
+    } finally {
+      _mediaPickerOpen = false;
+      _mediaPickerNavigator = null;
+      _mediaPickerRoute = null;
+    }
+    final result = outcome;
+    if (result == null || !mounted || !_isCurrentEditor) return;
+    final cut = result.bytes;
+    final rect = result.rect;
+    _coverSelectionVersion++;
+    setState(() {
+      if (cut == null) {
+        // The codec cannot read this photo: keep it uncut, as before there
+        // was a crop step, rather than refusing the author's choice.
+        imageBytes = source.bytes;
+        imageUpload = source;
+        _coverCropSource = null;
+        _coverCropRect = null;
+      } else {
+        imageBytes = cut;
+        imageUpload = ImageUpload(
+          bytes: cut,
+          mimeType: CoverCropLimits.mimeType,
+        );
+        _coverCropSource = source;
+        _coverCropRect = rect;
+      }
+      _selectedCoverUrl = null;
+      isNewImageSelected = true;
+    });
+    if (cut == null) {
+      showSnackBar(context, context.l10n.coverCropUnsupported);
     }
   }
 
@@ -94,9 +170,10 @@ mixin _EditorCoverSelection on _EditorSessionBase {
     if (selectedAsset == null || !mounted || !_isCurrentEditor) return;
     _coverSelectionVersion++;
     setState(() {
-      image = null;
       imageUpload = null;
       imageBytes = null;
+      _coverCropSource = null;
+      _coverCropRect = null;
       _selectedCoverUrl = selectedAsset.imageUrl;
       isNewImageSelected = true;
     });
@@ -116,6 +193,9 @@ mixin _EditorCoverSelection on _EditorSessionBase {
       setState(() {
         imageUpload = cover;
         imageBytes = cover.bytes;
+        // The stored cover was already cut once; reframing cuts it again.
+        _coverCropSource = cover;
+        _coverCropRect = null;
         isNewImageSelected = true;
       });
     } catch (_) {

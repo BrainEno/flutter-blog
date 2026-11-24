@@ -1,4 +1,6 @@
+import 'package:belog/core/common/media/cover_crop.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
+import 'package:belog/core/utils/pick_image.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/domain/notion_export/notion_export.dart';
@@ -49,6 +51,11 @@ class BlogEditorPage extends StatelessWidget {
   /// The body-picture upload. Injectable for tests; production resolves the
   /// registered use case.
   final UploadArticleImage? uploadArticleImage;
+
+  /// The cover's gallery pick and crop codec. Injectable for tests;
+  /// production picks from the gallery and decodes in an isolate.
+  final Future<PickedImage?> Function()? pickCoverImage;
+  final CoverCropper? coverCropper;
   const BlogEditorPage({
     super.key,
     this.blog,
@@ -63,6 +70,8 @@ class BlogEditorPage extends StatelessWidget {
     this.notionImportRepository,
     this.notionExportRepository,
     this.uploadArticleImage,
+    this.pickCoverImage,
+    this.coverCropper,
   });
 
   @override
@@ -80,6 +89,8 @@ class BlogEditorPage extends StatelessWidget {
       notionImportRepository: notionImportRepository,
       notionExportRepository: notionExportRepository,
       uploadArticleImage: uploadArticleImage,
+      pickCoverImage: pickCoverImage,
+      coverCropper: coverCropper,
     ),
   );
 }

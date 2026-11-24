@@ -1,4 +1,6 @@
+import 'package:belog/core/common/media/cover_crop.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
+import 'package:belog/core/utils/pick_image.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
 import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/domain/notion_export/notion_export.dart';
@@ -28,6 +30,8 @@ class EditorSessionConfig {
     this.notionImportRepository,
     this.notionExportRepository,
     this.uploadArticleImage,
+    this.pickCoverImage,
+    this.coverCropper,
   });
   final Blog? blog;
   final PublishQueueEntry? queueEntry;
@@ -44,4 +48,10 @@ class EditorSessionConfig {
   /// Uploads pictures placed in the body; without one the toolbar offers no
   /// image button.
   final UploadArticleImage? uploadArticleImage;
+
+  /// The gallery pick behind the cover slot; production uses [pickImage].
+  final Future<PickedImage?> Function()? pickCoverImage;
+
+  /// The codec behind the cover crop step; production decodes in an isolate.
+  final CoverCropper? coverCropper;
 }

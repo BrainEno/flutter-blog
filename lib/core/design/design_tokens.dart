@@ -204,8 +204,15 @@ abstract final class NoWaveSizes {
   static const coverAspect = 4 / 3;
 
   /// Cover aspect ratio of the feed's featured card and the reader header,
-  /// where the image carries the page rather than a column.
+  /// where the image carries the page rather than a column. The editor's
+  /// cover slot and its crop frame use it too, so the author frames exactly
+  /// what readers see.
   static const coverAspectWide = 16 / 10;
+
+  /// Widest the editor's cover slot gets. At [coverAspectWide] that is 250
+  /// high: on a phone the slot spans the column, on a tablet it stops here so
+  /// the cover does not push the title and body below the fold.
+  static const coverEditorWidth = 400.0;
 
   /// Widest a paragraph column may get before it is centred on a tablet, so
   /// long lines stay readable.
@@ -216,12 +223,6 @@ abstract final class NoWaveSizes {
   /// is scanned, not read line by line, and the wider gutter on a tablet keeps
   /// it reading as one sheet rather than a stretched phone screen.
   static const contentColumn = 680.0;
-
-  /// Fixed cover box in the editor.
-  ///
-  /// The three states (picked file, pending bytes, published URL) draw the
-  /// same frame, so the form does not jump when the cover changes.
-  static const coverEditorBox = 250.0;
 
   /// How far an empty or loading state starts below the top of its list.
   ///
