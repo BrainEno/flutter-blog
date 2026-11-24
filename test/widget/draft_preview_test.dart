@@ -1,4 +1,5 @@
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:belog/core/design/components/no_wave_end_mark.dart';
 import 'package:belog/core/design/components/no_wave_notice.dart';
 import 'package:belog/features/blog/data/models/blog_model.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -7,6 +8,7 @@ import 'package:belog/features/blog/domain/usecase/get_blog_by_id.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_liked/blog_liked_bloc.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_viewer/blog_viewer_cubit.dart';
 import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
+import 'package:belog/features/blog/presentation/viewer/reader_app_bar.dart';
 import 'package:belog/features/blog/presentation/widgets/comments_section.dart';
 import 'package:belog/features/blog/presentation/widgets/related_articles_section.dart';
 import 'package:belog/l10n/app_localizations.dart';
@@ -75,6 +77,20 @@ BlogModel _article({
   isDraft: isDraft,
 );
 
+/// An icon in the reader's own app bar; the tab bar below has a bookmark of
+/// its own (the saved tab).
+Finder _inAppBar(IconData icon) =>
+    find.descendant(of: find.byType(ReaderAppBar), matching: find.byIcon(icon));
+
+/// Scrolls to the foot of the article, where the end matter would be built:
+/// a sliver that far below the window does not exist until it is reached.
+Future<void> _toTheEnd(WidgetTester tester) async {
+  for (var i = 0; i < 6; i++) {
+    await tester.drag(find.byType(BlogViewerPage), const Offset(0, -3000));
+    await tester.pumpAndSettle();
+  }
+}
+
 void main() {
   setUp(() => GetIt.instance.reset());
 
@@ -108,16 +124,18 @@ void main() {
     expect(find.byType(BlogViewerPage), findsOneWidget);
     expect(find.byKey(const ValueKey('reader-draft-notice')), findsOneWidget);
     expect(find.text('草稿预览，只有你看得到；发布后才会显示收藏、评论和相关阅读。'), findsOneWidget);
-    expect(find.byIcon(Icons.bookmark_border), findsNothing);
-    expect(find.byIcon(Icons.bookmark), findsNothing);
-    expect(find.byIcon(Icons.share_outlined), findsNothing);
+    expect(find.byType(ReaderAppBar), findsOneWidget);
+    expect(_inAppBar(Icons.bookmark_border), findsNothing);
+    expect(_inAppBar(Icons.bookmark), findsNothing);
+    expect(_inAppBar(Icons.share_outlined), findsNothing);
+
+    // Scrolling through the preview is checking, not reading; and the
+    // article ends on its end mark with nothing after it.
+    await _toTheEnd(tester);
+    expect(find.byType(NoWaveEndMark), findsOneWidget);
     expect(find.byKey(const ValueKey('article-end-matter')), findsNothing);
     expect(find.byType(CommentsSection), findsNothing);
     expect(find.byType(RelatedArticlesSection), findsNothing);
-
-    // Scrolling through the preview is checking, not reading.
-    await tester.drag(find.byType(BlogViewerPage), const Offset(0, -900));
-    await tester.pumpAndSettle();
     expect(history.recorded, isEmpty);
     expect(history.saved, isEmpty);
     verifyNever(() => harness.remote.isBlogLikedByUser(any(), any()));
@@ -131,8 +149,10 @@ void main() {
     final (_, history) = await openInApp(tester, _article(isDraft: false));
 
     expect(find.byKey(const ValueKey('reader-draft-notice')), findsNothing);
-    expect(find.byIcon(Icons.bookmark_border), findsOneWidget);
+    expect(_inAppBar(Icons.bookmark_border), findsOneWidget);
+    await _toTheEnd(tester);
     expect(find.byKey(const ValueKey('article-end-matter')), findsOneWidget);
+    expect(find.byType(CommentsSection), findsOneWidget);
     expect(history.recorded, ['piece']);
   });
 
@@ -218,12 +238,14 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('没有写完的稿纸'), findsWidgets);
 
-        await tester.tap(
-          find.descendant(
-            of: find.byType(NoWaveNotice),
-            matching: find.text('编辑'),
-          ),
+        // The note sits under the opening cover, below a short test window.
+        final edit = find.descendant(
+          of: find.byType(NoWaveNotice),
+          matching: find.text('编辑'),
         );
+        await tester.ensureVisible(edit);
+        await tester.pumpAndSettle();
+        await tester.tap(edit);
         await tester.pumpAndSettle();
         expect(opened, isNotEmpty);
         expect(opened.last.$1, editorPath);
