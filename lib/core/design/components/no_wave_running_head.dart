@@ -124,7 +124,7 @@ class NoWaveRunningHead extends StatelessWidget {
       switchOutCurve: NoWaveMotionPolicy.curve,
       layoutBuilder: (current, previous) => Stack(
         alignment: AlignmentDirectional.centerStart,
-        children: [...previous, if (current != null) current],
+        children: [...previous, ?current],
       ),
       transitionBuilder: (child, animation) => FadeTransition(
         opacity: animation,

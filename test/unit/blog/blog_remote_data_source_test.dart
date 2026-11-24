@@ -655,7 +655,7 @@ void main() {
         <String, dynamic>{'id': 'b1', 'type': 'paragraph', 'text': '正文'},
       ],
       'deletedAt': '2026-10-01T00:00:00.000Z',
-      if (purgesAt != null) 'purgesAt': purgesAt,
+      'purgesAt': ?purgesAt,
     };
 
     test('lists tombstones with the server-computed purge deadline', () async {

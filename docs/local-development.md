@@ -1,6 +1,6 @@
 # 本地开发
 
-> 状态：active ｜ 最后核对：2026-11-19 @ de5e8bc
+> 状态：active ｜ 最后核对：2026-11-19 @ 949a967
 
 > 从根 README 移出（#298）。根 README 只保留「快速开始」；常见启动阻塞见
 > [本地启动排障](troubleshooting.md)。
@@ -135,7 +135,10 @@ flutter pub upgrade --major-versions # 或逐个改 pubspec.yaml
 flutter pub get
 ```
 
-`flutter_lints`、`drift`（当前精确锁定）、`sqlite3` 的约束都带历史原因（见下面的
-「本地启动常见阻塞」与 `docs/code-audit.md`），不要顺手改高下限。升级后至少跑
+`drift`（当前精确锁定，见 `docs/sqlite-storage.md`）和 `sqlite3`（下限故意放低，
+旧 SDK 才能求解，见 `pubspec.yaml` 注释与 [本地启动排障](troubleshooting.md)）的约束
+都有原因，不要顺手改高下限。`flutter_lints` 没有这类限制：2026-11 已升到 6
+（`lints` 6.1），新规则 `use_null_aware_elements`（`if (x != null) x` 写成 `?x`）与
+`unnecessary_underscores`（`__` 写成 `_`）已在全仓库修完。大版本升级后至少跑
 `flutter analyze --fatal-infos`、`flutter test` 与
 `python3 -m unittest discover -s scripts/tests`，再交给 CI 判定。

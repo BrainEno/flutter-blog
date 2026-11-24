@@ -559,7 +559,7 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
     if (!_resumable(at)) return const SizedBox.shrink();
     final reader = _reader;
     return ListenableBuilder(
-      listenable: Listenable.merge([_resumeDone, if (reader != null) reader]),
+      listenable: Listenable.merge([_resumeDone, ?reader]),
       builder: (context, _) {
         final show =
             !_resumeDone.value &&

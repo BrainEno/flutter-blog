@@ -74,10 +74,7 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
       final data = await client.getJsonForViewer(
         '/me/media',
         expectedUserId: sessionFence.userId,
-        query: {
-          'limit': '$_mediaLibraryPageSize',
-          if (cursor != null) 'cursor': cursor,
-        },
+        query: {'limit': '$_mediaLibraryPageSize', 'cursor': ?cursor},
       );
       _requireMediaSession(sessionFence);
       return _mediaLibraryPage(data);

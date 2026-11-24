@@ -655,7 +655,7 @@ class NowaveApiClient {
         connectivityEvidence?.recordResponse(uri);
         unawaited(
           streamed.stream
-              .listen(null, onError: (Object _, StackTrace __) {})
+              .listen(null, onError: (Object _, StackTrace _) {})
               .cancel()
               .catchError((Object _) {}),
         );

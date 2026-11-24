@@ -91,7 +91,7 @@ class AuthorSearchRemoteDataSourceImpl implements AuthorSearchRemoteDataSource {
       final data = await _client.getJson(
         '/authors',
         query: {
-          if (query != null) 'query': query,
+          'query': ?query,
           'locale': _locale,
           'limit': '$maxAuthorSearchResults',
           if (offset > 0) 'offset': '$offset',
