@@ -240,6 +240,12 @@ AppRouterHandle createAppRouter({
         ),
       ),
       StatefulShellRoute.indexedStack(
+        // Each tab reports its own pushes to its own observers above; the
+        // root observer is for the root navigator only. `HomeShell` subscribes
+        // to it to hear a full-screen route cover the tabs (which stops read
+        // aloud). go_router 17 started forwarding every in-tab push to the
+        // root observers as well; keep them out, as before the upgrade.
+        notifyRootObserver: false,
         builder: (context, state, shell) => HomeShell(shell: shell),
         branches: [
           StatefulShellBranch(
