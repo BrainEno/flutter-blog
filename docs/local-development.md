@@ -139,6 +139,10 @@ flutter pub get
 旧 SDK 才能求解，见 `pubspec.yaml` 注释与 [本地启动排障](troubleshooting.md)）的约束
 都有原因，不要顺手改高下限。`flutter_lints` 没有这类限制：2026-11 已升到 6
 （`lints` 6.1），新规则 `use_null_aware_elements`（`if (x != null) x` 写成 `?x`）与
-`unnecessary_underscores`（`__` 写成 `_`）已在全仓库修完。大版本升级后至少跑
+`unnecessary_underscores`（`__` 写成 `_`）已在全仓库修完。`go_router` 同月从 14 升到 18：
+路径从 15 起区分大小写（应用内路径都是小写常量，深链统一改写成 `/view/<slug>`，
+所以没有可达的变化）；17 起 shell 路由默认把标签内的跳转也通知根 observer，
+`lib/router/app_router.dart` 显式设 `notifyRootObserver: false`，保持升级前
+「根 observer 只看根 navigator」的行为（`test/widget/router_test.dart` 守护）。大版本升级后至少跑
 `flutter analyze --fatal-infos`、`flutter test` 与
 `python3 -m unittest discover -s scripts/tests`，再交给 CI 判定。

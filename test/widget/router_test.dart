@@ -100,6 +100,7 @@ import 'package:belog/features/user/presentation/pages/author_page.dart';
 import 'package:belog/features/user/presentation/pages/author_relationships_page.dart';
 import 'package:belog/features/user/presentation/pages/profile_page.dart';
 import 'package:belog/router/app_router.dart';
+import 'package:belog/router/read_aloud_route_observers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -486,6 +487,33 @@ void main() {
       expect(cancellations, 1);
     },
   );
+
+  test('in-tab navigation stays off the root read-aloud observer', () {
+    // go_router 17 made shell routes forward their pushes to the router's own
+    // observers by default. The root observer only watches the root navigator
+    // (HomeShell listens on it for a full-screen route covering the tabs);
+    // each tab already has its own observers.
+    final user = AppUserCubit();
+    final handle = createAppRouter(appUserCubit: user);
+    addTearDown(handle.dispose);
+    addTearDown(user.close);
+
+    expect(handle.router.observers, [rootReadAloudRouteObserver]);
+    final shells = handle.router.configuration.routes
+        .whereType<StatefulShellRoute>()
+        .toList();
+    expect(shells, hasLength(1));
+    expect(shells.single.notifyRootObserver, isFalse);
+    expect(
+      [for (final branch in shells.single.branches) branch.observers],
+      [
+        [feedRouteObserver, feedReadAloudRouteObserver],
+        [searchRouteObserver, searchReadAloudRouteObserver],
+        [savedRouteObserver, savedReadAloudRouteObserver],
+        [profileRouteObserver, profileReadAloudRouteObserver],
+      ],
+    );
+  });
 
   testWidgets('tapping the active tab takes its list back to the top', (
     tester,
