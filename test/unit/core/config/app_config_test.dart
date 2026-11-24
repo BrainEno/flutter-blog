@@ -4,7 +4,6 @@ import 'package:belog/core/nowave/nowave_api_client.dart';
 import 'package:belog/core/utils/diagnostics_buffer.dart';
 import 'package:belog/core/utils/search_debounce.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
-import 'package:belog/features/blog/domain/entities/structured_session_metadata.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// #295 moved every configured wait and page size into `core/config`. These
@@ -63,10 +62,6 @@ void main() {
       expect(transfer, lessThan(AppDurations.mediaUploadTimeout));
       // ...and the ordinary request budget would not.
       expect(transfer, greaterThan(AppDurations.requestTimeout));
-      expect(
-        StructuredCoverSelection.maxImageBytes,
-        AppLimits.mediaUploadMaxBytes,
-      );
     });
 
     test('a media upload outlasts an ordinary request', () {
@@ -104,13 +99,11 @@ void main() {
   group('AppLimits', () {
     test('keeps the values the call sites used before #295', () {
       expect(AppLimits.blogCacheMaxRows, 500);
-      expect(AppLimits.structuredRecoveryPageSize, 25);
       expect(AppLimits.readingHistoryPageSize, 200);
       expect(AppLimits.notificationPageSize, 50);
       expect(AppLimits.notificationMaxPageSize, 100);
       expect(AppLimits.conversationPageSize, 50);
       expect(AppLimits.messagePageSize, 100);
-      expect(AppLimits.structuredComparisonPageSize, 1000);
       expect(AppLimits.mediaUploadMaxBytes, 8 * 1024 * 1024);
       expect(AppLimits.notionImportPlanMaxTokenBytes, 512 * 1024);
     });

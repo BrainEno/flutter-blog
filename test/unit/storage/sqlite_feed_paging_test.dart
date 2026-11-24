@@ -165,13 +165,11 @@ void main() {
     await db.close();
 
     // Recreate the v3 shape: no feed index, no v5 document column and no v8
-    // publish queue or v14 structured recovery table, so the upgrade must
-    // recreate them along with the index.
+    // publish queue, so the upgrade must recreate them along with the index.
     final old = raw.sqlite3.open(file.path);
     old.execute('DROP INDEX blog_cache_feed_order');
     old.execute('DROP TABLE account_drafts');
     old.execute('DROP TABLE publish_queue');
-    old.execute('DROP TABLE structured_body_drafts');
     old.execute('ALTER TABLE blog_cache DROP COLUMN document_json');
     old.execute('PRAGMA user_version = 3');
     old.close();
@@ -197,7 +195,8 @@ void main() {
               )
               .get())
           .length,
-      1,
+      0,
+      reason: 'the v14 recovery table of the removed block editor is skipped',
     );
 
     final scopedCache = SqliteBlogCache(
@@ -229,7 +228,7 @@ void main() {
         'user_version',
       ),
       // The upgrade runs every later step too, so this is the current schema.
-      21,
+      22,
     );
 
     await db.close();
@@ -247,6 +246,69 @@ void main() {
               .getSingle())
           .read<String>('content'),
       'body cached',
+    );
+  });
+
+  test("v22 drops the removed block editor's recovery table", () async {
+    // Data the upgrade must leave alone.
+    await db.customStatement(
+      'INSERT INTO drafts(blog_id, title, content, tags, updated_at) VALUES (?, ?, ?, ?, ?)',
+      ['kept', 'plain draft', 'plain body', '[]', 1],
+    );
+    await db.writeMetadata('test-marker', 'preserved');
+    await db.close();
+
+    // A v21 installation still has the recovery table of the local block
+    // editor, with a row nothing can open any more.
+    final old = raw.sqlite3.open(file.path);
+    old.execute(
+      'CREATE TABLE structured_body_drafts ('
+      'id INTEGER PRIMARY KEY AUTOINCREMENT, backend TEXT NOT NULL, '
+      'user_id TEXT NOT NULL, article_id TEXT NOT NULL, locale TEXT NOT NULL, '
+      'revision INTEGER NOT NULL, base_version INTEGER NOT NULL, '
+      'base_blocks TEXT NOT NULL, body_version INTEGER NOT NULL, '
+      'body_blocks TEXT NOT NULL, updated_at INTEGER NOT NULL, '
+      'base_metadata TEXT, session_metadata TEXT, text_buffer TEXT, '
+      'UNIQUE(backend, user_id, article_id, locale))',
+    );
+    old.execute(
+      'INSERT INTO structured_body_drafts(backend, user_id, article_id, '
+      'locale, revision, base_version, base_blocks, body_version, '
+      "body_blocks, updated_at) VALUES ('b', 'u', 'a', 'zh-CN', 1, 1, '[]', "
+      "1, '[]', 1)",
+    );
+    old.execute('PRAGMA user_version = 21');
+    old.close();
+
+    db = AppDatabase(NativeDatabase(file));
+    expect(
+      (await db
+              .customSelect(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'structured_body_drafts'",
+              )
+              .get())
+          .length,
+      0,
+    );
+    expect(
+      (await db.customSelect('SELECT title FROM drafts').getSingle())
+          .read<String>('title'),
+      'plain draft',
+    );
+    expect(await db.readMetadata('test-marker'), 'preserved');
+    final tables =
+        (await db
+                .customSelect(
+                  "SELECT name FROM sqlite_master WHERE type = 'table'",
+                )
+                .get())
+            .map((row) => row.read<String>('name'));
+    expect(tables, containsAll(['account_drafts', 'publish_queue']));
+    expect(
+      (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
+        'user_version',
+      ),
+      22,
     );
   });
 }

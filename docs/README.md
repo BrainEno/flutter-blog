@@ -52,13 +52,8 @@
 - [冷启动与墨色幕布](startup.md)：`main` 之后不再 await 的启动顺序、幕布时序与
   原生静态启动图的边界。
 - [界面设计系统](design-system.md)：色板与间距 token、共用组件目录、无障碍契约。
-- [编辑器收敛路线图](editor-architecture-roadmap.md)：Markdown 写入、结构化本地
-  恢复工具、条件并发与临时页面退役的安全边界。
-- [本地结构化恢复复核](structured-local-recovery-review.md)：恢复说明、比较页面与
-  本地编辑范围。
-- [结构化会话恢复](structured-session-recovery.md)：本地恢复存储、身份围栏和版本边界。
-- [结构化正文历史](structured-session-body-history.md)：会话内历史不是远程版本控制。
-- [本地结构化正文传输](structured-body-transfer.md)：带版本的正文剪贴板交换和预览。
+- [编辑器收敛路线图](editor-architecture-roadmap.md)：唯一的传统编辑器、Markdown 与
+  no-wave blocks 的互转、条件并发，以及本地块编辑原型的移除。
 - [no-wave 传输层](nowave-transport.md)：URL 组合、响应信封映射与 401 重放决策。
 - [后端差距摘要](backend-gaps.md)：客户端视角的当前差距与服务端待办。
 - [no-wave API 差距](nowave-api-gap-audit.md)：指定审计快照的已接入与未接入能力。

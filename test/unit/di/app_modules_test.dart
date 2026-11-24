@@ -42,9 +42,6 @@ import 'package:belog/features/blog/domain/repositories/comment_repository.dart'
 import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
-import 'package:belog/features/blog/domain/repositories/structured_body_recovery_store.dart';
-import 'package:belog/features/blog/domain/repositories/structured_edition_reader.dart';
-import 'package:belog/features/blog/domain/repositories/structured_recovery_catalog.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/upload_article_image.dart';
@@ -61,9 +58,7 @@ import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_related_articles.dart';
 import 'package:belog/features/blog/domain/usecase/get_user_liked_blogs.dart';
 import 'package:belog/features/blog/domain/usecase/is_blog_liked.dart';
-import 'package:belog/features/blog/domain/usecase/list_structured_recoveries.dart';
 import 'package:belog/features/blog/domain/usecase/offline_library.dart';
-import 'package:belog/features/blog/domain/usecase/open_structured_editing_session.dart';
 import 'package:belog/features/blog/domain/usecase/resolve_tag.dart';
 import 'package:belog/features/blog/domain/usecase/restore_deleted_blog.dart';
 import 'package:belog/features/blog/domain/usecase/search_blogs.dart';
@@ -194,7 +189,6 @@ const Map<String, _Row<Object>> _resolutions = {
   'GetUserLikedBlogs': _Row<GetUserLikedBlogs>(),
   'GetUserMediaLibraryPage': _Row<GetUserMediaLibraryPage>(),
   'IsBlogLiked': _Row<IsBlogLiked>(),
-  'ListStructuredRecoveries': _Row<ListStructuredRecoveries>(),
   'LocaleBloc': _Row<LocaleBloc>(),
   'LocalePreferenceStore': _Row<LocalePreferenceStore>(),
   'MessageInboxCubit': _Row<MessageInboxCubit>(),
@@ -210,7 +204,6 @@ const Map<String, _Row<Object>> _resolutions = {
   'NowaveApiClient': _Row<NowaveApiClient>(),
   'NowaveSessionManager': _Row<NowaveSessionManager>(),
   'OfflineLibraryCubit': _Row<OfflineLibraryCubit>(),
-  'OpenStructuredEditingSession': _Row<OpenStructuredEditingSession>(),
   'PasswordRecoveryRepository': _Row<PasswordRecoveryRepository>(),
   'PublishQueueCubit': _Row<PublishQueueCubit>(),
   'PublishQueueDrainer': _Row<PublishQueueDrainer>(),
@@ -232,9 +225,6 @@ const Map<String, _Row<Object>> _resolutions = {
   'SearchAuthors': _Row<SearchAuthors>(),
   'SearchBlogs': _Row<SearchBlogs>(),
   'SpeechCoordinator': _Row<SpeechCoordinator>(),
-  'StructuredBodyRecoveryStore': _Row<StructuredBodyRecoveryStore>(),
-  'StructuredEditionReader': _Row<StructuredEditionReader>(),
-  'StructuredRecoveryCatalog': _Row<StructuredRecoveryCatalog>(),
   'TagArticlesBloc': _Row<TagArticlesBloc>(),
   'ThemeBloc': _Row<ThemeBloc>(),
   'ThemePreferenceStore': _Row<ThemePreferenceStore>(),

@@ -78,8 +78,8 @@
 
 > 2026-11-19 更新（死代码清理）：按 `lib/main.dart` 的导入可达性与标识符引用扫描了
 > `lib/`。所有文件都被导入；唯一从入口不可达的是
-> `structured_inline_replacement.dart`，它是有意隔离、带完整测试的替换原语（见
-> [结构化会话恢复](structured-session-recovery.md)），保留。删除了无调用方的
+> `structured_inline_replacement.dart`，当时作为有意隔离的替换原语保留（后来随
+> 本地块编辑原型一起删除，见下）。删除了无调用方的
 > `OfflineLibraryState.hasSnapshot` / `hasClearFailure`、`NoWaveTypeScale.emptyState` /
 > `authTitle`、只给测试用的 `buildConnectionChecker` 包装（生产与测试都直接构造
 > `ApiConnectionChecker`），以及 5 条无引用文案（`notionImportPreview`、
@@ -102,6 +102,13 @@
 > （原库重新导出）。`notion_markdown.dart` 拆出警告类型与属性值解析
 > （`notion_markdown_warning.dart`、`notion_values.dart`，同样重新导出）；
 > 结构化编辑器的块卡片、通知页与行内格式页的私有组件也各自移出。
+
+> 2026-11-24 更新（#291，本地块编辑原型退役）：界面已在 #351 删除后，再按
+> `lib/main.dart` 的导入可达性扫描：领域层 editing 整个目录、结构化恢复存储与
+> 目录、`NowaveStructuredEditionReader`、打开恢复的三个用例和
+> `well_formed_utf16.dart` 要么从入口不可达，要么只被 DI 注册而没有调用方，连同
+> 测试约 7000 行一并删除。上文提到的 `LocalStructuredSession` 交接拆分因此不再
+> 存在。数据库 v22 删除 `structured_body_drafts`（见 [SQLite 存储](sqlite-storage.md)）。
 
 ## 本轮修复
 

@@ -15,9 +15,6 @@ abstract final class AppLimits {
   /// The most feed articles the offline cache keeps and returns in one read.
   static const int blogCacheMaxRows = 500;
 
-  /// One page of the structured-body recovery catalog.
-  static const int structuredRecoveryPageSize = 25;
-
   /// The reading-history rows a single list read returns, newest first.
   static const int readingHistoryPageSize = 200;
 
@@ -45,8 +42,8 @@ abstract final class AppLimits {
   // --- Media ----------------------------------------------------------------
 
   /// The largest image `POST /me/media` accepts (no-wave REST limit at the
-  /// audited upstream revision). The picker downsamples far below it, but a
-  /// structured cover can carry a local file up to this size.
+  /// audited upstream revision). The picker downsamples far below it; a Notion
+  /// bundle import checks each image against it before uploading.
   static const int mediaUploadMaxBytes = 8 * 1024 * 1024;
 
   /// The weakest uplink the media upload budget is sized for: 1 Mbit/s, a
@@ -87,10 +84,6 @@ abstract final class AppLimits {
   static const int notionImportMaxImages = 60;
 
   // --- Display ------------------------------------------------------------
-
-  /// UTF-16 code units per page when a long structured value is shown in the
-  /// conflict comparison view.
-  static const int structuredComparisonPageSize = 1000;
 
   /// Characters (code points) of body text a list row shows under a title
   /// when the article has no excerpt of its own.

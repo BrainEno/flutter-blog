@@ -1,6 +1,6 @@
 # SQLite storage
 
-> 状态：active ｜ 最后核对：2026-11-19 @ 5d4fcfc
+> 状态：active ｜ 最后核对：2026-11-19 @ ed34a86
 
 Drift on SQLite is the **only** local store: theme preference, drafts, the
 bounded article cache, reading history, read-aloud preferences, the no-wave
@@ -17,7 +17,7 @@ session copy, profile cache and app metadata all live in `belog.sqlite`.
 
 ## Schema versions
 
-`schemaVersion` is 20. The v17 migration rebuilds cache and history tables to
+`schemaVersion` is 22. The v17 migration rebuilds cache and history tables to
 add backend keys while retaining all old row values in an unattributed
 namespace. It does not assign these rows to the currently configured server.
 The v18 migration adds nullable TEXT `article_revision` / `expected_revision`
@@ -33,6 +33,10 @@ server sent with the row, so an offline feed shows the same excerpt as the
 live one. It is display-only and never feeds an edit (writes still require a
 fresh `serverSummary`); NULL is a row cached before v20, and the list then cuts
 an excerpt from the body.
+The v22 migration drops `structured_body_drafts`, the recovery store of the
+removed local block editor (v14–v16). No screen has read it since the
+traditional editor replaced that prototype; an upgrade from before v14 now
+skips the v14–v16 steps rather than creating a table only to drop it.
 
 | Version | Change |
 | --- | --- |
@@ -49,13 +53,15 @@ an excerpt from the body.
 | 11 | `publish_queue.locale` |
 | 12 | Category selections in drafts and queue |
 | 13 | Categories in cached articles |
-| 14 | Account/backend/edition-scoped structured body recovery |
-| 15 | Structured recovery metadata |
-| 16 | Exclusive structured intermediate text buffer |
+| 14 | Account/backend/edition-scoped structured body recovery (dropped in v22) |
+| 15 | Structured recovery metadata (dropped in v22) |
+| 16 | Exclusive structured intermediate text buffer (dropped in v22) |
 | 17 | Backend-scoped article cache and reading history, and cache access index |
 | 18 | Opaque no-wave article revision strings in cache, account drafts and queued edits; safe conditional update recovery |
 | 19 | `reading_history.progress`: where the reader left each article, for 「从上次停下的地方继续」 |
 | 20 | `blog_cache.summary`: the server summary, for the excerpt under each title in an offline feed |
+| 21 | `account_drafts.summary`, `publish_queue.summary` and `publish_queue.publish`: the author's summary and server drafts ([发布队列](publish-queue.md)) |
+| 22 | Drops `structured_body_drafts`: the removed local block editor's recovery store |
 
 Recent searches need no migration: each signed-in account's list (at most 8,
 newest first) is one JSON array in `metadata`, under a key naming the backend
@@ -109,7 +115,7 @@ its LRU timestamp.
 The catalog shows an estimate of the row-owned UTF-8 text/JSON/URL bytes. It is
 not SQLite/WAL page usage, the app's total data use, or the image cache size.
 Its confirmed clear action deletes only `blog_cache` rows for the active backend
-and language. It does not clear drafts, structured recoveries, publish queue,
+and language. It does not clear drafts, publish queue,
 reading history, profile/session data or any other cache namespace. See
 [Offline Library](offline-library.md) for the user-visible behavior and query
 limits.

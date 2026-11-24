@@ -23,7 +23,7 @@ class AppDatabase extends GeneratedDatabase {
   );
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 22;
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];
@@ -42,7 +42,6 @@ class AppDatabase extends GeneratedDatabase {
       );
       await customStatement('CREATE INDEX drafts_blog_id ON drafts(blog_id)');
       await _createAccountDrafts();
-      await _createStructuredBodyDrafts();
       await _createScopedBlogCache();
       await _createScopedBlogCacheIndexes();
       await _createScopedReadingHistory();
@@ -205,36 +204,9 @@ class AppDatabase extends GeneratedDatabase {
           );
         }
       }
-      if (from < 14) {
-        // Rich-body recovery is separate from the existing plain editor. Do
-        // not infer owners, editions or source bodies from old text drafts.
-        await _createStructuredBodyDrafts();
-      }
-      if (from < 15) {
-        // v14 only retained bodies. NULL records that metadata was never saved;
-        // it must not be reconstructed from a flat draft or assumed empty.
-        if (!await _columnExists('structured_body_drafts', 'base_metadata')) {
-          await customStatement(
-            'ALTER TABLE structured_body_drafts ADD COLUMN base_metadata TEXT',
-          );
-        }
-        if (!await _columnExists(
-          'structured_body_drafts',
-          'session_metadata',
-        )) {
-          await customStatement(
-            'ALTER TABLE structured_body_drafts ADD COLUMN session_metadata TEXT',
-          );
-        }
-      }
-      if (from < 16) {
-        // An in-progress text buffer is nullable and is never inferred.
-        if (!await _columnExists('structured_body_drafts', 'text_buffer')) {
-          await customStatement(
-            'ALTER TABLE structured_body_drafts ADD COLUMN text_buffer TEXT',
-          );
-        }
-      }
+      // v14-v16 created and extended `structured_body_drafts`, the recovery
+      // store of the local block editor. That editor is gone and v22 drops
+      // the table, so an older database skips those steps entirely.
       if (from < 17) {
         // Rebuild both tables atomically so a failed copy never strands data
         // in a temporary table with a partially upgraded schema.
@@ -325,6 +297,14 @@ class AppDatabase extends GeneratedDatabase {
           }
         }
       }
+      if (from < 22) {
+        // The local block editor and its recovery store were removed: the
+        // app has had no screen that reads `structured_body_drafts` since the
+        // traditional editor replaced it, so its rows are dropped rather than
+        // kept unreadable. Plain drafts, account drafts and the publish queue
+        // are separate tables and are untouched.
+        await customStatement('DROP TABLE IF EXISTS structured_body_drafts');
+      }
     },
   );
 
@@ -360,20 +340,6 @@ class AppDatabase extends GeneratedDatabase {
       'ON account_drafts(backend, user_id, blog_id) WHERE blog_id IS NOT NULL',
     );
   }
-
-  /// A body recovery snapshot is keyed by backend, account, server article
-  /// identity and edition. The row id and revision are local compare-and-swap
-  /// tokens; they are not server versions and never authorize a remote write.
-  Future<void> _createStructuredBodyDrafts() => customStatement(
-    'CREATE TABLE structured_body_drafts ('
-    'id INTEGER PRIMARY KEY AUTOINCREMENT, backend TEXT NOT NULL, '
-    'user_id TEXT NOT NULL, article_id TEXT NOT NULL, locale TEXT NOT NULL, '
-    'revision INTEGER NOT NULL, base_version INTEGER NOT NULL, '
-    'base_blocks TEXT NOT NULL, body_version INTEGER NOT NULL, '
-    'body_blocks TEXT NOT NULL, updated_at INTEGER NOT NULL, '
-    'base_metadata TEXT, session_metadata TEXT, text_buffer TEXT, '
-    'UNIQUE(backend, user_id, article_id, locale))',
-  );
 
   /// Publishes waiting for the server (issue #23).
   ///
