@@ -34,12 +34,19 @@ class ArticleTagLabel extends StatelessWidget {
     final display = localizedTag(l10n, tag);
     final foreground = Theme.of(context).colorScheme.onSurface;
     final chip = quiet
-        ? Text(
-            display,
-            style: NoWaveTypography.metaLabel(
-              context,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ).copyWith(fontWeight: FontWeight.w500),
+        // The word carries the space after it (see NoWaveSpacing.kickerWord),
+        // so a kicker row reads evenly however long each word is.
+        ? Padding(
+            padding: const EdgeInsetsDirectional.only(
+              end: NoWaveSpacing.kickerWord,
+            ),
+            child: Text(
+              display,
+              style: NoWaveTypography.metaLabel(
+                context,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ).copyWith(fontWeight: FontWeight.w500),
+            ),
           )
         : Container(
             padding: const EdgeInsets.symmetric(

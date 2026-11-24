@@ -37,6 +37,19 @@ void main() {
       expect(NoWaveSpacing.page, lessThan(NoWaveSpacing.section));
       expect(NoWaveSpacing.page % 4, 0);
     });
+
+    test('a kicker word carries enough space to fill its tap target', () {
+      // A tappable kicker word sits in a 48pt target. With the space after
+      // it, a two-character word at the 13pt kicker size already fills that
+      // target, so the visible gap after it is the token itself, the same as
+      // after a long word.
+      const twoCharacterWord = 13.0 * 2;
+      expect(
+        twoCharacterWord + NoWaveSpacing.kickerWord,
+        greaterThanOrEqualTo(NoWaveSizes.tapTarget),
+      );
+      expect(NoWaveSpacing.kickerWord % 4, 0);
+    });
   });
 
   group('geometry', () {

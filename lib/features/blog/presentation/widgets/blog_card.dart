@@ -1,3 +1,4 @@
+import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/core/design/components/no_wave_pressable.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -60,7 +61,8 @@ class BlogCard extends StatelessWidget {
 
   Widget _metadata(BuildContext context, {int? ordinal}) {
     return Wrap(
-      spacing: NoWaveSpacing.small,
+      // No spacing: each tag carries the gap after it
+      // (NoWaveSpacing.kickerWord), which also sets the date apart.
       runSpacing: NoWaveSpacing.small,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
@@ -72,7 +74,9 @@ class BlogCard extends StatelessWidget {
         // rather than as one more tag.
         if (ordinal != null)
           Padding(
-            padding: const EdgeInsetsDirectional.only(end: NoWaveSpacing.small),
+            padding: const EdgeInsetsDirectional.only(
+              end: NoWaveSpacing.medium,
+            ),
             child: Text(
               formatNumber(
                 Localizations.localeOf(context),
@@ -124,7 +128,7 @@ class BlogCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: NoWaveTypography.title(context, size: 30),
           ),
-          ..._excerpt(context),
+          ..._excerpt(context, maxLines: AppLimits.excerptLeadLines),
           const SizedBox(height: NoWaveSpacing.small),
           _byline(context, author),
         ],
@@ -135,7 +139,13 @@ class BlogCard extends StatelessWidget {
   /// A few lines of the piece between its title and its author, so a row
   /// says what it is about and not only what it is called. Nothing at all
   /// when the article has no prose to quote (a photo set, a code listing).
-  List<Widget> _excerpt(BuildContext context) {
+  ///
+  /// The excerpt is capped by lines, not only by characters: an author's own
+  /// summary can run to 2000 characters, and even the 150-character body cut
+  /// fills seven lines of Chinese in a phone column. A row previews in
+  /// [AppLimits.excerptRowLines]; the lead story, set larger, gets
+  /// [AppLimits.excerptLeadLines].
+  List<Widget> _excerpt(BuildContext context, {required int maxLines}) {
     final excerpt = articleExcerpt(blog);
     if (excerpt.isEmpty) return const [];
     return [
@@ -143,6 +153,8 @@ class BlogCard extends StatelessWidget {
       Text(
         excerpt,
         key: const ValueKey('blog-card-excerpt'),
+        maxLines: maxLines,
+        overflow: TextOverflow.ellipsis,
         style: NoWaveTypography.excerpt(context),
       ),
     ];
@@ -198,7 +210,7 @@ class BlogCard extends StatelessWidget {
             style: NoWaveTypography.title(context, size: 24),
           ),
           // A quiet row is a pointer, not a preview: no excerpt either.
-          if (!quiet) ..._excerpt(context),
+          if (!quiet) ..._excerpt(context, maxLines: AppLimits.excerptRowLines),
           SizedBox(height: quiet ? NoWaveSpacing.xs : NoWaveSpacing.small),
           _byline(context, author),
         ],

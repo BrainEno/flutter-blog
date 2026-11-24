@@ -86,12 +86,15 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
   @override
   void initState() {
     super.initState();
-    _checkIfIsLiked();
-    unawaited(_loadResumePoint());
     // Opened from a card, the article is already here: the cubit starts
     // loaded and the listener below never hears a change, so the history
     // entry was only ever written for deep links. Record it now.
     final state = context.read<BlogViewerCubit>().state;
+    // The listener below asks whether it is saved once the article loads; an
+    // article that arrived already loaded is asked here. A draft has no save
+    // toggle to fill in (see ReaderAppBar), so it is never asked.
+    if (state is BlogViewerLoaded && !state.blog.isDraft) _checkIfIsLiked();
+    unawaited(_loadResumePoint());
     final userId = _signedInUserId;
     if (state is BlogViewerLoaded && userId != null) {
       unawaited(_recordReadingHistory(userId, state.blog));
@@ -171,7 +174,11 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
   /// Reading history is device-local and per account (issue #22): only
   /// signed-in users are recorded, failures are swallowed (the reader must
   /// never break because a bookkeeping write failed).
+  ///
+  /// A draft is the author's own preview, not reading: it stays out of the
+  /// history, as it stays out of the view count.
   Future<void> _recordReadingHistory(String userId, Blog blog) async {
+    if (blog.isDraft) return;
     if (_historyRecordedFor == '${userId}_${blog.id}') return;
     _historyRecordedFor = '${userId}_${blog.id}';
     final store = _store;
@@ -244,6 +251,29 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
     context.push(RoutePaths.withRedirect(RoutePaths.login, currentLocation));
   }
 
+  /// Only the author sees their draft, but the check stays explicit; and a
+  /// body only the web editor can carry losslessly is not offered here.
+  bool _canEditDraft(Blog blog) =>
+      blog.isDraft &&
+      blog.editableBody != null &&
+      _signedInUserId == blog.posterId;
+
+  /// Opens the draft in the editor of this tab's branch: the profile branch
+  /// has its own; every other tab uses the feed's. A save or publish there
+  /// answers `true`, and the preview reloads to show what changed.
+  Future<void> _editDraft(Blog blog) async {
+    final inProfile = GoRouterState.of(
+      context,
+    ).uri.path.startsWith('${RoutePaths.profile}/');
+    final changed = await context.push<bool>(
+      inProfile ? RoutePaths.profileEditor : RoutePaths.editor,
+      extra: blog,
+    );
+    if (changed == true && mounted) {
+      unawaited(context.read<BlogViewerCubit>().load(widget.blogId));
+    }
+  }
+
   /// The related-articles use case is an optional decoration, not part of
   /// reading the article: an unregistered one must hide that section rather
   /// than throw a red screen over the whole page. The registration itself is
@@ -263,7 +293,7 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
           showSnackBar(context, localizedFailure(context.l10n, state.failure));
         } else if (state is BlogViewerLoaded) {
           final appUserState = context.read<AppUserCubit>().state;
-          if (appUserState is AppUserLoggedIn) {
+          if (appUserState is AppUserLoggedIn && !state.blog.isDraft) {
             context.read<BlogLikedBloc>().add(
               GetIsBlogLiked(
                 userId: appUserState.user.id,
@@ -276,11 +306,15 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
       },
       builder: (context, state) {
         if (state is BlogViewerLoaded) {
-          _scheduleView(state.blog);
+          final blog = state.blog;
+          _scheduleView(blog);
+          // A draft is a preview: no related reading, and no reading place to
+          // keep or offer - the author is checking the text, not reading it.
+          final draft = blog.isDraft;
           return ViewerScaffold(
-            blog: state.blog,
+            blog: blog,
             onRequestLogin: _requestLogin,
-            getRelatedArticles: _relatedArticles(),
+            getRelatedArticles: draft ? null : _relatedArticles(),
             speechCoordinator:
                 widget.speechCoordinator ??
                 (GetIt.instance.isRegistered<SpeechCoordinator>()
@@ -292,8 +326,9 @@ class _BlogViewerPageState extends State<BlogViewerPage> {
                     ? GetIt.instance<ReadAloudPreferences>()
                     : null),
             readAloudRouteObserver: widget.readAloudRouteObserver,
-            resumeAt: _resumeAt,
-            onProgress: _saveProgress,
+            resumeAt: draft ? null : _resumeAt,
+            onProgress: draft ? null : _saveProgress,
+            onEditDraft: _canEditDraft(blog) ? () => _editDraft(blog) : null,
             textSize:
                 widget.textSize ??
                 (GetIt.instance.isRegistered<ReaderTextSizeController>()

@@ -1,4 +1,5 @@
 import 'package:belog/core/design/components/no_wave_end_mark.dart';
+import 'package:belog/core/design/components/no_wave_notice.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
@@ -23,6 +24,10 @@ import 'package:belog/router/route_paths.dart';
 /// The scrolling article: header, read-aloud controls, body, related articles
 /// and comments.
 ///
+/// A draft is the author's preview: a note under the header says so, and the
+/// end matter - related reading and comments, both public conversation - is
+/// left out until the piece is published.
+///
 /// Navigation targets are computed here from the current location, so the
 /// caller only supplies data and the reader objects it already owns.
 class ViewerArticleBody extends StatelessWidget {
@@ -40,6 +45,7 @@ class ViewerArticleBody extends StatelessWidget {
     this.endKey,
     this.headingKeys,
     this.textFactor = 1,
+    this.onEditDraft,
   });
 
   final Blog blog;
@@ -74,6 +80,10 @@ class ViewerArticleBody extends StatelessWidget {
 
   /// How much larger than standard the reader has set the text.
   final double textFactor;
+
+  /// Opens a draft in the editor; null leaves the draft note without the
+  /// button (not the author, or a body only the web editor can carry).
+  final VoidCallback? onEditDraft;
 
   @override
   Widget build(BuildContext context) {
@@ -120,6 +130,18 @@ class ViewerArticleBody extends StatelessWidget {
                       titleKey: blockKeys.isEmpty ? titleKey : blockKeys.first,
                     ),
                     const SizedBox(height: NoWaveSpacing.section),
+                    if (blog.isDraft) ...[
+                      NoWaveNotice(
+                        key: const ValueKey('reader-draft-notice'),
+                        icon: Icons.visibility_outlined,
+                        message: context.l10n.readerDraftPreviewNotice,
+                        actionLabel: onEditDraft == null
+                            ? null
+                            : context.l10n.readerDraftEdit,
+                        onAction: onEditDraft,
+                      ),
+                      const SizedBox(height: NoWaveSpacing.large),
+                    ],
                     if (blog.document?.supported == false) ...[
                       Semantics(
                         liveRegion: true,
@@ -180,57 +202,60 @@ class ViewerArticleBody extends StatelessWidget {
         // The end matter - related reading, then comments - is set on its
         // own sheet of the darker paper, edge to edge. One change of tone
         // says "the article is over" more plainly than any rule, and lets
-        // the sections inside it drop theirs.
-        SliverToBoxAdapter(
-          child: ColoredBox(
-            key: const ValueKey('article-end-matter'),
-            color: endMatter,
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: NoWaveSizes.contentColumn,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    NoWaveSpacing.page,
-                    NoWaveSpacing.section,
-                    NoWaveSpacing.page,
-                    NoWaveSpacing.section,
+        // the sections inside it drop theirs. A draft has none: nobody else
+        // can read it yet, so there is nothing to relate or reply to.
+        if (!blog.isDraft) ...[
+          SliverToBoxAdapter(
+            child: ColoredBox(
+              key: const ValueKey('article-end-matter'),
+              color: endMatter,
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: NoWaveSizes.contentColumn,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (getRelatedArticles case final related?)
-                        RelatedArticlesSection(
-                          getRelatedArticles: related,
-                          slug: blog.id,
-                          onOpenArticle: (article) => context.push(
-                            shellBranchLocation(
-                              GoRouterState.of(context).uri,
-                              RoutePaths.view(article.id),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      NoWaveSpacing.page,
+                      NoWaveSpacing.section,
+                      NoWaveSpacing.page,
+                      NoWaveSpacing.section,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (getRelatedArticles case final related?)
+                          RelatedArticlesSection(
+                            getRelatedArticles: related,
+                            slug: blog.id,
+                            onOpenArticle: (article) => context.push(
+                              shellBranchLocation(
+                                GoRouterState.of(context).uri,
+                                RoutePaths.view(article.id),
+                              ),
+                              extra: article,
                             ),
-                            extra: article,
                           ),
+                        CommentsSection(
+                          slug: blog.id,
+                          onRequestLogin: onRequestLogin,
+                          onOpenAuthor: openAuthor,
+                          articleAuthorId: blog.posterId,
                         ),
-                      CommentsSection(
-                        slug: blog.id,
-                        onRequestLogin: onRequestLogin,
-                        onOpenAuthor: openAuthor,
-                        articleAuthorId: blog.posterId,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-        // A short thread still ends on the sheet, not on a strip of paper.
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: ColoredBox(color: endMatter),
-        ),
+          // A short thread still ends on the sheet, not on a strip of paper.
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: ColoredBox(color: endMatter),
+          ),
+        ],
       ],
     );
   }

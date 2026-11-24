@@ -43,7 +43,11 @@ class ViewerScaffold extends StatefulWidget {
     this.resumeAt,
     this.onProgress,
     this.textSize,
+    this.onEditDraft,
   });
+
+  /// Opens the shown draft in the editor; null when it cannot be edited here.
+  final VoidCallback? onEditDraft;
 
   /// The reader's text size, shared by every article; null hides the
   /// text-size button and sets the text at the standard size.
@@ -627,6 +631,7 @@ class _ViewerScaffoldState extends State<ViewerScaffold>
                 textFactor: textSize == null
                     ? 1
                     : readerTextFactor(textSize.value),
+                onEditDraft: widget.onEditDraft,
               ),
             ),
           ),

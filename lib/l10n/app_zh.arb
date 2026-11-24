@@ -46,6 +46,8 @@
   "anonymousAuthor": "匿名作者",
   "anonymousReader": "匿名读者",
   "shareArticleTooltip": "分享文章",
+  "readerDraftPreviewNotice": "草稿预览，只有你看得到；发布后才会显示收藏、评论和相关阅读。",
+  "readerDraftEdit": "编辑",
   "readerRunningHead": "{title}，回到开头",
   "readerOutlineTooltip": "目录",
   "readerOutlineTitle": "目录",

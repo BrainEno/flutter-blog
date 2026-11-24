@@ -14,7 +14,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 /// The article reader's app bar: contents (when the article has enough
 /// headings), text size (when the page can change it), share (only when a
-/// canonical URL exists) and the save/like toggle.
+/// canonical URL exists) and the save/like toggle. A draft is a preview for
+/// its author: nothing to share and nothing to save, so neither shows.
 ///
 /// Both actions need only the route-scoped `BlogLikedBloc` and `AppUserCubit`,
 /// so this widget reads them from the context instead of taking callbacks.
@@ -111,41 +112,45 @@ class ReaderAppBar extends StatelessWidget implements PreferredSizeWidget {
               summary: shareSummary(blog.content, maxChars: 120),
             ),
           ),
-        BlocConsumer<BlogLikedBloc, BlogLikedState>(
-          listener: (context, state) {
-            if (state is ToggleBlogLikeFailure) {
-              showSnackBar(
-                context,
-                localizedFailure(context.l10n, state.failure),
-              );
-            }
-          },
-          builder: (context, state) {
-            final isSaved = state.likedBlogs[blog.id] ?? false;
-            return IconButton(
-              tooltip: isSaved
-                  ? context.l10n.unsaveTooltip
-                  : context.l10n.saveTooltip,
-              icon: NoWaveStampSwitcher(
-                child: Icon(
-                  isSaved ? Icons.bookmark : Icons.bookmark_border,
-                  key: ValueKey(isSaved),
+        if (!blog.isDraft)
+          BlocConsumer<BlogLikedBloc, BlogLikedState>(
+            listener: (context, state) {
+              if (state is ToggleBlogLikeFailure) {
+                showSnackBar(
+                  context,
+                  localizedFailure(context.l10n, state.failure),
+                );
+              }
+            },
+            builder: (context, state) {
+              final isSaved = state.likedBlogs[blog.id] ?? false;
+              return IconButton(
+                tooltip: isSaved
+                    ? context.l10n.unsaveTooltip
+                    : context.l10n.saveTooltip,
+                icon: NoWaveStampSwitcher(
+                  child: Icon(
+                    isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    key: ValueKey(isSaved),
+                  ),
                 ),
-              ),
-              onPressed: () {
-                final userState = context.read<AppUserCubit>().state;
-                if (userState is AppUserLoggedIn) {
-                  context.read<BlogLikedBloc>().add(
-                    ToggleBlogLike(userId: userState.user.id, blogId: blog.id),
-                  );
-                } else {
-                  showSnackBar(context, context.l10n.signInRequired);
-                  onRequestLogin();
-                }
-              },
-            );
-          },
-        ),
+                onPressed: () {
+                  final userState = context.read<AppUserCubit>().state;
+                  if (userState is AppUserLoggedIn) {
+                    context.read<BlogLikedBloc>().add(
+                      ToggleBlogLike(
+                        userId: userState.user.id,
+                        blogId: blog.id,
+                      ),
+                    );
+                  } else {
+                    showSnackBar(context, context.l10n.signInRequired);
+                    onRequestLogin();
+                  }
+                },
+              );
+            },
+          ),
       ],
     );
   }
