@@ -166,7 +166,7 @@ class _ProfileView extends StatelessWidget {
                                       name,
                                       style: NoWaveTypography.title(
                                         context,
-                                        size: 32,
+                                        size: NoWaveTypeScale.pageTitle,
                                       ),
                                     ),
                                   ),

@@ -1,9 +1,13 @@
 # Notion 作为第二个内容源：可行性评估与实施方案
 
-> 状态：draft ｜ 最后核对：2026-11-16 @ 7fc34ce
+> 状态：draft ｜ 最后核对：2026-11-19 @ 417da49 ｜ 范围：评估稿 + 部分实现——直连 Notion 数据库的运行时内容源**未实现**；编辑器内经 no-wave 后端的 Notion bundle 导入 / 导出**已实现**（#287）
 
 > 本文仍是**评估稿**：直接读取 Notion 数据库、将它作为第二个文章内容源的方案尚未
-> 实现。编辑器已有经 no-wave 后端的 Notion bundle 导入/导出；那是用户主动的文件交换，
+> 实现（以下各节描述的都是这一部分）。已经落地的是另一件事：编辑器内经 no-wave 后端的
+> Notion bundle 导入/导出（`lib/features/blog/data/notion_import/`、
+> `lib/features/blog/data/notion_export/`，入口
+> `lib/features/blog/presentation/editor/editor_notion_coordinator.dart`，用户可见的行为见
+> [功能清单](features.md)「Notion 导入 / 导出」）。那是用户主动的文件交换，
 > 不会读取 Notion API、保存 Notion token 或把 Notion 数据库加入运行时内容源。
 > 文件导入在本机转换 Notion 的 Markdown & CSV 导出（CSV 只补全空属性），导出中的本地
 > 图片在预览前经 `POST /me/media` 上传到作者的媒体库后以媒体地址写入 bundle。

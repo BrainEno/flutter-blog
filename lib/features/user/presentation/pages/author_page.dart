@@ -418,7 +418,10 @@ class _ProfileHeader extends StatelessWidget {
                     header: true,
                     child: Text(
                       name,
-                      style: NoWaveTypography.title(context, size: 32),
+                      style: NoWaveTypography.title(
+                        context,
+                        size: NoWaveTypeScale.pageTitle,
+                      ),
                     ),
                   ),
                   const SizedBox(height: NoWaveSpacing.xs),

@@ -177,7 +177,10 @@ class _AuthorSearchPageState extends State<AuthorSearchPage> {
                   textInputAction: TextInputAction.search,
                   onChanged: _onChanged,
                   onSubmitted: _submit,
-                  style: NoWaveTypography.title(context, size: 24),
+                  style: NoWaveTypography.title(
+                    context,
+                    size: NoWaveTypeScale.searchQuery,
+                  ),
                   decoration: InputDecoration(
                     labelText: l10n.authorSearchHint,
                     prefixIcon: const Icon(Icons.search),
@@ -284,7 +287,10 @@ class _AuthorRow extends StatelessWidget {
                           name,
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
-                          style: NoWaveTypography.title(context, size: 20),
+                          style: NoWaveTypography.title(
+                            context,
+                            size: NoWaveTypeScale.entryTitle,
+                          ),
                         ),
                         if (person.bio.trim().isNotEmpty) ...[
                           const SizedBox(height: NoWaveSpacing.xs),

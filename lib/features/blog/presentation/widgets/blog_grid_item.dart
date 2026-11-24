@@ -195,7 +195,7 @@ class BlogGridItem extends StatelessWidget {
   }
 
   TextStyle _titleStyle(BuildContext context) =>
-      NoWaveTypography.title(context, size: 19);
+      NoWaveTypography.title(context, size: NoWaveTypeScale.gridTitle);
 
   /// How many lines the title sets in at [width], up to its two.
   int _titleLines(BuildContext context, double width) {

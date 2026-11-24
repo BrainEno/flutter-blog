@@ -118,9 +118,9 @@
 ### 直接字号 `NoWaveTypeScale`
 
 优先使用主题文字角色（`TextTheme`）或 `NoWaveTypography`；下面几档只服务于仍需
-直接设字号的地方，让它们有名字、能一起迁移。页面里不再出现 `fontSize: 数字`
-（`test/unit/design/no_magic_radius_and_type_test.dart` 守护，`lib/core/theme/` 与
-`lib/core/design/` 之外一处也不许）。
+直接设字号的地方，让它们有名字、能一起迁移。页面里不再出现 `fontSize: 数字`，
+也不再给 `NoWaveTypography` 的 `size:` 传数字（`test/unit/design/no_magic_radius_and_type_test.dart`
+守护，`lib/core/theme/` 与 `lib/core/design/` 之外一处也不许）。
 
 | token | 值 | 用在哪 |
 | --- | --- | --- |
@@ -139,6 +139,13 @@
 | `articleTitle` | 40 | 阅读页的文章标题（衬线）：读者在一篇文章里遇到的最大的字 |
 | `heading` | 36 | 页面大标题（`NoWaveSectionHeading`）：列表页上最大的字 |
 | `figure` | 40 | 摘要里数出来的数字（阅读历史的三个总数）；展示字体、等宽数字 |
+| `pageTitle` | 32 | 个人页 / 作者页顶部的名字、「关于」页的大标题：一页只讲一件事，比 `heading` 小一档 |
+| `leadTitle` | 30 | 首页头条的标题（在编号行之上） |
+| `rowTitle` | 24 | 列表里文章行的标题（首页各行、离线书库）：其它列表标题都以它为基准 |
+| `searchQuery` | 24 | 搜索框里输入的字（文章、作者、离线书库），和要找的行标题一样大 |
+| `entryTitle` | 20 | 次一级的列表条目：分类、关注/搜索列表里的人、阅读历史；比 `rowTitle` 小一档——是目录或记录，不是头版 |
+| `gridTitle` | 19 | 两栏文章网格（收藏、我的文章）里的标题，一栏约半行宽 |
+| `bodyHeading1` / `bodyHeading2` / `bodyHeading3` / `bodyHeading4` | 26 / 22 / 19 / 17 | Markdown 正文里一到四级（及更深）小标题，按标准阅读字号给出，随阅读字号同比缩放 |
 | `articleBody` | 18 | 正文的「标准」字号（衬线，行高 1.9） |
 | `readerBodySizes` | 16 / 18 / 20 / 22 / 24 | 阅读字号的五档正文字号；正文里的小标题、代码、图注按同一比例（相对 `articleBody`）缩放，叠加在系统字号之上 |
 

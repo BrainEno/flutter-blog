@@ -239,7 +239,10 @@ class _SearchBlogPageState extends State<SearchBlogPage> {
                       maxLength: kMaxSearchQueryLength,
                       textInputAction: TextInputAction.search,
                       onSubmitted: _onSubmitted,
-                      style: NoWaveTypography.title(context, size: 24),
+                      style: NoWaveTypography.title(
+                        context,
+                        size: NoWaveTypeScale.searchQuery,
+                      ),
                       decoration: InputDecoration(
                         labelText: l10n.searchHint,
                         // The glyph sits on the column edge, where the

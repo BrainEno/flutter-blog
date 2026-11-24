@@ -134,7 +134,10 @@ class _PeopleList extends StatelessWidget {
                               name,
                               maxLines: 3,
                               overflow: TextOverflow.ellipsis,
-                              style: NoWaveTypography.title(context, size: 20),
+                              style: NoWaveTypography.title(
+                                context,
+                                size: NoWaveTypeScale.entryTitle,
+                              ),
                             ),
                             if (person.bio.trim().isNotEmpty) ...[
                               const SizedBox(height: NoWaveSpacing.xs),
