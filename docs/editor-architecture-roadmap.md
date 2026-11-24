@@ -1,6 +1,6 @@
 # 编辑器收敛与退役路线图
 
-> 状态：active ｜ 最后核对：2026-11-19 @ 666f666
+> 状态：active ｜ 最后核对：2026-11-19 @ ed34a86
 
 > 本文描述 Flutter 客户端当前能安全写回 no-wave 的边界，以及编辑器从「普通文本
 > + 本地结构化原型」收敛为单一传统编辑器的过程。
@@ -66,10 +66,14 @@
 
 - `structured_local_*_page.dart` 等 22 个本地结构编辑界面文件及其 widget 测试已
   删除；「我的文章」不再有「本地结构编辑」或本地恢复目录入口。
-- `lib/features/blog/domain/editing/` 与 SQLite 恢复存储、`editor_module` 的 DI
-  注册和单元测试保留为基础设施（见 [structured-session-recovery.md](structured-session-recovery.md)），
-  当前没有界面打开它们。
-- 下文「收敛顺序」和 Local … form 各节保留为历史记录，描述的是已移除的原型。
+- 随后（#291）把原型留下的基础设施也删掉了：blog 领域层的 editing 目录
+  整个目录（本地会话、文本/富文本缓冲、比较、历史、剪贴板传输等）、结构化恢复
+  存储与目录、`NowaveStructuredEditionReader`、打开恢复的用例、`editor_module`
+  里的相应注册，以及它们的单元测试和四份说明文档，共约 7000 行代码。数据库 v22
+  删除 `structured_body_drafts` 表（自传统编辑器上线后没有任何界面能读到它）；
+  普通草稿、账号草稿和发布队列不受影响。
+- 原计划的分阶段迁移和原型各个本地编辑表单的说明随之删除，需要时可在 git 历史
+  里找到。
 
 ## 已落地的协调边界
 
@@ -99,53 +103,9 @@ mixin。它们仍共享同一份可变状态、同一组账号围栏检查，行
 - 自动草稿、冲突核对和队列行仍只有 `EditorSessionCoordinator` 这一处协调。成功只能清理
   “本次发布前保存的精确 draft”，不能清理作者在请求期间继续输入的内容。
 
-## 收敛顺序（历史）
-
-### 阶段 1：明确入口和数据所有权（下一次结构化功能变更前）
-
-- 在每个 `structured_local_*` 页面显示“本地实验 / 不会发布”说明，并从默认
-  作者入口、文章操作菜单和路由表移除直接入口；保留带显式 recovery 语义的入口。
-- 为结构化本地文档定义版本化的 recovery record：来源 article slug、locale、
-  原始 `contentBlocksVersion`、原始 blocks、创建时间和恢复文本必须一起保存。
-  不可只保存扁平文字，否则无法说明恢复是否仍对应原文。
-- 把“可从服务器安全编辑”的判定集中到 domain policy。页面不能仅通过“拿到
-  title/content 字符串”猜测；必须要求 plain-editor compatibility、server summary、
-  authoring article id 和 revision。
-
-验收：普通编辑器永远不导航到结构化临时页；未知结构化文章能阅读并给出恢复选择，
-但没有会发送 `PUT /articles/:id` 的按钮。
-
-### 阶段 2：先完成无损文档模型，再做远端写入
-
-- 为服务端确认支持的 block 版本建立 domain `ArticleDocument` 写入 codec，要求
-  decode → edit → encode 保留未知字段、block id、image metadata、caption 和顺序。
-- 为每一种本地编辑操作定义 transaction：输入 document、selection、操作、输出
-  document、undo record；不要让 widget 直接修改 JSON map。
-- 在 `UpdateBlog` 新增独立的 structured-write command，和 Markdown 更新一样
-  强制 `expectedRevision`、目标 `locale`、session fence；它不得复用会生成 v0
-  `contentBlocks` 的普通文本路径。
-- 扩展离线 queue，使其能保存版本化 structured payload 与对应 media 引用；旧
-  行仍按 v0 读取。无法确认 codec 版本的行应停止等待人工恢复，而不是降级发布。
-
-验收：每个被宣称支持的 document fixture 均可无损往返；版本冲突保持本地 structured
-snapshot；账号切换和重启后 queue 不会把正文发送给另一个账户或语言版本。
-
-### 阶段 3：替换临时页面并退役
-
-- 只在阶段 2 的 codec、条件写入、草稿、队列和可访问性验收完成后，将一个
-  structured composer 嵌入正式 `BlogEditorPage` 的 editor surface。保留 Markdown
-  输入作为明确选择，而不是静默转换已有文章。
-- 迁移仍有价值的选择/样式/undo helpers 到正式 editor package；每次迁移一个 helper
-  并附行为测试。不要复制一套 controller、draft 或 upload lifecycle。
-- 临时页先改为只读 recovery viewer，再移除路由和实现。发布迁移说明，告诉作者如何
-  导出本地 recovery 文本；在至少一个兼容版本后才删除旧 record reader。
-
-验收：正式入口只有一个 publish coordinator；临时页面没有写网络的依赖；删除前版本
-仍能读取旧 recovery record，且普通 v0 发布、编辑、冲突 rebase 和离线补发不回归。
-
 ## 不变量检查表
 
-任何编辑器拆分或结构化迁移都必须保持：
+任何编辑器改动都必须保持：
 
 - **账号隔离**：所有 private read、draft、media picker、queue 和写操作由同一个
   `NowaveSessionFence` 约束；代际变化立刻让旧 UI 失效。
@@ -157,45 +117,3 @@ snapshot；账号切换和重启后 queue 不会把正文发送给另一个账�
   清理只能匹配已发布的 immutable snapshot。
 - **无障碍与离线说明**：本地/只读/不可发布状态必须被文本和 semantics 说清楚，不能
   用禁用的图标让读者猜测。
-
-### Local block-property form (removed)
-
-The local structure editor can change image alternative text and optional
-caption, code language and literal code, quote attribution, heading level,
-and ordered-list display. It preserves image URLs, other blocks, text, inline
-runs and list items. Optional-field absence remains different from an empty
-value. These edits use the same strict schema and exact immutable body snapshot
-as the local coordinator; a changed body or account invalidates the form.
-
-The form is deliberately temporary: typing is not crash-recoverable and the
-user is warned before leaving a dirty form. Applying a valid form queues the
-existing local compare-and-swap writer; the parent editor reports pending,
-failed or conflicting saves. Applying does not guarantee a disk write, alter
-Markdown publishing, upload images, or publish a structured article. An input
-method composition must finish before applying. Unsupported malformed UTF-16
-is not rendered or edited through this form.
-
-### Local structural insertion and list actions (removed)
-
-The local structure editor can insert one of the six currently validated block
-shapes after an existing block. IDs are generated locally and checked for
-uniqueness by the existing document validator. Inputs remain literal, optional
-caption/attribution presence is explicit, and URL, document-size, item and
-block limits are validated before the coordinator accepts a snapshot. New
-blocks do not imply uploads, publication or remote-write support.
-
-List-item positions are bound to the exact selected body, not treated as stable
-IDs. Inserting, removing or moving an item preserves the representation of all
-other items; for formatted v1 lists their `itemInlines` entries move with the
-corresponding text. A new item gets one unformatted run only when the list
-already has inline runs. The last item cannot be removed and a 100-item list
-cannot grow. Destructive removal requires confirmation. Changing the parent
-snapshot or account invalidates a pending decision.
-
-Insertion forms are temporary: typing is not crash-recoverable, changing type
-requires confirmation when values were entered, and leaving a dirty form asks
-before discarding it. The author must finish active input-method composition
-before applying. Applying only queues an existing local CAS save, and the
-editor displays saving, saved, failed or conflict state. Device termination
-before a confirmed disk write can still lose pending input. No database schema,
-Markdown publishing or queue behavior is changed.
