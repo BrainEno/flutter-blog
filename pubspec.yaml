@@ -39,7 +39,7 @@ dependencies:
   markdown: ^7.2.1
   flutter_secure_storage: ^11.2.0
   flutter_bloc: ^9.0.0
-  get_it: ^8.0.3
+  get_it: ^9.3.0
   dotted_border: ^3.1.0
   image_picker: ^1.1.2
   # Pure-Dart codec for the cover crop step: the picked photo is cut to the
@@ -57,7 +57,7 @@ dependencies:
   drift: 2.35.4
   path_provider: ^2.1.5
   go_router: ^14.8.0
-  equatable: ^2.0.7
+  equatable: ^3.0.0
   url_launcher: ^6.3.1
   # Native share sheet (issue #21). Receiving works through the
   # `nowave://article/<slug>` custom scheme, which needs no hosted
