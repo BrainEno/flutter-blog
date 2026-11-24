@@ -45,6 +45,17 @@ abstract final class NoWaveSpacing {
   /// gutter now has its own value; named for where it is used so gutters and
   /// group spacing change independently.
   static const page = 28.0;
+
+  /// After each word of a kicker (a category, a tag). A tappable word sits in
+  /// a 48pt target, wider than a short word, so a fixed gap between targets
+  /// left a wide hole after a two-character tag and almost none after a long
+  /// one. The space now belongs to the word: wide enough (with a 13pt word of
+  /// two characters) to fill its target, so every word is followed by the same
+  /// visible gap whether it is tappable or not, and the row needs no spacing.
+  /// (A one-character word plus this still falls short of 48pt, so the gap
+  /// after it is a little wider; widening the token for that rare case would
+  /// spread every other row.)
+  static const kickerWord = large;
 }
 
 /// Corner radius.

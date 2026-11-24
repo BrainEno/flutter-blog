@@ -38,12 +38,18 @@ class ArticleCategoryLabel extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final foreground = scheme.onSurface;
     final plate = quiet
-        ? Text(
-            category.name,
-            style: NoWaveTypography.metaLabel(
-              context,
-              color: foreground,
-            ).copyWith(fontWeight: FontWeight.w700),
+        // Like a quiet tag, the word carries the space after it.
+        ? Padding(
+            padding: const EdgeInsetsDirectional.only(
+              end: NoWaveSpacing.kickerWord,
+            ),
+            child: Text(
+              category.name,
+              style: NoWaveTypography.metaLabel(
+                context,
+                color: foreground,
+              ).copyWith(fontWeight: FontWeight.w700),
+            ),
           )
         : Container(
             padding: const EdgeInsets.symmetric(

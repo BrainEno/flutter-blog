@@ -1,6 +1,6 @@
 # 界面设计系统（tokens 与组件）
 
-> 状态：active ｜ 最后核对：2026-11-19 @ 666f666
+> 状态：active ｜ 最后核对：2026-11-19 @ 2a86bb2
 
 本页是客户端「长什么样」的唯一入口：色板、间距、圆角、线宽、动效、断点，以及
 共用组件的 API 和使用规则。目标是让新增页面**不需要**重新决定这些数字——需要时
@@ -47,6 +47,7 @@
 | `medium` | 16 | 两组之间的距离 |
 | `large` | 24 | 标题块与它引入的内容之间 |
 | `section` | 32 | 一页之中两个 section 之间 |
+| `kickerWord` | 24（= `large`） | 刊头一行（分类、标签）每个词自带的尾随空白：可点的词有 48pt 点击区，两个字的标签比点击区窄，原来「点击区之间固定 8」会让短标签后面空一大块、长标签后面几乎贴着；现在空白属于词本身，宽到能填满两字标签的点击区，所以无论可不可点、两个字还是一长串，词与词之间看到的距离都一样，行本身不再设间距（`ArticleReaderHeader` 的 kicker、`BlogCard` 的元信息行；行首序号后面用 `medium`）。唯一的例外是单字标签：13pt 一个字加 24 仍不足 48pt 点击区，后面会略宽一些 |
 | `page` | 28 | 页面左右边距：比 `large` 再宽一格，手机上一栏两侧要留够空气，文字才不贴着屏幕边；应用栏标题（`titleSpacing`）也从这里起排，与下面的栏对齐 |
 
 这张表只有五档，是故意的：档位少，页面才不会每一处都自己决定。**12 不在表里**，
@@ -270,8 +271,8 @@
 | `NoWaveSectionHead` | `design/components/no_wave_section_head.dart` | 文末分节头（相关阅读、评论）：不画线，24 号衬线标题靠字号和下方 16 的留白与行区分；可选右对齐数字压在同一基线 |
 | `NoWaveCoverPlate` | `design/cover/no_wave_cover_plate.dart` | 四张编辑式默认封面，按文章身份稳定选一张 |
 | `ArticleCover` | `features/blog/presentation/widgets/article_cover.dart` | 真封面 / 加载 / 失败三种状态共用同一张版 |
-| `ArticleCategoryLabel` | `features/blog/presentation/widgets/article_category_label.dart` | 文章所属的分类（服务端给的名称；可点进分类列表）。默认是填充色块；阅读页的 kicker 里用 `quiet: true`，只是一个粗墨色的词 |
-| `ArticleTagLabel` | `features/blog/presentation/widgets/article_tag_label.dart` | 作者写的标签（可点进标签列表）。默认描边；`quiet: true` 时是一个浅色的词（阅读页 kicker、首页与各列表的文章行） |
+| `ArticleCategoryLabel` | `features/blog/presentation/widgets/article_category_label.dart` | 文章所属的分类（服务端给的名称；可点进分类列表）。默认是填充色块；阅读页的 kicker 里用 `quiet: true`，只是一个粗墨色的词，自带 `kickerWord` 尾随空白 |
+| `ArticleTagLabel` | `features/blog/presentation/widgets/article_tag_label.dart` | 作者写的标签（可点进标签列表）。默认描边；`quiet: true` 时是一个浅色的词（阅读页 kicker、首页与各列表的文章行），自带 `kickerWord` 尾随空白 |
 
 ### 加载态：一句文案或一个形状
 

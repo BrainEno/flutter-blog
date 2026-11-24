@@ -70,6 +70,8 @@
   "anonymousAuthor": "Anonymous author",
   "anonymousReader": "Anonymous reader",
   "shareArticleTooltip": "Share article",
+  "readerDraftPreviewNotice": "Draft preview. Only you can see it; saving, comments and related reading appear once it is published.",
+  "readerDraftEdit": "Edit",
   "readerRunningHead": "{title}, back to top",
   "@readerRunningHead": {"placeholders": {"title": {"type": "String"}}},
   "readerOutlineTooltip": "Contents",

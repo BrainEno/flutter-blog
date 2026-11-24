@@ -96,6 +96,16 @@ abstract final class AppLimits {
   /// when the article has no excerpt of its own.
   static const int articleExcerptCharacters = 150;
 
+  /// Lines of excerpt a list row shows before it ends in an ellipsis. The
+  /// character cut above decides what is quoted; this decides how much of a
+  /// row it may take, whatever the language or however long a summary the
+  /// author wrote.
+  static const int excerptRowLines = 3;
+
+  /// Lines of excerpt under the lead story, whose title and cover are set
+  /// larger and can carry one more line without crowding the list.
+  static const int excerptLeadLines = 4;
+
   /// Headings an article needs before the reader offers a contents list;
   /// with fewer, the list would only repeat what one scroll shows.
   static const int outlineMinHeadings = 3;
