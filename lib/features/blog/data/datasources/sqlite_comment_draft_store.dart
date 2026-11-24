@@ -115,7 +115,7 @@ class _Entry {
   Map<String, Object?> toJson() => {
     'slug': slug,
     'text': draft.text,
-    if (draft.parentCommentId case final parent?) 'parent': parent,
+    'parent': ?draft.parentCommentId,
     if (draft.parentAuthorName.isNotEmpty)
       'parentAuthor': draft.parentAuthorName,
   };

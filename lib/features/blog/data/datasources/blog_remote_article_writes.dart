@@ -33,7 +33,7 @@ mixin _BlogRemoteWriteOperations on _BlogRemoteOperationContext {
         // Sent even when empty: an omitted `tagIds` means "leave the tags
         // alone", so a cleared list would silently come back on the next read.
         'tagIds': tagIds,
-        if (categoryIds != null) 'categoryIds': categoryIds,
+        'categoryIds': ?categoryIds,
       };
       // The server replays a repeated `Idempotency-Key` instead of creating a
       // second article, which is what makes a queued publish safe to retry
@@ -129,7 +129,7 @@ mixin _BlogRemoteWriteOperations on _BlogRemoteOperationContext {
         // Atomic server condition. This stays an opaque decimal string: a
         // conversion through Dart number types would corrupt large revisions.
         'expectedRevision': condition.value,
-        if (categoryIds != null) 'categoryIds': categoryIds,
+        'categoryIds': ?categoryIds,
       };
       final data = sessionFence == null
           ? await client.putJson('/articles/${blog.articleId}', body)

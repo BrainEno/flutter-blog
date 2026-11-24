@@ -16,7 +16,7 @@ class NotionPageSelection {
       for (final page in pages)
         {
           for (final block in (page as Map)['blocks'] as List)
-            if (notionLocalImageKey(block) case final key?) key,
+            ?notionLocalImageKey(block),
         },
     ]);
   }

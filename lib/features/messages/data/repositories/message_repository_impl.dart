@@ -94,7 +94,7 @@ class MessageRepositoryImpl implements MessageRepository {
     try {
       final data = await client.getJson(
         '/conversations/${Uri.encodeComponent(conversationId)}/messages',
-        query: {'limit': '$bounded', if (before != null) 'before': before},
+        query: {'limit': '$bounded', 'before': ?before},
         sessionFence: fence,
         followRedirects: false,
       );

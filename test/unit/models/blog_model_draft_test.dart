@@ -6,7 +6,7 @@ Map<String, dynamic> _row({String? status}) => <String, dynamic>{
   'slug': 'a-slug',
   'title': '标题',
   'summary': '',
-  if (status != null) 'status': status,
+  'status': ?status,
   'contentBlocks': const [
     {'type': 'paragraph', 'text': '正文'},
   ],

@@ -30,7 +30,7 @@ class SqliteBlogDraftStore implements BlogDraftStore {
     final result = _writeTail.then((_) => operation());
     _writeTail = result.then<void>(
       (_) {},
-      onError: (Object _, StackTrace __) {},
+      onError: (Object _, StackTrace _) {},
     );
     return result;
   }

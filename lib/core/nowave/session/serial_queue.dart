@@ -11,7 +11,7 @@ class SerialQueue {
   /// Appends [operation] to the queue and returns its own result.
   Future<T> run<T>(Future<T> Function() operation) {
     final result = _tail.then((_) => operation());
-    _tail = result.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    _tail = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
     return result;
   }
 }

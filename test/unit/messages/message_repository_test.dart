@@ -59,7 +59,7 @@ Map<String, dynamic> _messageRow({
   'senderId': senderId,
   'body': body,
   'createdAt': createdAt,
-  if (duplicate != null) 'duplicate': duplicate,
+  'duplicate': ?duplicate,
 };
 
 Map<String, dynamic> _conversationRow({
