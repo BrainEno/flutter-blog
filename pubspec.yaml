@@ -39,7 +39,7 @@ dependencies:
   markdown: ^7.2.1
   flutter_secure_storage: ^11.2.0
   flutter_bloc: ^9.0.0
-  get_it: ^8.0.3
+  get_it: ^9.3.0
   dotted_border: ^3.1.0
   image_picker: ^1.1.2
   # Pure-Dart codec for the cover crop step: the picked photo is cut to the
