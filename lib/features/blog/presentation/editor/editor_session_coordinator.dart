@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:belog/core/config/app_durations.dart';
 import 'package:belog/core/design/components/no_wave_confirm_dialog.dart';
 import 'package:belog/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:belog/core/common/entities/image_upload.dart';
+import 'package:belog/core/common/media/cover_crop.dart';
 import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -31,6 +31,7 @@ import 'package:belog/features/blog/domain/entities/publish_queue_entry.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_upload/bloc/blog_upload_bloc.dart';
 import 'package:belog/features/blog/presentation/editor/article_conflict_review_sheet.dart';
 import 'package:belog/features/blog/presentation/editor/auto_save_banner.dart';
+import 'package:belog/features/blog/presentation/editor/cover_crop_page.dart';
 import 'package:belog/features/blog/presentation/editor/editor_form.dart';
 import 'package:belog/features/blog/presentation/editor/editor_format_toolbar.dart';
 import 'package:belog/features/blog/presentation/editor/markdown_text_controller.dart';
@@ -243,7 +244,6 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
               contentController: contentController,
               selectedTags: selectedTags,
               onTagsChanged: _onTagsChanged,
-              image: image,
               imageBytes: imageBytes,
               selectedCoverUrl: _selectedCoverUrl,
               isNewImageSelected: isNewImageSelected,
@@ -258,6 +258,10 @@ class _EditorSessionCoordinatorState extends _EditorSessionBase
               onPickCover: selectImage,
               onChooseCoverFromLibrary: () =>
                   unawaited(selectCoverFromLibrary()),
+              onRecropCover: isNewImageSelected && _coverCropSource != null
+                  ? () => unawaited(recropCover())
+                  : null,
+              onClearCover: isNewImageSelected ? clearCoverSelection : null,
               categories: _categories,
               selectedCategoryIds: _selectedCategoryIds,
               categoriesLoading: _categoriesLoading,
@@ -406,7 +410,6 @@ abstract class _EditorSessionBase extends State<EditorSessionCoordinator> {
   List<String> _selectedCategoryIds = const [];
   bool _categoryTouched = false;
 
-  File? image;
   bool isNewImageSelected = false;
   String? _selectedCoverUrl;
   int _coverSelectionVersion = 0;
@@ -414,8 +417,14 @@ abstract class _EditorSessionBase extends State<EditorSessionCoordinator> {
   /// The picked cover's bytes and MIME type; [image] only feeds the preview.
   ImageUpload? imageUpload;
 
-  /// Cover bytes that have no picker file behind them (a resumed queue entry).
+  /// The new cover as shown in the slot: the cut photo, an uncut one the codec
+  /// could not read, or a resumed queue entry's stored cover.
   Uint8List? imageBytes;
+
+  /// The uncut photo behind [imageBytes], kept so "adjust crop" can reframe
+  /// it without losing what the first cut dropped, and where that cut was.
+  ImageUpload? _coverCropSource;
+  Rect? _coverCropRect;
   int _draftRequestVersion = 0;
 
   /// The title and body last seen by the edit listener. A controller also

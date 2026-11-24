@@ -58,7 +58,6 @@ void main() {
     contentController: body,
     selectedTags: const [],
     onTagsChanged: (_) {},
-    image: null,
     isNewImageSelected: false,
     blog: null,
     hasUnclaimedDrafts: false,

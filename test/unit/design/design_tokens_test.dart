@@ -60,8 +60,8 @@ void main() {
     });
 
     test('row sizes keep their order and their tap target', () {
-      // Component sizes are not spacing steps: the cover box is 250 and
-      // primaryAction 52, and neither has to sit on the 4-point grid.
+      // Component sizes are not spacing steps: primaryAction is 52 and does
+      // not have to sit on the 4-point grid.
       expect(NoWaveSizes.emptyStateOffset % 4, 0);
       expect(
         NoWaveSizes.listThumbnailSmall,
@@ -71,10 +71,6 @@ void main() {
       expect(
         NoWaveSizes.listThumbnail,
         greaterThan(NoWaveSizes.listThumbnailSmall),
-      );
-      expect(
-        NoWaveSizes.coverEditorBox,
-        greaterThan(NoWaveSizes.listThumbnail),
       );
     });
   });

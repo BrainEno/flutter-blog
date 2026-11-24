@@ -1,6 +1,6 @@
 # 界面设计系统（tokens 与组件）
 
-> 状态：active ｜ 最后核对：2026-11-19 @ 68070ac
+> 状态：active ｜ 最后核对：2026-11-19 @ 666f666
 
 本页是客户端「长什么样」的唯一入口：色板、间距、圆角、线宽、动效、断点，以及
 共用组件的 API 和使用规则。目标是让新增页面**不需要**重新决定这些数字——需要时
@@ -81,10 +81,9 @@
 | `NoWaveSizes.tabBar` | 64 | 底栏高度（不含系统手势区）：图标加一个词，每格都远超 48 的点击区 |
 | `NoWaveSizes.seekThumb` | 12 | 朗读进度条上的方形滑块：与文末墨色方块同一语言，不用 Material 的圆钮 |
 | `NoWaveSizes.coverAspect` | 4/3 | 网格项里的封面比例 |
-| `NoWaveSizes.coverAspectWide` | 16/10 | feed 头条卡片与阅读页头的封面比例 |
+| `NoWaveSizes.coverAspectWide` | 16/10 | feed 头条卡片与阅读页头的封面比例；编辑器封面框和裁剪框也用它，作者框住的就是读者看到的 |
 | `NoWaveSizes.maxReadingWidth` | 720 | 平板上的正文最大宽度 |
 | `NoWaveSizes.contentColumn` | 680 | 列表、表单、设置等页面主栏的最大宽度（比正文窄，平板上居中） |
-| `NoWaveSizes.coverEditorBox` | 250 | 编辑器里固定的封面框（三种状态同框，表单不跳） |
 | `NoWaveSizes.emptyStateOffset` | 48 | 空态/加载态在列表里从多高开始 |
 | `NoWaveSizes.listThumbnail` | 56 | 列表行前导缩略图（骨架屏的列表行） |
 | `NoWaveSizes.listThumbnailSmall` | 48 | 行内还要放操作时的小缩略图（回收站、评论头像框） |

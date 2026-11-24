@@ -1,6 +1,6 @@
 # 编辑器收敛与退役路线图
 
-> 状态：active ｜ 最后核对：2026-11-23 @ 03d12f2
+> 状态：active ｜ 最后核对：2026-11-19 @ 666f666
 
 > 本文描述 Flutter 客户端当前能安全写回 no-wave 的边界，以及编辑器从「普通文本
 > + 本地结构化原型」收敛为单一传统编辑器的过程。
@@ -82,7 +82,8 @@
 协调器按职责拆成同一个库里的几个 part 文件：`editor_session_coordinator.dart`
 保留状态字段（`_EditorSessionBase`）、初始化、账号失效、分类和构建；
 `editor_session_drafts.dart`（自动保存、恢复、显式保存）、
-`editor_session_cover.dart`（设备/媒体库/队列封面）和
+`editor_session_cover.dart`（设备选图并裁剪、调整裁剪、撤销选择、媒体库、队列封面；
+裁剪页 `cover_crop_page.dart` 与媒体选择弹层共用同一个根路由槽，账号失效时一并移除）和
 `editor_session_publish.dart`（发布意图、队列移交、版本冲突核对）各是一个私有
 mixin。它们仍共享同一份可变状态、同一组账号围栏检查，行为测试不变——这是
 可读性上的拆分，编排复杂度本身并没有消失；若要真正独立成服务，仍需先把

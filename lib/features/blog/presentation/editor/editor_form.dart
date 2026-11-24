@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:belog/core/design/components/no_wave_notice.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
@@ -29,7 +27,6 @@ class EditorForm extends StatelessWidget {
     required this.contentController,
     required this.selectedTags,
     required this.onTagsChanged,
-    required this.image,
     this.imageBytes,
     this.selectedCoverUrl,
     required this.isNewImageSelected,
@@ -41,6 +38,8 @@ class EditorForm extends StatelessWidget {
     required this.autoSaveStatus,
     required this.onPickCover,
     required this.onChooseCoverFromLibrary,
+    this.onRecropCover,
+    this.onClearCover,
     required this.categories,
     required this.selectedCategoryIds,
     required this.categoriesLoading,
@@ -60,7 +59,6 @@ class EditorForm extends StatelessWidget {
   final TextEditingController contentController;
   final List<String> selectedTags;
   final ValueChanged<List<String>> onTagsChanged;
-  final File? image;
   final Uint8List? imageBytes;
   final String? selectedCoverUrl;
   final bool isNewImageSelected;
@@ -79,6 +77,13 @@ class EditorForm extends StatelessWidget {
   final AutoSaveStatus autoSaveStatus;
   final VoidCallback onPickCover;
   final VoidCallback onChooseCoverFromLibrary;
+
+  /// Reopens the crop frame on the photo picked in this session; null when
+  /// there is none (a library asset, the published cover, no cover).
+  final VoidCallback? onRecropCover;
+
+  /// Drops the cover chosen in this session; null when nothing was chosen.
+  final VoidCallback? onClearCover;
   final List<CategoryRef> categories;
   final List<String> selectedCategoryIds;
   final bool categoriesLoading;
@@ -101,6 +106,14 @@ class EditorForm extends StatelessWidget {
 
   /// The optional summary under the body; null leaves the field out.
   final TextEditingController? summaryController;
+
+  String get _publishedCover =>
+      blog?.editableBody?.coverUrl ?? blog?.imageUrl ?? '';
+
+  bool get _hasCover =>
+      (isNewImageSelected &&
+          (imageBytes != null || (selectedCoverUrl ?? '').isNotEmpty)) ||
+      _publishedCover.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -181,19 +194,18 @@ class EditorForm extends StatelessWidget {
                 const SizedBox(height: NoWaveSpacing.large),
                 EditorCoverField(
                   blog: blog,
-                  image: image,
                   imageBytes: imageBytes,
                   selectedCoverUrl: selectedCoverUrl,
                   isNewImageSelected: isNewImageSelected,
                   onTap: onPickCover,
                 ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: onChooseCoverFromLibrary,
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: Text(context.l10n.editorCoverChooseFromLibrary),
-                  ),
+                EditorCoverActions(
+                  hasCover: _hasCover,
+                  hasPublishedCover: _publishedCover.isNotEmpty,
+                  onPick: onPickCover,
+                  onChooseFromLibrary: onChooseCoverFromLibrary,
+                  onRecrop: onRecropCover,
+                  onClear: onClearCover,
                 ),
                 const SizedBox(height: NoWaveSpacing.large),
                 EditorTagSelector(

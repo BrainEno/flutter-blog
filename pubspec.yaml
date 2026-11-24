@@ -42,6 +42,10 @@ dependencies:
   get_it: ^8.0.3
   dotted_border: ^3.1.0
   image_picker: ^1.1.2
+  # Pure-Dart codec for the cover crop step: the picked photo is cut to the
+  # reader's cover frame in a background isolate before upload. Already in
+  # the lock (via the launcher icons tooling), so no native plugin is added.
+  image: ^4.12.0
   # Choosing Notion export files (a ZIP or .md pages) for import. The
   # first-party picker: the system document picker on Android (no storage
   # permission) and iOS; the bytes are read in memory, never copied out.

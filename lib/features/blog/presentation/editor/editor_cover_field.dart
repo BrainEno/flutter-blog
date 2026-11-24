@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:belog/core/common/media/no_wave_image_decode_size.dart';
@@ -10,13 +9,16 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 
-/// The tappable cover slot: the newly picked file, the published cover, or a
-/// dashed placeholder that opens the picker.
+/// The tappable cover slot: the new cover, the published one, or a dashed
+/// placeholder that opens the picker.
+///
+/// The slot has the reader's cover shape ([NoWaveSizes.coverAspectWide]), so
+/// what the author sees here is what the article header shows - not a strip of
+/// it, as a fixed-height box would draw on a wide screen.
 class EditorCoverField extends StatelessWidget {
   const EditorCoverField({
     super.key,
     this.blog,
-    this.image,
     this.imageBytes,
     this.selectedCoverUrl,
     this.isNewImageSelected = false,
@@ -26,12 +28,8 @@ class EditorCoverField extends StatelessWidget {
   /// The article being edited, if any; its cover is shown until replaced.
   final Blog? blog;
 
-  /// The newly picked file, if any.
-  final File? image;
-
-  /// The same cover as raw bytes, for covers this page did not pick from the
-  /// file system: a resumed queue entry keeps its image inside the app's own
-  /// storage, so there is no picker file to point at.
+  /// The new cover's bytes: the cut photo, or a resumed queue entry's stored
+  /// cover.
   final Uint8List? imageBytes;
 
   /// An immutable cover asset selected from the user's media library.
@@ -49,49 +47,39 @@ class EditorCoverField extends StatelessWidget {
       child: Semantics(
         image: true,
         label: context.l10n.coverImage,
-        child: InkWell(onTap: onTap, child: _cover(context)),
+        child: InkWell(
+          onTap: onTap,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Before the parent has a width, the screen's is a safe upper
+              // bound for the decode budget.
+              final width = constraints.hasBoundedWidth
+                  ? constraints.maxWidth
+                  : MediaQuery.of(context).size.width;
+              return _cover(context, width);
+            },
+          ),
+        ),
       ),
     );
   }
 
-  Widget _cover(BuildContext context) {
-    // The editor cover fills its parent width but has a fixed paint height.
-    // The screen width is a conservative upper bound before the parent has
-    // laid out; it still prevents a camera original from occupying the cache.
+  Widget _cover(BuildContext context, double width) {
     final decode = noWaveDecodeSizeForFixed(
       context,
-      logicalWidth: MediaQuery.of(context).size.width,
-      logicalHeight: NoWaveSizes.coverEditorBox,
+      logicalWidth: width,
+      logicalHeight: width / NoWaveSizes.coverAspectWide,
     );
-    final picked = image;
-    if (picked != null && isNewImageSelected) {
-      return SizedBox(
-        height: NoWaveSizes.coverEditorBox,
-        width: double.infinity,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(NoWaveRadius.container),
-          child: Image.file(
-            picked,
-            fit: BoxFit.cover,
-            cacheWidth: decode.width,
-            cacheHeight: decode.height,
-          ),
-        ),
-      );
-    }
     final bytes = imageBytes;
     if (bytes != null && isNewImageSelected) {
-      return SizedBox(
-        height: NoWaveSizes.coverEditorBox,
-        width: double.infinity,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(NoWaveRadius.container),
-          child: Image.memory(
-            bytes,
-            fit: BoxFit.cover,
-            cacheWidth: decode.width,
-            cacheHeight: decode.height,
-          ),
+      return _frame(
+        Image.memory(
+          bytes,
+          key: const Key('editor-cover-bytes'),
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          cacheWidth: decode.width,
+          cacheHeight: decode.height,
         ),
       );
     }
@@ -99,17 +87,12 @@ class EditorCoverField extends StatelessWidget {
     if (isNewImageSelected &&
         selectedCover != null &&
         selectedCover.isNotEmpty) {
-      return SizedBox(
-        height: NoWaveSizes.coverEditorBox,
-        width: double.infinity,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(NoWaveRadius.container),
-          child: CachedNetworkImage(
-            imageUrl: selectedCover,
-            fit: BoxFit.cover,
-            memCacheWidth: decode.width,
-            memCacheHeight: decode.height,
-          ),
+      return _frame(
+        CachedNetworkImage(
+          imageUrl: selectedCover,
+          fit: BoxFit.cover,
+          memCacheWidth: decode.width,
+          memCacheHeight: decode.height,
         ),
       );
     }
@@ -117,26 +100,29 @@ class EditorCoverField extends StatelessWidget {
     // one, and its other pictures stay in the body text.
     final publishedCover = blog?.editableBody?.coverUrl ?? blog?.imageUrl ?? '';
     if (publishedCover.isNotEmpty) {
-      return SizedBox(
-        height: NoWaveSizes.coverEditorBox,
-        width: double.infinity,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(NoWaveRadius.container),
-          child: CachedNetworkImage(
-            // Cover media are immutable on no-wave (each upload is a new
-            // asset id), so the URL is used as-is: no cache-busting suffix.
-            imageUrl: publishedCover,
-            fit: BoxFit.cover,
-            memCacheWidth: decode.width,
-            memCacheHeight: decode.height,
-          ),
+      return _frame(
+        CachedNetworkImage(
+          // Cover media are immutable on no-wave (each upload is a new
+          // asset id), so the URL is used as-is: no cache-busting suffix.
+          imageUrl: publishedCover,
+          fit: BoxFit.cover,
+          memCacheWidth: decode.width,
+          memCacheHeight: decode.height,
         ),
       );
     }
-    return _placeholder(context);
+    return _placeholder(context, width);
   }
 
-  Widget _placeholder(BuildContext context) {
+  Widget _frame(Widget image) => AspectRatio(
+    aspectRatio: NoWaveSizes.coverAspectWide,
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(NoWaveRadius.container),
+      child: image,
+    ),
+  );
+
+  Widget _placeholder(BuildContext context, double width) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final muted = isDarkMode ? AppPalette.mutedOnInk : AppPalette.mutedOnPaper;
     final dashedColor = isDarkMode
@@ -155,7 +141,10 @@ class EditorCoverField extends StatelessWidget {
         strokeCap: StrokeCap.round,
       ),
       child: Container(
-        constraints: const BoxConstraints(minHeight: 250),
+        // The cover's shape at least, taller when a large text size needs it.
+        constraints: BoxConstraints(
+          minHeight: width / NoWaveSizes.coverAspectWide,
+        ),
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(NoWaveRadius.container),
@@ -180,6 +169,84 @@ class EditorCoverField extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// What the author can do with the cover, under the slot. The slot itself
+/// still opens the picker on a tap; these say so, and add the moves a tap
+/// cannot: the media library, reframing a picked photo, and backing out.
+class EditorCoverActions extends StatelessWidget {
+  const EditorCoverActions({
+    super.key,
+    required this.hasCover,
+    required this.hasPublishedCover,
+    required this.onPick,
+    required this.onChooseFromLibrary,
+    this.onRecrop,
+    this.onClear,
+  });
+
+  /// Whether the slot shows any cover, new or published.
+  final bool hasCover;
+
+  /// Whether the article already has a cover to fall back to.
+  final bool hasPublishedCover;
+
+  final VoidCallback onPick;
+  final VoidCallback onChooseFromLibrary;
+
+  /// Null when there is no picked photo to reframe.
+  final VoidCallback? onRecrop;
+
+  /// Null when nothing was chosen in this session.
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final recrop = onRecrop;
+    final clear = onClear;
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        spacing: NoWaveSpacing.xs,
+        children: [
+          TextButton.icon(
+            key: const Key('editor-cover-pick'),
+            onPressed: onPick,
+            icon: const Icon(Icons.add_photo_alternate_outlined),
+            label: Text(
+              hasCover ? l10n.editorCoverReplace : l10n.editorCoverPick,
+            ),
+          ),
+          TextButton.icon(
+            key: const Key('editor-cover-library'),
+            onPressed: onChooseFromLibrary,
+            icon: const Icon(Icons.photo_library_outlined),
+            label: Text(l10n.editorCoverChooseFromLibrary),
+          ),
+          if (recrop != null)
+            TextButton.icon(
+              key: const Key('editor-cover-recrop'),
+              onPressed: recrop,
+              icon: const Icon(Icons.crop),
+              label: Text(l10n.editorCoverRecrop),
+            ),
+          if (clear != null)
+            TextButton.icon(
+              key: const Key('editor-cover-clear'),
+              onPressed: clear,
+              icon: const Icon(Icons.undo),
+              label: Text(
+                hasPublishedCover
+                    ? l10n.editorCoverRestore
+                    : l10n.editorCoverRemove,
+              ),
+            ),
+        ],
       ),
     );
   }
