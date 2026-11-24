@@ -252,7 +252,10 @@ class _OfflineLibraryPageState extends State<OfflineLibraryPage> {
           controller: _searchController,
           maxLength: OfflineLibraryQuery.maxLength,
           textInputAction: TextInputAction.search,
-          style: NoWaveTypography.title(context, size: 24),
+          style: NoWaveTypography.title(
+            context,
+            size: NoWaveTypeScale.searchQuery,
+          ),
           decoration: InputDecoration(
             labelText: l10n.offlineLibrarySearchHint,
             prefixIcon: const Icon(Icons.search),

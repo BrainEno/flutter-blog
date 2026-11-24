@@ -158,6 +158,49 @@ abstract final class NoWaveTypeScale {
   /// display face with tabular figures.
   static const figure = 40.0;
 
+  // The serif titles of lists and pages, largest first. They used to be
+  // literals passed to `NoWaveTypography.title(size: ...)` (#294), which the
+  // `fontSize:` gate could not see; the values are the ones those pages drew.
+
+  /// 32: the name at the top of a person's page (profile, author) and the
+  /// about page's headline - a page about one thing, under [heading].
+  static const pageTitle = 32.0;
+
+  /// 30: the lead story's title on the feed, above the numbered rows.
+  static const leadTitle = 30.0;
+
+  /// 24: an article row's title in a list (the feed rows, the offline
+  /// library) - the size every other list title is measured against.
+  static const rowTitle = 24.0;
+
+  /// 24: the words typed into a search field (articles, authors, the offline
+  /// library), set like the row titles they will find.
+  static const searchQuery = 24.0;
+
+  /// 20: a secondary list entry - a category, a person in a follower or
+  /// search list, a reading-history entry. A step under [rowTitle]: a log or
+  /// an index, not a front page.
+  static const entryTitle = 20.0;
+
+  /// 19: a title in the two-column article grid (saved, my articles), where
+  /// a column is about half a row's width.
+  static const gridTitle = 19.0;
+
+  // Headings inside a Markdown article body, by level, at the reader's
+  // standard text size (they scale with it like the body).
+
+  /// 26: a level-1 heading inside an article body.
+  static const bodyHeading1 = 26.0;
+
+  /// 22: a level-2 heading inside an article body.
+  static const bodyHeading2 = 22.0;
+
+  /// 19: a level-3 heading inside an article body.
+  static const bodyHeading3 = 19.0;
+
+  /// 17: a level-4 (or deeper) heading inside an article body.
+  static const bodyHeading4 = 17.0;
+
   /// 18: the article body at the reader's standard text size - the step the
   /// rest of [readerBodySizes] is measured from.
   static const articleBody = 18.0;

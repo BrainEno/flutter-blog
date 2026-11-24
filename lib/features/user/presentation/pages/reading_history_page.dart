@@ -400,9 +400,12 @@ class _HistoryRow extends StatelessWidget {
                         entry.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        // A step under the feed row's 24: a log, not a
+                        // A step under the feed row's title: a log, not a
                         // front page.
-                        style: NoWaveTypography.title(context, size: 20),
+                        style: NoWaveTypography.title(
+                          context,
+                          size: NoWaveTypeScale.entryTitle,
+                        ),
                       ),
                       if (entry.posterName.isNotEmpty) ...[
                         const SizedBox(height: NoWaveSpacing.xs),

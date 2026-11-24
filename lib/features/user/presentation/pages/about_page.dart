@@ -150,7 +150,10 @@ class _AboutPageState extends State<AboutPage> {
                     header: true,
                     child: Text(
                       l10n.aboutHeading,
-                      style: NoWaveTypography.title(context, size: 32),
+                      style: NoWaveTypography.title(
+                        context,
+                        size: NoWaveTypeScale.pageTitle,
+                      ),
                     ),
                   ),
                   const SizedBox(height: NoWaveSpacing.medium),

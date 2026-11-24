@@ -62,7 +62,8 @@
 - [Supabase 到 no-wave 的迁移](supabase-to-nowave-migration.md)：历史迁移背景；
   旧快照的接口结论以较新的 API 差距审计和当前源码为准。
 - [Notion 内容源评估](notion-content-source-assessment.md)：直接 Notion 数据库内容源
-  的未实现评估；编辑器的 Notion bundle 导入/导出属于已接入的独立能力。
+  的未实现评估；编辑器的 Notion bundle 导入/导出属于已接入的独立能力，行为说明见
+  [功能清单](features.md)「Notion 导入 / 导出」，范围摘要见根 README「Notion 的范围」。
 
 ## 工程与质量门禁
 

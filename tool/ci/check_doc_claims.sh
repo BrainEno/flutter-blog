@@ -81,6 +81,20 @@ for document in live_documents:
             f"{document.relative_to(root)}: live documentation must not claim which issue is the only open one"
         )
 
+# The app has one runtime article source (no-wave), but it also ships a
+# Notion bundle import/export. "There is only one content source" read as "no
+# Notion support at all" and hid a finished feature (#287); say which part is
+# meant instead. Archived snapshots keep their historical wording.
+single_source_claim = re.compile(r"只有一个内容源|内容源只有一个")
+for document in live_documents:
+    text = document.read_text(encoding="utf-8")
+    if single_source_claim.search(text):
+        problems.append(
+            f"{document.relative_to(root)}: live documentation must not claim a single content "
+            "source without scope; distinguish the runtime source from the Notion bundle "
+            "import/export"
+        )
+
 # Only backticked repository paths are checked. URLs and prose that happen to
 # contain a slash are deliberately outside this small contract. A glob or an
 # angle-bracket placeholder is documentation notation rather than one concrete

@@ -14,6 +14,10 @@ import '../../support/source_files.dart';
 /// decision made in the wrong file. Only the token and theme layers
 /// (`lib/core/design/`, `lib/core/theme/`) may write those numbers.
 ///
+/// The same goes for a number handed to a `NoWaveTypography` builder as its
+/// `size:` - `NoWaveTypography.title(context, size: 24)` is a `fontSize: 24`
+/// one call removed, and the line-based `fontSize:` scan cannot see it.
+///
 /// A genuine one-off is allowed on the line itself with a
 /// `design-token-ok: <reason>` marker, exactly like the spacing gate.
 void main() {
@@ -44,6 +48,66 @@ void main() {
       reason:
           'use a theme text role or a NoWaveTypeScale token:\n'
           '${offenders.join('\n')}',
+    );
+  });
+
+  test('no screen hands a literal size to NoWaveTypography', () {
+    final offenders = [
+      for (final path in files)
+        for (final hit in _typographySizeLiterals(
+          File(path).readAsStringSync(),
+        ))
+          '$path:$hit',
+    ];
+    expect(
+      offenders,
+      isEmpty,
+      reason:
+          'pass a NoWaveTypeScale token as size: (or add one to '
+          'design_tokens.dart and docs/design-system.md):\n'
+          '${offenders.join('\n')}',
+    );
+  });
+
+  test('the typography scan sees calls on one line and across lines', () {
+    expect(
+      _typographySizeLiterals('x = NoWaveTypography.title(context, size: 24);'),
+      ['1: x = NoWaveTypography.title(context, size: 24);'],
+    );
+    expect(
+      _typographySizeLiterals(
+        'a(\n  NoWaveTypography.title(\n    context,\n    size: 32.5,\n  ),\n)',
+      ),
+      ['4: size: 32.5,'],
+    );
+    expect(
+      _typographySizeLiterals(
+        'NoWaveTypography.title(context, size: NoWaveTypeScale.rowTitle)',
+      ),
+      isEmpty,
+    );
+    expect(
+      _typographySizeLiterals(
+        'NoWaveTypography.display(context, size: size, color: c)',
+      ),
+      isEmpty,
+    );
+    expect(
+      _typographySizeLiterals(
+        'NoWaveTypography.title(context, size: 21), // design-token-ok: why',
+      ),
+      isEmpty,
+    );
+    expect(
+      _typographySizeLiterals('// NoWaveTypography.title(context, size: 24)'),
+      isEmpty,
+    );
+    // A size outside the builder's own parentheses is someone else's.
+    expect(
+      _typographySizeLiterals(
+        'NoWaveTypography.title(context); Icon(i, size: 20);',
+      ),
+      isEmpty,
     );
   });
 
@@ -107,6 +171,31 @@ void main() {
       ];
       expect(sizes, [13, 14, 15, 17, 18]);
     });
+
+    test('the list and page titles keep the values the pages drew', () {
+      // #294 moved these out of `NoWaveTypography.title(size: <n>)` calls; it
+      // did not resize anything.
+      expect(NoWaveTypeScale.pageTitle, 32);
+      expect(NoWaveTypeScale.leadTitle, 30);
+      expect(NoWaveTypeScale.rowTitle, 24);
+      expect(NoWaveTypeScale.searchQuery, 24);
+      expect(NoWaveTypeScale.entryTitle, 20);
+      expect(NoWaveTypeScale.gridTitle, 19);
+      // A secondary entry stays under an article row, and a page about one
+      // thing stays under a list page's heading.
+      expect(NoWaveTypeScale.entryTitle, lessThan(NoWaveTypeScale.rowTitle));
+      expect(NoWaveTypeScale.pageTitle, lessThan(NoWaveTypeScale.heading));
+    });
+
+    test('body headings step down by level', () {
+      const levels = [
+        NoWaveTypeScale.bodyHeading1,
+        NoWaveTypeScale.bodyHeading2,
+        NoWaveTypeScale.bodyHeading3,
+        NoWaveTypeScale.bodyHeading4,
+      ];
+      expect(levels, [26, 22, 19, 17]);
+    });
   });
 }
 
@@ -116,6 +205,40 @@ final _radiusLiteral = RegExp(r'Radius\.(?:circular|elliptical)\(\s*[0-9]');
 
 /// `fontSize: <number>`.
 final _fontSizeLiteral = RegExp(r'\bfontSize:\s*[0-9]');
+
+/// A `NoWaveTypography.<builder>(` call.
+final _typographyCall = RegExp(r'NoWaveTypography\.\w+\(');
+
+/// A `size:` argument given a number.
+final _sizeLiteral = RegExp(r'\bsize:\s*[0-9]');
+
+/// `line: text` for every `size: <number>` inside the parentheses of a
+/// `NoWaveTypography` builder call in [source], on a non-comment line without
+/// a `design-token-ok` marker. Calls may span lines.
+List<String> _typographySizeLiterals(String source) {
+  final lines = source.split('\n');
+  int lineOf(int offset) => '\n'.allMatches(source.substring(0, offset)).length;
+  final hits = <String>[];
+  for (final call in _typographyCall.allMatches(source)) {
+    if (lines[lineOf(call.start)].trimLeft().startsWith('//')) continue;
+    var depth = 1;
+    var end = call.end;
+    while (end < source.length && depth > 0) {
+      final char = source[end];
+      if (char == '(') depth++;
+      if (char == ')') depth--;
+      end++;
+    }
+    final arguments = source.substring(call.end, end);
+    for (final size in _sizeLiteral.allMatches(arguments)) {
+      final line = lines[lineOf(call.end + size.start)];
+      if (line.trimLeft().startsWith('//')) continue;
+      if (line.contains('design-token-ok')) continue;
+      hits.add('${lineOf(call.end + size.start) + 1}: ${line.trim()}');
+    }
+  }
+  return hits;
+}
 
 /// `path:line: text` for every non-comment, unmarked line matching [pattern].
 List<String> _offenders(List<String> paths, RegExp pattern) {

@@ -1,3 +1,4 @@
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
@@ -114,7 +115,10 @@ class OfflineLibraryArticleTile extends StatelessWidget {
                           article.title,
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
-                          style: NoWaveTypography.title(context, size: 24),
+                          style: NoWaveTypography.title(
+                            context,
+                            size: NoWaveTypeScale.rowTitle,
+                          ),
                         ),
                         const SizedBox(height: NoWaveSpacing.xs),
                         Text(author, style: NoWaveTypography.meta(context)),

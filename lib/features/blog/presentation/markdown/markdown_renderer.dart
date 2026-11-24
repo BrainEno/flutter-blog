@@ -167,10 +167,10 @@ class MarkdownRenderer {
   Widget _heading(BuildContext context, md.Element element) {
     final level = int.tryParse(element.tag.substring(1)) ?? 3;
     final size = switch (level) {
-      1 => 26.0,
-      2 => 22.0,
-      3 => 19.0,
-      _ => 17.0,
+      1 => NoWaveTypeScale.bodyHeading1,
+      2 => NoWaveTypeScale.bodyHeading2,
+      3 => NoWaveTypeScale.bodyHeading3,
+      _ => NoWaveTypeScale.bodyHeading4,
     };
     return Semantics(
       header: true,

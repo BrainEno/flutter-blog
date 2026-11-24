@@ -83,6 +83,24 @@ class DocumentationClaimCheckTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("README.md: live documentation must not claim", result.stderr)
 
+    def test_unscoped_single_content_source_claim_is_rejected(self) -> None:
+        self.write("README.md", "# Project\n\n当前只有一个内容源，Notion 尚未实现。\n")
+
+        result = self.run_check()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("README.md: live documentation must not claim a single content", result.stderr)
+
+    def test_scoped_content_source_wording_passes(self) -> None:
+        self.write(
+            "README.md",
+            "# Project\n\n运行时文章内容源是 no-wave；Notion bundle 导入/导出已实现。\n",
+        )
+
+        result = self.run_check()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_archived_status_outside_archive_is_rejected(self) -> None:
         self.write(
             "docs/guide.md",

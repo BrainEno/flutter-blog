@@ -1,5 +1,6 @@
 import 'package:belog/core/config/app_limits.dart';
 import 'package:belog/core/design/components/no_wave_pressable.dart';
+import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/app_palette.dart';
@@ -126,7 +127,10 @@ class BlogCard extends StatelessWidget {
             blog.title,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
-            style: NoWaveTypography.title(context, size: 30),
+            style: NoWaveTypography.title(
+              context,
+              size: NoWaveTypeScale.leadTitle,
+            ),
           ),
           ..._excerpt(context, maxLines: AppLimits.excerptLeadLines),
           const SizedBox(height: NoWaveSpacing.small),
@@ -207,7 +211,10 @@ class BlogCard extends StatelessWidget {
             blog.title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: NoWaveTypography.title(context, size: 24),
+            style: NoWaveTypography.title(
+              context,
+              size: NoWaveTypeScale.rowTitle,
+            ),
           ),
           // A quiet row is a pointer, not a preview: no excerpt either.
           if (!quiet) ..._excerpt(context, maxLines: AppLimits.excerptRowLines),
