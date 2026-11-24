@@ -57,6 +57,11 @@ void main() {
     test('the cover ratios match the ones the cards use', () {
       expect(NoWaveSizes.coverAspect, closeTo(4 / 3, 1e-9));
       expect(NoWaveSizes.coverAspectWide, closeTo(16 / 10, 1e-9));
+      // The editor's slot stops at the height the old fixed box had.
+      expect(
+        NoWaveSizes.coverEditorWidth / NoWaveSizes.coverAspectWide,
+        closeTo(250, 1e-9),
+      );
     });
 
     test('row sizes keep their order and their tap target', () {

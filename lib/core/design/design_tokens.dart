@@ -209,6 +209,11 @@ abstract final class NoWaveSizes {
   /// what readers see.
   static const coverAspectWide = 16 / 10;
 
+  /// Widest the editor's cover slot gets. At [coverAspectWide] that is 250
+  /// high: on a phone the slot spans the column, on a tablet it stops here so
+  /// the cover does not push the title and body below the fold.
+  static const coverEditorWidth = 400.0;
+
   /// Widest a paragraph column may get before it is centred on a tablet, so
   /// long lines stay readable.
   static const maxReadingWidth = 720.0;

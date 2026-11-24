@@ -82,6 +82,7 @@
 | `NoWaveSizes.seekThumb` | 12 | 朗读进度条上的方形滑块：与文末墨色方块同一语言，不用 Material 的圆钮 |
 | `NoWaveSizes.coverAspect` | 4/3 | 网格项里的封面比例 |
 | `NoWaveSizes.coverAspectWide` | 16/10 | feed 头条卡片与阅读页头的封面比例；编辑器封面框和裁剪框也用它，作者框住的就是读者看到的 |
+| `NoWaveSizes.coverEditorWidth` | 400 | 编辑器封面框最宽多少（16:10 下即 250 高）：手机上铺满栏宽，平板上到此为止，不把标题和正文挤出首屏 |
 | `NoWaveSizes.maxReadingWidth` | 720 | 平板上的正文最大宽度 |
 | `NoWaveSizes.contentColumn` | 680 | 列表、表单、设置等页面主栏的最大宽度（比正文窄，平板上居中） |
 | `NoWaveSizes.emptyStateOffset` | 48 | 空态/加载态在列表里从多高开始 |

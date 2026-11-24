@@ -192,20 +192,32 @@ class EditorForm extends StatelessWidget {
               if (!focusMode) ...[
                 // Space between the buttons and the cover image.
                 const SizedBox(height: NoWaveSpacing.large),
-                EditorCoverField(
-                  blog: blog,
-                  imageBytes: imageBytes,
-                  selectedCoverUrl: selectedCoverUrl,
-                  isNewImageSelected: isNewImageSelected,
-                  onTap: onPickCover,
-                ),
-                EditorCoverActions(
-                  hasCover: _hasCover,
-                  hasPublishedCover: _publishedCover.isNotEmpty,
-                  onPick: onPickCover,
-                  onChooseFromLibrary: onChooseCoverFromLibrary,
-                  onRecrop: onRecropCover,
-                  onClear: onClearCover,
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: NoWaveSizes.coverEditorWidth,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        EditorCoverField(
+                          blog: blog,
+                          imageBytes: imageBytes,
+                          selectedCoverUrl: selectedCoverUrl,
+                          isNewImageSelected: isNewImageSelected,
+                          onTap: onPickCover,
+                        ),
+                        EditorCoverActions(
+                          hasCover: _hasCover,
+                          hasPublishedCover: _publishedCover.isNotEmpty,
+                          onPick: onPickCover,
+                          onChooseFromLibrary: onChooseCoverFromLibrary,
+                          onRecrop: onRecropCover,
+                          onClear: onClearCover,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: NoWaveSpacing.large),
                 EditorTagSelector(
