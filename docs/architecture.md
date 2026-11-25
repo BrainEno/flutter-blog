@@ -58,7 +58,9 @@ lib/
   阅读和朗读共用的惰性 AST，不构造 HTML。未知/损坏格式明确警告。站点相对
   资源与头像（`/avatars/me.webp`，no-wave `validateProfileUrl` 允许的格式）
   仅按 `WEB_BASE_URL` 解析，不猜测 API origin；未配置时保留中性占位；
-  不安全的 URL 不可交互、也不会被加载。
+  不安全的 URL 不可交互、也不会被加载。作者主页的网站链接（服务端随资料返回的
+  `websiteUrl`）走同一个白名单：过不了判定的地址仍显示为可复制的文字，但不给
+  可点按钮，因此不存在把 `javascript:` 之类 scheme 交给系统的入口。
 - **Failure 契约**（`core/error/failures.dart`）：`kind`
   （network/timeout/auth/permission/validation/storage/server/unknown）+
   面向用户的中文兜底 `message` + 稳定 `code` + 可选本地化标识 `l10nKey` +

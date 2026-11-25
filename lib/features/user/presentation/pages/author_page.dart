@@ -11,6 +11,7 @@ import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
+import 'package:belog/core/utils/article_resource_url.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -124,8 +125,10 @@ class _AuthorPageState extends State<AuthorPage> {
   }
 
   Future<void> _openWebsite(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null || !uri.hasScheme) {
+    // A profile's web site is server-supplied, so it answers to the same
+    // whitelist as article links: only http(s) reaches the operating system.
+    final uri = resolveArticleResourceUrl(url);
+    if (uri == null) {
       if (mounted) showSnackBar(context, context.l10n.invalidLink);
       return;
     }
@@ -402,6 +405,7 @@ class _ProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final name = authorDisplayName(l10n, profile.displayName);
+    final website = profile.websiteUrl.trim();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -464,16 +468,28 @@ class _ProfileHeader extends StatelessWidget {
           const SizedBox(height: NoWaveSpacing.medium),
           Text(profile.bio, style: const TextStyle(height: 1.5)),
         ],
-        if (profile.websiteUrl.trim().isNotEmpty) ...[
+        if (website.isNotEmpty) ...[
           const SizedBox(height: NoWaveSpacing.small),
           NoWaveLinkButton(
             icon: Icons.link,
-            label: profile.websiteUrl,
-            onPressed: () => onOpenWebsite(profile.websiteUrl),
+            label: website,
+            onPressed: _websiteAction(website),
           ),
         ],
       ],
     );
+  }
+
+  /// The link's tap handler, or `null` when the address must stay inert.
+  ///
+  /// An author's web site arrives with the profile, so it is server-supplied
+  /// text. A `javascript:` or `intent:` value used to reach the operating
+  /// system as soon as the button was tapped; now the same whitelist that
+  /// guards article links decides, and an unsafe address is still shown -
+  /// only as text a reader can copy, never as something this app launches.
+  void Function()? _websiteAction(String value) {
+    if (resolveArticleResourceUrl(value) == null) return null;
+    return () => onOpenWebsite(value);
   }
 }
 

@@ -47,6 +47,18 @@ AuthorProfile _profile({bool isFollowing = false}) => AuthorProfile(
   updatedAt: DateTime.utc(2025),
 );
 
+/// The same profile with the author's own web site replaced - the one field a
+/// reader's server controls, and the one the author page must not trust.
+AuthorProfile _profileWithWebsite(String url) => AuthorProfile(
+  userId: 'author-1',
+  displayName: '作者甲',
+  bio: '写点东西',
+  websiteUrl: url,
+  followerCount: 12,
+  followingCount: 3,
+  updatedAt: DateTime.utc(2025),
+);
+
 BlogModel _blog() => BlogModel(
   id: 'post-1',
   title: '作者的文章',
@@ -260,6 +272,104 @@ void main() {
     );
     expect(find.text('作者的文章'), findsOneWidget);
     expect(find.text('关注'), findsOneWidget);
+  });
+
+  testWidgets('an unsafe website address is shown but never tappable', (
+    tester,
+  ) async {
+    appUserCubit.updateUser(_user());
+    for (final url in [
+      'javascript:alert(1)',
+      'file:///etc/passwd',
+      'data:text/html,<h1>hi</h1>',
+      'intent://example#Intent;scheme=http;end',
+      '//evil.example/download',
+      'http://user:pass@evil.example',
+    ]) {
+      final profile = _profileWithWebsite(url);
+      when(
+        () => getAuthorProfile('author-1'),
+      ).thenAnswer((_) async => right<Failure, AuthorProfile>(profile));
+      final authorCubit = buildAuthorCubit();
+      addTearDown(authorCubit.close);
+      final blogByBloc = buildBlogByBloc();
+      addTearDown(blogByBloc.close);
+
+      await _pumpPage(
+        tester,
+        appUserCubit: appUserCubit,
+        authorCubit: authorCubit,
+        blogByBloc: blogByBloc,
+      );
+      await tester.pumpAndSettle();
+
+      // The address is still readable - copying it out is the reader's call,
+      // launching it is not ours to make.
+      expect(find.text(url), findsOneWidget, reason: url);
+      final finder = find.widgetWithText(TextButton, url);
+      expect(finder, findsOneWidget, reason: url);
+      final link = tester.widget<TextButton>(finder);
+      // Without a handler there is no path from this button to launchUrl,
+      // which is the whole point: the unsafe address cannot be activated.
+      expect(link.onPressed, isNull, reason: url);
+    }
+  });
+
+  testWidgets('a plain http(s) website address stays tappable', (tester) async {
+    appUserCubit.updateUser(_user());
+    const site = 'https://example.invalid/site';
+    final profile = _profileWithWebsite(site);
+    when(
+      () => getAuthorProfile('author-1'),
+    ).thenAnswer((_) async => right<Failure, AuthorProfile>(profile));
+    final authorCubit = buildAuthorCubit();
+    addTearDown(authorCubit.close);
+    final blogByBloc = buildBlogByBloc();
+    addTearDown(blogByBloc.close);
+
+    await _pumpPage(
+      tester,
+      appUserCubit: appUserCubit,
+      authorCubit: authorCubit,
+      blogByBloc: blogByBloc,
+    );
+    await tester.pumpAndSettle();
+
+    final finder = find.widgetWithText(TextButton, site);
+    expect(finder, findsOneWidget);
+    final link = tester.widget<TextButton>(finder);
+    // Tapping it here would need the url_launcher platform channel, so the
+    // assertion is about the wiring: a safe address keeps its handler.
+    expect(link.onPressed, isNotNull);
+  });
+
+  testWidgets('a site-relative address is only a link with a web base', (
+    tester,
+  ) async {
+    appUserCubit.updateUser(_user());
+    final profile = _profileWithWebsite('/about');
+    when(
+      () => getAuthorProfile('author-1'),
+    ).thenAnswer((_) async => right<Failure, AuthorProfile>(profile));
+    final authorCubit = buildAuthorCubit();
+    addTearDown(authorCubit.close);
+    final blogByBloc = buildBlogByBloc();
+    addTearDown(blogByBloc.close);
+
+    await _pumpPage(
+      tester,
+      appUserCubit: appUserCubit,
+      authorCubit: authorCubit,
+      blogByBloc: blogByBloc,
+    );
+    await tester.pumpAndSettle();
+
+    // `AppSecrets.webBaseUrl` is unset in tests, so a relative address has no
+    // origin to resolve against and must stay inert rather than guess one.
+    final finder = find.widgetWithText(TextButton, '/about');
+    expect(finder, findsOneWidget);
+    final link = tester.widget<TextButton>(finder);
+    expect(link.onPressed, isNull);
   });
 
   testWidgets('English author page localizes counts, empty and follow errors', (
