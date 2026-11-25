@@ -1,27 +1,28 @@
+// Keeps the URL whitelist in front of every address this app hands to the OS.
+//
+// Article links, covers, avatars and the read-aloud follow all resolve through
+// `resolveArticleResourceUrl`, yet the author page launched the profile's
+// `websiteUrl` after checking only `hasScheme` - enough for `javascript:` or
+// `intent:` to leave the app. Fixing that one call site is worth little unless
+// the shape is checked: a second launcher added later should fail this suite
+// rather than become the next exception.
+
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/source_files.dart';
 
-/// Keeps the URL whitelist in front of every address this app hands to the OS.
-///
-/// Article links, covers, avatars and the read-aloud follow all resolve
-/// through `resolveArticleResourceUrl`, yet the author page launched the
-/// profile's `websiteUrl` after checking only `hasScheme` - enough for
-/// `javascript:` or `intent:` to leave the app. Fixing that one call site is
-/// worth little unless the shape is checked: a second launcher added later
-/// should fail this suite rather than become the next exception.
+/// The helper defines the rule instead of applying it.
+const _definer = 'lib/core/utils/article_resource_url.dart';
+
+/// Addresses that never arrive from a server: the about page opens
+/// compiled-in constants, so there is nothing untrusted to resolve there.
+const _ownConstants = <String>{
+  'lib/features/user/presentation/pages/about_page.dart',
+};
+
 void main() {
-  /// The helper defines the rule instead of applying it.
-  const _definer = 'lib/core/utils/article_resource_url.dart';
-
-  /// Addresses that never arrive from a server: the about page opens
-  /// compiled-in constants, so there is nothing untrusted to resolve there.
-  const _ownConstants = <String>{
-    'lib/features/user/presentation/pages/about_page.dart',
-  };
-
   List<String> launchesWithoutWhitelist() {
     final hits = <String>[];
     for (final file in dartFilesUnder('lib')) {

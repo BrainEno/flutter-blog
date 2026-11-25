@@ -315,9 +315,7 @@ void main() {
     }
   });
 
-  testWidgets('a plain http(s) website address stays tappable', (
-    tester,
-  ) async {
+  testWidgets('a plain http(s) website address stays tappable', (tester) async {
     appUserCubit.updateUser(_user());
     const site = 'https://example.invalid/site';
     final profile = _profileWithWebsite(site);
