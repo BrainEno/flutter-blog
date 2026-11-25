@@ -124,6 +124,11 @@
   迟到的 sign-out 不会清除已切换的会话，账号变化时提示**请求可能已提交**，
   不假装所有写入都失败。新增针对刷新、存储和 API 时序的回归测试。
 - 调试脚本、配置验证及 debug-only HTTP 例外见 README；生产/发布安全策略未放宽。
+- 作者主页的网站链接原先只检查 `hasScheme` 就把服务端返回的地址交给外部
+  应用，`javascript:`、`intent:`、`data:` 等等都能通过；现在与正文链接共用
+  `core/utils/article_resource_url.dart` 的白名单，过不了判定的地址显示为文字
+  但没有可点按钮。`test/widget/author_page_test.dart` 为六种恶意形状与一个
+  站点相对路径钉住了「不可点」，并保留一个 `https` 正例防止整体误封。
 
 ## 后续隐私修复
 
