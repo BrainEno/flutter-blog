@@ -12,7 +12,10 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A pull request may supersede its own older runs; a push to main may not,
+  # or the commit that just landed loses the verification it was merged to
+  # obtain. `mobile-packages.yml` already used this shape (#371).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   FLUTTER_VERSION: "3.47.8"
@@ -22,6 +25,7 @@ jobs:
   agent-contract:
     name: agent-contract / guardrails
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -50,6 +54,7 @@ jobs:
   environment-contract:
     name: config-contract / no bundled secrets
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -59,6 +64,7 @@ jobs:
   format:
     name: format / changed-Dart-format
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       # The failure step comments the full formatting diff on the PR so it
       # survives the 4096-byte annotation cap. Nothing else is writable.
@@ -171,6 +177,7 @@ jobs:
   analyze:
     name: analyze / flutter-analyze
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -221,6 +228,7 @@ jobs:
   test:
     name: test / flutter-test
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       # The failure step comments the log tail on the PR so the crash reason
       # survives GitHub's 4096-byte annotation cap. Nothing else is writable.
@@ -306,6 +314,7 @@ jobs:
   android-release:
     name: android-release / build-and-permission-check
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -12,12 +12,18 @@ permissions:
 
 concurrency:
   group: local-scripts-${{ github.ref }}
-  cancel-in-progress: true
+  # A pull request may supersede its own older runs; a push to main may not,
+  # or the commit that just landed loses the verification it was merged to
+  # obtain. `mobile-packages.yml` already used this shape (#371).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   macos-control-flow:
     name: Shell and config mocks / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    # Every step here is `bash -n` plus a unittest over mocked paths; a run
+    # longer than this means a runner hung, not that a test is slow.
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -29,6 +35,11 @@ jobs:
         run: bash -n scripts/lib/common.sh scripts/run_ios.sh scripts/build_ios_ipa.sh scripts/run_ios.command scripts/build_ios_ipa.command
       - name: Test mocked simulator, packaging and configuration paths
         run: python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+
+      - name: Explain a cancelled job instead of leaving it red
+        if: cancelled()
+        shell: bash
+        run: bash tool/ci/summarize_cancellation.sh "shell and config mocks / ${{ matrix.os }}"
 
   ios-build:
     name: iOS simulator compile and ad-hoc IPA / macOS
@@ -74,6 +85,10 @@ jobs:
             bash tool/ci/annotate_failure.sh analyze build/reports/ios-adhoc-ipa.log
             exit 1
           fi
+      - name: Explain a cancelled job instead of leaving it red
+        if: cancelled()
+        shell: bash
+        run: bash tool/ci/summarize_cancellation.sh "iOS simulator compile and ad-hoc IPA"
       - name: Verify built debug and release transport policy
         shell: bash
         run: |
@@ -91,6 +106,9 @@ jobs:
   windows-control-flow:
     name: PowerShell mock AVD scenarios / Windows
     runs-on: windows-latest
+    # Mocked-tool scenarios only; the ceiling exists so a wedged runner
+    # surfaces as a bounded cancellation rather than a 360-minute job.
+    timeout-minutes: 15
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -108,3 +126,7 @@ jobs:
             Write-Output "::error title=Windows script mock::$detail"
             throw
           }
+      - name: Explain a cancelled job instead of leaving it red
+        if: cancelled()
+        shell: bash
+        run: bash tool/ci/summarize_cancellation.sh "PowerShell mock AVD scenarios"
