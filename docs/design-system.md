@@ -355,10 +355,22 @@
   在页面上再弹一个「处理中」。
 - `onPressed: null` 是禁用态，高度不变，避免整行按钮跳动。
 - 标签在上下文里有歧义时（列表里一排「删除」）传 `semanticLabel`。
-- 新代码不使用 `ElevatedButton`/`FilledButton` 直接写业务按钮；它们只作为主题兜底，
-  且主题把它们钉成与 `primary` 同一对颜色（`OutlinedButton` 与 `secondary` 同为
-  1pt 墨色描边）。不用 `FilledButton.tonal`：它没有对应的 `NoWaveButton` 变体，主行动
-  用填充、次要行动用描边。
+- 业务行动按钮只有一个入口：`NoWaveButton`。允许直接写 Material 按钮的场合是**封闭
+  清单**，只有这三类，除此之外 `lib/features` 下不得新增：
+  1. 纯图标动作：`IconButton` + tooltip（`NoWaveButton` 必须有可见标签）。
+  2. 选择类控件：`InputChip`、`ChoiceChip`、`SegmentedButton`、开关与复选框——
+     `NoWave` 侧没有对应组件，外观由主题钉住。
+  3. 「七、已知缺口」里逐文件冻结的存量（编辑器结构化页面与私信成员面板）。
+- 二次确认同理：破坏性动作走 `showNoWaveConfirmDialog`，不在页面里手搭 `AlertDialog`。
+- 这四条由 `test/unit/design/component_usage_guard_test.dart` 执行：它按文件把
+  `ElevatedButton`/`FilledButton`/`TextButton`/`OutlinedButton`/`AlertDialog` 的存量
+  钉成预算表，**精确冻结**——多一处失败，少一处也要在同一个 commit 里把数字改小或
+  删掉该文件那行。`ElevatedButton` 在 features 下配额为 0。
+- 主题把 `FilledButton`/`OutlinedButton` 钉成与 `primary`/`secondary` 同一对方位与
+  配色（方角、48pt、1pt 墨色描边），所以上面那些存量在视觉上不会跑偏；跑偏的是
+  `isLoading`、`onPressed: null` 的高度不变与 `semanticLabel` 这三条语义，那是
+  手搭按钮给不了的。不用 `FilledButton.tonal`：它没有对应的 `NoWaveButton` 变体，
+  主行动用填充、次要行动用描边。
 
 ### NoWaveNotice
 
@@ -788,7 +800,11 @@ favicon 是同一个记号：
 - **没有 golden 测试。** 一致性的回归靠 `design_tokens_test.dart` 的约束断言与页面
   级 widget 测试，而不是像素比对。
 - **编辑器的结构化页面与私信成员面板仍直接用 `FilledButton` / `OutlinedButton`**
-  （约 45 处，另有 `editor_body_field.dart` 的 `SegmentedButton`）。它们的 widget
+  （另有 `editor_body_field.dart` 的 `SegmentedButton`）。`lib/features` 下当前由
+  `component_usage_guard_test.dart` 统计的确切数是 75 处、28 个文件
+  （`TextButton` 55、`AlertDialog` 7、`FilledButton` 8、`OutlinedButton` 5、
+  `ElevatedButton` 0），逐文件配额写在该测试的预算表里，所以这个数字不需要有人
+  再去数一遍；`IconButton` 43 处属于上面的封闭清单，不计入。它们的 widget
   测试按 Material 类型查找按钮，所以没有一次性换成 `NoWaveButton`；主题把这几类按钮
   钉成与 `NoWaveButton` 相同的方角、48pt 触控目标和同一对主色/描边色，
   `design_tokens_test.dart` 逐主题断言填充按钮、浮动按钮与 `primary` 同色，
