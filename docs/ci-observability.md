@@ -1,6 +1,6 @@
 # CI Validation and Observability
 
-> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+> 状态：active ｜ 最后核对：2026-11-25 @ facf5ad
 
 ## Validation layers
 
@@ -13,6 +13,8 @@
 | Flutter tests | Pull request, push to `main`, manual | `flutter test --coverage` | `flutter-test-evidence` artifact containing test log and LCOV when produced |
 | Coverage floor | Pull request, push to `main`, manual | `tool/ci/check_coverage.py` compares LCOV line coverage (generated localizations excluded) with `tool/ci/coverage_threshold.json` | `Line coverage` notice or `Coverage below floor` error annotation, the least-covered files in the job summary, and the same LCOV artifact |
 | Android release | Pull request, push to `main`, manual | Explicitly debug-signed QA release build, APK permission and alignment checks, isolated signing guard tests, debug build and debug/release cleartext policy | `android-release-evidence` includes build, signing, `apk-asset-audit.log`, `android-debug-check.log` and `gradle-worker-check.log` plus manifest dumps when available |
+| Read-aloud desktop compile | Pull request, push to `main`, manual | macOS and Windows debug native compiles for the read-aloud desktop runners | `read-aloud-<target>-compile-log` artifact (14 days), bounded annotation on failure, cancellation note in the job summary |
+| Local scripts and iOS build | Pull request, push to `main`, manual | Shell and PowerShell mock control flow, iOS simulator compile, ad-hoc IPA script run, debug/release network policy | Job log plus a bounded annotation from `tool/ci/annotate_failure.sh`; this workflow uploads no artifact, so build logs are not retained |
 | Manual mobile build validation | PR, or manually dispatched | Android QA release build and optionally unsigned iOS compile; it does not publish releases | Platform-specific build artifacts/logs; iOS output is clearly named as unsigned |
 | Build personal mobile packages | Relevant PR changes, or manually dispatched on `main` | PR: disposable Android signing key and unreachable API fixture, plus device IPA packaging. Manual: configured public API, iOS AltStore input and/or Android owner-signed or explicitly debug APK | PR fixture logs only; manual artifacts include binaries, SHA-256 and provenance; see [mobile-packages.md](mobile-packages.md) |
 
@@ -32,12 +34,51 @@ The repository's CI helpers do not run in the Flutter app and do not require Pyt
 - `tool/ci/validate_agent_contract.sh` checks that the documented agent workflow and existing CI/release guardrails are present. It is a textual guard, not a replacement for branch protection or a full YAML security audit.
 - `tool/ci/annotate_failure.sh` selects bounded analyzer/Android failure excerpts for GitHub annotations; full logs remain in the existing artifacts.
 - `tool/ci/setup_android_gradle.sh` creates a private, fresh Gradle user home for the main Android CI job and limits it to one worker. This bounds concurrent transformations, does not change developer Gradle settings or other workflows, and can make CI slower.
+- `tool/ci/summarize_cancellation.sh` turns a cancelled job into a run-summary note that says the job was cancelled rather than failed, with the two follow-up paths (superseded by a newer commit, or re-run once and file an infrastructure report). It is called from the macOS and Windows jobs under `if: cancelled()`.
 - `tool/ci/check_coverage.py` (standard-library Python, tested by `tool/ci/test_check_coverage.py`) merges repeated LCOV records per file, applies the exclusion globs and fails below the configured floor. The floor is a ratchet against silent regressions: raise it in a reviewed PR when coverage grows, never lower it to pass an unrelated change.
 - `tool/ci/check_android_debug.sh` verifies Gradle reports one worker, stops the previous Gradle daemon and compiles the debug APK with a fresh Gradle heap. It then checks that only debug opts into development cleartext traffic. CI captures output with the non-secret fixture; mocks cover configuration, worker/daemon failures, missing output, failed builds and both policy violations.
 
 CI runs `bash tool/ci/test_ci_scripts.sh` using temporary, non-secret fixtures to exercise both passing and failing cases. These helpers use Bash, Git, grep, sed, and awk on the Linux CI runner; no separate language runtime or third-party package is needed. Run the same command locally on a compatible environment when changing the helpers.
 
 The production release validator (`tool/release/validate_release.py`) and its tests still use Python's standard library. They validate release versions, key types, public IP/URL restrictions and signing configuration, and write a private JSON fixture without exposing secrets. Replacing that security-sensitive parsing without equivalent negative tests could weaken release safeguards; Python is retained for this separate production workflow.
+
+## Cancellation and job ceilings
+
+Three workflows verify a commit that has landed on `main`: `ci.yml`,
+`read-aloud-desktop.yml` and `local-scripts.yml`. Each of them cancelled
+in-progress runs unconditionally within the ref, so a second merge into `main`
+cancelled the run the first merge had just earned: the commit that CI exists to
+judge was never judged. A check that cancels its own evidence is not a green or
+red signal, it is the absence of one, which is how a healthy merge started
+looking like a red `main`.
+
+Those workflows now cancel only `pull_request` runs, where a newer commit really
+does supersede an older one:
+
+    concurrency:
+      group: <workflow>-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+- `push` and `workflow_dispatch` runs on `main` always finish, so a `main` result
+  describes that commit even when two merges land back to back. Queued `main`
+  runs cost Actions minutes; that is the price of keeping the signal.
+- Every job on that path declares `timeout-minutes`, set well above observed
+  durations. The ceiling exists to bound a wedged runner, not to trim a slow but
+  healthy job.
+- A job that builds on a macOS or Windows runner ends with
+  `tool/ci/summarize_cancellation.sh` under `if: cancelled()`. GitHub renders a
+  cancelled job and a failed one as the same red cross, and the two answers send
+  a contributor in opposite directions; the step writes the distinction into the
+  run summary. A hard runner loss still bypasses every step, which is why the
+  timeout is the backstop rather than the summary step.
+- `tool/ci/validate_agent_contract.sh` enforces all three rules for every
+  workflow that triggers on `push` to `main`, so a workflow added later inherits
+  them instead of rediscovering them.
+
+`release.yml` and the Android job of `dart.yml` keep unbounded publish/compile
+jobs on purpose for now: aborting a release that overruns a guessed ceiling is a
+worse failure than a slow manual job, and picking that number needs the owner's
+data on real release durations. It is a recorded exception, not an oversight.
 
 ## Interpreting failures
 

@@ -13,6 +13,7 @@ required_files=(
   .github/workflows/dart.yml
   tool/ci/check_env_asset_contract.sh
   tool/ci/annotate_failure.sh
+  tool/ci/summarize_cancellation.sh
   tool/ci/test_ci_scripts.sh
 )
 for path in "${required_files[@]}"; do
@@ -63,6 +64,55 @@ if [[ -f "$ci" ]]; then
     failed=1
   fi
 fi
+# A workflow that verifies `main` must not compete with the next verification of
+# `main`: an unconditional `cancel-in-progress: true` on a push-to-main trigger
+# cancels the run that a merge just earned, so a red or cancelled check stops
+# carrying any information about the diff. Jobs on that path are also bounded,
+# because a wedged runner holding a check open for hours removes evidence in the
+# same way. Where a macOS or Windows runner is involved, the job must also say
+# out loud that a cancellation is not a build failure.
+for workflow in "$root"/.github/workflows/*.yml; do
+  name="$(basename "$workflow")"
+  if ! awk '
+    /^on:/ { on = 1; next }
+    on && /^jobs:/ { exit }
+    on && /^  push:/ { push = 1; next }
+    on && push && /branches:/ && /main/ { found = 1; exit }
+    END { if (found) exit 0; exit 1 }
+  ' "$workflow"; then
+    continue
+  fi
+  if awk '
+    /^concurrency:/ { c = 1; next }
+    c && /^[^[:space:]]/ { exit }
+    c && /^  cancel-in-progress:[[:space:]]*true[[:space:]]*$/ { found = 1 }
+    END { if (found) exit 0; exit 1 }
+  ' "$workflow"; then
+    echo "::error::$name runs on push to main but cancels in-progress runs unconditionally; gate cancel-in-progress on github.event_name (see docs/ci-observability.md)."
+    failed=1
+  fi
+  while IFS= read -r job; do
+    echo "::error::$name job '$job' runs on the main verification path without timeout-minutes."
+    failed=1
+  done < <(awk '
+    /^jobs:/ { jobs = 1; next }
+    jobs && /^  [A-Za-z0-9_-]+:$/ {
+      if (job != "" && !bounded) print job
+      job = $1
+      sub(/:$/, "", job)
+      bounded = 0
+      next
+    }
+    jobs && /^    timeout-minutes:/ { bounded = 1 }
+    END { if (job != "" && !bounded) print job }
+  ' "$workflow")
+  if grep -Eq 'macos-latest|windows-latest' "$workflow" &&
+    ! grep -Fq 'tool/ci/summarize_cancellation.sh' "$workflow"; then
+    echo "::error::$name builds on a macOS/Windows runner without a cancellation step; a cancelled job must be distinguishable from a failed one."
+    failed=1
+  fi
+done
+
 release="$root/.github/workflows/dart.yml"
 if [[ -f "$release" ]]; then
   for forbidden in 'svenstaro/upload-release-action' 'tag: v1.9' 'overwrite: true'; do

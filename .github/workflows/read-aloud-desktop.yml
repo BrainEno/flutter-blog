@@ -12,7 +12,10 @@ permissions:
 
 concurrency:
   group: read-aloud-desktop-${{ github.ref }}
-  cancel-in-progress: true
+  # A pull request may supersede its own older runs; a push to main may not,
+  # or the commit that just landed loses the verification it was merged to
+  # obtain. `mobile-packages.yml` already used this shape (#371).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   desktop:
@@ -56,6 +59,10 @@ jobs:
             bash tool/ci/annotate_failure.sh analyze build/reports/desktop-build.log
             exit 1
           fi
+      - name: Explain a cancelled job instead of leaving it red
+        if: cancelled()
+        shell: bash
+        run: bash tool/ci/summarize_cancellation.sh "${{ matrix.target }} native runner"
       - name: Upload compile diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
