@@ -37,6 +37,7 @@ import 'package:belog/features/blog/domain/read_aloud/read_aloud_settings.dart';
 import 'package:belog/features/blog/domain/reader/reader_text_size.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
+import 'package:belog/features/blog/domain/repositories/featured_shelf_repository.dart';
 import 'package:belog/features/blog/domain/repositories/category_repository.dart';
 import 'package:belog/features/blog/domain/repositories/comment_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
@@ -152,6 +153,7 @@ const Map<String, _Row<Object>> _resolutions = {
   'BlogLocalDataSource': _Row<BlogLocalDataSource>(),
   'BlogRemoteDataSource': _Row<BlogRemoteDataSource>(),
   'BlogRepository': _Row<BlogRepository>(),
+  'FeaturedShelfRepository': _Row<FeaturedShelfRepository>(),
   'BlogSearchBloc': _Row<BlogSearchBloc>(),
   'BlogUploadBloc': _Row<BlogUploadBloc>(),
   'BrowseAuthors': _Row<BrowseAuthors>(),

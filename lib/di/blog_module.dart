@@ -7,8 +7,10 @@ import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dar
 import 'package:belog/features/blog/data/datasources/sqlite_blog_cache.dart';
 import 'package:belog/features/blog/data/datasources/sqlite_recent_search_store.dart';
 import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart';
+import 'package:belog/features/blog/data/repositories/featured_shelf_repository_impl.dart';
 import 'package:belog/features/blog/data/views/nowave_article_view_recorder.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
+import 'package:belog/features/blog/domain/repositories/featured_shelf_repository.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/upload_article_image.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
@@ -81,6 +83,15 @@ void registerBlogModule(GetIt locator, DependencyContext context) {
         locator<BlogRemoteDataSource>(),
         locator<BlogLocalDataSource>(),
         locator<ConnectionChecker>(),
+      ),
+    )
+    // The editorial shelf (#377): read when the screen opens, replaced in one
+    // write, never cached and never queued - a stale or replayed shelf is an
+    // ordering nobody chose.
+    ..registerFactory<FeaturedShelfRepository>(
+      () => FeaturedShelfRepositoryImpl(
+        client: apiClient,
+        connectionChecker: locator<ConnectionChecker>(),
       ),
     )
     // Usecases
