@@ -12,6 +12,7 @@ import 'package:belog/core/error/failures.dart';
 import 'package:belog/core/l10n/content_locale.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
+import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
 import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/auth/domain/account_editorial_capacity.dart';
@@ -437,9 +438,7 @@ class _FeaturedShelfPageState extends State<FeaturedShelfPage> {
             // lights up for a list that differs from the stored one and that
             // the shelf would accept.
             key: const ValueKey('featured-shelf-save'),
-            label: _saving
-                ? l10n.featuredShelfSaving
-                : l10n.featuredShelfSave,
+            label: _saving ? l10n.featuredShelfSaving : l10n.featuredShelfSave,
             onPressed: _dirty && reason == null && !_saving ? _save : null,
           ),
         ],
