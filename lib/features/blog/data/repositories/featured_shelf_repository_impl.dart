@@ -66,11 +66,7 @@ class FeaturedShelfRepositoryImpl implements FeaturedShelfRepository {
     final problem = featuredShelfProblem(articleIds);
     if (problem != null) {
       return left(
-        Failure(
-          '这份精选书架还不能发送',
-          kind: FailureKind.validation,
-          code: problem,
-        ),
+        Failure('这份精选书架还不能发送', kind: FailureKind.validation, code: problem),
       );
     }
     // Checked before the fence call rather than after: offline is a fact the

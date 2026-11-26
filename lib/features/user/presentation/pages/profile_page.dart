@@ -93,10 +93,7 @@ class ProfilePage extends StatelessWidget {
 /// badges: a provider per page rather than an app-wide cubit, because the
 /// answer belongs to the session being looked at, and a kept-alive copy of it
 /// is how a demoted editor keeps seeing an entry point.
-Widget _withEditorialProvider(
-  Widget child,
-  EditorialCapacityCubit? provided,
-) {
+Widget _withEditorialProvider(Widget child, EditorialCapacityCubit? provided) {
   if (provided != null) {
     return BlocProvider<EditorialCapacityCubit>.value(
       value: provided,

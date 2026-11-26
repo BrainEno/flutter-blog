@@ -66,21 +66,18 @@ Map<String, dynamic> _row({
 }
 
 http.Response _list(List<Object?> rows) => http.Response(
-  jsonEncode({
-    'data': rows,
-  }),
+  jsonEncode({'data': rows}),
   200,
   headers: {'content-type': 'application/json'},
 );
 
-http.Response _raw(String body) => http.Response(
-  body,
-  200,
-  headers: {'content-type': 'application/json'},
-);
+http.Response _raw(String body) =>
+    http.Response(body, 200, headers: {'content-type': 'application/json'});
 
 http.Response _error(int status, {String code = 'UNTRUSTED'}) => http.Response(
-  jsonEncode({'error': {'code': code}}),
+  jsonEncode({
+    'error': {'code': code},
+  }),
   status,
   headers: {'content-type': 'application/json'},
 );
@@ -102,13 +99,15 @@ Failure? _saveFailure(Either<Failure, FeaturedShelfSaveResult> result) =>
 void main() {
   test('the shelf read asks for the whole capacity, not a feed page', () async {
     final seen = <http.Request>[];
-    final repository = _repository(MockClient((request) async {
-      seen.add(request);
-      return _list([
-        _row(slug: 'first'),
-        _row(id: '22222222-2222-4222-8222-222222222222', slug: 'second'),
-      ]);
-    }));
+    final repository = _repository(
+      MockClient((request) async {
+        seen.add(request);
+        return _list([
+          _row(slug: 'first'),
+          _row(id: '22222222-2222-4222-8222-222222222222', slug: 'second'),
+        ]);
+      }),
+    );
 
     final entries = _loaded(await repository.load(locale: 'zh-CN'))!;
     expect(seen, hasLength(1));
@@ -128,12 +127,14 @@ void main() {
   });
 
   test('a row it cannot name fails instead of shortening the shelf', () {
-    final repository = _repository(MockClient((_) async {
-      return _list([
-        _row(),
-        _row(id: 'not-a-uuid ', slug: 'loose'),
-      ]);
-    }));
+    final repository = _repository(
+      MockClient((_) async {
+        return _list([
+          _row(),
+          _row(id: 'not-a-uuid ', slug: 'loose'),
+        ]);
+      }),
+    );
 
     expect(
       _readFailure(await repository.load(locale: 'zh-CN'))?.code,
@@ -145,9 +146,11 @@ void main() {
   });
 
   test('a non-list payload is a failure, not an empty shelf', () async {
-    final repository = _repository(MockClient((_) async {
-      return _raw('{"data": null}');
-    }));
+    final repository = _repository(
+      MockClient((_) async {
+        return _raw('{"data": null}');
+      }),
+    );
 
     expect(
       _readFailure(await repository.load(locale: 'zh-CN'))?.code,
@@ -157,10 +160,12 @@ void main() {
 
   test('browse omits the query when there is nothing to search', () async {
     final seen = <http.Request>[];
-    final repository = _repository(MockClient((request) async {
-      seen.add(request);
-      return _list([_row()]);
-    }));
+    final repository = _repository(
+      MockClient((request) async {
+        seen.add(request);
+        return _list([_row()]);
+      }),
+    );
 
     await repository.browse(locale: 'en');
     await repository.browse(locale: 'en', query: '  诗  ');
@@ -173,10 +178,12 @@ void main() {
 
   test('the save is the whole ordered list under its one key', () async {
     final seen = <http.Request>[];
-    final repository = _repository(MockClient((request) async {
-      seen.add(request);
-      return _list([_row()]);
-    }));
+    final repository = _repository(
+      MockClient((request) async {
+        seen.add(request);
+        return _list([_row()]);
+      }),
+    );
 
     final result = await repository.save(
       fence: _fence,
@@ -198,12 +205,14 @@ void main() {
   });
 
   test('stored ids come back as the server sent them', () async {
-    final repository = _repository(MockClient((_) async {
-      return _list([
-        _row(id: '22222222-2222-4222-8222-222222222222'),
-        _row(id: '11111111-1111-4111-8111-111111111111'),
-      ]);
-    }));
+    final repository = _repository(
+      MockClient((_) async {
+        return _list([
+          _row(id: '22222222-2222-4222-8222-222222222222'),
+          _row(id: '11111111-1111-4111-8111-111111111111'),
+        ]);
+      }),
+    );
 
     final result = await repository.save(
       fence: _fence,
@@ -260,10 +269,12 @@ void main() {
 
   test('an unreadable success is unknown, never a retry', () async {
     var requests = 0;
-    final repository = _repository(MockClient((_) async {
-      requests++;
-      return _raw('{"data": "ok"}');
-    }));
+    final repository = _repository(
+      MockClient((_) async {
+        requests++;
+        return _raw('{"data": "ok"}');
+      }),
+    );
 
     final result = await repository.save(
       fence: _fence,
@@ -277,10 +288,12 @@ void main() {
 
   test('a 401 is reported once and never replayed', () async {
     var requests = 0;
-    final repository = _repository(MockClient((_) async {
-      requests++;
-      return _error(401, code: 'UNAUTHENTICATED');
-    }));
+    final repository = _repository(
+      MockClient((_) async {
+        requests++;
+        return _error(401, code: 'UNAUTHENTICATED');
+      }),
+    );
 
     final failure = _saveFailure(
       await repository.save(
@@ -296,51 +309,54 @@ void main() {
 
   test('a shelf from a left account is refused before the request', () async {
     var requests = 0;
-    final repository = _repository(MockClient((_) async {
-      requests++;
-      return _list(const []);
-    }), auth: _Auth(user: 'user-b'));
-
-    final failure = _saveFailure(
-      await repository.save(
-        fence: _fence,
-        locale: 'zh-CN',
-        articleIds: const [],
-      ),
-    );
-
-    expect(failure?.code, 'auth.sessionChanged');
-    expect(requests, 0);
-  });
-
-  test('offline is stated without spending a request', () async {
-    var requests = 0;
     final repository = _repository(
       MockClient((_) async {
         requests++;
         return _list(const []);
-      }),
-      online: false,
-    );
+      }), auth: _Auth(user: 'user-b'));
 
-    final failure = _saveFailure(
-      await repository.save(
-        fence: _fence,
-        locale: 'zh-CN',
-        articleIds: const [],
-      ),
-    );
+      final failure = _saveFailure(
+        await repository.save(
+          fence: _fence,
+          locale: 'zh-CN',
+          articleIds: const [],
+        ),
+      );
 
-    expect(failure?.code, 'network.offline');
-    expect(requests, 0);
-  });
+      expect(failure?.code, 'auth.sessionChanged');
+      expect(requests, 0);
+    });
 
-  test('the server\'s own ceiling is applied before sending', () async {
-    var requests = 0;
-    final repository = _repository(MockClient((_) async {
-      requests++;
-      return _list(const []);
-    }));
+    test('offline is stated without spending a request', () async {
+      var requests = 0;
+      final repository = _repository(
+        MockClient((_) async {
+          requests++;
+          return _list(const []);
+        }),
+        online: false,
+      );
+
+      final failure = _saveFailure(
+        await repository.save(
+          fence: _fence,
+          locale: 'zh-CN',
+          articleIds: const [],
+        ),
+      );
+
+      expect(failure?.code, 'network.offline');
+      expect(requests, 0);
+    });
+
+    test('the server\'s own ceiling is applied before sending', () async {
+      var requests = 0;
+      final repository = _repository(
+        MockClient((_) async {
+          requests++;
+          return _list(const []);
+        }),
+      );
 
     final tooLong = [
       for (var i = 0; i < kFeaturedShelfCapacity + 1; i++) '$i',

@@ -47,7 +47,9 @@ http.Response _data(Object? value) => http.Response(
 );
 
 http.Response _error(int status, {String code = 'UNTRUSTED'}) => http.Response(
-  jsonEncode({'error': {'code': code}}),
+  jsonEncode({
+    'error': {'code': code},
+  }),
   status,
   headers: {'content-type': 'application/json'},
 );
@@ -62,10 +64,12 @@ Failure? _failure(Either<Failure, AccountEditorialCapacity> result) =>
 void main() {
   test('asks /me once, with the session token, and reads the role', () async {
     final seen = <http.Request>[];
-    final repository = _repository(MockClient((request) async {
-      seen.add(request);
-      return _data({'id': 'user-a', 'isEditor': true});
-    }));
+    final repository = _repository(
+      MockClient((request) async {
+        seen.add(request);
+        return _data({'id': 'user-a', 'isEditor': true});
+      }),
+    );
 
     expect(
       _capacity(await repository.readCapacity(_fence)),
@@ -79,9 +83,11 @@ void main() {
   });
 
   test('a plain "no" is an answer, not a failure', () async {
-    final repository = _repository(MockClient((_) async {
-      return _data({'id': 'user-a', 'isEditor': false});
-    }));
+    final repository = _repository(
+      MockClient((_) async {
+        return _data({'id': 'user-a', 'isEditor': false});
+      }),
+    );
 
     final result = await repository.readCapacity(_fence);
     expect(_capacity(result), AccountEditorialCapacity.denied);
@@ -89,9 +95,11 @@ void main() {
   });
 
   test('a /me that omits the field is unknown, not denied', () async {
-    final repository = _repository(MockClient((_) async {
-      return _data({'id': 'user-a', 'email': 'a@example.invalid'});
-    }));
+    final repository = _repository(
+      MockClient((_) async {
+        return _data({'id': 'user-a', 'email': 'a@example.invalid'});
+      }),
+    );
 
     final result = await repository.readCapacity(_fence);
     expect(_capacity(result), AccountEditorialCapacity.unknown);
@@ -101,10 +109,12 @@ void main() {
   test('only a JSON boolean counts as an answer', () async {
     for (final value in <Object?>['true', 1, 0, null, 'yes']) {
       var requests = 0;
-      final repository = _repository(MockClient((_) async {
-        requests++;
-        return _data({'id': 'user-a', 'isEditor': value});
-      }));
+      final repository = _repository(
+        MockClient((_) async {
+          requests++;
+          return _data({'id': 'user-a', 'isEditor': value});
+        }),
+      );
 
       expect(
         _capacity(await repository.readCapacity(_fence)),
@@ -171,10 +181,12 @@ void main() {
 
   test('a server error is not retried: one request per read', () async {
     var requests = 0;
-    final repository = _repository(MockClient((_) async {
-      requests++;
-      return _error(500, code: 'INTERNAL');
-    }));
+    final repository = _repository(
+      MockClient((_) async {
+        requests++;
+        return _error(500, code: 'INTERNAL');
+      }),
+    );
 
     expect(_failure(await repository.readCapacity(_fence)), isNotNull);
     expect(requests, 1);
