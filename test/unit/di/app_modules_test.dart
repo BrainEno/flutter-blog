@@ -25,6 +25,7 @@ import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:belog/features/auth/presentation/bloc/editorial_capacity_cubit.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/datasources/category_remote_data_source.dart';
@@ -37,10 +38,10 @@ import 'package:belog/features/blog/domain/read_aloud/read_aloud_settings.dart';
 import 'package:belog/features/blog/domain/reader/reader_text_size.dart';
 import 'package:belog/features/blog/domain/repositories/blog_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
-import 'package:belog/features/blog/domain/repositories/featured_shelf_repository.dart';
 import 'package:belog/features/blog/domain/repositories/category_repository.dart';
 import 'package:belog/features/blog/domain/repositories/comment_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
+import 'package:belog/features/blog/domain/repositories/featured_shelf_repository.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
@@ -135,6 +136,7 @@ const Map<String, _Row<Object>> _resolutions = {
   'AccountSessionRepository': _Row<AccountSessionRepository>(),
   'AppDatabase': _Row<AppDatabase>(),
   'AppUserCubit': _Row<AppUserCubit>(),
+  'EditorialCapacityCubit': _Row<EditorialCapacityCubit>(),
   'AuthBloc': _Row<AuthBloc>(),
   'AuthRemoteDataSource': _Row<AuthRemoteDataSource>(),
   'AuthRepository': _Row<AuthRepository>(),

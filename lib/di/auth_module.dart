@@ -18,6 +18,7 @@ import 'package:belog/features/auth/domain/usecases/reset_password.dart';
 import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
+import 'package:belog/features/auth/presentation/bloc/editorial_capacity_cubit.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
 import 'package:get_it/get_it.dart';
@@ -73,6 +74,13 @@ void registerAuthModule(GetIt locator, DependencyContext context) {
     // or the role column can change underneath an open app.
     ..registerFactory<AccountEditorialRepository>(
       () => AccountEditorialRepositoryImpl(apiClient),
+    )
+    // The profile row that asks the same question, read once per menu opening.
+    ..registerFactory(
+      () => EditorialCapacityCubit(
+        repository: locator<AccountEditorialRepository>(),
+        identity: sessionManager,
+      ),
     )
     // Usecases
     ..registerFactory(() => RequestPasswordReset(locator()))

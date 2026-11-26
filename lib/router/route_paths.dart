@@ -66,6 +66,10 @@ abstract final class RouteSegments {
   static const publishQueue = 'publish-queue';
   static const sessions = 'sessions';
 
+  /// The editorial featured shelf (#377). A profile child rather than a tab:
+  /// it is reached from the account menu, and it needs a session.
+  static const featuredShelf = 'featured-shelf';
+
   /// Path parameter names, shared by the patterns above and their builders.
   static const idParam = 'id';
   static const userIdParam = 'userId';
@@ -179,6 +183,7 @@ abstract final class RoutePaths {
   static const history = '$profile/${RouteSegments.history}';
   static const publishQueue = '$profile/${RouteSegments.publishQueue}';
   static const sessions = '$profile/${RouteSegments.sessions}';
+  static const featuredShelf = '$profile/${RouteSegments.featuredShelf}';
 
   /// One conversation of the inbox.
   static String messageThread(String conversationId) =>
