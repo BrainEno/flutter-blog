@@ -16,6 +16,7 @@ import 'package:belog/features/blog/domain/usecase/get_my_article_editions.dart'
 import 'package:belog/features/blog/domain/usecase/get_my_articles.dart';
 import 'package:belog/features/blog/presentation/blocs/blog_by/bloc/blog_by_bloc.dart';
 import 'package:belog/features/blog/presentation/widgets/blog_feed_skeleton.dart';
+import 'package:belog/core/utils/article_resource_opener.dart';
 import 'package:belog/features/user/presentation/pages/author_page.dart';
 import 'package:belog/features/user/domain/entities/author_profile.dart';
 import 'package:belog/features/user/domain/usecases/author.dart';
@@ -86,6 +87,7 @@ Future<void> _pumpPage(
   Locale locale = const Locale('zh'),
   double textScale = 1,
   ThemeMode themeMode = ThemeMode.light,
+  ArticleResourceOpener opener = const ArticleResourceOpener(),
 }) {
   final router = GoRouter(
     initialLocation: '/',
@@ -98,7 +100,7 @@ Future<void> _pumpPage(
             BlocProvider<AuthorCubit>.value(value: authorCubit),
             BlocProvider<BlogByBloc>.value(value: blogByBloc),
           ],
-          child: const AuthorPage(userId: 'author-1'),
+          child: AuthorPage(userId: 'author-1', opener: opener),
         ),
       ),
       GoRoute(
@@ -370,6 +372,105 @@ void main() {
     expect(finder, findsOneWidget);
     final link = tester.widget<TextButton>(finder);
     expect(link.onPressed, isNull);
+  });
+
+  /// A profile whose only interesting field is the web site, plus the page
+  /// wired to [opener]. The launcher is recorded so these tests can count what
+  /// left the app instead of guessing from the button's shape.
+  Future<List<Uri>> pumpAndTapWebsite(
+    WidgetTester tester,
+    String websiteUrl,
+    ArticleResourceOpener Function(void Function(Uri) record) buildOpener,
+  ) async {
+    appUserCubit.updateUser(_user());
+    final opened = <Uri>[];
+    final profile = _profileWithWebsite(websiteUrl);
+    when(
+      () => getAuthorProfile('author-1'),
+    ).thenAnswer((_) async => right<Failure, AuthorProfile>(profile));
+    final authorCubit = buildAuthorCubit();
+    addTearDown(authorCubit.close);
+    final blogByBloc = buildBlogByBloc();
+    addTearDown(blogByBloc.close);
+
+    await _pumpPage(
+      tester,
+      appUserCubit: appUserCubit,
+      authorCubit: authorCubit,
+      blogByBloc: blogByBloc,
+      opener: buildOpener(opened.add),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, websiteUrl));
+    await tester.pumpAndSettle();
+    return opened;
+  }
+
+  testWidgets('a website tap hands the launcher one resolved address', (
+    tester,
+  ) async {
+    const site = 'https://example.invalid/site';
+    final opened = await pumpAndTapWebsite(
+      tester,
+      site,
+      (record) => ArticleResourceOpener(
+        launch: (uri) async {
+          record(uri);
+          return true;
+        },
+      ),
+    );
+
+    // Exactly one hand-off, carrying the whitelisted address rather than the
+    // raw profile text.
+    expect(opened, [Uri.parse(site)]);
+    // A successful open says nothing to the reader.
+    expect(find.byType(SnackBar), findsNothing);
+  });
+
+  testWidgets('a site-relative website opens against the injected base', (
+    tester,
+  ) async {
+    // `AppSecrets.webBaseUrl` is a dart-define, so a widget test cannot set the
+    // origin the app compiles with. Injecting it here is what makes the other
+    // half of the rule checkable: with a base, the relative address is a real
+    // link and the launcher receives the resolved absolute one.
+    final opened = await pumpAndTapWebsite(
+      tester,
+      '/about',
+      (record) => ArticleResourceOpener(
+        webBaseUrl: 'https://web.example.invalid',
+        launch: (uri) async {
+          record(uri);
+          return true;
+        },
+      ),
+    );
+
+    expect(opened, [Uri.parse('https://web.example.invalid/about')]);
+  });
+
+  testWidgets('a refused launch says so once and does not retry', (
+    tester,
+  ) async {
+    const site = 'https://example.invalid/site';
+    var calls = 0;
+    final opened = await pumpAndTapWebsite(
+      tester,
+      site,
+      (record) => ArticleResourceOpener(
+        launch: (uri) async {
+          calls++;
+          return false;
+        },
+      ),
+    );
+
+    // The platform refused, so nothing is claimed to have opened; the reader
+    // sees the one message and no second attempt happens behind their back.
+    expect(calls, 1);
+    expect(opened, isEmpty);
+    expect(find.byType(SnackBar), findsOneWidget);
   });
 
   testWidgets('English author page localizes counts, empty and follow errors', (

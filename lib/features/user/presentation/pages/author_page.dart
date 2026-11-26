@@ -11,7 +11,7 @@ import 'package:belog/core/l10n/display_name_l10n.dart';
 import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
-import 'package:belog/core/utils/article_resource_url.dart';
+import 'package:belog/core/utils/article_resource_opener.dart';
 import 'package:belog/core/utils/format_date.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
 import 'package:belog/features/blog/domain/entities/blog.dart';
@@ -29,7 +29,6 @@ import 'package:belog/core/design/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:belog/router/route_paths.dart';
 
 /// Public author profile page (issue #20): who they are, the follow
@@ -43,7 +42,15 @@ import 'package:belog/router/route_paths.dart';
 class AuthorPage extends StatefulWidget {
   final String userId;
 
-  const AuthorPage({super.key, required this.userId});
+  /// The whitelist plus the launcher, injectable so a test can count what the
+  /// page tried to open instead of only checking that a button looks inert.
+  final ArticleResourceOpener opener;
+
+  const AuthorPage({
+    super.key,
+    required this.userId,
+    this.opener = const ArticleResourceOpener(),
+  });
 
   @override
   State<AuthorPage> createState() => _AuthorPageState();
@@ -126,16 +133,16 @@ class _AuthorPageState extends State<AuthorPage> {
 
   Future<void> _openWebsite(String url) async {
     // A profile's web site is server-supplied, so it answers to the same
-    // whitelist as article links: only http(s) reaches the operating system.
-    final uri = resolveArticleResourceUrl(url);
-    if (uri == null) {
-      if (mounted) showSnackBar(context, context.l10n.invalidLink);
-      return;
-    }
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!opened && mounted) {
-      showSnackBar(context, context.l10n.cannotOpenLink);
-    }
+    // whitelist as article links; the opener owns both halves of that rule.
+    final outcome = await widget.opener.open(url);
+    if (outcome == ArticleResourceOutcome.opened) return;
+    if (!mounted) return;
+    showSnackBar(
+      context,
+      outcome == ArticleResourceOutcome.rejected
+          ? context.l10n.invalidLink
+          : context.l10n.cannotOpenLink,
+    );
   }
 
   void _openRelationships(AuthorRelationshipKind kind) {
@@ -241,6 +248,7 @@ class _AuthorPageState extends State<AuthorPage> {
                       _ProfileHeader(
                         profile: profile,
                         onOpenWebsite: _openWebsite,
+                        opener: widget.opener,
                         onOpenFollowers: () => _openRelationships(
                           AuthorRelationshipKind.followers,
                         ),
@@ -394,11 +402,16 @@ class _ProfileHeader extends StatelessWidget {
   final VoidCallback onOpenFollowers;
   final VoidCallback onOpenFollowing;
 
+  /// Shared with the page, so the inert/tappable decision and the launch go
+  /// through one rule rather than two copies of it.
+  final ArticleResourceOpener opener;
+
   const _ProfileHeader({
     required this.profile,
     required this.onOpenWebsite,
     required this.onOpenFollowers,
     required this.onOpenFollowing,
+    required this.opener,
   });
 
   @override
@@ -488,7 +501,7 @@ class _ProfileHeader extends StatelessWidget {
   /// guards article links decides, and an unsafe address is still shown -
   /// only as text a reader can copy, never as something this app launches.
   void Function()? _websiteAction(String value) {
-    if (resolveArticleResourceUrl(value) == null) return null;
+    if (!opener.accepts(value)) return null;
     return () => onOpenWebsite(value);
   }
 }

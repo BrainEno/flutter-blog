@@ -59,8 +59,13 @@ lib/
   资源与头像（`/avatars/me.webp`，no-wave `validateProfileUrl` 允许的格式）
   仅按 `WEB_BASE_URL` 解析，不猜测 API origin；未配置时保留中性占位；
   不安全的 URL 不可交互、也不会被加载。作者主页的网站链接（服务端随资料返回的
-  `websiteUrl`）走同一个白名单：过不了判定的地址仍显示为可复制的文字，但不给
-  可点按钮，因此不存在把 `javascript:` 之类 scheme 交给系统的入口。
+  `websiteUrl`）与正文链接走同一个出口 `ArticleResourceOpener`
+  （`lib/core/utils/article_resource_opener.dart`）：白名单判定与 `launchUrl`
+  都收在那一处，返回值区分「被白名单拒绝」与「平台没有打开」，页面据此说不同的
+  话；过不了判定的地址仍显示为可复制的文字，但不给可点按钮。于是 `lib/` 里只剩门
+  这一个文件会调用 `launchUrl`（由 `test/unit/core/external_link_guard_test.dart`
+  钉住），唯一例外是关于页那些编译期常量链接（`mailto:`、仓库地址）——它们不来自
+  服务端，也就不需要白名单。
 - **Failure 契约**（`core/error/failures.dart`）：`kind`
   （network/timeout/auth/permission/validation/storage/server/unknown）+
   面向用户的中文兜底 `message` + 稳定 `code` + 可选本地化标识 `l10nKey` +

@@ -2,6 +2,7 @@ import 'package:belog/core/common/media/no_wave_image_decode_size.dart';
 import 'package:belog/core/design/design_tokens.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/utils/app_logger.dart';
+import 'package:belog/core/utils/article_resource_opener.dart';
 import 'package:belog/core/utils/article_resource_url.dart';
 import 'package:belog/features/blog/presentation/markdown/markdown_styles.dart';
 import 'package:belog/features/blog/presentation/read_aloud/read_aloud_controller.dart';
@@ -11,7 +12,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:markdown/markdown.dart' as md;
-import 'package:url_launcher/url_launcher.dart';
 
 /// Turns a parsed Markdown AST into widgets.
 ///
@@ -531,12 +531,16 @@ class MarkdownRenderer {
   /// (javascript:, file:, custom schemes, ...) is inert text.
   static Uri? _httpUrl(String value) => resolveArticleResourceUrl(value);
 
+  static const ArticleResourceOpener _opener = ArticleResourceOpener();
+
   static void _launch(BuildContext context, String href) {
-    final uri = _httpUrl(href);
-    if (uri == null) return;
-    launchUrl(uri, mode: LaunchMode.externalApplication).catchError((e) {
+    // The opener re-applies the whitelist rather than trusting `_httpUrl`: one
+    // door means a tap handler cannot launch something the renderer would not
+    // have accepted. A link outside the whitelist never gets a tap handler in
+    // the first place, so for those this stays a no-op.
+    _opener.open(href).catchError((e) {
       AppLogger.error('opening a markdown link failed', error: e);
-      return false;
+      return ArticleResourceOutcome.unavailable;
     });
   }
 }

@@ -129,6 +129,14 @@
   `core/utils/article_resource_url.dart` 的白名单，过不了判定的地址显示为文字
   但没有可点按钮。`test/widget/author_page_test.dart` 为六种恶意形状与一个
   站点相对路径钉住了「不可点」，并保留一个 `https` 正例防止整体误封。
+- 上一轮的修法留下一个结构缺口：判定与交付分散在三个调用点，各自围着同一个
+  插件调用写了不同策略（`markdown_renderer.dart` 吞异常记日志、`author_page.dart`
+  弹提示且不捕获、`about_page.dart` 先 `canLaunchUrl` 再启动）。现在前两者收进
+  `core/utils/article_resource_opener.dart` 这一个门：白名单先判、启动模式由门统一
+  选定、结果区分「被拒绝」与「平台没打开」。门带 `webBaseUrl` 与 `launch` 两个可
+  注入的旋钮，因此 widget 测试第一次能数出「到底把哪个地址交给了系统」，而站点
+  相对路径的正例也只有靠注入才成立（`AppSecrets` 是编译期常量）。`launchUrl(` 在
+  `lib/` 只剩门这一处，关于页的编译期 `mailto:`/仓库链接是记录在案的例外。
 
 ## 后续隐私修复
 
