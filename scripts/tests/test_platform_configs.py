@@ -99,3 +99,77 @@ class DebugNetworkPolicyTests(unittest.TestCase):
                     self.assertIsNone(forbidden.search(source), f'{path} depends on feature data')
                     if layer == 'domain':
                         self.assertIsNone(framework.search(source), f'{path} depends on UI or database frameworks')
+
+
+class ArticleDeepLinkSurfaceTests(unittest.TestCase):
+    """The OS side of #367: what the platform configs are allowed to claim.
+
+    A deep-link declaration that is wider than the app can handle is a bug with
+    no visible symptom - Android verification fails silently, iOS sends the
+    user to Safari - so the narrow surface is pinned here rather than trusted
+    to docs. Adding a hosted association is the owner's call (see
+    docs/deep-links.md); when it happens, these expectations move with it.
+    """
+
+    ANDROID_NS = '{http://schemas.android.com/apk/res/android}'
+
+    def _android_view_data(self):
+        root = ET.parse(ROOT / 'android/app/src/main/AndroidManifest.xml').getroot()
+        android = self.ANDROID_NS
+        rows = []
+        for filter_ in root.find('application').findall('.//intent-filter'):
+            actions = {el.get(f'{android}name') for el in filter_.findall('action')}
+            if 'android.intent.action.VIEW' not in actions:
+                continue
+            for data in filter_.findall('data'):
+                rows.append(
+                    {key[len(android):]: value for key, value in data.attrib.items() if key.startswith(android)}
+                )
+        return rows
+
+    def test_android_opens_only_the_custom_scheme_for_the_article_host(self):
+        rows = self._android_view_data()
+        self.assertEqual(rows, [{'scheme': 'nowave', 'host': 'article'}], 'Android must not declare a link the app cannot resolve')
+        manifest = (ROOT / 'android/app/src/main/AndroidManifest.xml').read_text(encoding='utf-8')
+        # autoVerify without a served assetlinks.json is a broken verification,
+        # and a wildcard host would route every site's links into the app.
+        self.assertNotIn('autoVerify', manifest)
+        self.assertNotIn('"*"', manifest)
+        for row in rows:
+            self.assertFalse({'pathPrefix', 'pathPattern', 'path'} & row.keys())
+            self.assertNotIn('*', ''.join(row.values()))
+
+    def test_ios_registers_the_scheme_and_no_associated_domains(self):
+        for name in ('ios/Runner/Info.plist', 'ios/Runner/Info-Debug.plist'):
+            with (ROOT / name).open('rb') as stream:
+                info = plistlib.load(stream)
+            self.assertEqual(
+                info.get('CFBundleURLTypes'),
+                [{'CFBundleTypeRole': 'Editor', 'CFBundleURLName': 'com.nodeman24.nowave.article', 'CFBundleURLSchemes': ['nowave']}],
+                f'{name} URL types drifted from the custom scheme',
+            )
+            self.assertNotIn('com.apple.developer.associated-domains', info, f'{name} claims Universal Links the repo cannot verify')
+        self.assertEqual(sorted(str(p.relative_to(ROOT)) for p in (ROOT / 'ios').rglob('*.entitlements')), [])
+
+    def test_platform_configs_match_the_dart_constants(self):
+        source = (ROOT / 'lib/core/utils/article_deep_link.dart').read_text(encoding='utf-8')
+        const = re.compile(r"const String (kArticleDeepLink\w+) = '([^']*)';")
+        found = dict(const.findall(source))
+        self.assertEqual(
+            (found.get('kArticleDeepLinkScheme'), found.get('kArticleDeepLinkHost')),
+            ('nowave', 'article'),
+            'article_deep_link.dart no longer defines the constants these configs are read against',
+        )
+        rows = self._android_view_data()
+        self.assertEqual(
+            [(row.get('scheme'), row.get('host')) for row in rows],
+            [(found['kArticleDeepLinkScheme'], found['kArticleDeepLinkHost'])],
+            'renaming the scheme or host in Dart without the manifest leaves deep links dead on arrival',
+        )
+        with (ROOT / 'ios/Runner/Info.plist').open('rb') as stream:
+            schemes = plistlib.load(stream)['CFBundleURLTypes'][0]['CFBundleURLSchemes']
+        self.assertEqual(schemes, [found['kArticleDeepLinkScheme']])
+
+
+if __name__ == '__main__':
+    unittest.main()
