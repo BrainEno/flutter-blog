@@ -14,7 +14,6 @@ import 'package:belog/core/l10n/failure_l10n.dart';
 import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/nowave/nowave_session.dart';
 import 'package:belog/core/nowave/nowave_session_fence.dart';
-import 'package:belog/core/nowave/session/session_identity.dart';
 import 'package:belog/features/auth/domain/account_editorial_capacity.dart';
 import 'package:belog/features/auth/domain/repository/account_editorial_repository.dart';
 import 'package:belog/features/blog/domain/entities/featured_shelf_entry.dart';

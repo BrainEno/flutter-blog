@@ -13,10 +13,10 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 class _Auth implements NowaveViewerAuthenticator {
-  _Auth({this.user = 'user-a', this.generation = 1});
+  _Auth({this.user = 'user-a'});
 
   String? user;
-  int generation;
+  int generation = 1;
 
   @override
   String? get accessToken => 'fake-token-a';
@@ -41,24 +41,37 @@ class _Net implements ConnectionChecker {
 }
 
 const _fence = NowaveSessionFence(userId: 'user-a', generation: 1);
+const _locale = 'zh-CN';
+const _firstId = '11111111-1111-4111-8111-111111111111';
+const _secondId = '22222222-2222-4222-8222-222222222222';
 
 FeaturedShelfRepositoryImpl _repository(
   MockClient httpClient, {
   _Auth? auth,
   bool online = true,
 }) {
+  final client = NowaveApiClient(
+    baseUrl: Uri.parse('https://api.example.invalid'),
+    authenticator: auth ?? _Auth(),
+    httpClient: httpClient,
+  );
   return FeaturedShelfRepositoryImpl(
-    client: NowaveApiClient(
-      baseUrl: Uri.parse('https://api.example.invalid'),
-      authenticator: auth ?? _Auth(),
-      httpClient: httpClient,
-    ),
+    client: client,
     connectionChecker: _Net(online),
   );
 }
 
+/// Every save in these tests is the same call with a different list, kept in
+/// one place so a failure below names the shelf rather than the plumbing.
+Future<Either<Failure, FeaturedShelfSaveResult>> _send(
+  FeaturedShelfRepository repository, {
+  List<String> ids = const [],
+}) {
+  return repository.save(fence: _fence, locale: _locale, articleIds: ids);
+}
+
 Map<String, dynamic> _row({
-  String id = '11111111-1111-4111-8111-111111111111',
+  String id = _firstId,
   String slug = 'poetry-1a2b',
   String title = '关于篇幅',
 }) {
@@ -75,9 +88,7 @@ http.Response _raw(String body) =>
     http.Response(body, 200, headers: {'content-type': 'application/json'});
 
 http.Response _error(int status, {String code = 'UNTRUSTED'}) => http.Response(
-  jsonEncode({
-    'error': {'code': code},
-  }),
+  jsonEncode({'error': {'code': code}}),
   status,
   headers: {'content-type': 'application/json'},
 );
@@ -99,73 +110,52 @@ Failure? _saveFailure(Either<Failure, FeaturedShelfSaveResult> result) =>
 void main() {
   test('the shelf read asks for the whole capacity, not a feed page', () async {
     final seen = <http.Request>[];
-    final repository = _repository(
-      MockClient((request) async {
-        seen.add(request);
-        return _list([
-          _row(slug: 'first'),
-          _row(id: '22222222-2222-4222-8222-222222222222', slug: 'second'),
-        ]);
-      }),
-    );
+    final rows = [_row(slug: 'first'), _row(id: _secondId, slug: 'second')];
+    final client = MockClient((request) async {
+      seen.add(request);
+      return _list(rows);
+    });
+    final repository = _repository(client);
 
-    final entries = _loaded(await repository.load(locale: 'zh-CN'))!;
+    final entries = _loaded(await repository.load(locale: _locale))!;
     expect(seen, hasLength(1));
     expect(seen.single.url.path, '/api/v1/featured');
     expect(seen.single.url.queryParameters['limit'], '20');
-    expect(seen.single.url.queryParameters['locale'], 'zh-CN');
+    expect(seen.single.url.queryParameters['locale'], _locale);
     expect(entries.map((entry) => entry.slug), ['first', 'second']);
-    expect(
-      entries.map((entry) => entry.articleId).toList(),
-      [
-        '11111111-1111-4111-8111-111111111111',
-        '22222222-2222-4222-8222-222222222222',
-      ],
-      reason: 'editorial order is the whole point of the read',
-    );
+    // A shelf saved from a truncated read would delete the missing picks.
+    final ids = entries.map((entry) => entry.articleId).toList();
+    expect(ids, [_firstId, _secondId]);
     expect(entries.first.title, '关于篇幅');
   });
 
-  test('a row it cannot name fails instead of shortening the shelf', () {
-    final repository = _repository(
-      MockClient((_) async {
-        return _list([
-          _row(),
-          _row(id: 'not-a-uuid ', slug: 'loose'),
-        ]);
-      }),
-    );
+  test('a row it cannot name fails instead of shortening the shelf', () async {
+    final rows = [_row(), _row(id: 'not-a-uuid ', slug: 'loose')];
+    final client = MockClient((_) async => _list(rows));
+    final repository = _repository(client);
 
-    expect(
-      _readFailure(await repository.load(locale: 'zh-CN'))?.code,
-      'featured.unreadable',
-      reason:
-          'a silently dropped row would be saved back as a shorter shelf, '
-          'deleting somebody\'s pick on the next save',
-    );
+    final result = await repository.load(locale: _locale);
+    final code = _readFailure(result)?.code;
+    // A silently dropped row would come back as a shorter shelf on the next
+    // save, deleting somebody's pick.
+    expect(code, 'featured.unreadable');
   });
 
   test('a non-list payload is a failure, not an empty shelf', () async {
-    final repository = _repository(
-      MockClient((_) async {
-        return _raw('{"data": null}');
-      }),
-    );
+    final client = MockClient((_) async => _raw('{"data": null}'));
+    final repository = _repository(client);
 
-    expect(
-      _readFailure(await repository.load(locale: 'zh-CN'))?.code,
-      'featured.unreadable',
-    );
+    final result = await repository.load(locale: _locale);
+    expect(_readFailure(result)?.code, 'featured.unreadable');
   });
 
   test('browse omits the query when there is nothing to search', () async {
     final seen = <http.Request>[];
-    final repository = _repository(
-      MockClient((request) async {
-        seen.add(request);
-        return _list([_row()]);
-      }),
-    );
+    final client = MockClient((request) async {
+      seen.add(request);
+      return _list([_row()]);
+    });
+    final repository = _repository(client);
 
     await repository.browse(locale: 'en');
     await repository.browse(locale: 'en', query: '  诗  ');
@@ -178,209 +168,121 @@ void main() {
 
   test('the save is the whole ordered list under its one key', () async {
     final seen = <http.Request>[];
-    final repository = _repository(
-      MockClient((request) async {
-        seen.add(request);
-        return _list([_row()]);
-      }),
-    );
+    final client = MockClient((request) async {
+      seen.add(request);
+      return _list([_row()]);
+    });
+    final repository = _repository(client);
 
-    final result = await repository.save(
-      fence: _fence,
-      locale: 'zh-CN',
-      articleIds: ['11111111-1111-4111-8111-111111111111'],
-    );
-
+    final result = await _send(repository, ids: [_firstId]);
     expect(_saved(result)!.outcome, FeaturedShelfSave.stored);
     expect(seen, hasLength(1));
     expect(seen.single.method, 'PUT');
     expect(seen.single.url.path, '/api/v1/featured');
-    expect(seen.single.url.queryParameters, {'locale': 'zh-CN'});
+    expect(seen.single.url.queryParameters, {'locale': _locale});
     expect(seen.single.followRedirects, isFalse);
-    expect(
-      seen.single.body,
-      '{"articleIds":["11111111-1111-4111-8111-111111111111"]}',
-      reason: 'the server refuses a body with any other key',
-    );
+    // The server refuses a body carrying any other key.
+    expect(seen.single.body, '{"articleIds":["$_firstId"]}');
   });
 
   test('stored ids come back as the server sent them', () async {
-    final repository = _repository(
-      MockClient((_) async {
-        return _list([
-          _row(id: '22222222-2222-4222-8222-222222222222'),
-          _row(id: '11111111-1111-4111-8111-111111111111'),
-        ]);
-      }),
-    );
+    final rows = [_row(id: _secondId), _row(id: _firstId)];
+    final client = MockClient((_) async => _list(rows));
+    final repository = _repository(client);
 
-    final result = await repository.save(
-      fence: _fence,
-      locale: 'zh-CN',
-      articleIds: [
-        '11111111-1111-4111-8111-111111111111',
-        '22222222-2222-4222-8222-222222222222',
-      ],
-    );
-
-    expect(
-      _saved(result)!.storedIds,
-      [
-        '22222222-2222-4222-8222-222222222222',
-        '11111111-1111-4111-8111-111111111111',
-      ],
-      reason: 'a concurrent editor must be visible, not papered over',
-    );
+    final result = await _send(repository, ids: [_firstId, _secondId]);
+    // A concurrent editor must be visible, not papered over.
+    expect(_saved(result)!.storedIds, [_secondId, _firstId]);
   });
 
   test('403 is an answer about the account, not a transport failure', () async {
-    final repository = _repository(
-      MockClient((_) async => _error(403, code: 'FORBIDDEN')),
-    );
+    final client = MockClient((_) async => _error(403, code: 'FORBIDDEN'));
+    final repository = _repository(client);
 
-    final result = await repository.save(
-      fence: _fence,
-      locale: 'zh-CN',
-      articleIds: const [],
-    );
-
+    final result = await _send(repository);
     expect(_saved(result)!.outcome, FeaturedShelfSave.refused);
     expect(_saveFailure(result), isNull);
   });
 
   test('an old deployment says the shelf is not offered here', () async {
     for (final status in <int>[404, 405]) {
-      final repository = _repository(
-        MockClient((_) async => _error(status, code: 'NOT_FOUND')),
-      );
+      final client = MockClient((_) async => _error(status));
+      final repository = _repository(client);
 
-      final result = await repository.save(
-        fence: _fence,
-        locale: 'zh-CN',
-        articleIds: const [],
-      );
-      expect(
-        _saved(result)!.outcome,
-        FeaturedShelfSave.unavailable,
-        reason: 'HTTP $status means no editorial route here',
-      );
+      final result = await _send(repository);
+      // HTTP $status means there is no editorial route on this deployment.
+      expect(_saved(result)!.outcome, FeaturedShelfSave.unavailable);
     }
   });
 
   test('an unreadable success is unknown, never a retry', () async {
     var requests = 0;
-    final repository = _repository(
-      MockClient((_) async {
-        requests++;
-        return _raw('{"data": "ok"}');
-      }),
-    );
+    final client = MockClient((_) async {
+      requests++;
+      return _raw('{"data": "ok"}');
+    });
+    final repository = _repository(client);
 
-    final result = await repository.save(
-      fence: _fence,
-      locale: 'zh-CN',
-      articleIds: const [],
-    );
-
+    final result = await _send(repository);
     expect(_saved(result)!.outcome, FeaturedShelfSave.unknown);
     expect(requests, 1);
   });
 
   test('a 401 is reported once and never replayed', () async {
     var requests = 0;
-    final repository = _repository(
-      MockClient((_) async {
-        requests++;
-        return _error(401, code: 'UNAUTHENTICATED');
-      }),
-    );
+    final client = MockClient((_) async {
+      requests++;
+      return _error(401, code: 'UNAUTHENTICATED');
+    });
+    final repository = _repository(client);
 
-    final failure = _saveFailure(
-      await repository.save(
-        fence: _fence,
-        locale: 'zh-CN',
-        articleIds: const [],
-      ),
-    );
-
+    final result = await _send(repository);
+    final failure = _saveFailure(result);
     expect(failure?.kind, FailureKind.auth);
-    expect(requests, 1, reason: 'a replay could double-apply a whole-list PUT');
+    // A replay could double-apply a whole-list write.
+    expect(requests, 1);
   });
 
   test('a shelf from a left account is refused before the request', () async {
     var requests = 0;
-    final repository = _repository(
-      MockClient((_) async {
-        requests++;
-        return _list(const []);
-      }), auth: _Auth(user: 'user-b'));
-
-      final failure = _saveFailure(
-        await repository.save(
-          fence: _fence,
-          locale: 'zh-CN',
-          articleIds: const [],
-        ),
-      );
-
-      expect(failure?.code, 'auth.sessionChanged');
-      expect(requests, 0);
+    final client = MockClient((_) async {
+      requests++;
+      return _list(const []);
     });
+    final repository = _repository(client, auth: _Auth(user: 'user-b'));
 
-    test('offline is stated without spending a request', () async {
-      var requests = 0;
-      final repository = _repository(
-        MockClient((_) async {
-          requests++;
-          return _list(const []);
-        }),
-        online: false,
-      );
+    final failure = _saveFailure(await _send(repository));
+    expect(failure?.code, 'auth.sessionChanged');
+    expect(requests, 0);
+  });
 
-      final failure = _saveFailure(
-        await repository.save(
-          fence: _fence,
-          locale: 'zh-CN',
-          articleIds: const [],
-        ),
-      );
-
-      expect(failure?.code, 'network.offline');
-      expect(requests, 0);
+  test('offline is stated without spending a request', () async {
+    var requests = 0;
+    final client = MockClient((_) async {
+      requests++;
+      return _list(const []);
     });
+    final repository = _repository(client, online: false);
 
-    test('the server\'s own ceiling is applied before sending', () async {
-      var requests = 0;
-      final repository = _repository(
-        MockClient((_) async {
-          requests++;
-          return _list(const []);
-        }),
-      );
+    final failure = _saveFailure(await _send(repository));
+    expect(failure?.code, 'network.offline');
+    expect(requests, 0);
+  });
 
-    final tooLong = [
-      for (var i = 0; i < kFeaturedShelfCapacity + 1; i++) '$i',
-    ];
-    expect(
-      _saveFailure(
-        await repository.save(
-          fence: _fence,
-          locale: 'zh-CN',
-          articleIds: tooLong,
-        ),
-      )?.code,
-      'featured.tooMany',
-    );
-    expect(
-      _saveFailure(
-        await repository.save(
-          fence: _fence,
-          locale: 'zh-CN',
-          articleIds: const ['x', 'x'],
-        ),
-      )?.code,
-      'featured.duplicate',
-    );
+  test('the server ceiling is applied before sending', () async {
+    var requests = 0;
+    final client = MockClient((_) async {
+      requests++;
+      return _list(const []);
+    });
+    final repository = _repository(client);
+    final twice = const ['x', 'x'];
+
+    final tooLong = [for (var i = 0; i < 21; i++) '$i'];
+    final overCapacity = _saveFailure(await _send(repository, ids: tooLong));
+    expect(overCapacity?.code, 'featured.tooMany');
+    final duplicated = _saveFailure(await _send(repository, ids: twice));
+    expect(duplicated?.code, 'featured.duplicate');
     expect(requests, 0);
     expect(featuredShelfProblem(const ['a', 'b']), isNull);
   });

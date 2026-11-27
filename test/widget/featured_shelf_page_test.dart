@@ -364,12 +364,11 @@ void main() {
     await harness.answer(tester, _shelf2);
     await tester.tap(find.byIcon(Icons.search));
     await tester.pump();
-    harness.shelf.browsePending.single.complete(
-      right([
-        _entry('id-a', 'Long first piece'),
-        _entry('id-c', 'A new piece'),
-      ]),
-    );
+    final found = [
+      _entry('id-a', 'Long first piece'),
+      _entry('id-c', 'A new piece'),
+    ];
+    harness.shelf.browsePending.single.complete(right(found));
     await tester.pumpAndSettle();
     expect(harness.shelf.browseQueries, ['']);
     expect(find.text(l10n.featuredShelfAlreadyOn), findsOneWidget);
@@ -429,19 +428,15 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    harness.shelf.savePending.single.complete(
-      right(
-        const FeaturedShelfSaveResult(
-          FeaturedShelfSave.stored,
-          storedIds: ['id-a', 'id-b'],
-        ),
-      ),
+    const readBack = ['id-a', 'id-b'];
+    const stored = FeaturedShelfSaveResult(
+      FeaturedShelfSave.stored,
+      storedIds: readBack,
     );
+    harness.shelf.savePending.single.complete(right(stored));
     await tester.pump();
-    await harness.answer(tester, [
-      _entry('id-a', 'Long first piece'),
-      _entry('id-b', 'Second piece'),
-    ]);
+    // What the server has now is the stored order, not the one on screen.
+    await harness.answer(tester, _shelf2);
     expect(find.text(l10n.featuredShelfChangedElsewhere), findsOneWidget);
   });
 }
