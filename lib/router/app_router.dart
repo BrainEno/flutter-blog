@@ -34,6 +34,7 @@ import 'package:belog/features/blog/presentation/pages/blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
 import 'package:belog/features/blog/presentation/pages/categories_page.dart';
 import 'package:belog/features/blog/presentation/pages/featured_shelf_page.dart';
+import 'package:belog/features/blog/presentation/pages/taxonomy_admin_page.dart';
 import 'package:belog/features/blog/presentation/pages/category_articles_page.dart';
 import 'package:belog/features/blog/presentation/category_navigation.dart';
 import 'package:belog/features/messages/presentation/pages/message_inbox_page.dart';
@@ -432,6 +433,12 @@ AppRouterHandle createAppRouter({
                   GoRoute(
                     path: RouteSegments.featuredShelf,
                     builder: (context, state) => const FeaturedShelfPage(),
+                  ),
+                  // Category maintenance (#381): the row that opens this is
+                  // offered by the same role rule as the shelf's.
+                  GoRoute(
+                    path: RouteSegments.taxonomyAdmin,
+                    builder: (context, state) => const TaxonomyAdminPage(),
                   ),
                 ],
               ),

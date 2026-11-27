@@ -1094,5 +1094,42 @@
       "max": {"type": "int"}
     }
   },
-  "featuredShelfDuplicate": "同一篇作品在书架上出现了两次。"
+  "featuredShelfDuplicate": "同一篇作品在书架上出现了两次。",
+  "taxonomyAdminTitle": "分类目录",
+  "taxonomyAdminMenuHint": "增删作者可选用的分类",
+  "taxonomyAdminDescription": "分类是作品摆放的编辑架子：作者只能从这里已有的项里挑，不能自己加。",
+  "taxonomyAdminLocaleNote": "服务端只保存一份中文目录：上面看到的名字是当前阅读语言下的译名，而新建的那一条会写进那一份中文目录。",
+  "taxonomyAdminPageNote": "这是目录的一页，不是目录的全部。",
+  "taxonomyAdminPageFull": "这一页已经满了，所以你在这里看不到的地方可能还有分类。",
+  "taxonomyAdminUnknownRoleNote": "这个部署没有告诉应用你的账号是不是编辑，所以你写入时由服务端裁决。",
+  "taxonomyAdminRefresh": "重新读取目录",
+  "taxonomyAdminEmpty": "目录里还没有分类",
+  "taxonomyAdminEmptyDetail": "先在下面加一个：作者只能挑选这里已经存在的分类。",
+  "taxonomyAdminAddTitle": "新增分类",
+  "taxonomyAdminNameLabel": "名称",
+  "taxonomyAdminSlugLabel": "地址（slug）",
+  "taxonomyAdminDescriptionLabel": "说明（可留空）",
+  "taxonomyAdminDescriptionCount": "{used} / {max} 字",
+  "@taxonomyAdminDescriptionCount": {
+    "description": "Character budget next to the optional blurb field.",
+    "placeholders": {
+      "used": {"type": "int"},
+      "max": {"type": "int"}
+    }
+  },
+  "taxonomyAdminAdd": "加入目录",
+  "taxonomyAdminAdding": "正在加入…",
+  "taxonomyAdminAdded": "目录里已经有这个新分类了。",
+  "taxonomyAdminRemove": "从目录里删除",
+  "taxonomyAdminRemoved": "这个分类已经从目录里去掉。",
+  "taxonomyAdminNotRemoved": "服务端没有删掉它。它不区分「这条不归你删」和「它本来就不在」。",
+  "taxonomyAdminRefused": "这个服务器不把你的账号当作编辑，所以目录没有变化。",
+  "taxonomyAdminUnavailable": "这个部署没有可供使用的分类维护。",
+  "taxonomyAdminUnknownResult": "这次写入的答复读不出来，所以它可能已经生效。下面是目录现在的内容。",
+  "taxonomyAdminConfirmTitle": "删除这个分类？",
+  "taxonomyAdminConfirmMessage": "目录是公开的，而这次写入不是条件写：别人在这期间改的东西不会被合并进来，应用也无法撤销。",
+  "taxonomyAdminNoId": "这一行没有可用地址",
+  "taxonomyAdminNameBlank": "分类需要一个能被目录显示出来的名字。",
+  "taxonomyAdminSlugUnreadable": "这个地址读不回来，所以不会去创建它。",
+  "taxonomyAdminDescriptionTooLong": "说明超过了服务端接受的长度。"
 }

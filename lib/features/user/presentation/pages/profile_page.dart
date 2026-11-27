@@ -302,6 +302,7 @@ class _ProfileView extends StatelessWidget {
                               onTap: () => context.push(RoutePaths.history),
                             ),
                             _EditorialShelfRow(l10n: l10n),
+                            _EditorialCatalogueRow(l10n: l10n),
                           ],
                         ),
                         NoWaveMenuGroup(
@@ -479,6 +480,31 @@ class _EditorialShelfRow extends StatelessWidget {
           label: l10n.featuredShelfTitle,
           description: l10n.featuredShelfMenuHint,
           onTap: () => context.push(RoutePaths.featuredShelf),
+        );
+      },
+    );
+  }
+}
+
+/// The category-catalogue row (#381), offered by the same rule as the shelf's:
+/// only a `denied` answer hides it. An account this deployment never answered
+/// for may still be an editor, and hiding the entry would lock that editor out
+/// of a server that would accept the write.
+class _EditorialCatalogueRow extends StatelessWidget {
+  const _EditorialCatalogueRow({required this.l10n});
+
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<EditorialCapacityCubit, AccountEditorialCapacity>(
+      builder: (context, capacity) {
+        if (!offersEditorialEntry(capacity)) return const SizedBox.shrink();
+        return NoWaveActionRow(
+          icon: Icons.category_outlined,
+          label: l10n.taxonomyAdminTitle,
+          description: l10n.taxonomyAdminMenuHint,
+          onTap: () => context.push(RoutePaths.taxonomyAdmin),
         );
       },
     );
