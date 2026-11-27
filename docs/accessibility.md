@@ -1,6 +1,6 @@
 # 本地化与无障碍（#24）
 
-> 状态：active ｜ 最后核对：2026-11-16 @ 7fc34ce
+> 状态：active ｜ 最后核对：2026-11-27 @ 9306709
 
 本文记录「界面文案统一」和「无障碍」这两条长期项的实际边界：哪些行为已经被
 自动化测试锁住，哪些仍然只能靠真机人工验收。文案本身在
@@ -52,10 +52,24 @@
 | 减少动效 | `test/widget/no_wave_fade_transition_test.dart`、`test/unit/design/no_magic_durations_test.dart`、`test/widget/no_wave_splash_test.dart` |
 | 无封面文章的可区分与稳定性 | `test/unit/design/cover_plate_test.dart`、`test/unit/core/stable_hash_test.dart`、`test/widget/no_wave_design_test.dart` |
 | 文档不指向不存在的组件或测试 | `test/unit/core/docs_contract_test.dart` |
+| 控件的播报名与「没有 handler 即禁用」 | `test/widget/taxonomy_admin_page_test.dart`、`test/widget/featured_shelf_page_test.dart` |
 
 `test/widget/a11y_text_scale_test.dart` 在中文与英文下各跑一遍 2.0 字体缩放，
 并断言 `takeException()` 为空：溢出条（`BOTTOM OVERFLOWED BY …`）在 widget
 测试里就是一次异常，所以这条断言等价于「大字体下不破版」。
+
+### 这些用例本身有两个坑（都是「断言看起来该过，实际因为够不着而挂」）
+
+- **控件在视口外时，`tap` 与 `enterText` 都不会报错给你看。** `ListView` 里的 widget
+  是「建出来了」而不是「点得到」：`tester.tap` 落空只留一句 hit-test 警告，
+  `enterText` 则因为拿不到焦点而把字打进空处，于是一个 `find.text(...)` 为绿的断言
+  可以完全没碰到那行字。做法是在**操作**之前 `ensureVisible` + `pumpAndSettle`（读
+  断言不必滚，它们读的是树），`test/widget/taxonomy_admin_page_test.dart` 把它收进了
+  `reveal`/`enter` 两个小工具。
+- **`find.byTooltip(...)` 只能用来钉名字，不能当类型句柄。** 它落在带提示的那个节点上，
+  `tester.widget<IconButton>(find.byTooltip(x))` 会抛 `_TypeError`；`onPressed == null`
+  这类「控件在，但按不动」的状态要从 `find.byType(具体控件)` 里数，或用仓库现成的
+  `find.widgetWithText(具体控件, 文案)`。播报名与禁用状态是两件事，测试也分开断言。
 
 ## 三、动效、加载态与图片
 
