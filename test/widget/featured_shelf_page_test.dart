@@ -245,9 +245,11 @@ void main() {
     expect(save.fence.userId, 'user-a');
     expect(save.fence.generation, 1);
 
-    harness.shelf.savePending.single.complete(
-      right(const FeaturedShelfSaveResult(FeaturedShelfSave.stored)),
+    const stored = FeaturedShelfSaveResult(
+      FeaturedShelfSave.stored,
+      storedIds: ['id-b', 'id-a'],
     );
+    harness.shelf.savePending.single.complete(right(stored));
     await tester.pump();
     // The save is followed by a re-read, because the shelf is shared.
     expect(harness.shelf.loadPending, hasLength(2));
@@ -357,6 +359,10 @@ void main() {
     addTearDown(harness.dispose);
     await harness.pump(tester);
     await harness.answer(tester, _shelf2);
+    // The search control sits after the shelf rows: built, but below the fold
+    // of the test window, so it has to be scrolled into reach before a tap.
+    await tester.ensureVisible(find.byIcon(Icons.search));
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.search));
     await tester.pump();
     final found = [
@@ -367,6 +373,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(harness.shelf.browseQueries, ['']);
     expect(find.text(l10n.featuredShelfAlreadyOn), findsOneWidget);
+    await tester.ensureVisible(find.text(l10n.featuredShelfBrowseAdd));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(l10n.featuredShelfBrowseAdd));
     await tester.pumpAndSettle();
     // Adding is local until the save: it goes to the end of the list.
@@ -378,19 +386,22 @@ void main() {
   testWidgets('a role nobody confirmed says the server decides', (
     tester,
   ) async {
-    final unknown = _Harness(capacity: AccountEditorialCapacity.unknown);
-    addTearDown(unknown.dispose);
-    await unknown.pump(tester);
-    await unknown.answer(tester, _shelf2);
+    final harness = _Harness(capacity: AccountEditorialCapacity.unknown);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await harness.answer(tester, _shelf2);
     expect(find.text(l10n.featuredShelfUnknownRoleNote), findsOneWidget);
+    // Asked once for the opening: no polling, no re-read per rebuild.
+    expect(harness.editorial.calls, 1);
+  });
 
-    final named = _Harness(capacity: AccountEditorialCapacity.granted);
-    addTearDown(named.dispose);
-    await named.pump(tester);
-    await named.answer(tester, _shelf2);
+  testWidgets('a named editor gets no caveat line', (tester) async {
+    final harness = _Harness(capacity: AccountEditorialCapacity.granted);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await harness.answer(tester, _shelf2);
     expect(find.text(l10n.featuredShelfUnknownRoleNote), findsNothing);
-    // The role question is asked once per opening, not per rebuild.
-    expect(named.editorial.calls, 1);
+    expect(harness.editorial.calls, 1);
   });
 
   testWidgets('a signed-out account is shown no editor controls', (

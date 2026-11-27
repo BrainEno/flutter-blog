@@ -28,6 +28,8 @@ import 'package:belog/core/theme/app_theme_mode.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
+import 'package:belog/features/auth/domain/account_editorial_capacity.dart';
+import 'package:belog/features/auth/domain/repository/account_editorial_repository.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
 import 'package:belog/features/auth/domain/usecases/current_user.dart';
 import 'package:belog/features/auth/domain/usecases/user_login.dart';
@@ -36,6 +38,7 @@ import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/auth/presentation/pages/login_page.dart';
 import 'package:belog/features/auth/presentation/widgets/auth_primary_button.dart';
+import 'package:belog/features/auth/presentation/bloc/editorial_capacity_cubit.dart';
 import 'package:belog/features/user/presentation/pages/about_page.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
@@ -175,6 +178,21 @@ class SilentNotifications implements NotificationRepository {
   Future<Either<Failure, int>> markAllRead({
     required NowaveSessionFence fence,
   }) async => throw UnimplementedError('the profile menu never marks rows');
+}
+
+/// The editorial answer the profile menu reads (#377). `denied` on purpose: the
+/// sweep covers the app as a reader sees it, and an extra menu row in every
+/// persona would be a finding about this stub rather than about the app.
+class SilentEditorialCapacity implements AccountEditorialRepository {
+  int calls = 0;
+
+  @override
+  Future<Either<Failure, AccountEditorialCapacity>> readCapacity(
+    NowaveSessionFence fence,
+  ) async {
+    calls++;
+    return right(AccountEditorialCapacity.denied);
+  }
 }
 
 class MemoryThemeStore implements ThemePreferenceStore {
@@ -379,6 +397,12 @@ class Harness {
       ..registerFactory(
         () => MessageUnreadBadgeCubit(
           repository: FakeMessageRepository(),
+          identity: SignedOutBadgeIdentity(),
+        ),
+      )
+      ..registerFactory(
+        () => EditorialCapacityCubit(
+          repository: SilentEditorialCapacity(),
           identity: SignedOutBadgeIdentity(),
         ),
       );
