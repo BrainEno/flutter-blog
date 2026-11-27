@@ -143,19 +143,38 @@ class _Harness {
       ),
     );
 
-  Future<void> pump(WidgetTester tester) async {
+  /// The page under test, at any surface size, text scale, and interface
+  /// language. The defaults are what every case here already used.
+  Future<void> pump(
+    WidgetTester tester, {
+    Size? surface,
+    double? textScale,
+    Locale locale = const Locale('en'),
+  }) async {
+    if (surface != null) {
+      tester.view.physicalSize = surface;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+    }
+    final scaler = TextScaler.linear(textScale ?? 1);
+    final page = FeaturedShelfPage(
+      shelf: shelf,
+      editorial: editorial,
+      identity: identity,
+    );
     await tester.pumpWidget(
       BlocProvider<AppUserCubit>.value(
         value: userCubit,
         child: MaterialApp(
-          locale: const Locale('en'),
+          locale: locale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: FeaturedShelfPage(
-            shelf: shelf,
-            editorial: editorial,
-            identity: identity,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: scaler),
+            child: child!,
           ),
+          home: page,
         ),
       ),
     );
@@ -444,5 +463,90 @@ void main() {
     // What the server has now is the stored order, not the one on screen.
     await harness.answer(tester, _shelf2);
     expect(find.text(l10n.featuredShelfChangedElsewhere), findsOneWidget);
+  });
+
+  // #377 asks for the shelf to hold up on the narrowest phone and the largest
+  // text the platforms offer, in both interface languages: an overflow banner
+  // across the save bar would lock an editor out of the one screen that
+  // rewrites what every reader sees.
+  for (final locale in const [Locale('en'), Locale('zh')]) {
+    final tag = locale.languageCode;
+    testWidgets('$tag keeps the shelf at 320 dp and 2x text', (tester) async {
+      final copy = lookupAppLocalizations(locale);
+      final harness = _Harness();
+      addTearDown(harness.dispose);
+      await harness.pump(
+        tester,
+        surface: const Size(320, 640),
+        textScale: 2,
+        locale: locale,
+      );
+      await harness.answer(tester, _shelf2);
+
+      expect(find.text(copy.featuredShelfTitle), findsOneWidget);
+      // The row moves are the whole purpose of the screen, so a clipped one
+      // is a bug rather than a layout trade-off.
+      expect(find.byTooltip(copy.featuredShelfMoveUp), findsNWidgets(2));
+      expect(find.byTooltip(copy.featuredShelfMoveDown), findsNWidgets(2));
+      expect(find.byTooltip(copy.featuredShelfRemove), findsNWidgets(2));
+      expect(find.byKey(_saveKey), findsOneWidget);
+      // An overflow is reported as a test exception, and the counter row is
+      // what usually breaks first at this scale.
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('every move is addressable by name', (tester) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    final three = [
+      _entry('id-a', 'First piece'),
+      _entry('id-b', 'Second piece'),
+      _entry('id-c', 'Third piece'),
+    ];
+    await harness.answer(tester, three);
+
+    // A reader hears these three names; nothing on this screen needs a drag
+    // or the visual position of a row to be described.
+    expect(find.byTooltip(l10n.featuredShelfMoveUp), findsNWidgets(3));
+    expect(find.byTooltip(l10n.featuredShelfMoveDown), findsNWidgets(3));
+    expect(find.byTooltip(l10n.featuredShelfRemove), findsNWidgets(3));
+
+    // Rows sit inside the ListView, so a named control can be built and still
+    // be out of reach: scroll to it first, the way a reader has to.
+    await tester.ensureVisible(find.byTooltip(l10n.featuredShelfRemove).at(2));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip(l10n.featuredShelfRemove).at(2));
+    await tester.pumpAndSettle();
+    expect(find.text('3. Third piece'), findsNothing);
+    await tester.ensureVisible(find.byTooltip(l10n.featuredShelfMoveUp).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip(l10n.featuredShelfMoveUp).at(1));
+    await tester.pumpAndSettle();
+    expect(find.text('1. Second piece'), findsOneWidget);
+
+    await tester.tap(find.byKey(_saveKey));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text(l10n.featuredShelfSave),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(harness.shelf.saves.single.ids, ['id-b', 'id-a']);
+    const stored = FeaturedShelfSaveResult(
+      FeaturedShelfSave.stored,
+      storedIds: ['id-b', 'id-a'],
+    );
+    harness.shelf.savePending.single.complete(right(stored));
+    await tester.pump();
+    final back = [
+      _entry('id-b', 'Second piece'),
+      _entry('id-a', 'First piece'),
+    ];
+    await harness.answer(tester, back);
+    expect(find.text(l10n.featuredShelfSaved), findsOneWidget);
   });
 }
