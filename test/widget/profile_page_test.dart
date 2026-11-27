@@ -169,16 +169,17 @@ class _Harness {
       repository: editorialRepository,
       identity: _BadgeIdentity(),
     );
+    final profilePage = ProfilePage(
+      badgeCubit: badge,
+      messageBadgeCubit: messageBadge,
+      editorialCubit: editorialCubit,
+    );
     router = GoRouter(
       initialLocation: '/profile',
       routes: [
         GoRoute(
           path: '/profile',
-          builder: (_, _) => ProfilePage(
-            badgeCubit: badge,
-            messageBadgeCubit: messageBadge,
-            editorialCubit: editorialCubit,
-          ),
+          builder: (_, _) => profilePage,
           routes: [
             for (final path in [
               'edit',
@@ -350,14 +351,18 @@ void main() {
       addTearDown(harness.dispose);
       await harness.pump(tester);
       final label = l10n.featuredShelfTitle;
-      await tester.scrollUntilVisible(find.text(label), 140);
       // `unknown` is deliberately the same as `granted` here: nobody has been
       // told "no", and hiding the entry from a deployment that never answered
       // the question would lock an editor out of a server that would accept.
       expect(find.text(label), findsOneWidget);
+      await tester.ensureVisible(find.text(label));
+      await tester.pumpAndSettle();
       await tester.tap(find.text(label));
       await tester.pumpAndSettle();
       expect(find.text('destination: featured-shelf'), findsOneWidget);
+      harness.router.pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(ProfilePage), findsOneWidget);
     }
   });
 
