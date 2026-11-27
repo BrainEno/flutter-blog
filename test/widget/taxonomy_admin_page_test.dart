@@ -192,15 +192,27 @@ class _Harness {
     await tester.pumpAndSettle();
   }
 
-  /// Types a draft the catalogue would take, in the order the form asks.
-  Future<void> typeDraft(WidgetTester tester) async {
-    await tester.enterText(find.byKey(_nameKey), '现场录音');
-    await tester.enterText(find.byKey(_slugKey), 'field-9c1d');
+  /// Types into one field, revealing it first: a `TextField` outside the
+  /// viewport cannot take the focus tap `enterText` starts with, and text that
+  /// lands nowhere turns a green assertion into a lie.
+  Future<void> enter(WidgetTester tester, Key key, String text) async {
+    await tester.ensureVisible(find.byKey(key));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(key), text);
     await tester.pump();
   }
 
-  Future<void> scrollToAdd(WidgetTester tester) async {
-    await tester.ensureVisible(find.byKey(_addKey));
+  /// Types a draft the catalogue would take, in the order the form asks.
+  Future<void> typeDraft(WidgetTester tester) async {
+    await enter(tester, _nameKey, '现场录音');
+    await enter(tester, _slugKey, 'field-9c1d');
+  }
+
+  /// Brings a control into the viewport before touching it. Rows and the form
+  /// live inside one ListView, so a widget can be built and still be out of
+  /// reach - and a tap that misses is a `Bad state: No element` further down.
+  Future<void> reveal(WidgetTester tester, Finder finder) async {
+    await tester.ensureVisible(finder);
     await tester.pumpAndSettle();
   }
 
@@ -280,19 +292,15 @@ void main() {
     addTearDown(harness.dispose);
     await harness.pump(tester);
     await harness.answer(tester, _two);
-    await harness.scrollToAdd(tester);
-
     expect(_addButton(tester).onPressed, isNull);
     // An untouched form is not a draft to be scolded about.
     expect(find.text(l10n.taxonomyAdminNameBlank), findsNothing);
 
-    await tester.enterText(find.byKey(_nameKey), '现场录音');
-    await tester.pump();
+    await harness.enter(tester, _nameKey, '现场录音');
     expect(_addButton(tester).onPressed, isNull);
     expect(find.text(l10n.taxonomyAdminSlugUnreadable), findsOneWidget);
 
-    await tester.enterText(find.byKey(_slugKey), 'field-9c1d');
-    await tester.pump();
+    await harness.enter(tester, _slugKey, 'field-9c1d');
     expect(_addButton(tester).onPressed, isNotNull);
   });
 
@@ -303,15 +311,13 @@ void main() {
     await harness.answer(tester, _two);
     await harness.typeDraft(tester);
     final atTheCap = '字' * kTaxonomyDescriptionLimit;
-    await tester.enterText(find.byKey(_descriptionKey), atTheCap);
-    await tester.pump();
-    await harness.scrollToAdd(tester);
+    await harness.enter(tester, _descriptionKey, atTheCap);
+    await harness.reveal(tester, find.byKey(_addKey));
 
     expect(find.textContaining('$kTaxonomyDescriptionLimit /'), findsOneWidget);
     expect(_addButton(tester).onPressed, isNotNull);
 
-    await tester.enterText(find.byKey(_descriptionKey), '$atTheCap多');
-    await tester.pump();
+    await harness.enter(tester, _descriptionKey, '$atTheCap多');
     expect(_addButton(tester).onPressed, isNull);
     expect(find.text(l10n.taxonomyAdminDescriptionTooLong), findsOneWidget);
     expect(harness.taxonomy.creates, isEmpty);
@@ -323,7 +329,7 @@ void main() {
     await harness.pump(tester);
     await harness.answer(tester, _two);
     await harness.typeDraft(tester);
-    await harness.scrollToAdd(tester);
+    await harness.reveal(tester, find.byKey(_addKey));
     await tester.tap(find.byKey(_addKey));
     await tester.pumpAndSettle();
 
@@ -353,7 +359,7 @@ void main() {
     await harness.pump(tester);
     await harness.answer(tester, _two);
     await harness.typeDraft(tester);
-    await harness.scrollToAdd(tester);
+    await harness.reveal(tester, find.byKey(_addKey));
     await tester.tap(find.byKey(_addKey));
     await tester.pumpAndSettle();
     const refused = TaxonomyWrite.refused;
@@ -372,6 +378,10 @@ void main() {
     addTearDown(harness.dispose);
     await harness.pump(tester);
     await harness.answer(tester, _two);
+    await harness.reveal(
+      tester,
+      find.byTooltip(l10n.taxonomyAdminRemove).first,
+    );
     await tester.tap(find.byTooltip(l10n.taxonomyAdminRemove).first);
     await tester.pumpAndSettle();
 
@@ -397,6 +407,10 @@ void main() {
     addTearDown(harness.dispose);
     await harness.pump(tester);
     await harness.answer(tester, _two);
+    await harness.reveal(
+      tester,
+      find.byTooltip(l10n.taxonomyAdminRemove).at(1),
+    );
     await tester.tap(find.byTooltip(l10n.taxonomyAdminRemove).at(1));
     await tester.pumpAndSettle();
     await tester.tap(
@@ -419,6 +433,10 @@ void main() {
     addTearDown(harness.dispose);
     await harness.pump(tester);
     await harness.answer(tester, _two);
+    await harness.reveal(
+      tester,
+      find.byTooltip(l10n.taxonomyAdminRemove).first,
+    );
     await tester.tap(find.byTooltip(l10n.taxonomyAdminRemove).first);
     await tester.pumpAndSettle();
     await tester.tap(
@@ -509,8 +527,7 @@ void main() {
     await harness.answer(tester, _two);
     // Rows live inside the ListView, so a named control can be built and still
     // be out of reach: scroll to it first, the way a reader has to.
-    await tester.ensureVisible(find.byTooltip(l10n.taxonomyAdminRemove).last);
-    await tester.pumpAndSettle();
+    await harness.reveal(tester, find.byTooltip(l10n.taxonomyAdminRemove).last);
     await tester.tap(find.byTooltip(l10n.taxonomyAdminRemove).last);
     await tester.pumpAndSettle();
     expect(find.text(l10n.taxonomyAdminConfirmTitle), findsOneWidget);
