@@ -12,12 +12,15 @@ import 'package:belog/core/theme/app_theme_mode.dart';
 import 'package:belog/core/theme/theme.dart';
 import 'package:belog/core/theme/theme_bloc.dart';
 import 'package:belog/core/theme/theme_preference_store.dart';
+import 'package:belog/features/auth/domain/account_editorial_capacity.dart';
+import 'package:belog/features/auth/domain/repository/account_editorial_repository.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
 import 'package:belog/features/auth/domain/usecases/current_user.dart';
 import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:belog/features/auth/presentation/bloc/editorial_capacity_cubit.dart';
 import 'package:belog/features/messages/presentation/bloc/message_unread_badge_cubit.dart';
 import 'package:belog/features/notifications/domain/entities/app_notification.dart';
 import 'package:belog/features/notifications/domain/entities/notification_page.dart';
@@ -39,6 +42,26 @@ import '../support/message_fakes.dart';
 class _MockAuthRepository extends Mock implements AuthRepository {}
 
 class _MockExporter extends Mock implements ExportUserData {}
+
+/// The one editorial answer the profile menu reads (#377). A `null` capacity
+/// stands for "the request did not answer", which is a [Failure] here rather
+/// than a capacity: the row must not be invented from a network error.
+class _FakeEditorialRepository implements AccountEditorialRepository {
+  _FakeEditorialRepository(this.capacity);
+
+  AccountEditorialCapacity? capacity;
+  int calls = 0;
+
+  @override
+  Future<Either<Failure, AccountEditorialCapacity>> readCapacity(
+    NowaveSessionFence fence,
+  ) async {
+    calls++;
+    final answer = capacity;
+    if (answer == null) return left(Failure('the read did not answer'));
+    return right(answer);
+  }
+}
 
 class _ThemeStore implements ThemePreferenceStore {
   _ThemeStore(this.mode);
@@ -108,6 +131,7 @@ class _Harness {
     AppThemeMode mode = AppThemeMode.light,
     int unread = 3,
     List<int> messageUnreadCounts = const [],
+    AccountEditorialCapacity? editorial,
   }) {
     store = _ThemeStore(mode);
     theme = ThemeBloc(store);
@@ -141,13 +165,22 @@ class _Harness {
       repository: messages,
       identity: _BadgeIdentity(),
     );
+    editorialRepository = _FakeEditorialRepository(editorial);
+    editorialCubit = EditorialCapacityCubit(
+      repository: editorialRepository,
+      identity: _BadgeIdentity(),
+    );
+    final profilePage = ProfilePage(
+      badgeCubit: badge,
+      messageBadgeCubit: messageBadge,
+      editorialCubit: editorialCubit,
+    );
     router = GoRouter(
       initialLocation: '/profile',
       routes: [
         GoRoute(
           path: '/profile',
-          builder: (_, _) =>
-              ProfilePage(badgeCubit: badge, messageBadgeCubit: messageBadge),
+          builder: (_, _) => profilePage,
           routes: [
             for (final path in [
               'edit',
@@ -159,6 +192,7 @@ class _Harness {
               'notifications',
               'messages',
               'sessions',
+              'featured-shelf',
               'about',
               'editor',
             ])
@@ -181,6 +215,8 @@ class _Harness {
   late final NotificationBadgeCubit badge;
   late final FakeMessageRepository messages;
   late final MessageUnreadBadgeCubit messageBadge;
+  late final _FakeEditorialRepository editorialRepository;
+  late final EditorialCapacityCubit editorialCubit;
   late final GoRouter router;
 
   Future<void> pump(
@@ -219,6 +255,7 @@ class _Harness {
 
   Future<void> dispose() async {
     router.dispose();
+    await editorialCubit.close();
     await messageBadge.close();
     await badge.close();
     await auth.close();
@@ -288,6 +325,47 @@ void main() {
       });
     }
   }
+
+  testWidgets('a refused account is not offered the featured shelf row', (
+    tester,
+  ) async {
+    final l10n = lookupAppLocalizations(const Locale('en'));
+    final harness = _Harness(_user());
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+    await tester.scrollUntilVisible(find.text(l10n.menuAbout), 140);
+    expect(find.text(l10n.featuredShelfTitle), findsNothing);
+    // The read happened once: a refused account is not asked again on every
+    // rebuild, and nothing polls it.
+    expect(harness.editorialRepository.calls, 1);
+  });
+
+  testWidgets('an editor is offered the row, and unknown role keeps it', (
+    tester,
+  ) async {
+    for (final capacity in [
+      AccountEditorialCapacity.granted,
+      AccountEditorialCapacity.unknown,
+    ]) {
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      final harness = _Harness(_user(), editorial: capacity);
+      addTearDown(harness.dispose);
+      await harness.pump(tester);
+      final label = l10n.featuredShelfTitle;
+      // `unknown` is deliberately the same as `granted` here: nobody has been
+      // told "no", and hiding the entry from a deployment that never answered
+      // the question would lock an editor out of a server that would accept.
+      expect(find.text(label), findsOneWidget);
+      await tester.ensureVisible(find.text(label));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+      expect(find.text('destination: featured-shelf'), findsOneWidget);
+      harness.router.pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(ProfilePage), findsOneWidget);
+    }
+  });
 
   testWidgets('theme toggle changes and persists the selected mode', (
     tester,

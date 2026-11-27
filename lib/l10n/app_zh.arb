@@ -1052,5 +1052,47 @@
   "publishQueueDraftEntry": "将存为草稿，不会公开",
   "editorSummaryLabel": "摘要（可选）",
   "editorSummaryHelper": "显示在文章列表的标题下方，也用于分享。留空时会根据正文自动生成。",
-  "editorSummaryCounter": "{count} / {max}"
+  "editorSummaryCounter": "{count} / {max}",
+  "featuredShelfTitle": "精选书架",
+  "featuredShelfMenuHint": "安排首页「精选」里放哪些作品。",
+  "featuredShelfDescription": "下面的顺序，就是读者在当前这个内容语言的「精选」标签里看到的顺序。",
+  "featuredShelfFallbackNote": "如果还没人安排过这份书架，服务端会按它自己的默认顺序（篇幅长的在前）填满，而返回的结果看起来和人工排过的一样。保存会把这里显示的内容固定成编辑选定的书架。",
+  "featuredShelfUnknownRoleNote": "这个部署没有告诉应用你的账号是不是编辑，所以能不能保存由服务端在写入时判定。",
+  "featuredShelfCounter": "书架上 {used} / {max} 篇",
+  "@featuredShelfCounter": {
+    "description": "How full the featured shelf is, next to its capacity.",
+    "placeholders": {
+      "used": {"type": "int"},
+      "max": {"type": "int"}
+    }
+  },
+  "featuredShelfRefresh": "重新读取书架",
+  "featuredShelfEmpty": "还没有精选任何作品",
+  "featuredShelfEmptyDetail": "在下面添加一篇，或先发一篇作品再回来。",
+  "featuredShelfMoveUp": "上移",
+  "featuredShelfMoveDown": "下移",
+  "featuredShelfRemove": "移出书架",
+  "featuredShelfSave": "保存书架",
+  "featuredShelfSaving": "正在保存…",
+  "featuredShelfSaved": "书架已保存。",
+  "featuredShelfChangedElsewhere": "服务端记住的顺序和你保存的不一样 —— 中间可能有另一位编辑写过。下面就是现在存着的内容。",
+  "featuredShelfConfirmTitle": "整份替换这份书架？",
+  "featuredShelfConfirmMessage": "服务端保存的就是这一份列表、这个顺序、这个语言。它不会把你的改动和同一时间另一位编辑保存的内容合并。",
+  "featuredShelfBrowseTitle": "添加一篇作品",
+  "featuredShelfBrowseHint": "搜索标题",
+  "featuredShelfBrowseAction": "搜索已发布作品",
+  "featuredShelfBrowseEmpty": "没有匹配的已发布作品。",
+  "featuredShelfBrowseAdd": "添加",
+  "featuredShelfAlreadyOn": "已在书架上",
+  "featuredShelfRefused": "这个服务端没有把你的账号当作编辑，因此书架未被改动。",
+  "featuredShelfUnavailable": "这个部署没有可安排的精选书架。",
+  "featuredShelfUnknownResult": "保存的答复读不出来，所以它有可能已经生效。下面是服务端现在存着的内容。",
+  "featuredShelfTooMany": "一份书架最多 {max} 篇，先移出几篇再保存。",
+  "@featuredShelfTooMany": {
+    "description": "Shown when the shelf is longer than the server's ceiling.",
+    "placeholders": {
+      "max": {"type": "int"}
+    }
+  },
+  "featuredShelfDuplicate": "同一篇作品在书架上出现了两次。"
 }

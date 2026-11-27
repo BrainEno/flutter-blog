@@ -18,7 +18,9 @@ import 'package:belog/core/l10n/l10n.dart';
 import 'package:belog/core/theme/no_wave_typography.dart';
 import 'package:belog/core/utils/app_logger.dart';
 import 'package:belog/core/utils/show_snackbar.dart';
+import 'package:belog/features/auth/domain/account_editorial_capacity.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:belog/features/auth/presentation/bloc/editorial_capacity_cubit.dart';
 import 'package:belog/features/messages/presentation/bloc/message_unread_badge_cubit.dart';
 import 'package:belog/features/notifications/presentation/bloc/notification_badge_cubit.dart';
 import 'package:belog/features/user/domain/usecases/export_user_data.dart';
@@ -27,6 +29,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:belog/l10n/app_localizations.dart';
 import 'package:belog/router/route_paths.dart';
 
 /// The signed-in account's own page: identity, the way into every account
@@ -38,11 +41,20 @@ import 'package:belog/router/route_paths.dart';
 /// endpoint or list cursor. Neither badge polls; this client has no push
 /// channel, so polling would spend requests to stay stale.
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key, this.badgeCubit, this.messageBadgeCubit});
+  const ProfilePage({
+    super.key,
+    this.badgeCubit,
+    this.messageBadgeCubit,
+    this.editorialCubit,
+  });
 
   /// Injected by tests; production creates page-scoped instances.
   final NotificationBadgeCubit? badgeCubit;
   final MessageUnreadBadgeCubit? messageBadgeCubit;
+
+  /// Whether to offer the editorial shelf row (#377). Read once per menu
+  /// opening, like the badges, and never from a cache.
+  final EditorialCapacityCubit? editorialCubit;
 
   @override
   Widget build(BuildContext context) {
@@ -59,16 +71,39 @@ class ProfilePage extends StatelessWidget {
 
     final notifications = badgeCubit;
     if (notifications != null) {
-      return BlocProvider<NotificationBadgeCubit>.value(
-        value: notifications,
-        child: profileView,
+      return _withEditorialProvider(
+        BlocProvider<NotificationBadgeCubit>.value(
+          value: notifications,
+          child: profileView,
+        ),
+        editorialCubit,
       );
     }
-    return BlocProvider<NotificationBadgeCubit>(
-      create: (_) => GetIt.instance<NotificationBadgeCubit>(),
-      child: profileView,
+    return _withEditorialProvider(
+      BlocProvider<NotificationBadgeCubit>(
+        create: (_) => GetIt.instance<NotificationBadgeCubit>(),
+        child: profileView,
+      ),
+      editorialCubit,
     );
   }
+}
+
+/// The editorial row needs one read per menu opening, exactly like the two
+/// badges: a provider per page rather than an app-wide cubit, because the
+/// answer belongs to the session being looked at, and a kept-alive copy of it
+/// is how a demoted editor keeps seeing an entry point.
+Widget _withEditorialProvider(Widget child, EditorialCapacityCubit? provided) {
+  if (provided != null) {
+    return BlocProvider<EditorialCapacityCubit>.value(
+      value: provided,
+      child: child,
+    );
+  }
+  return BlocProvider<EditorialCapacityCubit>(
+    create: (_) => GetIt.instance<EditorialCapacityCubit>(),
+    child: child,
+  );
 }
 
 class _ProfileView extends StatelessWidget {
@@ -266,6 +301,7 @@ class _ProfileView extends StatelessWidget {
                               label: l10n.menuReadingHistory,
                               onTap: () => context.push(RoutePaths.history),
                             ),
+                            _EditorialShelfRow(l10n: l10n),
                           ],
                         ),
                         NoWaveMenuGroup(
@@ -421,6 +457,30 @@ class _UnreadBadge extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The featured-shelf row, offered only when the server has not said "no"
+/// (#377). Kept as its own widget so the menu group below stays a list of rows
+/// rather than a wall of conditional generics.
+class _EditorialShelfRow extends StatelessWidget {
+  const _EditorialShelfRow({required this.l10n});
+
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<EditorialCapacityCubit, AccountEditorialCapacity>(
+      builder: (context, capacity) {
+        if (!offersEditorialEntry(capacity)) return const SizedBox.shrink();
+        return NoWaveActionRow(
+          icon: Icons.star_outline,
+          label: l10n.featuredShelfTitle,
+          description: l10n.featuredShelfMenuHint,
+          onTap: () => context.push(RoutePaths.featuredShelf),
+        );
+      },
     );
   }
 }

@@ -3,10 +3,12 @@ import 'package:belog/di/dependency_context.dart';
 import 'package:belog/features/auth/auth_session_sync.dart';
 import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:belog/features/auth/data/datasources/profile_cache_store.dart';
+import 'package:belog/features/auth/data/repositories/account_editorial_repository_impl.dart';
 import 'package:belog/features/auth/data/repositories/account_security_repository_impl.dart';
 import 'package:belog/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:belog/features/auth/data/repositories/password_recovery_repository_impl.dart';
 import 'package:belog/features/auth/domain/auth_intent_gate.dart';
+import 'package:belog/features/auth/domain/repository/account_editorial_repository.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
 import 'package:belog/features/auth/domain/repository/password_recovery_repository.dart';
@@ -16,6 +18,7 @@ import 'package:belog/features/auth/domain/usecases/reset_password.dart';
 import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
+import 'package:belog/features/auth/presentation/bloc/editorial_capacity_cubit.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
 import 'package:get_it/get_it.dart';
@@ -64,6 +67,19 @@ void registerAuthModule(GetIt locator, DependencyContext context) {
       () => PasswordRecoveryRepositoryImpl(
         client: apiClient,
         connectionChecker: locator(),
+      ),
+    )
+    // Whether this account may arrange the editorial structures. A factory,
+    // not a singleton: the answer belongs to a session, and `EDITOR_USER_IDS`
+    // or the role column can change underneath an open app.
+    ..registerFactory<AccountEditorialRepository>(
+      () => AccountEditorialRepositoryImpl(apiClient),
+    )
+    // The profile row that asks the same question, read once per menu opening.
+    ..registerFactory(
+      () => EditorialCapacityCubit(
+        repository: locator<AccountEditorialRepository>(),
+        identity: sessionManager,
       ),
     )
     // Usecases

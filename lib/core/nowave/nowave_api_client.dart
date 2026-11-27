@@ -288,11 +288,18 @@ class NowaveApiClient {
   /// Redirects are disabled so credentials cannot be forwarded elsewhere.
   /// The caller's captured generation also prevents a form opened by an old
   /// session from being submitted after even a same-account re-login.
+  ///
+  /// [query] exists because some writes key off a query parameter - the
+  /// featured shelf is addressed per content locale through `?locale=` - and
+  /// `ApiBaseUrl.resolve` composes that from this map, never from text glued
+  /// onto [path]: a `?` inside the path would be percent-encoded and reach the
+  /// server as part of the route.
   Future<dynamic> putJsonForViewerOnce(
     String path,
     Object? body, {
     required String expectedUserId,
     required int expectedSessionGeneration,
+    Map<String, String>? query,
   }) async {
     final auth = _authenticator;
     bool matches() =>
@@ -318,6 +325,7 @@ class NowaveApiClient {
         'PUT',
         path,
         body: body,
+        query: query,
         allowRefresh: false,
         followRedirects: false,
       );

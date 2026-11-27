@@ -33,6 +33,7 @@ REST `/api/v1`，SQLite/Postgres）。支持离线缓存阅读、本地草稿、
 | 文章 | 传统 Markdown 编辑器发布 / 编辑 / 删除，与 no-wave v0/v1 正文无损互转；格式工具栏、图片上传、专注模式；无法无损表示的正文引导到网页端 | [编辑器路线图](docs/editor-architecture-roadmap.md)、[语言版本](docs/article-editions.md) |
 | 浏览 | 分页 Feed（最新 / 精选 / 收藏榜 / 关注）、标签与分类、文章搜索（登录后记住最近搜索）、文末相关阅读 | [首页分页](docs/latest-feed-cursor.md) |
 | 离线 | SQLite 缓存可离线阅读；搜索页「离线书库」按服务器与内容语言有界检索 | [离线书库](docs/offline-library.md)、[SQLite 存储](docs/sqlite-storage.md) |
+| 编辑 | 首页「精选」书架的策展：按内容语言整份替换、上限 20 篇、服务端拒绝会读回来而不是重发 | [精选书架](docs/featured-curation.md) |
 | 互动 | 点赞（乐观更新 + 服务端校准）、收藏列表、纯文本嵌套评论（幂等发送，未发出的评论按账号留在本机） | [评论线程](docs/comments.md) |
 | 作者 | 公开作者主页、关注 / 取关、粉丝与关注列表、作者目录与搜索 | [功能清单](docs/features.md) |
 | 消息 | 通知收件箱与私信，打开时读取、不轮询，按账号围栏 | [通知](docs/notifications.md)、[私信](docs/messages.md) |

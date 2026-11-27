@@ -1326,5 +1326,47 @@
       "count": {"type": "int"},
       "max": {"type": "int"}
     }
-  }
+  },
+  "featuredShelfTitle": "Featured shelf",
+  "featuredShelfMenuHint": "Arrange what the home tab features.",
+  "featuredShelfDescription": "The order below is the order readers see in the Featured tab, for this content language only.",
+  "featuredShelfFallbackNote": "If nobody has arranged this shelf yet, the server fills it with its own default ranking - longest first - and the answer looks identical to a curated one. Saving turns whatever is shown here into the editorial shelf.",
+  "featuredShelfUnknownRoleNote": "This deployment did not tell the app whether your account is an editor, so the server is the one that decides when you save.",
+  "featuredShelfCounter": "{used} / {max} works on the shelf",
+  "@featuredShelfCounter": {
+    "description": "How full the featured shelf is, next to its capacity.",
+    "placeholders": {
+      "used": {"type": "int"},
+      "max": {"type": "int"}
+    }
+  },
+  "featuredShelfRefresh": "Reload the shelf",
+  "featuredShelfEmpty": "Nothing is featured yet",
+  "featuredShelfEmptyDetail": "Add a work below, or publish one and come back.",
+  "featuredShelfMoveUp": "Move up",
+  "featuredShelfMoveDown": "Move down",
+  "featuredShelfRemove": "Take off the shelf",
+  "featuredShelfSave": "Save shelf",
+  "featuredShelfSaving": "Saving…",
+  "featuredShelfSaved": "The shelf is saved.",
+  "featuredShelfChangedElsewhere": "The server kept a different order from the one you saved - another editor may have written in between. This is what is stored now.",
+  "featuredShelfConfirmTitle": "Replace the whole shelf?",
+  "featuredShelfConfirmMessage": "The server stores exactly this list, in this order, for this language. It does not merge your changes with what another editor saved at the same time.",
+  "featuredShelfBrowseTitle": "Add a work",
+  "featuredShelfBrowseHint": "Search a title",
+  "featuredShelfBrowseAction": "Search published works",
+  "featuredShelfBrowseEmpty": "No published work matched.",
+  "featuredShelfBrowseAdd": "Add",
+  "featuredShelfAlreadyOn": "Already on the shelf",
+  "featuredShelfRefused": "This server does not treat your account as an editor, so the shelf was not changed.",
+  "featuredShelfUnavailable": "This deployment has no featured shelf to arrange.",
+  "featuredShelfUnknownResult": "The answer to your save could not be read, so it may have landed. Below is what the server has now.",
+  "featuredShelfTooMany": "The shelf holds at most {max} works, so take one off first.",
+  "@featuredShelfTooMany": {
+    "description": "Shown when the shelf is longer than the server's ceiling.",
+    "placeholders": {
+      "max": {"type": "int"}
+    }
+  },
+  "featuredShelfDuplicate": "The same work is on the shelf twice."
 }

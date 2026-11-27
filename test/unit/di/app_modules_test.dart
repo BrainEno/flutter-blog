@@ -14,6 +14,7 @@ import 'package:belog/di/app_modules.dart';
 import 'package:belog/di/dependency_context.dart';
 import 'package:belog/features/auth/auth_session_sync.dart';
 import 'package:belog/features/auth/data/datasources/auth_remote_data_source.dart';
+import 'package:belog/features/auth/domain/repository/account_editorial_repository.dart';
 import 'package:belog/features/auth/domain/repository/account_security_repository.dart';
 import 'package:belog/features/auth/domain/repository/auth_repository.dart';
 import 'package:belog/features/auth/domain/repository/password_recovery_repository.dart';
@@ -24,6 +25,7 @@ import 'package:belog/features/auth/domain/usecases/user_login.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_out.dart';
 import 'package:belog/features/auth/domain/usecases/user_sign_up.dart';
 import 'package:belog/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:belog/features/auth/presentation/bloc/editorial_capacity_cubit.dart';
 import 'package:belog/features/blog/data/datasources/blog_local_data_source.dart';
 import 'package:belog/features/blog/data/datasources/blog_remote_data_source.dart';
 import 'package:belog/features/blog/data/datasources/category_remote_data_source.dart';
@@ -39,6 +41,7 @@ import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
 import 'package:belog/features/blog/domain/repositories/category_repository.dart';
 import 'package:belog/features/blog/domain/repositories/comment_draft_store.dart';
 import 'package:belog/features/blog/domain/repositories/comment_repository.dart';
+import 'package:belog/features/blog/domain/repositories/featured_shelf_repository.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
@@ -128,10 +131,12 @@ import '../../support/source_files.dart';
 /// directions: a new registration without a row, or a row whose registration
 /// was removed, fails the "table matches the modules" test.
 const Map<String, _Row<Object>> _resolutions = {
+  'AccountEditorialRepository': _Row<AccountEditorialRepository>(),
   'AccountSecurityRepository': _Row<AccountSecurityRepository>(),
   'AccountSessionRepository': _Row<AccountSessionRepository>(),
   'AppDatabase': _Row<AppDatabase>(),
   'AppUserCubit': _Row<AppUserCubit>(),
+  'EditorialCapacityCubit': _Row<EditorialCapacityCubit>(),
   'AuthBloc': _Row<AuthBloc>(),
   'AuthRemoteDataSource': _Row<AuthRemoteDataSource>(),
   'AuthRepository': _Row<AuthRepository>(),
@@ -150,6 +155,7 @@ const Map<String, _Row<Object>> _resolutions = {
   'BlogLocalDataSource': _Row<BlogLocalDataSource>(),
   'BlogRemoteDataSource': _Row<BlogRemoteDataSource>(),
   'BlogRepository': _Row<BlogRepository>(),
+  'FeaturedShelfRepository': _Row<FeaturedShelfRepository>(),
   'BlogSearchBloc': _Row<BlogSearchBloc>(),
   'BlogUploadBloc': _Row<BlogUploadBloc>(),
   'BrowseAuthors': _Row<BrowseAuthors>(),

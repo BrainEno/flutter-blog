@@ -33,6 +33,7 @@ import 'package:belog/features/blog/presentation/pages/blog_editor_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_page.dart';
 import 'package:belog/features/blog/presentation/pages/blog_viewer_page.dart';
 import 'package:belog/features/blog/presentation/pages/categories_page.dart';
+import 'package:belog/features/blog/presentation/pages/featured_shelf_page.dart';
 import 'package:belog/features/blog/presentation/pages/category_articles_page.dart';
 import 'package:belog/features/blog/presentation/category_navigation.dart';
 import 'package:belog/features/messages/presentation/pages/message_inbox_page.dart';
@@ -425,6 +426,12 @@ AppRouterHandle createAppRouter({
                   GoRoute(
                     path: RouteSegments.sessions,
                     builder: (context, state) => const AccountSessionsPage(),
+                  ),
+                  // The editorial shelf (#377): the menu row that opens this
+                  // is itself only offered to an account the server named.
+                  GoRoute(
+                    path: RouteSegments.featuredShelf,
+                    builder: (context, state) => const FeaturedShelfPage(),
                   ),
                 ],
               ),
