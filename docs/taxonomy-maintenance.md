@@ -1,6 +1,6 @@
 # 分类目录的编辑端维护（#381）
 
-> 状态：active ｜ 最后核对：2026-11-27 @ 42615a0
+> 状态：active ｜ 最后核对：2026-11-27 @ 9306709
 
 分类是作品摆放的编辑架子：作者只能从目录里已有的项中挑选，目录本身由编辑共同维护
 （no-wave ADR 0016）。在 #381 之前，客户端只能读这份目录（编辑器里的多选器、分类
@@ -66,6 +66,11 @@
 | 界面 | `lib/features/blog/presentation/pages/taxonomy_admin_page.dart`（路由 `profile/taxonomy-admin`） |
 | 目录读 | `lib/features/blog/domain/repositories/category_repository.dart`（与读者同一条路径） |
 | 角色 | `lib/features/auth/presentation/bloc/editorial_capacity_cubit.dart`（复用 #377，不新建第二套判断） |
+
+写之后那次重读还有个测试上的后果值得记一句：**通知渲染在列表里面**，而重读期间
+`_loading` 为真、整块列表被占位符换掉（这是 #377 那一屏已有的形状）。所以断言「写入的
+答复」之前，测试必须先把那一次重读回答掉，否则读到的是一棵还在转圈的树——绿了也只是
+碰巧。`test/widget/taxonomy_admin_page_test.dart` 的四个写入用例都按这个顺序写。
 
 锁住这些选择的测试：`test/unit/blog/taxonomy_admin_guard_test.dart` 检查 body 只在
 `_door` 里成形、`/taxonomies` 不被第二处使用、两次写都是一次性且过栅栏、界面不自己
