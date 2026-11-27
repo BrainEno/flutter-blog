@@ -514,7 +514,7 @@ void main() {
     expect(find.byTooltip(l10n.featuredShelfRemove), findsNWidgets(3));
 
     // Rows sit inside the ListView, so a named control can be built and still
-    // be out of reach: scroll to it, the way a reader scrolls before activating.
+    // be out of reach: scroll to it first, the way a reader has to.
     await tester.ensureVisible(find.byTooltip(l10n.featuredShelfRemove).at(2));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip(l10n.featuredShelfRemove).at(2));
