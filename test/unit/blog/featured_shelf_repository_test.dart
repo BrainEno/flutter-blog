@@ -88,7 +88,9 @@ http.Response _raw(String body) =>
     http.Response(body, 200, headers: {'content-type': 'application/json'});
 
 http.Response _error(int status, {String code = 'UNTRUSTED'}) => http.Response(
-  jsonEncode({'error': {'code': code}}),
+  jsonEncode({
+    'error': {'code': code},
+  }),
   status,
   headers: {'content-type': 'application/json'},
 );

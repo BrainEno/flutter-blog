@@ -174,12 +174,11 @@ class _Harness {
       routes: [
         GoRoute(
           path: '/profile',
-          builder: (_, _) =>
-              ProfilePage(
-                badgeCubit: badge,
-                messageBadgeCubit: messageBadge,
-                editorialCubit: editorialCubit,
-              ),
+          builder: (_, _) => ProfilePage(
+            badgeCubit: badge,
+            messageBadgeCubit: messageBadge,
+            editorialCubit: editorialCubit,
+          ),
           routes: [
             for (final path in [
               'edit',

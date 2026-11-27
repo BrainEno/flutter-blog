@@ -118,11 +118,8 @@ class _Editorial implements AccountEditorialRepository {
   }
 }
 
-FeaturedShelfEntry _entry(String id, String title) => FeaturedShelfEntry(
-  articleId: id,
-  slug: 'slug-$id',
-  title: title,
-);
+FeaturedShelfEntry _entry(String id, String title) =>
+    FeaturedShelfEntry(articleId: id, slug: 'slug-$id', title: title);
 
 final _shelf2 = [
   _entry('id-a', 'Long first piece'),
@@ -309,9 +306,7 @@ void main() {
     expect(harness.shelf.saves, hasLength(1));
   });
 
-  testWidgets('an unreadable answer says so and never resends', (
-    tester,
-  ) async {
+  testWidgets('an unreadable answer says so and never resends', (tester) async {
     final harness = _Harness();
     addTearDown(harness.dispose);
     await harness.pump(tester);
