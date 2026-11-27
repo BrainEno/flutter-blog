@@ -187,6 +187,12 @@ class _Harness {
   }
 
   /// Answers the catalogue read the opening makes.
+  /// Answers the newest catalogue read.
+  ///
+  /// A write is always followed by one, and the notice lives inside the list,
+  /// so a test that asserts on the body after a write has to answer that read
+  /// first - otherwise the screen is still showing the spinner and the
+  /// assertion passes or fails against an empty tree.
   Future<void> answer(WidgetTester tester, List<CategoryRef> rows) async {
     taxonomy.cataloguePending.last.complete(right(rows));
     await tester.pumpAndSettle();
@@ -343,7 +349,8 @@ void main() {
     expect(find.byType(AlertDialog), findsNothing);
 
     harness.taxonomy.createPending.single.complete(right(TaxonomyWrite.done));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await harness.answer(tester, _two); // the write's re-read
     expect(find.text(l10n.taxonomyAdminAdded), findsOneWidget);
     // The catalogue is shared, so the screen reads it back rather than splicing
     // its own new row into the list.
@@ -364,7 +371,8 @@ void main() {
     await tester.pumpAndSettle();
     const refused = TaxonomyWrite.refused;
     harness.taxonomy.createPending.single.complete(right(refused));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await harness.answer(tester, _two); // the write's re-read
 
     expect(find.text(l10n.taxonomyAdminRefused), findsOneWidget);
     expect(harness.taxonomy.cataloguePending, hasLength(2));
@@ -423,9 +431,16 @@ void main() {
     expect(harness.taxonomy.removeIds, [_idB]);
 
     harness.taxonomy.removePending.single.complete(right(TaxonomyWrite.done));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    final afterDelete = const [
+      CategoryRef(id: _idA, slug: 'noise-2a3b', name: '声音与噪音'),
+    ];
+    await harness.answer(tester, afterDelete); // the write's re-read
     expect(find.text(l10n.taxonomyAdminRemoved), findsOneWidget);
     expect(harness.taxonomy.cataloguePending, hasLength(2));
+    // What is on screen afterwards is what the server returned a second time:
+    // the row that was deleted is gone because the catalogue said so.
+    expect(find.text('长读'), findsNothing);
   });
 
   testWidgets('a receipt of false is reported as not removed', (tester) async {
@@ -449,7 +464,8 @@ void main() {
     harness.taxonomy.removePending.single.complete(
       right(TaxonomyWrite.notRemoved),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await harness.answer(tester, _two); // the write's re-read
 
     expect(find.text(l10n.taxonomyAdminNotRemoved), findsOneWidget);
     expect(find.text(l10n.taxonomyAdminRemoved), findsNothing);
@@ -464,10 +480,15 @@ void main() {
 
     expect(find.text('旧行列'), findsOneWidget);
     expect(find.text(l10n.taxonomyAdminNoId), findsOneWidget);
-    final button = tester.widget<IconButton>(
-      find.byTooltip(l10n.taxonomyAdminRemove),
-    );
-    expect(button.onPressed, isNull);
+    // `find.byTooltip` pins the announced name; the disabled state is read off
+    // the button itself, because a handler-less `IconButton` is what makes the
+    // affordance inert rather than merely quiet.
+    expect(find.byTooltip(l10n.taxonomyAdminRemove), findsOneWidget);
+    final withoutHandler = tester
+        .widgetList<IconButton>(find.byType(IconButton))
+        .where((button) => button.onPressed == null)
+        .toList();
+    expect(withoutHandler, hasLength(1));
   });
 
   testWidgets('a signed-out account is offered no form', (tester) async {

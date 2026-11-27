@@ -45,6 +45,7 @@ import 'package:belog/features/blog/domain/repositories/featured_shelf_repositor
 import 'package:belog/features/blog/domain/repositories/publish_queue_drainer.dart';
 import 'package:belog/features/blog/domain/repositories/publish_queue_store.dart';
 import 'package:belog/features/blog/domain/repositories/reading_history_store.dart';
+import 'package:belog/features/blog/domain/repositories/taxonomy_admin_repository.dart';
 import 'package:belog/features/blog/domain/usecase/comment.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/upload_article_image.dart';
@@ -232,6 +233,7 @@ const Map<String, _Row<Object>> _resolutions = {
   'SearchBlogs': _Row<SearchBlogs>(),
   'SpeechCoordinator': _Row<SpeechCoordinator>(),
   'TagArticlesBloc': _Row<TagArticlesBloc>(),
+  'TaxonomyAdminRepository': _Row<TaxonomyAdminRepository>(),
   'ThemeBloc': _Row<ThemeBloc>(),
   'ThemePreferenceStore': _Row<ThemePreferenceStore>(),
   'ToggleLikeBlog': _Row<ToggleLikeBlog>(),
