@@ -62,6 +62,7 @@ class _FakeEditorialRepository implements AccountEditorialRepository {
     return right(answer);
   }
 }
+
 class _ThemeStore implements ThemePreferenceStore {
   _ThemeStore(this.mode);
   AppThemeMode mode;
