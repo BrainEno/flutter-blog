@@ -27,8 +27,7 @@ const _door =
     'lib/features/blog/data/repositories/taxonomy_admin_repository_impl.dart';
 
 /// The screen that maintains the catalogue.
-const _screen =
-    'lib/features/blog/presentation/pages/taxonomy_admin_page.dart';
+const _screen = 'lib/features/blog/presentation/pages/taxonomy_admin_page.dart';
 
 /// The one reader of `/categories`, shared with everyone browsing.
 const _reader =
@@ -124,12 +123,12 @@ void main() {
   });
 
   test('every catalogue key the app uses exists in both languages', () {
-    final en = jsonDecode(
-      File('lib/l10n/app_en.arb').readAsStringSync(),
-    ) as Map<String, dynamic>;
-    final zh = jsonDecode(
-      File('lib/l10n/app_zh.arb').readAsStringSync(),
-    ) as Map<String, dynamic>;
+    final en =
+        jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
+            as Map<String, dynamic>;
+    final zh =
+        jsonDecode(File('lib/l10n/app_zh.arb').readAsStringSync())
+            as Map<String, dynamic>;
     // Only the localisation accesses count: `RoutePaths.taxonomyAdmin` is a
     // route, and demanding a string for it would be nonsense.
     final used = <String>{};

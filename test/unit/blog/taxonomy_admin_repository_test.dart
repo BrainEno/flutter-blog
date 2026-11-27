@@ -289,9 +289,7 @@ void main() {
   });
 
   test('a stored row that cannot name itself is not a confirmation', () async {
-    final repository = _repository(
-      MockClient((_) async => _row(id: null)),
-    );
+    final repository = _repository(MockClient((_) async => _row(id: null)));
 
     expect(_wrote(await _create(repository)), TaxonomyWrite.unknown);
   });
@@ -416,9 +414,7 @@ void main() {
 
   test('the catalogue is read through the reader path, once', () async {
     final categories = _Catalogue(
-      entries: const [
-        CategoryRef(id: _id, slug: 'noise-2a3b', name: '噪音'),
-      ],
+      entries: const [CategoryRef(id: _id, slug: 'noise-2a3b', name: '噪音')],
     );
     final repository = _repository(
       MockClient((_) async => _raw('{}')),
@@ -427,7 +423,7 @@ void main() {
 
     final result = await repository.catalogue();
     expect(categories.calls, 1);
-    expect(result.getOrElse(() => const []), hasLength(1));
+    expect(result.getOrElse((_) => const []), hasLength(1));
   });
 
   test('a failed catalogue read is forwarded, not emptied', () async {

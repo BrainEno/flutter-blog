@@ -113,9 +113,7 @@ class TaxonomyAdminRepositoryImpl implements TaxonomyAdminRepository {
         // "no receipt" must not be rendered as either success or absence.
         return const Right(TaxonomyWrite.unknown);
       }
-      return right(
-        deleted ? TaxonomyWrite.done : TaxonomyWrite.notRemoved,
-      );
+      return right(deleted ? TaxonomyWrite.done : TaxonomyWrite.notRemoved);
     } catch (error) {
       return _outcomeOf(error);
     }

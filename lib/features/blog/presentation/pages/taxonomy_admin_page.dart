@@ -453,11 +453,7 @@ class _CatalogueRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    row.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(row.name, maxLines: 2, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: NoWaveSpacing.small),
                   Text(
                     row.slug,
