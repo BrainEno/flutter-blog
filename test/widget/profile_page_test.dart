@@ -193,6 +193,7 @@ class _Harness {
               'messages',
               'sessions',
               'featured-shelf',
+              'taxonomy-admin',
               'about',
               'editor',
             ])
@@ -365,6 +366,39 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ProfilePage), findsOneWidget);
     }
+  });
+
+  testWidgets('the catalogue row follows the same role rule', (tester) async {
+    final l10n = lookupAppLocalizations(const Locale('en'));
+    for (final capacity in [
+      AccountEditorialCapacity.granted,
+      AccountEditorialCapacity.unknown,
+    ]) {
+      final harness = _Harness(_user(), editorial: capacity);
+      addTearDown(harness.dispose);
+      await harness.pump(tester);
+      final label = l10n.taxonomyAdminTitle;
+      expect(find.text(label), findsOneWidget);
+      await tester.ensureVisible(find.text(label));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+      expect(find.text('destination: taxonomy-admin'), findsOneWidget);
+      harness.router.pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(ProfilePage), findsOneWidget);
+    }
+
+    final denied = _Harness(
+      _user(),
+      editorial: AccountEditorialCapacity.denied,
+    );
+    addTearDown(denied.dispose);
+    await denied.pump(tester);
+    // `denied` is the only answer that hides a row: the server said no, so the
+    // app does not offer a control it has been told will be refused.
+    expect(find.text(l10n.taxonomyAdminTitle), findsNothing);
+    expect(find.text(l10n.featuredShelfTitle), findsNothing);
   });
 
   testWidgets('theme toggle changes and persists the selected mode', (

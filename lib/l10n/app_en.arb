@@ -1368,5 +1368,42 @@
       "max": {"type": "int"}
     }
   },
-  "featuredShelfDuplicate": "The same work is on the shelf twice."
+  "featuredShelfDuplicate": "The same work is on the shelf twice.",
+  "taxonomyAdminTitle": "Category catalogue",
+  "taxonomyAdminMenuHint": "Add or remove the categories authors can pick",
+  "taxonomyAdminDescription": "Categories are the editorial shelves a work is placed on. Authors choose from this list; they cannot extend it from here.",
+  "taxonomyAdminLocaleNote": "The server keeps one catalogue in Chinese; the names above are its translation for your reading language, while a new category is written into that one store.",
+  "taxonomyAdminPageNote": "This is one page of the catalogue, not the whole of it.",
+  "taxonomyAdminPageFull": "That page is full, so the catalogue may continue beyond what you can see here.",
+  "taxonomyAdminUnknownRoleNote": "This deployment did not tell the app whether your account is an editor, so the server is the one that decides when you write.",
+  "taxonomyAdminRefresh": "Reload the catalogue",
+  "taxonomyAdminEmpty": "The catalogue has no categories",
+  "taxonomyAdminEmptyDetail": "Add the first one below; authors can only pick what exists here.",
+  "taxonomyAdminAddTitle": "Add a category",
+  "taxonomyAdminNameLabel": "Name",
+  "taxonomyAdminSlugLabel": "Address (slug)",
+  "taxonomyAdminDescriptionLabel": "Blurb (optional)",
+  "taxonomyAdminDescriptionCount": "{used} / {max} characters",
+  "@taxonomyAdminDescriptionCount": {
+    "description": "Character budget next to the optional blurb field.",
+    "placeholders": {
+      "used": {"type": "int"},
+      "max": {"type": "int"}
+    }
+  },
+  "taxonomyAdminAdd": "Add to the catalogue",
+  "taxonomyAdminAdding": "Adding…",
+  "taxonomyAdminAdded": "The catalogue has the new category.",
+  "taxonomyAdminRemove": "Remove from the catalogue",
+  "taxonomyAdminRemoved": "The category is gone from the catalogue.",
+  "taxonomyAdminNotRemoved": "The server did not remove it. It does not tell apart a category that is not yours to delete from one that is already gone.",
+  "taxonomyAdminRefused": "This server does not treat your account as an editor, so the catalogue was not changed.",
+  "taxonomyAdminUnavailable": "This deployment has no category administration to use.",
+  "taxonomyAdminUnknownResult": "The answer to your write could not be read, so it may have landed. Below is what the catalogue has now.",
+  "taxonomyAdminConfirmTitle": "Remove this category?",
+  "taxonomyAdminConfirmMessage": "The catalogue is public and this write is not conditional: what another editor did in the meantime is not merged, and the app cannot undo it.",
+  "taxonomyAdminNoId": "No address for this row",
+  "taxonomyAdminNameBlank": "A category needs a name the catalogue can show.",
+  "taxonomyAdminSlugUnreadable": "That address cannot be read back, so it will not be created.",
+  "taxonomyAdminDescriptionTooLong": "The blurb is longer than the server accepts."
 }

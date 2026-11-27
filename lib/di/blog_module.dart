@@ -10,7 +10,10 @@ import 'package:belog/features/blog/data/repositories/blog_repository_impl.dart'
 import 'package:belog/features/blog/data/repositories/featured_shelf_repository_impl.dart';
 import 'package:belog/features/blog/data/views/nowave_article_view_recorder.dart';
 import 'package:belog/features/blog/domain/repositories/blog_repository.dart';
+import 'package:belog/features/blog/data/repositories/taxonomy_admin_repository_impl.dart';
+import 'package:belog/features/blog/domain/repositories/category_repository.dart';
 import 'package:belog/features/blog/domain/repositories/featured_shelf_repository.dart';
+import 'package:belog/features/blog/domain/repositories/taxonomy_admin_repository.dart';
 import 'package:belog/features/blog/domain/usecase/delete_blog.dart';
 import 'package:belog/features/blog/domain/usecase/upload_article_image.dart';
 import 'package:belog/features/blog/domain/usecase/get_all_blogs.dart';
@@ -90,6 +93,17 @@ void registerBlogModule(GetIt locator, DependencyContext context) {
     // ordering nobody chose.
     ..registerFactory<FeaturedShelfRepository>(
       () => FeaturedShelfRepositoryImpl(
+        client: apiClient,
+        connectionChecker: locator<ConnectionChecker>(),
+      ),
+    )
+    // Category maintenance (#381). The catalogue read is delegated to the
+    // repository readers already use - one parser, one page limit - and the two
+    // writes are never cached, queued or replayed: a duplicate category becomes
+    // another editor's clean-up job.
+    ..registerFactory<TaxonomyAdminRepository>(
+      () => TaxonomyAdminRepositoryImpl(
+        categories: locator<CategoryRepository>(),
         client: apiClient,
         connectionChecker: locator<ConnectionChecker>(),
       ),

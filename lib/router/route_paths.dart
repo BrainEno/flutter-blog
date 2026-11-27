@@ -70,6 +70,10 @@ abstract final class RouteSegments {
   /// it is reached from the account menu, and it needs a session.
   static const featuredShelf = 'featured-shelf';
 
+  /// Category maintenance (#381). Shaped like the shelf on purpose: a profile
+  /// child the account menu opens, needing a session, invisible without one.
+  static const taxonomyAdmin = 'taxonomy-admin';
+
   /// Path parameter names, shared by the patterns above and their builders.
   static const idParam = 'id';
   static const userIdParam = 'userId';
@@ -184,6 +188,7 @@ abstract final class RoutePaths {
   static const publishQueue = '$profile/${RouteSegments.publishQueue}';
   static const sessions = '$profile/${RouteSegments.sessions}';
   static const featuredShelf = '$profile/${RouteSegments.featuredShelf}';
+  static const taxonomyAdmin = '$profile/${RouteSegments.taxonomyAdmin}';
 
   /// One conversation of the inbox.
   static String messageThread(String conversationId) =>
